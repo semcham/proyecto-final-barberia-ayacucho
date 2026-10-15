@@ -62,7 +62,7 @@ Cualquier usuario autenticado de la barbería A solo puede ver y modificar datos
 1. **Given** dos barberías A y B con usuarios cada una, **When** el propietario de A lista los usuarios, **Then** solo ve usuarios de A.
 2. **Given** el identificador de un usuario de B, **When** un usuario de A intenta consultarlo, modificarlo o desactivarlo, **Then** el sistema responde como si el recurso no existiera y los datos de B no cambian.
 3. **Given** un usuario de A, **When** envía una solicitud que indica la barbería B en la ruta, la consulta, el cuerpo o los encabezados, **Then** el sistema ignora o rechaza ese valor y opera solo sobre A.
-4. **Given** un intento de acceso a datos de otra barbería, **When** se rechaza, **Then** queda registrado en la auditoría con el usuario, la barbería de origen, la acción y la fecha y hora.
+4. **Given** un usuario de A que indica explícitamente otra barbería (un campo `tenantId`, `tenant_id` o `barberiaId` en el cuerpo o la consulta, o el encabezado `X-Tenant-Id`), **When** la solicitud se rechaza, **Then** el intento queda registrado en la auditoría de A con el usuario, la acción y la fecha y hora. Un identificador de recurso de otra barbería solo recibe "no encontrado" y no se registra como intento entre barberías; esa detección queda como mejora futura por validar (ver Supuestos).
 
 ---
 
@@ -141,7 +141,7 @@ El propietario, que administra todo en su barbería, da de alta a los barberos q
 
 **Auditoría y validación**
 
-- **FR-027**: El sistema MUST registrar en auditoría, con quién, qué, cuándo, desde dónde y sobre qué barbería: el registro de una barbería, la creación de usuarios, las desactivaciones y reactivaciones, los accesos denegados por rol y los intentos de acceso a otra barbería.
+- **FR-027**: El sistema MUST registrar en auditoría, con quién, qué, cuándo, desde dónde y sobre qué barbería: el registro de una barbería, la creación de usuarios, las desactivaciones y reactivaciones, los accesos denegados por rol y los intentos explícitos de indicar otra barbería (campo `tenantId`, `tenant_id` o `barberiaId`, o encabezado `X-Tenant-Id`).
 - **FR-028**: El sistema MUST validar todas las entradas (formato, longitud, caracteres) y rechazar las inválidas con un mensaje controlado, sin ejecutar su contenido.
 - **FR-029**: El correo MUST normalizarse (sin espacios y sin distinguir mayúsculas) para la unicidad y el inicio de sesión.
 
@@ -175,6 +175,7 @@ El propietario, que administra todo en su barbería, da de alta a los barberos q
 - El límite de usuarios durante la prueba gratuita lo define el plan de prueba configurado por la plataforma; esta funcionalidad solo lo hace cumplir. Los precios y límites de planes son referenciales.
 - En esta funcionalidad cada usuario del personal pertenece a una sola barbería y un correo identifica una sola cuenta. Que una persona trabaje en varias barberías con la misma cuenta queda como evolución futura.
 - El usuario creado por el propietario activa su cuenta con un enlace de un solo uso enviado a su correo. Si el envío de correo no estuviera disponible aún (M05), el enlace se muestra al propietario para entregarlo en persona; esto no bloquea la creación del usuario.
+- Mejora futura por validar: detectar y auditar también el uso de identificadores de recursos que pertenecen a otra barbería. Hoy esos casos reciben "no encontrado" sin registro específico, porque distinguirlos de un identificador inexistente exigiría consultar fuera de la barbería del usuario, que es justo lo que el aislamiento impide. Antes de adoptarla hay que evaluar su costo y el riesgo de esa consulta.
 - Los roles del personal son solo dos: propietario, que administra todo en su barbería, y barbero. El propietario solo crea usuarios con rol barbero.
 - Suspender o reactivar barberías (RF02, HU01) no es parte de esta funcionalidad; aquí solo se respeta el estado al iniciar sesión.
 - Las restricciones de funciones según estado de suscripción (RF21, RF22), el pago (RF23–RF25) y el registro de clientes (RF05) quedan fuera del alcance.

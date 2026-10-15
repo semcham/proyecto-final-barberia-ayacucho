@@ -65,7 +65,8 @@ Complexity Tracking and record an ADR):
   (PR09), booking concurrency (PR16) and architecture (PR14) where touched
 - [ ] **XI. ADR**: any architectural change recorded in
   `docs/01-analisis-de-sistema/07-decisiones-arquitectonicas.md`
-- [ ] **XII. Code location**: all application code under `tecnologia/plataforma-barberias/`
+- [ ] **XII. Code location**: all application code under `tecnologia/plataforma-barberias/`;
+  only CI workflows may live in `.github/workflows/` (no application logic there)
 
 ## Project Structure
 
@@ -91,6 +92,7 @@ specs/[###-feature]/
 
 ```text
 # Project default (constitution XII): all code under tecnologia/plataforma-barberias/
+# (exception: CI workflows in .github/workflows/)
 tecnologia/plataforma-barberias/
 ├── backend/
 │   ├── src/

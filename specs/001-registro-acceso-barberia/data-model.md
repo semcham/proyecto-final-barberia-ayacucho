@@ -174,7 +174,9 @@ Solo `INSERT, SELECT` para `barberias_app`.
 | `at`         | timestamptz |                                                                        |
 
 `GRANT INSERT, SELECT` únicamente (inmutable para la aplicación). Sin datos personales en texto
-libre.
+libre. `ACCESO_TENANT_AJENO` se registra solo ante intentos explícitos de indicar otra barbería
+(campos `tenantId`, `tenant_id`, `barberiaId` o encabezado `X-Tenant-Id`); un identificador de
+recurso de otra barbería da 404 sin este registro (escenario 4 de US3).
 
 ## 3. Entidades de dominio y reglas
 

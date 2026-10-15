@@ -1,41 +1,29 @@
 <!--
 Sync Impact Report
 ==================
-Version change: 1.0.0 (borrador previo, no confirmado en git) → 1.0.0 (ratificación inicial)
-Bump rationale: el borrador anterior de esta misma sesión nunca se confirmó ni se adoptó; esta
-versión lo reemplaza por completo según los 12 principios obligatorios indicados por el autor,
-por lo que se trata como la primera ratificación y no como una enmienda.
+Version change: 1.0.0 → 1.0.1
+Bump rationale: PATCH. Aclaración acotada del principio XII: los flujos de CI pueden vivir en
+.github/workflows/ porque GitHub Actions solo los lee desde esa ruta. No cambia el sentido del
+principio (el código de la aplicación sigue en tecnologia/plataforma-barberias/) ni afecta la
+arquitectura, por lo que no requiere ADR.
 
-Modified principles (borrador → ratificación):
-  - I. Aislamiento multi-tenant → III. Aislamiento por barbería
-  - II. Monolito modular con Clean Architecture → I. Monolito modular de seis módulos
-    + II. Cuatro capas con Clean Architecture
-  - III. PostgreSQL como única fuente de verdad → IV. Citas sin duplicados + VIII. Redis solo
-    como caché
-  - IV. Integraciones externas desacopladas → V. Pagos solo de suscripciones + VI. IA con
-    herramientas cerradas + VII. Notificaciones con consentimiento y sin bloqueo
-  - V. Seguridad y privacidad por diseño → integrado en III, V, VII y en "Restricciones"
-  - VI. Pruebas como evidencia → X. Pruebas obligatorias (ahora para toda funcionalidad)
-  - VII. Trazabilidad y honestidad documental → XI. Decisiones de arquitectura como ADR
-    (trazabilidad y etiquetas de estado pasan a "Flujo de desarrollo")
-Added principles:
-  - IX. Solo web responsive
-  - XII. Ubicación del código en tecnologia/plataforma-barberias/
-Added sections: Restricciones tecnológicas y de alcance; Flujo de desarrollo y puertas de calidad
+Modified principles:
+  - XII. Ubicación del código — se añade la excepción de .github/workflows/ (solo definiciones de
+    CI; ejecutan comandos dentro de tecnologia/plataforma-barberias/ y no contienen lógica de la
+    aplicación)
+Added principles: ninguno
+Added sections: ninguna
 Removed sections: ninguna
 
 Templates requiring updates:
-  ✅ .specify/templates/plan-template.md — Constitution Check con puertas I–XII; estructura en
-     tecnologia/plataforma-barberias/
-  ✅ .specify/templates/tasks-template.md — pruebas obligatorias; rutas del proyecto
-  ✅ .claude/skills/speckit-tasks/SKILL.md — pruebas obligatorias según la constitución
+  ✅ .specify/templates/plan-template.md — puerta XII y comentario de estructura con la excepción
+  ✅ .specify/templates/tasks-template.md — convención de rutas con la excepción
   ✅ .specify/templates/spec-template.md — revisado; sin cambios necesarios
-  ✅ .claude/skills/speckit-*/SKILL.md — revisados; sin referencias específicas de agente
-  ⚠ README.md — su estructura de carpetas y la sección "Estructura planificada del backend"
-    usan backend/src/ y tecnologia/boilerplate-clean-arquitecture/; el principio XII fija
-    tecnologia/plataforma-barberias/. Además referencia docs/05-gestion/, que no existe.
-  ⚠ docs/02-arquitectura-software/estilo-arquitectonico.md §4 — muestra backend/src/ sin la
-    ruta tecnologia/plataforma-barberias/.
+  ✅ .claude/skills/speckit-*/SKILL.md — revisados; sin referencias al principio XII
+  ✅ specs/001-registro-acceso-barberia/plan.md y tasks.md — puerta XII y tarea T009 alineadas
+  ✅ README.md y docs/02-arquitectura-software/estilo-arquitectonico.md — los avisos de la
+     versión 1.0.0 ya estaban resueltos (usan tecnologia/plataforma-barberias/ y docs/05-gestion/
+     existe); sin contradicción con la excepción
 
 Follow-up TODOs: ninguno.
 -->
@@ -200,9 +188,13 @@ demuestra.
   contenedores) MUST ubicarse en `tecnologia/plataforma-barberias/`.
 - MUST NOT colocarse código de la aplicación fuera de esa carpeta; `docs/` e `img/` quedan para
   documentación y diagramas.
+- **Excepción:** los flujos de integración continua MUST ubicarse en `.github/workflows/`, única
+  ruta que GitHub Actions lee. Esos archivos MUST limitarse a definir la CI (instalar, verificar,
+  probar y construir ejecutando comandos dentro de `tecnologia/plataforma-barberias/`) y MUST NOT
+  contener lógica de la aplicación.
 
 **Razón:** separa la documentación de arquitectura del código y deja una única raíz para la
-implementación.
+implementación. La excepción existe solo porque la plataforma de CI impone la ruta.
 
 ## Restricciones tecnológicas y de alcance
 
@@ -252,4 +244,4 @@ implementación.
   alternativa más simple descartada, y registrarse como ADR.
 - La guía de ejecución del proyecto está en `README.md` y en `docs/`.
 
-**Version**: 1.0.0 | **Ratified**: 2026-10-15 | **Last Amended**: 2026-10-15
+**Version**: 1.0.1 | **Ratified**: 2026-10-15 | **Last Amended**: 2026-10-15

@@ -52,7 +52,7 @@ tokens inválidos o de sesión cerrada rechazados (SC-004); sexto fallo de login
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-Gates from `.specify/memory/constitution.md` (v1.0.0).
+Gates from `.specify/memory/constitution.md` (v1.0.1).
 
 | # | Puerta | Antes de Fase 0 | Tras el diseño | Evidencia |
 | - | ------ | --------------- | -------------- | --------- |
@@ -67,7 +67,7 @@ Gates from `.specify/memory/constitution.md` (v1.0.0).
 | IX | Solo web responsive | ✅ | ✅ | SPA React móvil primero |
 | X | Pruebas obligatorias | ✅ | ✅ | Pruebas de dominio, PR07, PR08 ([rbac.md](contracts/rbac.md)), **PR09**, PR10, PR12, PR13 y **PR14**, más pruebas de frontend. PR16 no aplica (no hay reservas). CI bloquea la fusión |
 | XI | ADR | ✅ | ✅ | Todo cabe en ADR-003, -004, -010, -011 y -014; no hace falta un ADR nuevo. Actualizaciones de documentos en el mismo cambio: R05 en `multi-tenancy-y-datos.md`, librerías en `tecnologias.md` (lo pide ADR-014) y `trazabilidad.md` |
-| XII | Ubicación del código | ✅ | ✅ | Todo bajo `tecnologia/plataforma-barberias/` |
+| XII | Ubicación del código | ✅ | ✅ | Todo el código bajo `tecnologia/plataforma-barberias/`; solo el flujo de CI en `.github/workflows/`, permitido por la excepción de la constitución v1.0.1 |
 
 **Resultado**: pasa sin violaciones. Complexity Tracking vacío.
 
