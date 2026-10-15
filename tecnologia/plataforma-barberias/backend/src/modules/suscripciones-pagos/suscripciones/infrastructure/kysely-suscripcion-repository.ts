@@ -45,14 +45,16 @@ export class KyselySuscripcionRepository extends SuscripcionRepository {
       .execute();
   }
 
-  async planDelTenant(): Promise<Plan | null> {
-    const fila = await this.uow
+  async planDelTenant(opciones: { bloquear?: boolean } = {}): Promise<Plan | null> {
+    let consulta = this.uow
       .transaccionActual()
       .selectFrom('subscription')
       .innerJoin('plan', 'plan.id', 'subscription.plan_id')
       .select(['plan.id', 'plan.code', 'plan.trial_days', 'plan.max_users'])
-      .where('subscription.tenant_id', '=', this.tenantContext.actual().valor)
-      .executeTakeFirst();
+      .where('subscription.tenant_id', '=', this.tenantContext.actual().valor);
+    // Solo se bloquea la fila de la suscripción (no el catálogo de planes), hasta que termine la transacción.
+    if (opciones.bloquear) consulta = consulta.forUpdate('subscription');
+    const fila = await consulta.executeTakeFirst();
     return fila
       ? Plan.reconstruir({
           id: fila.id,

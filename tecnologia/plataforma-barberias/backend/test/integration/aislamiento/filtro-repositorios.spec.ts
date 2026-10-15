@@ -243,5 +243,11 @@ describe('PR09 · Filtro explícito por tenant en los repositorios (principio II
     });
 
     it('planDelTenant', async () => verificar(await sentenciasDe(() => repo().planDelTenant())));
+
+    it('planDelTenant con bloqueo (FOR UPDATE)', async () => {
+      const sentencias = await sentenciasDe(() => repo().planDelTenant({ bloquear: true }));
+      verificar(sentencias);
+      expect(sentencias.some((s) => /for update of "subscription"/i.test(s.sql))).toBe(true);
+    });
   });
 });

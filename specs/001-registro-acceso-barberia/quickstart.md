@@ -74,3 +74,34 @@ Se pueden hacer desde la aplicación web o con cualquier cliente HTTP contra
   despliegue (Amazon RDS, **por validar**).
 - Documentos actualizados en el mismo cambio que el código: librerías elegidas
   (`docs/02-arquitectura-software/tecnologias.md`) y estado de componentes en `docs/trazabilidad.md`.
+
+## 6. Registro de ejecución (T120)
+
+**Fecha:** 2026-10-15. **Cómo se ejecutó:** el equipo de desarrollo no tenía Docker, así que no se usó
+Docker Compose. Se reprodujo el mismo entorno a mano: PostgreSQL 16 local con una base nueva
+(`barberias_quickstart`), el mismo `db/init/01-roles.sql` y las 7 migraciones aplicadas como
+`barberias_owner`, y el backend **compilado** (`node dist/src/main.js`) conectado como `barberias_app`. Los
+escenarios se ejecutaron por HTTP con un script contra ese backend, y los escenarios 14 y 15 con `psql`
+como `barberias_app`. **No se comprobó la interfaz en un navegador**: la parte visual de los escenarios 1,
+3, 6 y 7 la cubren las pruebas del frontend (Vitest + MSW), no esta ejecución.
+
+| #   | Escenario                      | Resultado | Evidencia                                                                                          |
+| --- | ------------------------------ | --------- | -------------------------------------------------------------------------------------------------- |
+| 1   | Registro con prueba gratuita   | Conforme  | 201; `GET /auth/yo` → `PROPIETARIO`; suscripción `TRIAL` a 14 días                                  |
+| 2   | Correo repetido                | Conforme  | 409 `CORREO_NO_DISPONIBLE`, sin nombre de barbería                                                  |
+| 3   | Inicio de sesión               | Conforme  | 200 con `tokenAcceso`; cookie `rt` HttpOnly                                                         |
+| 4   | Mensaje genérico               | Conforme  | 401 y 401 con el mismo cuerpo                                                                       |
+| 5   | Límite de intentos             | Conforme  | 5 × 401 y el sexto 429 (`Retry-After: 60`), aun con la contraseña correcta; otra cuenta desde la misma IP: 200 |
+| 6   | Crear personal                 | Conforme  | BARBERO → 201 `PENDIENTE` con enlace; PROPIETARIO → 400                                             |
+| 7   | Activación                     | Conforme  | Primera vez 204; reutilizar el enlace → 400 `ENLACE_INVALIDO`                                       |
+| 8   | Permisos por rol               | Conforme  | Barbero en `POST /usuarios` → 403 `ACCESO_DENEGADO`; 1 registro `ACCESO_DENEGADO_ROL`               |
+| 9   | Cierre de sesión               | Conforme  | El mismo token: 200 antes y 401 después                                                             |
+| 10  | Desactivación                  | Conforme  | Siguiente solicitud del barbero → 401; su inicio de sesión → 403 `ACCESO_SUSPENDIDO`               |
+| 11  | Autoprotección                 | Conforme  | 422 `OPERACION_NO_PERMITIDA`                                                                        |
+| 12  | Límite del plan                | Conforme  | Altas hasta llegar a 5 vigentes; la siguiente → 403 `SUSCRIPCION_NO_PERMITE` / `LIMITE_USUARIOS`    |
+| 13  | Aislamiento                    | Conforme  | `GET` y `PATCH` del usuario de B → 404; `POST` con `tenantId` → 400; A no lista a nadie de B; B sin cambios |
+| 14  | RLS en la base                 | Conforme  | `membership` = 0 y `user_account` = 0 como `barberias_app`                                          |
+| 15  | Contraseñas no legibles        | Conforme  | `permission denied for table user_account`                                                         |
+
+**Pendiente para el cierre formal (sección 5):** repetir con `docker compose up` en un equipo con Docker,
+ver las suites en verde en GitHub Actions, aprobar ADR-015 y validar el rol `BYPASSRLS` en Amazon RDS.

@@ -143,6 +143,7 @@ describe('RegistrarBarberia: un fallo a mitad no deja nada (FR-002, SC-002)', ()
             throw new Error('falla simulada al iniciar la prueba gratuita');
           },
           obtenerLimiteUsuarios: async () => 5,
+          bloquearYObtenerLimiteUsuarios: async () => 5,
         }),
     });
   });

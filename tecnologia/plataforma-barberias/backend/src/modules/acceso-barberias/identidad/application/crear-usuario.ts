@@ -48,7 +48,9 @@ export class CrearUsuario {
     const tenantId = TenantId.de(actor.tenantId);
 
     return this.uow.ejecutar(tenantId, async () => {
-      const maximo = await this.suscripciones.obtenerLimiteUsuarios(tenantId);
+      // El bloqueo de la suscripción serializa las altas de esta barbería hasta el fin de la transacción:
+      // el conteo de abajo ya incluye a cualquier alta simultánea confirmada antes (FR-020).
+      const maximo = await this.suscripciones.bloquearYObtenerLimiteUsuarios(tenantId);
       LimiteUsuarios.exigir(await this.usuarios.contarPersonalVigente(), maximo);
 
       const usuarioId = uuidv7();

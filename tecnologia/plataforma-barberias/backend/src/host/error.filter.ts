@@ -58,6 +58,17 @@ function desdeHttp(estado: number): CuerpoError {
   }
 }
 
+/** Error 4xx de la librería http-errors (la usa el parser del cuerpo de Express); `expose` indica que es seguro. */
+function esErrorHttpDelCliente(error: unknown): error is { status: number } {
+  const candidato = error as { status?: unknown; expose?: unknown };
+  return (
+    typeof candidato?.status === 'number' &&
+    candidato.status >= 400 &&
+    candidato.status < 500 &&
+    candidato.expose === true
+  );
+}
+
 /**
  * Traduce cualquier error al formato único { codigo, mensaje, detalles } (R21). Nunca expone trazas ni
  * detalles internos; los errores no previstos se registran y responden 500 ERROR_INTERNO.
@@ -78,6 +89,10 @@ export class ErrorFilter implements ExceptionFilter {
       if (espera) respuesta.setHeader('Retry-After', String(espera.reintentarEnSegundos));
     } else if (error instanceof HttpException) {
       estado = error.getStatus();
+      cuerpo = desdeHttp(estado);
+    } else if (esErrorHttpDelCliente(error)) {
+      // Errores del parser del cuerpo (http-errors): 413 por tamaño, 400 por JSON mal formado.
+      estado = error.status;
       cuerpo = desdeHttp(estado);
     } else {
       estado = 500;

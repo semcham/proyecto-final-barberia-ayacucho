@@ -1,6 +1,6 @@
 # Tecnologías
 
-Principio: **no se elige por popularidad**, sino por criterios (costo, curva de aprendizaje, gratuidad, integración con IA, mantenibilidad, compatibilidad con SaaS y con el estilo). Las versiones se fijan al iniciar la implementación con la última estable; aquí no se afirman números de versión. Todo el stack es **planificado**.
+Principio: **no se elige por popularidad**, sino por criterios (costo, curva de aprendizaje, gratuidad, integración con IA, mantenibilidad, compatibilidad con SaaS y con el estilo). Las versiones exactas están fijadas en los `package.json` de `tecnologia/plataforma-barberias/` (sección 5). Estado: el stack de la funcionalidad 001 está **implementado y probado en local** (backend, frontend y PostgreSQL); Redis, AWS, pagos, IA, correo y WhatsApp siguen **planificados**.
 
 ## 1. Criterios de evaluación
 
@@ -53,23 +53,26 @@ Estas condiciones son del proveedor candidato y pueden cambiar: se confirman con
 
 ## 5. Librerías elegidas para la funcionalidad 001 (registro, acceso y aislamiento)
 
-Fuente: `specs/001-registro-acceso-barberia/research.md`. Las versiones exactas se fijan en `package.json` al iniciar la implementación; las cifras de versión mayor son las del plan.
+Fuente: `specs/001-registro-acceso-barberia/research.md`. Versiones exactas (sin `^`) fijadas al implementar, en `tecnologia/plataforma-barberias/backend/package.json` y `frontend/package.json`.
 
-| Capa                          | Librería o herramienta                                     | Para qué                                                 | Decisión |
-| ----------------------------- | ---------------------------------------------------------- | -------------------------------------------------------- | -------- |
-| Plataforma                    | Node.js 22 LTS, TypeScript 5 (modo `strict`)               | Lenguaje y ejecución                                     | R01      |
-| Backend                       | NestJS 11                                                  | Módulos e inyección de dependencias                      | R01      |
-| Acceso a datos                | Kysely sobre `pg`, migraciones en SQL                      | Control de la transacción para fijar `tenant_id` con RLS | R02      |
-| Hash de contraseñas           | `argon2` (Argon2id)                                        | Almacenar contraseñas                                    | R06      |
-| Tokens                        | `jose`, JWT ES256 de 15 min con `kid`                      | Firmar y verificar el token de acceso                    | R07      |
-| Validación                    | `class-validator` con `whitelist` y `forbidNonWhitelisted` | Rechazar campos no declarados, incluido `tenant_id`      | R11      |
-| Límite general de solicitudes | `@nestjs/throttler`                                        | Freno aproximado por instancia                           | R10      |
-| Pruebas del backend           | Jest, `supertest`, Testcontainers (PostgreSQL 16)          | Unitarias, contrato y RLS real                           | R18      |
-| Prueba de arquitectura        | `dependency-cruiser`                                       | PR14: matriz de módulos y regla de capas                 | R18      |
-| Frontend                      | React 19, Vite 6, React Router, TanStack Query             | Interfaz y llamadas a la API                             | R19      |
-| Formularios                   | `react-hook-form` y `zod`                                  | Validación de ayuda en el cliente                        | R19      |
-| Tipos de la API               | `openapi-typescript`                                       | Generar tipos desde `contracts/openapi.yaml`             | R19      |
-| Pruebas del frontend          | Vitest, Testing Library, MSW                               | Formularios, sesión y simulación de la API               | R18      |
-| Entorno local                 | Docker Compose con `postgres:16`                           | Reproducir el entorno                                    | R20      |
+| Capa                          | Librería o herramienta (versión fijada)                                      | Para qué                                                                    | Decisión |
+| ----------------------------- | ---------------------------------------------------------------------------- | --------------------------------------------------------------------------- | -------- |
+| Plataforma                    | Node.js 22 LTS (CI y contenedores), TypeScript 5.9 en modo `strict`          | Lenguaje y ejecución; backend con `module: node16`                          | R01      |
+| Backend                       | NestJS 11.2, `@nestjs/cli` 11                                                | Módulos e inyección de dependencias                                         | R01      |
+| Acceso a datos                | Kysely 0.28 sobre `pg` 8, migraciones en SQL explícito                       | Control de la transacción para fijar `tenant_id` con RLS                    | R02      |
+| Hash de contraseñas           | `argon2` 0.45 (Argon2id, m = 19 MiB, t = 2, p = 1)                           | Almacenar contraseñas; p95 del login medido entre 78 y 105 ms (SC-008)              | R06      |
+| Tokens                        | `jose` 5.10 (5.x por compatibilidad con CommonJS), JWT ES256 de 15 min con `kid` | Firmar y verificar el token de acceso                                       | R07      |
+| Identificadores               | `uuid` 11 (UUID v7)                                                          | Identificadores generados en la aplicación (sin `RETURNING`, ADR-015)       | R12      |
+| Validación                    | `class-validator` 0.15 con `whitelist` y `forbidNonWhitelisted`              | Rechazar campos no declarados, incluido `tenant_id`                         | R11      |
+| Límite general de solicitudes | `@nestjs/throttler` 6                                                        | Freno aproximado por instancia; el límite de login vive en PostgreSQL       | R10      |
+| Pruebas del backend           | Jest 29, `supertest`, Testcontainers 12 (PostgreSQL 16)                      | Unitarias, contrato y RLS real; sin Docker, `TEST_DATABASE_ADMIN_URL`        | R18      |
+| Pruebas de contrato           | `yaml` 2, `ajv` 8 y `ajv-formats`                                            | Validar cada respuesta contra el esquema de `contracts/openapi.yaml`        | R18      |
+| Prueba de arquitectura        | `dependency-cruiser` 18                                                      | PR14: matriz de módulos, regla de capas y Kysely solo en infraestructura    | R18      |
+| Calidad de código             | ESLint 9 (`typescript-eslint`), Prettier 3                                   | Estilo y reglas de importación entre módulos                                | —        |
+| Frontend                      | React 19, Vite 6, React Router 7, TanStack Query 5                           | Interfaz y llamadas a la API                                                | R19      |
+| Formularios                   | `react-hook-form` 7 y `zod` 3                                                | Validación de ayuda en el cliente                                           | R19      |
+| Tipos de la API               | `openapi-typescript` 7                                                       | Generar tipos desde `contracts/openapi.yaml`                                | R19      |
+| Pruebas del frontend          | Vitest 3, Testing Library, MSW 2                                             | Formularios, sesión y simulación de la API                                  | R18      |
+| Entorno local                 | Docker Compose con `postgres:16`; `tsx` para ejecutar las migraciones        | Reproducir el entorno                                                       | R20      |
 
 Esta funcionalidad **no** levanta Redis: no hay lecturas que cachear.

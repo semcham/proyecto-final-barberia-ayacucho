@@ -24,4 +24,13 @@ export class SuscripcionesApi {
   obtenerLimiteUsuarios(tenantId: TenantId): Promise<number> {
     return this.obtenerLimite.ejecutar(tenantId);
   }
+
+  /**
+   * Igual que obtenerLimiteUsuarios, pero deja bloqueada la fila de la suscripción hasta que termine la
+   * transacción del llamador. Se usa antes de agregar personal, para que el conteo y el alta sean atómicos
+   * frente a otras altas simultáneas (FR-020).
+   */
+  bloquearYObtenerLimiteUsuarios(tenantId: TenantId): Promise<number> {
+    return this.obtenerLimite.ejecutar(tenantId, { bloquear: true });
+  }
 }

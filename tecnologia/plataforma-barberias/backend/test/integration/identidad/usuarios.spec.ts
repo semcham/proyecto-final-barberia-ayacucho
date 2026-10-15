@@ -1,10 +1,60 @@
 import { createHash, randomBytes } from 'node:crypto';
+import { UsuarioRepository } from '../../../src/modules/acceso-barberias/identidad/application/ports/usuario-repository';
+import { KyselyUsuarioRepository } from '../../../src/modules/acceso-barberias/identidad/infrastructure/kysely-usuario-repository';
 import { type AppDePrueba, crearApp } from '../../helpers/app';
 import { filasDe, sembrarUsuario } from '../../helpers/fixtures';
 import { cerrarPools, poolDe } from '../../helpers/test-db';
 import { crearEscenario, type Escenario } from '../../helpers/sesiones';
 
 // T100 · Gestión de usuarios del personal (RF06, HU04) contra PostgreSQL real.
+
+/**
+ * Repositorio que espera entre contar el personal vigente y seguir con el alta. Hace que dos altas
+ * simultáneas se solapen siempre en la ventana crítica (contar → insertar), donde estaba la carrera.
+ */
+class UsuarioRepositoryLento extends KyselyUsuarioRepository {
+  override async contarPersonalVigente(): Promise<number> {
+    const vigentes = await super.contarPersonalVigente();
+    await new Promise((resolver) => setTimeout(resolver, 300));
+    return vigentes;
+  }
+}
+
+describe('Límite del plan con altas simultáneas (FR-020)', () => {
+  let prueba: AppDePrueba;
+
+  beforeAll(async () => {
+    prueba = await crearApp({
+      ajustar: (constructor) =>
+        constructor.overrideProvider(UsuarioRepository).useClass(UsuarioRepositoryLento),
+    });
+  });
+
+  afterAll(async () => {
+    await prueba.cerrar();
+    await cerrarPools();
+  });
+
+  it('con un solo cupo libre, dos altas simultáneas dan una 201 y otra 403; nunca se supera el plan', async () => {
+    const e = await crearEscenario();
+    const alta = () =>
+      prueba.agente
+        .post('/api/v1/usuarios')
+        .set({ Authorization: `Bearer ${e.tokenPropietario}` })
+        .send({ nombre: 'Barbero Simultáneo', correo: correoNuevo('simultaneo'), rol: 'BARBERO' });
+
+    // 3 vigentes + 1 = 4 de 5: queda exactamente un cupo.
+    await alta().expect(201);
+    const estados = (await Promise.all([alta(), alta()])).map((respuesta) => respuesta.status).sort();
+    expect(estados).toEqual([201, 403]);
+
+    const { rows } = await poolDe('seed').query<{ vigentes: number }>(
+      `SELECT count(*)::int AS vigentes FROM membership WHERE tenant_id = $1 AND status IN ('PENDIENTE', 'ACTIVA')`,
+      [e.barberia.tenantId],
+    );
+    expect(rows[0].vigentes).toBe(5);
+  });
+});
 
 const correoNuevo = (prefijo = 'barbero') => `${prefijo}-${randomBytes(4).toString('hex')}@prueba.pe`;
 const tokenDelEnlace = (enlace: string) => new URL(enlace).searchParams.get('token') as string;
