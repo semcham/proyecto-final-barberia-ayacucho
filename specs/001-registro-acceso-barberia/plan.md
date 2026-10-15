@@ -75,7 +75,7 @@ Gates from `.specify/memory/constitution.md` (v1.0.1).
 | XI | ADR | ✅ | ✅ | La omisión acotada de RLS para autenticar sin tenant y la RLS en `user_account` quedaron registradas **antes de implementar** como ADR-015 (con `multi-tenancy-y-datos.md` y `trazabilidad.md` ya actualizados). El resto cabe en ADR-003, -004, -010, -011 y -014. Pendiente en el mismo cambio que el código: librerías en `tecnologias.md` (lo pide ADR-014) y estado de componentes en `trazabilidad.md` |
 | XII | Ubicación del código | ✅ | ✅ | Todo el código bajo `tecnologia/plataforma-barberias/`; solo el flujo de CI en `.github/workflows/`, permitido por la excepción de la constitución v1.0.1 |
 
-**Resultado**: pasa sin violaciones. Complexity Tracking vacío.
+**Resultado**: pasa. La única excepción (omisión acotada de RLS en 3 funciones, ADR-015) está justificada en Complexity Tracking, como exige la gobernanza de la constitución.
 
 ## Project Structure
 
@@ -182,7 +182,9 @@ sequenceDiagram
     W->>C: POST /barberias
     C->>R: comando validado
     R->>U: ejecutar(nuevoTenantId, fn)
-    U->>DB: BEGIN; INSERT tenant; set_config('app.tenant_id', id, true)
+    U->>DB: BEGIN
+    R->>DB: INSERT tenant
+    U->>DB: set_config app.tenant_id con el id nuevo, solo para esta transacción
     R->>DB: INSERT user_account, membership, terms_acceptance
     R->>S: iniciarPruebaGratuita(tenantId)
     S->>DB: INSERT subscription (TRIAL, trial_ends_at)
@@ -204,4 +206,6 @@ sequenceDiagram
 
 ## Complexity Tracking
 
-Sin violaciones de la constitución que justificar.
+| Violation | Why Needed | Simpler Alternative Rejected Because |
+|-----------|------------|-------------------------------------|
+| Omisión acotada de RLS (principio III y control 5 de multi-tenancy-y-datos.md) en 3 funciones `SECURITY DEFINER` cuyo dueño es `barberias_auth` (`NOLOGIN BYPASSRLS`): `auth_resolver_cuenta`, `auth_buscar_sesion`, `auth_buscar_activacion`. Registrada como [ADR-015](../../docs/01-analisis-de-sistema/07-decisiones-arquitectonicas.md#adr-015-autenticación-antes-de-conocer-el-tenant-y-rls-en-user_account) | Iniciar sesión, renovar la sesión y activar una cuenta ocurren antes de tener token, así que no se conoce el tenant, y las filas que se consultan están bajo RLS con `FORCE` (ni el dueño de las tablas las ve). El rol de aplicación conserva `NOBYPASSRLS`; cada función busca por clave exacta, devuelve como máximo una fila y no recibe tenant (pruebas en T050) | Hacer globales `membership`, `auth_session` y `account_activation` dejaría datos de negocio sin RLS (contradice el principio III en todas las consultas, no en tres). Un rol `BYPASSRLS` con conexión propia omitiría RLS en cualquier consulta que hiciera. Pedir la barbería en el login o en la cookie haría que el tenant viniera del cliente (prohibido por ADR-010) |
