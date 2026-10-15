@@ -1,0 +1,525 @@
+openapi: 3.1.0
+info:
+  title: Plataforma de Barberías — M01 Acceso y barberías (funcionalidad 001)
+  version: 0.1.0
+  description: |
+    Contrato de la funcionalidad 001: registro de barbería con prueba gratuita, inicio y cierre de
+    sesión, usuarios del personal con rol y aislamiento por barbería.
+
+    Reglas transversales:
+    - El tenant (barbería) se toma SOLO del token de acceso. Ninguna operación acepta
+      `tenant_id`, `tenantId` o `barberiaId` en ruta, consulta, cuerpo o encabezados; si llegan en
+      el cuerpo, la respuesta es 400 `VALIDACION`; el encabezado `X-Tenant-Id` se rechaza con 400.
+    - Los recursos de otra barbería responden 404 `NO_ENCONTRADO`, igual que si no existieran.
+    - Errores con formato único `Error`. Las respuestas 401 nunca explican el motivo.
+servers:
+  - url: /api/v1
+tags:
+  - name: Barberías
+  - name: Autenticación
+  - name: Usuarios
+  - name: Salud
+
+paths:
+  /barberias:
+    post:
+      tags: [Barberías]
+      operationId: registrarBarberia
+      summary: Registrar barbería, crear su espacio con propietario e iniciar prueba gratuita (RF01, RF18)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegistroBarberiaRequest' }
+      responses:
+        '201':
+          description: Barbería creada; el propietario queda con sesión iniciada.
+          headers:
+            Set-Cookie: { $ref: '#/components/headers/RefreshCookie' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RegistroBarberiaResponse' }
+        '400': { $ref: '#/components/responses/Validacion' }
+        '409':
+          description: El correo ya pertenece a otra cuenta (`CORREO_NO_DISPONIBLE`). No revela la barbería.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '429': { $ref: '#/components/responses/DemasiadosIntentos' }
+
+  /auth/login:
+    post:
+      tags: [Autenticación]
+      operationId: iniciarSesion
+      summary: Iniciar sesión (RF04)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+      responses:
+        '200':
+          description: Sesión iniciada.
+          headers:
+            Set-Cookie: { $ref: '#/components/headers/RefreshCookie' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SesionResponse' }
+        '400': { $ref: '#/components/responses/Validacion' }
+        '401':
+          description: |
+            `CREDENCIALES_INVALIDAS`. Mismo cuerpo para correo inexistente, contraseña incorrecta o
+            cuenta pendiente de activar.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '403':
+          description: |
+            `ACCESO_SUSPENDIDO` — credenciales correctas pero el usuario está desactivado o la
+            barbería suspendida. No se emite token.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '429': { $ref: '#/components/responses/DemasiadosIntentos' }
+
+  /auth/refresh:
+    post:
+      tags: [Autenticación]
+      operationId: renovarSesion
+      summary: Renovar el token de acceso con la cookie de renovación (rota la cookie)
+      security:
+        - refreshCookie: []
+      responses:
+        '200':
+          description: Nuevo token de acceso.
+          headers:
+            Set-Cookie: { $ref: '#/components/headers/RefreshCookie' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SesionResponse' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+
+  /auth/logout:
+    post:
+      tags: [Autenticación]
+      operationId: cerrarSesion
+      summary: Cerrar sesión; invalida token de acceso y renovación (RF04)
+      responses:
+        '204':
+          description: Sesión cerrada; la cookie se borra (`Max-Age=0`).
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+
+  /auth/yo:
+    get:
+      tags: [Autenticación]
+      operationId: obtenerUsuarioActual
+      summary: Datos del usuario autenticado y de su barbería
+      responses:
+        '200':
+          description: Usuario actual.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UsuarioActual' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+
+  /auth/activar:
+    post:
+      tags: [Autenticación]
+      operationId: activarCuenta
+      summary: El usuario creado por el propietario fija su contraseña con el enlace de un solo uso
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ActivacionRequest' }
+      responses:
+        '204':
+          description: Cuenta activada; el usuario ya puede iniciar sesión.
+        '400':
+          description: |
+            `VALIDACION` (contraseña débil) o `ENLACE_INVALIDO` (inexistente, vencido, usado o
+            revocado; mismo mensaje para todos).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '429': { $ref: '#/components/responses/DemasiadosIntentos' }
+
+  /usuarios:
+    get:
+      tags: [Usuarios]
+      operationId: listarUsuarios
+      summary: Listar usuarios de la propia barbería (solo PROPIETARIO)
+      parameters:
+        - { name: pagina, in: query, schema: { type: integer, minimum: 1, default: 1 } }
+        - { name: tamano, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+        - { name: rol, in: query, schema: { $ref: '#/components/schemas/Rol' } }
+        - { name: estado, in: query, schema: { $ref: '#/components/schemas/EstadoUsuario' } }
+      responses:
+        '200':
+          description: Página de usuarios de la barbería del token.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PaginaUsuarios' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/AccesoDenegado' }
+    post:
+      tags: [Usuarios]
+      operationId: crearUsuario
+      summary: Crear usuario del personal con rol ADMINISTRATIVO o BARBERO (RF06, solo PROPIETARIO)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CrearUsuarioRequest' }
+      responses:
+        '201':
+          description: Usuario creado en estado PENDIENTE con su enlace de activación.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UsuarioCreadoResponse' }
+        '400': { $ref: '#/components/responses/Validacion' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403':
+          description: |
+            `ACCESO_DENEGADO` (rol sin permiso) o `SUSCRIPCION_NO_PERMITE` con
+            `detalles: [{ "motivo": "LIMITE_USUARIOS", "maximo": 5 }]`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '409':
+          description: '`CORREO_NO_DISPONIBLE`, sin revelar la barbería.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /usuarios/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      tags: [Usuarios]
+      operationId: obtenerUsuario
+      summary: Ver un usuario de la propia barbería (solo PROPIETARIO)
+      responses:
+        '200':
+          description: Usuario.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Usuario' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/AccesoDenegado' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+    patch:
+      tags: [Usuarios]
+      operationId: actualizarUsuario
+      summary: Cambiar rol o estado de un usuario de la propia barbería (solo PROPIETARIO)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ActualizarUsuarioRequest' }
+      responses:
+        '200':
+          description: Usuario actualizado. Si se desactivó o cambió de rol, sus sesiones quedan revocadas.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Usuario' }
+        '400': { $ref: '#/components/responses/Validacion' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/AccesoDenegado' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '422':
+          description: '`OPERACION_NO_PERMITIDA` — el propietario intenta cambiarse el rol o desactivarse a sí mismo.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /usuarios/{id}/activacion:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    post:
+      tags: [Usuarios]
+      operationId: regenerarActivacion
+      summary: Regenerar el enlace de activación de un usuario PENDIENTE (invalida el anterior)
+      responses:
+        '201':
+          description: Nuevo enlace.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EnlaceActivacion' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/AccesoDenegado' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '422':
+          description: '`OPERACION_NO_PERMITIDA` — el usuario ya está activo.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /salud:
+    get:
+      tags: [Salud]
+      operationId: salud
+      security: []
+      summary: Estado del servicio y de la conexión a PostgreSQL
+      responses:
+        '200':
+          description: Servicio disponible.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [estado]
+                properties:
+                  estado: { type: string, enum: [ok] }
+        '503':
+          description: Base de datos no disponible.
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JWT ES256, 15 min. Reclamaciones: sub (usuario), tid (barbería), rol, sid (sesión), jti,
+        iat, exp, iss, aud. Cada solicitud verifica además que la sesión, la membresía y la
+        barbería sigan vigentes.
+    refreshCookie:
+      type: apiKey
+      in: cookie
+      name: rt
+      description: Token opaco de renovación. HttpOnly; Secure; SameSite=Strict; Path=/api/v1/auth.
+
+  headers:
+    RefreshCookie:
+      description: '`rt=<token>; HttpOnly; Secure; SameSite=Strict; Path=/api/v1/auth; Max-Age=604800`'
+      schema: { type: string }
+
+  responses:
+    Validacion:
+      description: '`VALIDACION` — datos inválidos o campos no permitidos (incluido cualquier identificador de barbería).'
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example:
+            codigo: VALIDACION
+            mensaje: Revisa los datos enviados.
+            detalles:
+              - { campo: correo, problema: formato }
+    NoAutenticado:
+      description: '`NO_AUTENTICADO` — sin token, vencido, alterado o de una sesión cerrada.'
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    AccesoDenegado:
+      description: '`ACCESO_DENEGADO` — el rol no permite la operación. Se registra en auditoría.'
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    NoEncontrado:
+      description: '`NO_ENCONTRADO` — no existe en la barbería del token (también si es de otra barbería).'
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    DemasiadosIntentos:
+      description: '`DEMASIADOS_INTENTOS` — límite superado.'
+      headers:
+        Retry-After:
+          schema: { type: integer }
+          description: Segundos de espera (crece con cada bloqueo).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+
+  schemas:
+    Error:
+      type: object
+      required: [codigo, mensaje, detalles]
+      properties:
+        codigo:
+          type: string
+          enum:
+            - VALIDACION
+            - NO_AUTENTICADO
+            - CREDENCIALES_INVALIDAS
+            - ACCESO_SUSPENDIDO
+            - ACCESO_DENEGADO
+            - NO_ENCONTRADO
+            - CORREO_NO_DISPONIBLE
+            - SUSCRIPCION_NO_PERMITE
+            - OPERACION_NO_PERMITIDA
+            - ENLACE_INVALIDO
+            - DEMASIADOS_INTENTOS
+            - ERROR_INTERNO
+        mensaje: { type: string }
+        detalles:
+          type: array
+          items: { type: object, additionalProperties: true }
+
+    Rol:
+      type: string
+      enum: [PROPIETARIO, ADMINISTRATIVO, BARBERO]
+    RolAsignable:
+      type: string
+      enum: [ADMINISTRATIVO, BARBERO]
+    EstadoUsuario:
+      type: string
+      enum: [PENDIENTE, ACTIVA, DESACTIVADA]
+    Correo:
+      type: string
+      format: email
+      maxLength: 254
+    Nombre:
+      type: string
+      minLength: 2
+      maxLength: 120
+    Contrasena:
+      type: string
+      minLength: 10
+      maxLength: 128
+      writeOnly: true
+
+    RegistroBarberiaRequest:
+      type: object
+      additionalProperties: false
+      required: [nombreBarberia, propietario, aceptaciones]
+      properties:
+        nombreBarberia: { $ref: '#/components/schemas/Nombre' }
+        propietario:
+          type: object
+          additionalProperties: false
+          required: [nombre, correo, contrasena]
+          properties:
+            nombre: { $ref: '#/components/schemas/Nombre' }
+            correo: { $ref: '#/components/schemas/Correo' }
+            contrasena: { $ref: '#/components/schemas/Contrasena' }
+        aceptaciones:
+          type: object
+          additionalProperties: false
+          required: [terminosVersion, politicaDatosVersion]
+          description: Versiones del texto mostrado; el servidor exige que sean las vigentes.
+          properties:
+            terminosVersion: { type: string, maxLength: 32 }
+            politicaDatosVersion: { type: string, maxLength: 32 }
+
+    RegistroBarberiaResponse:
+      type: object
+      required: [barberia, suscripcion, sesion]
+      properties:
+        barberia: { $ref: '#/components/schemas/Barberia' }
+        suscripcion: { $ref: '#/components/schemas/SuscripcionResumen' }
+        sesion: { $ref: '#/components/schemas/SesionResponse' }
+
+    Barberia:
+      type: object
+      required: [id, nombre, slug]
+      properties:
+        id: { type: string, format: uuid }
+        nombre: { type: string }
+        slug: { type: string }
+
+    SuscripcionResumen:
+      type: object
+      required: [estado, plan, iniciaEn, venceEn]
+      properties:
+        estado: { type: string, enum: [TRIAL] }
+        plan: { type: string, example: TRIAL }
+        iniciaEn: { type: string, format: date-time }
+        venceEn: { type: string, format: date-time }
+
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      required: [correo, contrasena]
+      properties:
+        correo: { $ref: '#/components/schemas/Correo' }
+        contrasena: { type: string, minLength: 1, maxLength: 128, writeOnly: true }
+
+    SesionResponse:
+      type: object
+      required: [tokenAcceso, tipo, expiraEn, usuario]
+      properties:
+        tokenAcceso: { type: string }
+        tipo: { type: string, enum: [Bearer] }
+        expiraEn: { type: integer, description: Segundos hasta el vencimiento (900). }
+        usuario: { $ref: '#/components/schemas/UsuarioActual' }
+
+    UsuarioActual:
+      type: object
+      required: [id, nombre, correo, rol, barberia]
+      properties:
+        id: { type: string, format: uuid }
+        nombre: { type: string }
+        correo: { type: string }
+        rol: { $ref: '#/components/schemas/Rol' }
+        barberia: { $ref: '#/components/schemas/Barberia' }
+
+    ActivacionRequest:
+      type: object
+      additionalProperties: false
+      required: [token, contrasena]
+      properties:
+        token: { type: string, minLength: 20, maxLength: 128 }
+        contrasena: { $ref: '#/components/schemas/Contrasena' }
+
+    CrearUsuarioRequest:
+      type: object
+      additionalProperties: false
+      required: [nombre, correo, rol]
+      properties:
+        nombre: { $ref: '#/components/schemas/Nombre' }
+        correo: { $ref: '#/components/schemas/Correo' }
+        rol: { $ref: '#/components/schemas/RolAsignable' }
+
+    ActualizarUsuarioRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        rol: { $ref: '#/components/schemas/RolAsignable' }
+        estado:
+          type: string
+          enum: [ACTIVA, DESACTIVADA]
+          description: ACTIVA reactiva (vuelve a PENDIENTE si nunca fijó contraseña).
+
+    Usuario:
+      type: object
+      required: [id, nombre, correo, rol, estado, creadoEn]
+      properties:
+        id: { type: string, format: uuid }
+        nombre: { type: string }
+        correo: { type: string }
+        rol: { $ref: '#/components/schemas/Rol' }
+        estado: { $ref: '#/components/schemas/EstadoUsuario' }
+        creadoEn: { type: string, format: date-time }
+
+    EnlaceActivacion:
+      type: object
+      required: [enlace, venceEn]
+      properties:
+        enlace: { type: string, format: uri, description: 'URL del frontend: /activar?token=…' }
+        venceEn: { type: string, format: date-time }
+
+    UsuarioCreadoResponse:
+      type: object
+      required: [usuario, activacion]
+      properties:
+        usuario: { $ref: '#/components/schemas/Usuario' }
+        activacion: { $ref: '#/components/schemas/EnlaceActivacion' }
+
+    PaginaUsuarios:
+      type: object
+      required: [datos, total, pagina, tamano]
+      properties:
+        datos:
+          type: array
+          items: { $ref: '#/components/schemas/Usuario' }
+        total: { type: integer }
+        pagina: { type: integer }
+        tamano: { type: integer }
+
+security:
+  - bearerAuth: []

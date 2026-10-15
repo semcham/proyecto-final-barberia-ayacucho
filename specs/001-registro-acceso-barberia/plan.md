@@ -1,0 +1,199 @@
+# Implementation Plan: Registro de barbería, acceso con roles y aislamiento por barbería
+
+**Branch**: `001-registro-acceso-barberia` | **Date**: 2026-10-15 | **Spec**: [spec.md](spec.md)
+
+**Input**: Feature specification from `/specs/001-registro-acceso-barberia/spec.md`
+
+## Summary
+
+Primera funcionalidad de la plataforma (proyecto nuevo: `tecnologia/plataforma-barberias/` está
+vacío). Una barbería se registra y, en **una sola transacción**, se crean su tenant, la cuenta del
+propietario, su membresía y la suscripción en prueba gratuita (M03). Los usuarios inician sesión con
+correo y contraseña (Argon2id) y reciben un JWT ES256 de 15 min con `sub`, `tid`, `rol` y `sid`,
+más un token de renovación rotativo en cookie HttpOnly. El propietario crea usuarios
+ADMINISTRATIVO o BARBERO, que activan su cuenta con un enlace de un solo uso.
+
+El aislamiento descansa en varias barreras: el `tenant_id` sale solo del token, el contexto de
+tenant de M06 fija `app.tenant_id` en cada transacción, los repositorios filtran por tenant,
+PostgreSQL aplica RLS con `FORCE` y un rol sin `BYPASSRLS`, y la suite PR09 lo demuestra. Las
+búsquedas previas a conocer el tenant (login, renovación, activación) usan tres funciones
+`SECURITY DEFINER` acotadas ([research.md](research.md) R05).
+
+## Technical Context
+
+**Language/Version**: TypeScript 5 (`strict`) sobre Node.js 22 LTS
+
+**Primary Dependencies**: Backend: NestJS 11, Kysely + `pg`, `argon2`, `jose`, `class-validator`,
+`@nestjs/throttler`. Frontend: React 19, Vite 6, React Router, TanStack Query, `react-hook-form` +
+`zod`, `openapi-typescript`. Versiones exactas se fijan en `package.json` al iniciar.
+
+**Storage**: PostgreSQL 16 con RLS (`ENABLE` + `FORCE`) en toda tabla con `tenant_id`; roles
+`barberias_owner` (migraciones) y `barberias_app` (`NOBYPASSRLS`). Sin Redis en esta funcionalidad.
+
+**Testing**: Backend: Jest + `supertest` + Testcontainers (PostgreSQL real); `dependency-cruiser`
+para PR14. Frontend: Vitest + Testing Library + MSW.
+
+**Target Platform**: Contenedores Linux (Docker Compose en desarrollo; AWS con ALB como destino,
+ADR-006). Navegadores móviles y de escritorio actuales.
+
+**Project Type**: Aplicación web: API REST (NestJS) + SPA responsive (React).
+
+**Performance Goals**: Inicio de sesión p95 < 2 s (SC-008); registro completo en < 3 min de
+interacción (SC-001); guard de autenticación con una sola consulta por clave por solicitud.
+
+**Constraints**: `tenant_id` nunca desde el cliente; 0 fugas entre barberías (SC-003); 100 % de
+tokens inválidos o de sesión cerrada rechazados (SC-004); sexto fallo de login en 60 s → 429
+(SC-006); HTTPS, CORS solo al origen del frontend; cuerpo ≤ 16 KB; secretos fuera del código.
+
+**Scale/Scope**: MVP de decenas de barberías y menos de 10 usuarios del personal por barbería;
+11 tablas, 12 operaciones REST, 4 pantallas (registro, ingreso, activación, usuarios).
+
+## Constitution Check
+
+*GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
+
+Gates from `.specify/memory/constitution.md` (v1.0.0).
+
+| # | Puerta | Antes de Fase 0 | Tras el diseño | Evidencia |
+| - | ------ | --------------- | -------------- | --------- |
+| I | Seis módulos | ✅ | ✅ | Solo M01 (`identidad`, `barberias`), M03 (`suscripciones`, mínimo) y M06. M01→M03 y M01→M06 están permitidos en la matriz. M01 usa `suscripciones-pagos/index.ts` (`iniciarPruebaGratuita`, `obtenerLimiteUsuarios`), nunca sus tablas. Sin módulos nuevos |
+| II | Cuatro capas | ✅ | ✅ | Cada submódulo con `presentation/application/domain/infrastructure`. Puertos donde hay riesgo de cambio: `PasswordHasher`, `TokenSigner`, repositorios, `UnitOfWork`. El dominio no importa Nest, Kysely, `pg`, `argon2` ni `jose` (lo verifica PR14) |
+| III | Aislamiento por barbería | ✅ | ✅ | `tid` solo del JWT verificado (R07, R09); `set_config(..., true)` por transacción (R03); RLS `FORCE` + rol sin bypass (R04); filtro en repositorios; campos de tenant del cliente → 400 (R11); auditoría con tenant. Las funciones `SECURITY DEFINER` (R05) no reciben tenant, devuelven ≤ 1 fila por clave exacta y se prueban en PR09 |
+| IV | Citas sin duplicados | N/A | N/A | No se tocan citas |
+| V | Pagos | ✅ | ✅ | El registro no pide ni acepta datos de pago (FR-004); no se toca `PaymentGateway` |
+| VI | IA | N/A | N/A | No se toca M04 |
+| VII | Notificaciones | ✅ | ✅ | No se envían mensajes; el enlace de activación se entrega por pantalla. Cuando exista M05 escuchará `UsuarioCreado` sin cambiar M01 |
+| VIII | Redis solo caché | ✅ | ✅ | No se usa Redis. Revocación y límite de intentos van en PostgreSQL, no en Redis (R09, R10) |
+| IX | Solo web responsive | ✅ | ✅ | SPA React móvil primero |
+| X | Pruebas obligatorias | ✅ | ✅ | Pruebas de dominio, PR07, PR08 ([rbac.md](contracts/rbac.md)), **PR09**, PR10, PR12, PR13 y **PR14**, más pruebas de frontend. PR16 no aplica (no hay reservas). CI bloquea la fusión |
+| XI | ADR | ✅ | ✅ | Todo cabe en ADR-003, -004, -010, -011 y -014; no hace falta un ADR nuevo. Actualizaciones de documentos en el mismo cambio: R05 en `multi-tenancy-y-datos.md`, columna ADMINISTRATIVO en `seguridad-y-privacidad.md`, librerías en `tecnologias.md` (lo pide ADR-014) y `trazabilidad.md` |
+| XII | Ubicación del código | ✅ | ✅ | Todo bajo `tecnologia/plataforma-barberias/` |
+
+**Resultado**: pasa sin violaciones. Complexity Tracking vacío.
+
+## Project Structure
+
+### Documentation (this feature)
+
+```text
+specs/001-registro-acceso-barberia/
+├── plan.md              # Este archivo
+├── research.md          # Fase 0: decisiones R01–R21
+├── data-model.md        # Fase 1: tablas, RLS, entidades y estados
+├── quickstart.md        # Fase 1: guía de validación de punta a punta
+├── contracts/
+│   ├── openapi.yaml     # Fase 1: contrato REST /api/v1
+│   └── rbac.md          # Fase 1: matriz rol × operación (fuente de PR08)
+├── checklists/
+│   └── requirements.md
+└── tasks.md             # Fase 2 (/speckit-tasks; no lo crea este comando)
+```
+
+### Source Code (repository root)
+
+```text
+tecnologia/plataforma-barberias/
+├── docker-compose.yml                 # db (postgres:16), backend, frontend
+├── .env.example
+├── db/
+│   └── init/01-roles.sql              # crea barberias_owner y barberias_app (NOBYPASSRLS)
+├── backend/
+│   ├── package.json
+│   ├── .dependency-cruiser.cjs        # PR14: matriz de módulos + regla de capas
+│   ├── src/
+│   │   ├── main.ts
+│   │   ├── host/                      # raíz de composición
+│   │   │   ├── app.module.ts
+│   │   │   ├── auth.guard.ts          # verifica JWT + sesión/membresía/tenant vigentes; fija TenantContext
+│   │   │   ├── roles.guard.ts         # RBAC por endpoint (@Roles)
+│   │   │   ├── tenant-header.interceptor.ts  # rechaza X-Tenant-Id
+│   │   │   └── error.filter.ts        # formato { codigo, mensaje, detalles }
+│   │   ├── modules/
+│   │   │   ├── acceso-barberias/      # M01
+│   │   │   │   ├── index.ts           # interfaz pública del módulo
+│   │   │   │   ├── identidad/
+│   │   │   │   │   ├── presentation/  # AuthController, UsuariosController, DTO
+│   │   │   │   │   ├── application/   # IniciarSesion, RenovarSesion, CerrarSesion, ValidarSolicitud,
+│   │   │   │   │   │                  # CrearUsuario, ActivarCuenta, ListarUsuarios, ActualizarUsuario,
+│   │   │   │   │   │                  # RegenerarActivacion; puertos PasswordHasher, TokenSigner, repositorios
+│   │   │   │   │   ├── domain/        # Correo, Contrasena, Rol, Membresia, Sesion, Activacion,
+│   │   │   │   │   │                  # PoliticaIntentos, LimiteUsuarios, errores de dominio
+│   │   │   │   │   └── infrastructure/ # repositorios Kysely, Argon2Hasher, JoseTokenSigner
+│   │   │   │   └── barberias/
+│   │   │   │       ├── presentation/  # BarberiasController (POST /barberias)
+│   │   │   │       ├── application/   # RegistrarBarberia
+│   │   │   │       ├── domain/        # Barberia, NombreBarberia, Slug, AceptacionTerminos
+│   │   │   │       └── infrastructure/ # TenantRepository, TermsAcceptanceRepository
+│   │   │   └── suscripciones-pagos/   # M03 (solo lo que necesita esta funcionalidad)
+│   │   │       ├── index.ts           # SuscripcionesApi: iniciarPruebaGratuita, obtenerLimiteUsuarios
+│   │   │       └── suscripciones/
+│   │   │           ├── application/
+│   │   │           ├── domain/        # Suscripcion, Plan
+│   │   │           └── infrastructure/
+│   │   └── shared/                    # M06
+│   │       ├── index.ts
+│   │       ├── tenant/                # TenantId, TenantContext (AsyncLocalStorage)
+│   │       ├── persistence/           # UnitOfWork (puerto) + KyselyUnitOfWork (set_config por transacción)
+│   │       ├── audit/                 # AuditLog
+│   │       └── clock/                 # Clock (puerto) para probar vencimientos
+│   ├── migrations/                    # Kysely, SQL explícito: tablas, RLS, GRANT, funciones SECURITY DEFINER, semillas
+│   └── test/
+│       ├── unit/                      # dominio sin infraestructura
+│       ├── integration/               # Testcontainers: casos de uso + RLS
+│       │   └── aislamiento-tenant.spec.ts   # PR09
+│       ├── contract/                  # HTTP vs openapi.yaml; rbac.spec.ts (PR08)
+│       └── architecture/              # PR14
+└── frontend/
+    ├── package.json
+    ├── src/
+    │   ├── api/                       # cliente HTTP + tipos generados de openapi.yaml
+    │   ├── auth/                      # SesionProvider: token en memoria, renovación silenciosa
+    │   ├── pages/                     # Registro, Ingresar, Activar, Usuarios
+    │   ├── components/
+    │   └── routes.tsx                 # rutas protegidas por rol
+    └── test/
+```
+
+**Structure Decision**: Aplicación web con backend y frontend separados dentro de
+`tecnologia/plataforma-barberias/` (principio XII, ADR-014), siguiendo la organización de
+[estilo-arquitectonico.md §4](../../docs/02-arquitectura-software/estilo-arquitectonico.md). Solo
+se crean los módulos que toca esta funcionalidad (M01, el mínimo de M03 y M06); M02, M04 y M05 se
+añadirán en sus funcionalidades. El host es el único lugar que ensambla módulos y aplica los guards.
+
+## Flujo principal (diseño)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant W as Web (React)
+    participant C as BarberiasController
+    participant R as RegistrarBarberia (M01)
+    participant U as UnitOfWork (M06)
+    participant S as SuscripcionesApi (M03)
+    participant DB as PostgreSQL (RLS)
+    W->>C: POST /barberias
+    C->>R: comando validado
+    R->>U: ejecutar(nuevoTenantId, fn)
+    U->>DB: BEGIN; INSERT tenant; set_config('app.tenant_id', id, true)
+    R->>DB: INSERT user_account, membership, terms_acceptance
+    R->>S: iniciarPruebaGratuita(tenantId)
+    S->>DB: INSERT subscription (TRIAL, trial_ends_at)
+    R->>DB: INSERT audit_log, auth_session
+    U->>DB: COMMIT (o ROLLBACK de todo)
+    R-->>C: barbería + suscripción + tokens
+    C-->>W: 201 + Set-Cookie rt
+```
+
+## Trazabilidad
+
+| HU | RF | Escenario | ADR | Componente | Prueba |
+| -- | -- | --------- | --- | ---------- | ------ |
+| HU02 | RF01, RF18 | EQ-09 | ADR-003 | M01 `barberias` · `RegistrarBarberia`; M03 `SuscripcionesApi` | Integración de registro, PR09 |
+| HU05 | RF04 | EQ-07, EQ-12 | ADR-010 | M01 `identidad` · `IniciarSesion`, `RenovarSesion`, `CerrarSesion`, `auth.guard` | PR07, PR12 |
+| HU04 | RF06 | EQ-08, EQ-13 | ADR-010 | M01 `identidad` · `CrearUsuario`, `ActualizarUsuario`, `roles.guard`; M06 `AuditLog` | PR08, PR13 |
+| — | (todas) | EQ-09, EQ-10 | ADR-003, ADR-010 | M06 `TenantContext`, `UnitOfWork`; RLS | PR09, PR10 |
+| — | — | EQ-14 | ADR-002, ADR-011 | Estructura de capas y módulos | PR14 |
+
+## Complexity Tracking
+
+Sin violaciones de la constitución que justificar.
