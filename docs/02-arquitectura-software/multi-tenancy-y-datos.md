@@ -46,6 +46,7 @@ CREATE POLICY tenant_isolation ON appointment
 
 - _Administrador de la plataforma:_ solo opera sobre tablas globales (`tenant`, `plan`, `subscription`); **no** lee datos de negocio de las barberías. La suspensión se hace sobre `tenant`.
 - _Webhook de pagos:_ llega sin token de usuario. Se identifica el pago por su referencia externa en `payment_transaction` mediante un acceso de sistema restringido y, a partir de ahí, se fija el tenant para actualizar la suscripción.
+- _Inicio de sesión, renovación y activación de cuenta (funcionalidad 001):_ en esos momentos el sistema todavía no conoce la barbería del usuario y las tablas `membership`, `auth_session` y `account_activation` están bajo RLS. Se resuelve con tres funciones `SECURITY DEFINER` propiedad del rol dueño (`auth_resolver_membresia`, `auth_buscar_sesion`, `auth_buscar_activacion`), con `search_path` fijo y `EXECUTE` solo para el rol de la aplicación. Cada una busca por clave exacta, devuelve como máximo una fila y **no acepta `tenant_id` como parámetro**. Con el `tenant_id` obtenido, el resto del flujo corre en una transacción con RLS normal. Es el mismo patrón de "acceso de sistema restringido" del webhook de pagos, y la prueba de aislamiento (PR09) lo cubre. Es una aplicación de [ADR-003](../01-analisis-de-sistema/07-decisiones-arquitectonicas.md) y ADR-010, no un ADR nuevo.
 - _Conexiones agrupadas (pool):_ usar `set_config(..., true)` dentro de la transacción para que el contexto no se filtre entre solicitudes.
 
 ## 3. Modelo de datos
@@ -278,7 +279,7 @@ _Notas._ `TENANT`, `PLAN` y `USER_ACCOUNT` son tablas globales (sin RLS por `ten
 | -------------------------- | -------------------------------- | --------------------------------------------------------------------------------------------- |
 | Tenant / Barbería          | `tenant`                         | Tabla global; estado del tenant                                                               |
 | Usuario                    | `user_account` + `membership`    | La cuenta es global; la pertenencia a una barbería lleva el rol                               |
-| Rol                        | `role`                           | Catálogo global: ADMIN_PLATAFORMA, PROPIETARIO, ADMINISTRATIVO, BARBERO, CLIENTE              |
+| Rol                        | `role`                           | Catálogo global: ADMIN_PLATAFORMA, PROPIETARIO, BARBERO, CLIENTE                              |
 | Cliente                    | `customer_profile`               | Perfil por barbería, con canal de notificación y consentimiento                               |
 | Barbero                    | `barber` + `barber_service`      | Asignación de servicios por barbero                                                           |
 | Servicio                   | `service`                        | Precio y duración                                                                             |

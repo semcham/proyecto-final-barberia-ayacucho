@@ -123,7 +123,7 @@ paquetes se fijan en `package.json` al iniciar la implementación (constitución
 - **Alternativas**: token de renovación en `localStorage` (expuesto a XSS); JWT de renovación
   sin estado (no se puede revocar).
 
-## R09. Invalidación inmediata (cierre de sesión, cambio de rol, desactivación, suspensión)
+## R09. Invalidación inmediata (cierre de sesión, desactivación, suspensión)
 
 - **Decisión**: el guard de autenticación, además de verificar la firma, comprueba en cada
   solicitud protegida, con una consulta por clave dentro del contexto del tenant del token, que
@@ -198,7 +198,7 @@ paquetes se fijan en `package.json` al iniciar la implementación (constitución
 
 - **Decisión**: `user_account.email` único global (guardado normalizado: `trim` + minúsculas,
   restricción `UNIQUE` sobre la columna normalizada). Índice único parcial en
-  `membership (user_id)` para roles de personal (PROPIETARIO, ADMINISTRATIVO, BARBERO). Correo
+  `membership (user_id)` para roles de personal (PROPIETARIO, BARBERO). Correo
   repetido → 409 `CORREO_NO_DISPONIBLE` sin mencionar barbería.
 - **Justificación**: FR-006, FR-029 y supuesto "una barbería por usuario". El modelo
   `user_account` + `membership` queda listo para la evolución futura (quitar el índice parcial).

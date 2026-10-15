@@ -53,7 +53,7 @@ Se pueden hacer desde la aplicación web o con cualquier cliente HTTP contra
 | 3 | Inicio de sesión (HU05) | Cerrar sesión y entrar en `/ingresar` | 200 con `tokenAcceso`; cookie `rt` HttpOnly |
 | 4 | Mensaje genérico | Entrar con correo inexistente y luego con contraseña errada | Ambos 401 `CREDENCIALES_INVALIDAS` con el mismo cuerpo |
 | 5 | Límite de intentos (EQ-12) | 6 intentos fallidos en menos de 1 min | El sexto da 429 con `Retry-After`; otra cuenta entra sin problema |
-| 6 | Crear personal (HU04) | Como propietario, en `/app/usuarios` crear un BARBERO y un ADMINISTRATIVO | 201 con enlace de activación; estado `PENDIENTE` |
+| 6 | Crear personal (HU04) | Como propietario, en `/app/usuarios` crear un BARBERO; intentar crear otro con rol `PROPIETARIO` | El primero 201 con enlace de activación y estado `PENDIENTE`; el segundo 400 `VALIDACION` |
 | 7 | Activación | Abrir el enlace del barbero y fijar contraseña; reutilizar el enlace | Primera vez 204; segunda vez 400 `ENLACE_INVALIDO` |
 | 8 | Permisos por rol (EQ-08) | Iniciar sesión como barbero y llamar `POST /usuarios` | 403 `ACCESO_DENEGADO`; aparece `ACCESO_DENEGADO_ROL` en `audit_log` |
 | 9 | Cierre de sesión (SC-004) | Guardar el `tokenAcceso`, cerrar sesión y reutilizarlo en `GET /auth/yo` | 401 inmediato, aunque el token no haya vencido |
@@ -67,7 +67,5 @@ Se pueden hacer desde la aplicación web o con cualquier cliente HTTP contra
 
 - Escenarios 1–14 conformes.
 - Suites de la sección 3 en verde en CI (GitHub Actions bloquea la fusión si fallan).
-- Documentos actualizados en el mismo cambio: matriz RBAC con columna ADMINISTRATIVO
-  (`docs/02-arquitectura-software/seguridad-y-privacidad.md`), caso especial de funciones de
-  autenticación (`docs/02-arquitectura-software/multi-tenancy-y-datos.md`), librerías elegidas
+- Documentos actualizados en el mismo cambio: caso especial de funciones de autenticación (`docs/02-arquitectura-software/multi-tenancy-y-datos.md`), librerías elegidas
   (`docs/02-arquitectura-software/tecnologias.md`) y `docs/trazabilidad.md`.

@@ -124,10 +124,10 @@ Fuera de alcance: cobro de la cita (los pagos son solo de la suscripción). Veri
 
 ### IA-002 Consulta administrativa (RF28)
 
-| Elemento                | Descripción                                                                        |
-| ----------------------- | ---------------------------------------------------------------------------------- |
-| Entrada                 | "¿Cuántas citas tengo hoy?", "resumen de la semana"                                |
-| Herramientas permitidas | `resumen_agenda`, `reporte_citas` (solo lectura)                                   |
-| Reglas                  | Solo roles PRO y ADS; el tenant sale del token; ninguna herramienta modifica datos |
-| Si falla                | Se indica que el asistente no está disponible y se ofrece el reporte estándar      |
-| Verificación            | Un barbero o cliente no accede a reportes; no aparecen datos de otras barberías    |
+| Elemento                | Descripción                                                                                 |
+| ----------------------- | ------------------------------------------------------------------------------------------- |
+| Entrada                 | "¿Cuántas citas tengo hoy?", "resumen de la semana"                                         |
+| Herramientas permitidas | `resumen_agenda`, `reporte_citas` (solo lectura)                                            |
+| Reglas                  | Solo el rol PRO (propietario); el tenant sale del token; ninguna herramienta modifica datos |
+| Si falla                | Se indica que el asistente no está disponible y se ofrece el reporte estándar               |
+| Verificación            | Un barbero o cliente no accede a reportes; no aparecen datos de otras barberías             |

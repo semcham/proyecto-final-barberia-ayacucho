@@ -80,3 +80,15 @@ Documentos de origen: [HU](01-analisis-de-sistema/02-historias-del-usuario.md) �
 | Cada driver tiene ADR y EQ                                     | Sí (ver [drivers](01-analisis-de-sistema/06-driver-arquitectonicos.md#2-relación-de-cada-driver-con-rf-ac-eq-y-adr)) |
 | Cada módulo M01–M06 aparece en C4 nivel 3 y tiene RF de origen | Sí (excepto M06, soporte transversal con RF31)                                                                       |
 | Estado de verificación                                         | **Todas las pruebas están planificadas**; la columna "Prueba" indica cómo se comprobará, no un resultado             |
+
+> Al cierre del Sprint 6 se agregará una columna "Resultado medido" con la evidencia de cada prueba.
+
+## 4. Funcionalidades en implementación (SDD con Spec Kit)
+
+Cada funcionalidad especificada con Spec Kit enlaza su carpeta en `specs/` con la cadena de este documento.
+
+| Funcionalidad                                                                                             | HU               | RF                     | Escenarios                                      | ADR                         | Componente                                                                                                            | Pruebas                                  | Estado                                 |
+| --------------------------------------------------------------------------------------------------------- | ---------------- | ---------------------- | ----------------------------------------------- | --------------------------- | --------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- | -------------------------------------- |
+| [001 Registro de barbería, acceso con roles y aislamiento](../specs/001-registro-acceso-barberia/spec.md) | HU02, HU04, HU05 | RF01, RF04, RF06, RF18 | EQ-07, EQ-08, EQ-09, EQ-10, EQ-12, EQ-13, EQ-14 | ADR-003, 010, 002, 011, 014 | M01 (`identidad`, `barberias`), M03 (`suscripciones`, mínimo), M06 (contexto de tenant, transacción, auditoría), Host | PR07, PR08, PR09, PR10, PR12, PR13, PR14 | Especificada y planificada; sin código |
+
+Plan, modelo de datos y contrato de la funcionalidad: [plan](../specs/001-registro-acceso-barberia/plan.md) · [modelo de datos](../specs/001-registro-acceso-barberia/data-model.md) · [OpenAPI](../specs/001-registro-acceso-barberia/contracts/openapi.yaml).

@@ -11,7 +11,7 @@ Decisión base: [ADR-010](../01-analisis-de-sistema/07-decisiones-arquitectonica
 
 ## 2. Matriz rol × operación (RBAC)
 
-✓ permitido · ✓\* permitido solo sobre sus propios recursos · — denegado. PA = Administrador de la plataforma; PR = Propietario; BA = Barbero; CL = Cliente; AN = Anónimo.
+✓ permitido · ✓\* permitido solo sobre sus propios recursos · — denegado. PA = Administrador de la plataforma; PR = Propietario (administra todo en su barbería); BA = Barbero; CL = Cliente; AN = Anónimo.
 
 | Operación                                                | AN  | CL              | BA            | PR                   | PA  |
 | -------------------------------------------------------- | --- | --------------- | ------------- | -------------------- | --- |
@@ -35,7 +35,7 @@ Decisión base: [ADR-010](../01-analisis-de-sistema/07-decisiones-arquitectonica
 | Asistente de IA (consultas administrativas)              | —   | —               | —             | ✓                    | —   |
 | Solicitar acceso, rectificación o eliminación de datos   | —   | ✓\*             | —             | ✓\*                  | —   |
 
-La matriz se convierte en una **prueba parametrizada** (PR08): cada celda es un caso.
+La matriz se convierte en una **prueba parametrizada** (PR08): cada celda es un caso. La matriz detallada de la funcionalidad 001 está en `specs/001-registro-acceso-barberia/contracts/rbac.md`.
 
 ## 3. Amenazas, controles y verificación
 

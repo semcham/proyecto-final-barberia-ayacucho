@@ -11,7 +11,7 @@ vacío). Una barbería se registra y, en **una sola transacción**, se crean su 
 propietario, su membresía y la suscripción en prueba gratuita (M03). Los usuarios inician sesión con
 correo y contraseña (Argon2id) y reciben un JWT ES256 de 15 min con `sub`, `tid`, `rol` y `sid`,
 más un token de renovación rotativo en cookie HttpOnly. El propietario crea usuarios
-ADMINISTRATIVO o BARBERO, que activan su cuenta con un enlace de un solo uso.
+con rol BARBERO, que activan su cuenta con un enlace de un solo uso.
 
 El aislamiento descansa en varias barreras: el `tenant_id` sale solo del token, el contexto de
 tenant de M06 fija `app.tenant_id` en cada transacción, los repositorios filtran por tenant,
@@ -66,7 +66,7 @@ Gates from `.specify/memory/constitution.md` (v1.0.0).
 | VIII | Redis solo caché | ✅ | ✅ | No se usa Redis. Revocación y límite de intentos van en PostgreSQL, no en Redis (R09, R10) |
 | IX | Solo web responsive | ✅ | ✅ | SPA React móvil primero |
 | X | Pruebas obligatorias | ✅ | ✅ | Pruebas de dominio, PR07, PR08 ([rbac.md](contracts/rbac.md)), **PR09**, PR10, PR12, PR13 y **PR14**, más pruebas de frontend. PR16 no aplica (no hay reservas). CI bloquea la fusión |
-| XI | ADR | ✅ | ✅ | Todo cabe en ADR-003, -004, -010, -011 y -014; no hace falta un ADR nuevo. Actualizaciones de documentos en el mismo cambio: R05 en `multi-tenancy-y-datos.md`, columna ADMINISTRATIVO en `seguridad-y-privacidad.md`, librerías en `tecnologias.md` (lo pide ADR-014) y `trazabilidad.md` |
+| XI | ADR | ✅ | ✅ | Todo cabe en ADR-003, -004, -010, -011 y -014; no hace falta un ADR nuevo. Actualizaciones de documentos en el mismo cambio: R05 en `multi-tenancy-y-datos.md`, librerías en `tecnologias.md` (lo pide ADR-014) y `trazabilidad.md` |
 | XII | Ubicación del código | ✅ | ✅ | Todo bajo `tecnologia/plataforma-barberias/` |
 
 **Resultado**: pasa sin violaciones. Complexity Tracking vacío.

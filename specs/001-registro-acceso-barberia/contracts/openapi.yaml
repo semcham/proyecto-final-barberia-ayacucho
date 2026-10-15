@@ -168,7 +168,7 @@ paths:
     post:
       tags: [Usuarios]
       operationId: crearUsuario
-      summary: Crear usuario del personal con rol ADMINISTRATIVO o BARBERO (RF06, solo PROPIETARIO)
+      summary: Crear usuario del personal con rol BARBERO (RF06, solo PROPIETARIO)
       requestBody:
         required: true
         content:
@@ -214,7 +214,7 @@ paths:
     patch:
       tags: [Usuarios]
       operationId: actualizarUsuario
-      summary: Cambiar rol o estado de un usuario de la propia barbería (solo PROPIETARIO)
+      summary: Desactivar o reactivar un usuario de la propia barbería (solo PROPIETARIO)
       requestBody:
         required: true
         content:
@@ -222,7 +222,7 @@ paths:
             schema: { $ref: '#/components/schemas/ActualizarUsuarioRequest' }
       responses:
         '200':
-          description: Usuario actualizado. Si se desactivó o cambió de rol, sus sesiones quedan revocadas.
+          description: Usuario actualizado. Si se desactivó, sus sesiones quedan revocadas.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Usuario' }
@@ -231,7 +231,7 @@ paths:
         '403': { $ref: '#/components/responses/AccesoDenegado' }
         '404': { $ref: '#/components/responses/NoEncontrado' }
         '422':
-          description: '`OPERACION_NO_PERMITIDA` — el propietario intenta cambiarse el rol o desactivarse a sí mismo.'
+          description: '`OPERACION_NO_PERMITIDA` — el propietario intenta desactivarse a sí mismo.'
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
@@ -361,10 +361,10 @@ components:
 
     Rol:
       type: string
-      enum: [PROPIETARIO, ADMINISTRATIVO, BARBERO]
+      enum: [PROPIETARIO, BARBERO]
     RolAsignable:
       type: string
-      enum: [ADMINISTRATIVO, BARBERO]
+      enum: [BARBERO]
     EstadoUsuario:
       type: string
       enum: [PENDIENTE, ACTIVA, DESACTIVADA]
@@ -477,9 +477,8 @@ components:
     ActualizarUsuarioRequest:
       type: object
       additionalProperties: false
-      minProperties: 1
+      required: [estado]
       properties:
-        rol: { $ref: '#/components/schemas/RolAsignable' }
         estado:
           type: string
           enum: [ACTIVA, DESACTIVADA]

@@ -32,7 +32,7 @@ El propietario de una barbería de Ayacucho entra a la plataforma sin cuenta, co
 
 ### User Story 2 - Iniciar y cerrar sesión de forma segura (Priority: P1)
 
-Un usuario de una barbería (propietario, administrativo o barbero) inicia sesión con su correo y contraseña y recibe una credencial de sesión firmada que indica quién es, qué rol tiene y a qué barbería pertenece. Al terminar, cierra sesión y esa credencial deja de servir (HU05).
+Un usuario de una barbería (propietario o barbero) inicia sesión con su correo y contraseña y recibe una credencial de sesión firmada que indica quién es, qué rol tiene y a qué barbería pertenece. Al terminar, cierra sesión y esa credencial deja de servir (HU05).
 
 **Why this priority**: Toda operación protegida depende de saber quién es el usuario, su rol y su barbería. Sin sesión no hay autorización ni aislamiento.
 
@@ -66,21 +66,21 @@ Cualquier usuario autenticado de la barbería A solo puede ver y modificar datos
 
 ---
 
-### User Story 4 - El propietario crea usuarios con rol (Priority: P2)
+### User Story 4 - El propietario crea usuarios barberos (Priority: P2)
 
-El propietario da de alta a su personal: administrativos que gestionan la agenda en mostrador y barberos que atienden. A cada uno le asigna un único rol en su barbería. Más adelante puede cambiar el rol o desactivar a un usuario (HU04).
+El propietario, que administra todo en su barbería, da de alta a los barberos que atienden. Cada usuario que crea tiene el rol barbero en su barbería. Más adelante puede desactivarlo o reactivarlo (HU04).
 
 **Why this priority**: Permite delegar tareas con límites. Depende de que existan barbería, sesión y aislamiento (P1), pero sin ella el propietario opera solo.
 
-**Independent Test**: Con la sesión del propietario, crear un administrativo y un barbero, iniciar sesión con cada uno y comprobar que su credencial lleva el rol asignado y la barbería del propietario, y que ninguno puede crear usuarios.
+**Independent Test**: Con la sesión del propietario, crear un barbero, iniciar sesión con él y comprobar que su credencial lleva el rol barbero y la barbería del propietario, y que no puede crear usuarios.
 
 **Acceptance Scenarios**:
 
-1. **Given** un propietario con sesión iniciada, **When** crea un usuario con nombre, correo y rol administrativo o barbero, **Then** el usuario queda asociado a la barbería del propietario con exactamente ese rol y puede establecer su contraseña para iniciar sesión.
+1. **Given** un propietario con sesión iniciada, **When** crea un usuario con nombre, correo y rol barbero, **Then** el usuario queda asociado a la barbería del propietario con rol barbero y puede establecer su contraseña para iniciar sesión.
 2. **Given** un propietario, **When** intenta crear un usuario con rol propietario, administrador de la plataforma, cliente o un rol inexistente, **Then** se rechaza.
-3. **Given** un administrativo o un barbero con sesión iniciada, **When** intenta crear, modificar o desactivar usuarios, **Then** se rechaza por falta de permiso y el intento queda registrado.
+3. **Given** un barbero con sesión iniciada, **When** intenta crear, modificar o desactivar usuarios, **Then** se rechaza por falta de permiso y el intento queda registrado.
 4. **Given** una barbería que alcanzó el límite de usuarios de su plan (o de la prueba gratuita), **When** el propietario intenta crear otro usuario, **Then** se rechaza indicando que se alcanzó el límite del plan.
-5. **Given** un usuario existente de su barbería, **When** el propietario cambia su rol o lo desactiva, **Then** el cambio se aplica, queda en la auditoría (quién, qué, cuándo, sobre qué barbería) y el usuario desactivado ya no puede iniciar sesión; sus datos históricos se conservan.
+5. **Given** un usuario existente de su barbería, **When** el propietario lo desactiva, **Then** el cambio se aplica, queda en la auditoría (quién, qué, cuándo, sobre qué barbería) y el usuario desactivado ya no puede iniciar sesión; sus datos históricos se conservan.
 6. **Given** un correo que ya pertenece a otra cuenta, **When** el propietario intenta crear un usuario con ese correo, **Then** se rechaza sin revelar a qué barbería pertenece.
 
 ---
@@ -90,8 +90,8 @@ El propietario da de alta a su personal: administrativos que gestionan la agenda
 - Dos registros simultáneos con el mismo correo de propietario: solo uno se completa; el otro recibe el rechazo de correo ya usado.
 - Falla a mitad del registro (por ejemplo, después de crear la barbería y antes de crear la suscripción): no debe quedar una barbería sin propietario o sin prueba gratuita; el registro se completa entero o no se crea nada.
 - Dos barberías con el mismo nombre comercial: se permite; cada una tiene su propio espacio de trabajo e identificador.
-- El propietario intenta desactivarse a sí mismo o quitarse el rol de propietario: se rechaza, porque cada barbería debe conservar un propietario activo.
-- Un usuario cambia de rol o es desactivado mientras tiene una sesión abierta: su credencial vigente deja de aceptarse a más tardar al vencer o al intentar renovarla, y las operaciones sensibles se validan contra su estado actual.
+- El propietario intenta desactivarse a sí mismo: se rechaza, porque cada barbería debe conservar un propietario activo.
+- Un usuario es desactivado mientras tiene una sesión abierta: su credencial vigente deja de aceptarse a más tardar al vencer o al intentar renovarla, y las operaciones sensibles se validan contra su estado actual.
 - La prueba gratuita vence: el usuario puede seguir iniciando sesión; las restricciones de funciones por estado de suscripción corresponden a RF21/RF22 (fuera de esta funcionalidad).
 - Correo escrito con mayúsculas o espacios: se normaliza para que "Ana@Mail.com " y "ana@mail.com" sean la misma cuenta.
 - Entradas con scripts, inyección o longitudes excesivas en cualquier campo: se rechazan con mensaje controlado y no se ejecutan (EQ-10).
@@ -123,11 +123,11 @@ El propietario da de alta a su personal: administrativos que gestionan la agenda
 
 **Usuarios y roles (RF06)**
 
-- **FR-015**: El sistema MUST permitir solo al propietario crear usuarios en su barbería con nombre, correo y uno de estos roles: administrativo o barbero.
-- **FR-016**: Cada usuario MUST tener exactamente un rol en su barbería.
-- **FR-017**: El sistema MUST rechazar la asignación de roles distintos de administrativo o barbero al crear o modificar usuarios del personal.
-- **FR-018**: El sistema MUST permitir al propietario listar los usuarios de su barbería, cambiar su rol entre administrativo y barbero, y desactivarlos y reactivarlos; la desactivación MUST conservar sus datos históricos.
-- **FR-019**: El sistema MUST impedir que la barbería se quede sin propietario activo (el propietario no puede desactivarse ni cambiarse de rol a sí mismo).
+- **FR-015**: El sistema MUST permitir solo al propietario crear usuarios en su barbería con nombre, correo y rol barbero.
+- **FR-016**: Cada usuario MUST tener exactamente un rol en su barbería: propietario o barbero.
+- **FR-017**: El sistema MUST rechazar la asignación de cualquier rol distinto de barbero al crear usuarios del personal.
+- **FR-018**: El sistema MUST permitir al propietario listar los usuarios de su barbería y desactivarlos y reactivarlos; la desactivación MUST conservar sus datos históricos.
+- **FR-019**: El sistema MUST impedir que la barbería se quede sin propietario activo (el propietario no puede desactivarse a sí mismo).
 - **FR-020**: El sistema MUST rechazar la creación de usuarios cuando la barbería haya alcanzado el límite de usuarios de su plan o de la prueba gratuita.
 - **FR-021**: El sistema MUST aplicar control de acceso por rol en cada operación, según la matriz rol × operación del proyecto; una operación no permitida para el rol MUST rechazarse por falta de permiso y registrarse.
 - **FR-022**: El usuario creado por el propietario MUST poder establecer su propia contraseña mediante un mecanismo seguro de un solo uso con vencimiento, sin que el propietario conozca la contraseña final.
@@ -141,7 +141,7 @@ El propietario da de alta a su personal: administrativos que gestionan la agenda
 
 **Auditoría y validación**
 
-- **FR-027**: El sistema MUST registrar en auditoría, con quién, qué, cuándo, desde dónde y sobre qué barbería: el registro de una barbería, la creación de usuarios, los cambios de rol, las desactivaciones y reactivaciones, los accesos denegados por rol y los intentos de acceso a otra barbería.
+- **FR-027**: El sistema MUST registrar en auditoría, con quién, qué, cuándo, desde dónde y sobre qué barbería: el registro de una barbería, la creación de usuarios, las desactivaciones y reactivaciones, los accesos denegados por rol y los intentos de acceso a otra barbería.
 - **FR-028**: El sistema MUST validar todas las entradas (formato, longitud, caracteres) y rechazar las inválidas con un mensaje controlado, sin ejecutar su contenido.
 - **FR-029**: El correo MUST normalizarse (sin espacios y sin distinguir mayúsculas) para la unicidad y el inicio de sesión.
 
@@ -149,7 +149,7 @@ El propietario da de alta a su personal: administrativos que gestionan la agenda
 
 - **Barbería (espacio de trabajo)**: unidad de aislamiento. Atributos: identificador, nombre comercial, estado (activa, suspendida), fecha de registro. Tiene un propietario, usuarios y una suscripción.
 - **Usuario**: persona que inicia sesión. Atributos: identificador, nombre, correo único normalizado, resumen de contraseña, estado (pendiente de activar, activo, desactivado), fecha de creación. Pertenece a una sola barbería.
-- **Rol asignado**: relación usuario–barbería con exactamente un rol: propietario, administrativo o barbero. El catálogo de roles de la plataforma incluye además administrador de la plataforma y cliente, que no se asignan en esta funcionalidad.
+- **Rol asignado**: relación usuario–barbería con exactamente un rol: propietario o barbero. El catálogo de roles de la plataforma incluye además administrador de la plataforma y cliente, que no se asignan en esta funcionalidad.
 - **Suscripción**: estado comercial de la barbería. Atributos: estado (TRIAL en esta funcionalidad), plan, fecha de inicio, fecha de vencimiento, límite de usuarios.
 - **Aceptación de términos**: evidencia de lo que aceptó el propietario. Atributos: usuario, barbería, versión del texto, fecha y hora.
 - **Sesión**: periodo autenticado de un usuario. Atributos: usuario, barbería, rol, emisión, vencimiento, estado (vigente, cerrada, revocada).
@@ -167,7 +167,7 @@ El propietario da de alta a su personal: administrativos que gestionan la agenda
 - **SC-006**: A partir del sexto intento fallido de inicio de sesión en un minuto, el 100 % se rechazan, y los usuarios legítimos de otras cuentas no ven bloqueos (EQ-12).
 - **SC-007**: El 100 % de las acciones sensibles listadas en FR-027 generan un registro de auditoría completo (EQ-13).
 - **SC-008**: El inicio de sesión con credenciales correctas se completa en menos de 2 segundos para el 95 % de los intentos en operación normal.
-- **SC-009**: El propietario crea un usuario nuevo con su rol en menos de 1 minuto.
+- **SC-009**: El propietario crea un usuario barbero nuevo en menos de 1 minuto.
 
 ## Assumptions
 
@@ -175,7 +175,7 @@ El propietario da de alta a su personal: administrativos que gestionan la agenda
 - El límite de usuarios durante la prueba gratuita lo define el plan de prueba configurado por la plataforma; esta funcionalidad solo lo hace cumplir. Los precios y límites de planes son referenciales.
 - En esta funcionalidad cada usuario del personal pertenece a una sola barbería y un correo identifica una sola cuenta. Que una persona trabaje en varias barberías con la misma cuenta queda como evolución futura.
 - El usuario creado por el propietario activa su cuenta con un enlace de un solo uso enviado a su correo. Si el envío de correo no estuviera disponible aún (M05), el enlace se muestra al propietario para entregarlo en persona; esto no bloquea la creación del usuario.
-- El rol administrativo no aparece en la matriz RBAC actual del proyecto; se asume que no puede gestionar usuarios ni configuración de la barbería y que sus permisos sobre agenda y citas se definen en las funcionalidades de M02. La matriz debe actualizarse con una columna para este rol.
+- Los roles del personal son solo dos: propietario, que administra todo en su barbería, y barbero. El propietario solo crea usuarios con rol barbero.
 - Suspender o reactivar barberías (RF02, HU01) no es parte de esta funcionalidad; aquí solo se respeta el estado al iniciar sesión.
 - Las restricciones de funciones según estado de suscripción (RF21, RF22), el pago (RF23–RF25) y el registro de clientes (RF05) quedan fuera del alcance.
 - La recuperación de contraseña olvidada queda fuera del alcance de esta funcionalidad y se tratará por separado.

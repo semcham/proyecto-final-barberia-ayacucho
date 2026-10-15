@@ -44,7 +44,7 @@ Todas las fechas en `timestamptz` (UTC).
 
 | Columna       | Tipo        | Reglas                                                                 |
 | ------------- | ----------- | ---------------------------------------------------------------------- |
-| `code`        | varchar(24) PK | Semilla: `ADMIN_PLATAFORMA`, `PROPIETARIO`, `ADMINISTRATIVO`, `BARBERO`, `CLIENTE` |
+| `code`        | varchar(24) PK | Semilla: `ADMIN_PLATAFORMA`, `PROPIETARIO`, `BARBERO`, `CLIENTE` |
 | `description` | varchar(120) |                                                                       |
 
 Solo lectura para `barberias_app`.
@@ -70,13 +70,13 @@ No guarda datos de negocio de la barbería. Solo el repositorio de autenticació
 | `id`         | uuid PK     |                                                                           |
 | `tenant_id`  | uuid        | FK → `tenant(id)`                                                         |
 | `user_id`    | uuid        | FK → `user_account(id)`                                                   |
-| `role_code`  | varchar(24) | FK → `role(code)`; `CHECK IN ('PROPIETARIO','ADMINISTRATIVO','BARBERO')` en esta funcionalidad |
+| `role_code`  | varchar(24) | FK → `role(code)`; `CHECK IN ('PROPIETARIO','BARBERO')` en esta funcionalidad |
 | `status`     | varchar(16) | `CHECK IN ('PENDIENTE','ACTIVA','DESACTIVADA')`                           |
 | `created_at` | timestamptz |                                                                           |
 | `updated_at` | timestamptz |                                                                           |
 
 - `UNIQUE (tenant_id, user_id)` (FR-016: un rol por barbería).
-- Índice único parcial `membership_staff_one_tenant ON membership(user_id) WHERE role_code IN ('PROPIETARIO','ADMINISTRATIVO','BARBERO')` (supuesto: un usuario del personal pertenece a una sola barbería).
+- Índice único parcial `membership_staff_one_tenant ON membership(user_id) WHERE role_code IN ('PROPIETARIO','BARBERO')` (supuesto: un usuario del personal pertenece a una sola barbería).
 - Índice único parcial `one_owner_per_tenant ON membership(tenant_id) WHERE role_code = 'PROPIETARIO'`.
 - Índice `(tenant_id, role_code, status)` para listar.
 
@@ -166,7 +166,7 @@ Solo `INSERT, SELECT` para `barberias_app`.
 | `id`         | uuid PK     |                                                                        |
 | `tenant_id`  | uuid        | Tenant del actor (del contexto)                                        |
 | `actor_id`   | uuid NULL   | `NULL` solo en el registro anónimo previo a crear la cuenta            |
-| `action`     | varchar(48) | `BARBERIA_REGISTRADA`, `USUARIO_CREADO`, `ROL_CAMBIADO`, `USUARIO_DESACTIVADO`, `USUARIO_REACTIVADO`, `ACTIVACION_REGENERADA`, `ACCESO_DENEGADO_ROL`, `ACCESO_TENANT_AJENO`, `SESION_REUTILIZADA` |
+| `action`     | varchar(48) | `BARBERIA_REGISTRADA`, `USUARIO_CREADO`, `USUARIO_DESACTIVADO`, `USUARIO_REACTIVADO`, `ACTIVACION_REGENERADA`, `ACCESO_DENEGADO_ROL`, `ACCESO_TENANT_AJENO`, `SESION_REUTILIZADA` |
 | `resource`   | varchar(80) | p. ej. `usuario:<id>`                                                  |
 | `result`     | varchar(12) | `PERMITIDO` / `DENEGADO`                                               |
 | `ip`         | inet        |                                                                        |
@@ -184,8 +184,8 @@ libre.
 | `Contrasena`              | 10–128 caracteres; no está en lista común; no contiene el correo                                       | FR-014         |
 | `NombreBarberia`          | 2–120 caracteres; sin caracteres de control                                                           | FR-001         |
 | `Slug`                    | Derivado del nombre; solo `[a-z0-9-]`                                                                 | —              |
-| `Rol`                     | `PROPIETARIO`, `ADMINISTRATIVO`, `BARBERO`; `esAsignablePorPropietario()` solo los dos últimos         | FR-015, FR-017 |
-| `Membresia`               | Un rol; transiciones de estado (abajo); `cambiarRol()` prohibido si es propietario o sobre sí mismo    | FR-016, FR-018, FR-019 |
+| `Rol`                     | `PROPIETARIO`, `BARBERO`; `esAsignablePorPropietario()` solo `BARBERO`                                | FR-015, FR-017 |
+| `Membresia`               | Un rol, fijo; transiciones de estado (abajo); el propietario no puede desactivarse a sí mismo          | FR-016, FR-018, FR-019 |
 | `Sesion`                  | `rotar()`, `cerrar()`, `revocar()`; `estaVigente(ahora)` con 7 días deslizantes y 30 absolutos; detecta reutilización | FR-008, FR-011 |
 | `Activacion`              | `usar(ahora)` una sola vez, antes de `expires_at`, si no revocada                                     | FR-022         |
 | `PoliticaIntentos`        | Decide bloqueo y `Retry-After` a partir de los fallos de la ventana                                   | FR-010         |
@@ -216,7 +216,7 @@ stateDiagram-v2
     [*] --> ACTIVA: inicio de sesión o registro
     ACTIVA --> ACTIVA: renovación (rota el token)
     ACTIVA --> CERRADA: cierre de sesión
-    ACTIVA --> REVOCADA: reutilización detectada, usuario desactivado o rol cambiado
+    ACTIVA --> REVOCADA: reutilización detectada o usuario desactivado
     ACTIVA --> [*]: vencida (7 días sin uso o 30 absolutos)
 ```
 

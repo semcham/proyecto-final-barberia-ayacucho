@@ -17,7 +17,7 @@ _Figura. 1. Propuesta inicial: tres capas._
 flowchart TB
     subgraph A["Actores"]
         CLI["Cliente"]
-        STAFF["Propietario, administrativo y barbero"]
+        STAFF["Propietario y barbero"]
         ADM["Administrador de la plataforma"]
     end
     subgraph P["Capa de presentación"]
