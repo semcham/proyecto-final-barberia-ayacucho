@@ -5,6 +5,8 @@ import { KyselyTermsAcceptanceRepository } from '../../../src/modules/acceso-bar
 import { AceptacionTerminos } from '../../../src/modules/acceso-barberias/barberias/domain/aceptacion-terminos';
 import { KyselySesionRepository } from '../../../src/modules/acceso-barberias/identidad/infrastructure/kysely-sesion-repository';
 import { KyselyUsuarioRepository } from '../../../src/modules/acceso-barberias/identidad/infrastructure/kysely-usuario-repository';
+import { KyselyActivacionRepository } from '../../../src/modules/acceso-barberias/identidad/infrastructure/kysely-activacion-repository';
+import { Activacion } from '../../../src/modules/acceso-barberias/identidad/domain/activacion';
 import { Correo } from '../../../src/modules/acceso-barberias/identidad/domain/correo';
 import { Membresia } from '../../../src/modules/acceso-barberias/identidad/domain/membresia';
 import { NombrePersona } from '../../../src/modules/acceso-barberias/identidad/domain/nombre-persona';
@@ -175,6 +177,43 @@ describe('PR09 · Filtro explícito por tenant en los repositorios (principio II
     });
 
     it('perfil', async () => verificar(await sentenciasDe(() => repo().perfil(a.propietarioId))));
+  });
+
+  describe('KyselyActivacionRepository (US4)', () => {
+    const repo = () => new KyselyActivacionRepository(uow, contexto);
+    const nueva = () => Activacion.crear(uuidv7(), a.tenantId, a.propietarioId, new Date());
+
+    it.each([
+      ['crear', () => repo().crear(nueva(), 'c'.repeat(64), a.propietarioId)],
+      ['revocarVigentesDe', () => repo().revocarVigentesDe(a.propietarioId, new Date())],
+      [
+        'marcarUsada',
+        () => {
+          const activacion = nueva();
+          activacion.usar(new Date());
+          return repo().marcarUsada(activacion);
+        },
+      ],
+      ['tieneActivacionUsada', () => repo().tieneActivacionUsada(a.propietarioId)],
+    ])('%s', async (_metodo, llamar) => verificar(await sentenciasDe(llamar)));
+  });
+
+  describe('KyselyUsuarioRepository (métodos de US4)', () => {
+    const repo = () => new KyselyUsuarioRepository(uow, contexto);
+
+    it.each([
+      ['listar', () => repo().listar({ pagina: 1, tamano: 20, estado: 'ACTIVA' })],
+      ['obtener', () => repo().obtener(a.propietarioId)],
+      ['obtenerMembresia', () => repo().obtenerMembresia(a.propietarioId)],
+      ['contarPersonalVigente', () => repo().contarPersonalVigente()],
+      [
+        'actualizarEstado',
+        async () => {
+          const membresia = await repo().obtenerMembresia(a.propietarioId);
+          return repo().actualizarEstado(membresia as Membresia);
+        },
+      ],
+    ])('%s', async (_metodo, llamar) => verificar(await sentenciasDe(llamar)));
   });
 
   it('KyselyTermsAcceptanceRepository.registrar', async () => {

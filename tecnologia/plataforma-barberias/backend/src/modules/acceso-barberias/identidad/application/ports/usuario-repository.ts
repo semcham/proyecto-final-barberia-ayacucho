@@ -13,6 +13,23 @@ export interface CuentaParaAutenticar {
   estadoBarberia: 'ACTIVA' | 'SUSPENDIDA';
 }
 
+/** Usuario del personal de una barbería, como lo ve el propietario (esquema Usuario del contrato). */
+export interface UsuarioDetalle {
+  id: string;
+  nombre: string;
+  correo: string;
+  rol: CodigoRol;
+  estado: EstadoMembresia;
+  creadoEn: Date;
+}
+
+export interface FiltrosUsuarios {
+  pagina: number;
+  tamano: number;
+  rol?: CodigoRol;
+  estado?: EstadoMembresia;
+}
+
 /** Usuario autenticado con su barbería (respuesta de /auth/yo y de inicio de sesión). */
 export interface PerfilUsuario {
   id: string;
@@ -42,4 +59,12 @@ export abstract class UsuarioRepository {
   abstract resolverCuenta(correoNormalizado: string): Promise<CuentaParaAutenticar | null>;
   /** Perfil del usuario dentro del tenant del contexto. */
   abstract perfil(usuarioId: string): Promise<PerfilUsuario | null>;
+  abstract listar(filtros: FiltrosUsuarios): Promise<{ datos: UsuarioDetalle[]; total: number }>;
+  /** null si el usuario no pertenece al tenant del contexto (el llamador responde 404). */
+  abstract obtener(usuarioId: string): Promise<UsuarioDetalle | null>;
+  abstract obtenerMembresia(usuarioId: string): Promise<Membresia | null>;
+  /** Personal que ocupa cupo del plan: membresías PENDIENTE y ACTIVA, incluido el propietario (FR-020). */
+  abstract contarPersonalVigente(): Promise<number>;
+  abstract actualizarEstado(membresia: Membresia): Promise<void>;
+  abstract fijarContrasena(usuarioId: string, hashContrasena: string): Promise<void>;
 }

@@ -1,5 +1,6 @@
 .barra {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: var(--espacio);
@@ -24,4 +25,18 @@
 .identidad span {
   font-size: 0.875rem;
   color: var(--color-texto-suave);
+}
+
+.navegacion {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.navegacion a {
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.navegacion a[aria-current='page'] {
+  text-decoration: underline;
 }

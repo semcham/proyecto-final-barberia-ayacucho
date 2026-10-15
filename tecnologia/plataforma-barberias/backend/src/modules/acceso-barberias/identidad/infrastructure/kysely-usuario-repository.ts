@@ -4,12 +4,45 @@ import { KyselyUnitOfWork, TenantContext } from '../../../../shared';
 import { CorreoNoDisponible } from '../domain/errores';
 import type { EstadoMembresia, Membresia } from '../domain/membresia';
 import type { CodigoRol } from '../domain/rol';
+import { Membresia as MembresiaDominio } from '../domain/membresia';
+import { Rol } from '../domain/rol';
 import {
   type CuentaParaAutenticar,
+  type FiltrosUsuarios,
   type NuevaCuenta,
   type PerfilUsuario,
+  type UsuarioDetalle,
   UsuarioRepository,
 } from '../application/ports/usuario-repository';
+
+const COLUMNAS_DETALLE = [
+  'user_account.id',
+  'user_account.full_name',
+  'user_account.email',
+  'membership.role_code',
+  'membership.status',
+  'membership.created_at',
+] as const;
+
+interface FilaDetalle {
+  id: string;
+  full_name: string;
+  email: string;
+  role_code: CodigoRol;
+  status: EstadoMembresia;
+  created_at: Date;
+}
+
+function aDetalle(fila: FilaDetalle): UsuarioDetalle {
+  return {
+    id: fila.id,
+    nombre: fila.full_name,
+    correo: fila.email,
+    rol: fila.role_code,
+    estado: fila.status,
+    creadoEn: fila.created_at,
+  };
+}
 
 const VIOLACION_DE_UNICIDAD = '23505';
 
@@ -115,5 +148,93 @@ export class KyselyUsuarioRepository extends UsuarioRepository {
           barberia: { id: fila.tenant_id, nombre: fila.tenant_name, slug: fila.tenant_slug },
         }
       : null;
+  }
+
+  private consultaDetalle() {
+    return this.uow
+      .transaccionActual()
+      .selectFrom('membership')
+      .innerJoin('user_account', 'user_account.id', 'membership.user_id')
+      .where('membership.tenant_id', '=', this.tenantContext.actual().valor);
+  }
+
+  async listar(filtros: FiltrosUsuarios): Promise<{ datos: UsuarioDetalle[]; total: number }> {
+    let consulta = this.consultaDetalle();
+    if (filtros.rol) consulta = consulta.where('membership.role_code', '=', filtros.rol);
+    if (filtros.estado) consulta = consulta.where('membership.status', '=', filtros.estado);
+
+    const { total } = await consulta
+      .select((eb) => eb.fn.countAll<string>().as('total'))
+      .executeTakeFirstOrThrow();
+    const filas = await consulta
+      .select(COLUMNAS_DETALLE)
+      // El propietario primero; después, el personal por antigüedad.
+      .orderBy((eb) => eb.case().when('membership.role_code', '=', 'PROPIETARIO').then(0).else(1).end())
+      .orderBy('membership.created_at')
+      .orderBy('user_account.id')
+      .limit(filtros.tamano)
+      .offset((filtros.pagina - 1) * filtros.tamano)
+      .execute();
+    return { datos: filas.map(aDetalle), total: Number(total) };
+  }
+
+  async obtener(usuarioId: string): Promise<UsuarioDetalle | null> {
+    const fila = await this.consultaDetalle()
+      .select(COLUMNAS_DETALLE)
+      .where('membership.user_id', '=', usuarioId)
+      .executeTakeFirst();
+    return fila ? aDetalle(fila) : null;
+  }
+
+  async obtenerMembresia(usuarioId: string): Promise<Membresia | null> {
+    const fila = await this.uow
+      .transaccionActual()
+      .selectFrom('membership')
+      .select(['id', 'tenant_id', 'user_id', 'role_code', 'status'])
+      .where('tenant_id', '=', this.tenantContext.actual().valor)
+      .where('user_id', '=', usuarioId)
+      .executeTakeFirst();
+    return fila
+      ? MembresiaDominio.reconstruir({
+          id: fila.id,
+          tenantId: fila.tenant_id,
+          usuarioId: fila.user_id,
+          rol: Rol.de(fila.role_code),
+          estado: fila.status,
+        })
+      : null;
+  }
+
+  async contarPersonalVigente(): Promise<number> {
+    const { total } = await this.uow
+      .transaccionActual()
+      .selectFrom('membership')
+      .select((eb) => eb.fn.countAll<string>().as('total'))
+      .where('tenant_id', '=', this.tenantContext.actual().valor)
+      .where('status', 'in', ['PENDIENTE', 'ACTIVA'])
+      .executeTakeFirstOrThrow();
+    return Number(total);
+  }
+
+  async actualizarEstado(membresia: Membresia): Promise<void> {
+    await this.uow
+      .transaccionActual()
+      .updateTable('membership')
+      .set({ status: membresia.estado, updated_at: new Date() })
+      .where('tenant_id', '=', this.tenantContext.actual().valor)
+      .where('id', '=', membresia.id)
+      .execute();
+  }
+
+  async fijarContrasena(usuarioId: string, hashContrasena: string): Promise<void> {
+    // RLS de user_account: solo se actualiza si la cuenta tiene membresía en el tenant del contexto.
+    // Sin RETURNING ni lectura de password_hash (barberias_app no puede leer esa columna).
+    const resultado = await this.uow
+      .transaccionActual()
+      .updateTable('user_account')
+      .set({ password_hash: hashContrasena })
+      .where('id', '=', usuarioId)
+      .executeTakeFirst();
+    if (Number(resultado.numUpdatedRows) !== 1) throw new Error('No se pudo fijar la contraseña');
   }
 }

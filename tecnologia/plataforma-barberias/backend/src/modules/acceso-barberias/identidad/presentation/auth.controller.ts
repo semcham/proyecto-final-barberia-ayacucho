@@ -1,6 +1,9 @@
 import { Body, Controller, Get, HttpCode, Post, Req, Res } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { ActorActual, Publica } from '../../../../shared';
+import { ActivarCuenta } from '../application/activar-cuenta';
+import { ActivacionDto } from './usuarios.dto';
 import type { Actor } from '../application/autorizacion';
 import { CerrarSesion } from '../application/cerrar-sesion';
 import { IniciarSesion } from '../application/iniciar-sesion';
@@ -11,6 +14,9 @@ import { NoAutenticado } from '../domain/errores';
 import { borrarCookieRenovacion, fijarCookieRenovacion, NOMBRE_COOKIE_RENOVACION } from './cookie-renovacion';
 import { LoginDto } from './login.dto';
 import { Operacion } from './operacion.decorator';
+
+/** Intentos de activación por IP y minuto (los enlaces son de 256 bits; esto frena el abuso). */
+const limiteActivaciones = () => Number(process.env.ACTIVACION_LIMITE_POR_MINUTO ?? 10);
 
 /** Cuerpo SesionResponse del contrato. El token de renovación viaja solo en la cookie HttpOnly. */
 function aRespuesta({ sesion, usuario }: SesionIniciada) {
@@ -24,6 +30,7 @@ export class AuthController {
     private readonly renovarSesion: RenovarSesion,
     private readonly cerrarSesion: CerrarSesion,
     private readonly obtenerUsuarioActual: ObtenerUsuarioActual,
+    private readonly activarCuenta: ActivarCuenta,
   ) {}
 
   /** POST /api/v1/auth/login · Iniciar sesión (RF04). */
@@ -60,6 +67,15 @@ export class AuthController {
   async logout(@ActorActual() actor: Actor, @Res({ passthrough: true }) respuesta: Response): Promise<void> {
     await this.cerrarSesion.ejecutar(actor);
     borrarCookieRenovacion(respuesta);
+  }
+
+  /** POST /api/v1/auth/activar · El usuario fija su contraseña con el enlace de un solo uso (FR-022). */
+  @Post('activar')
+  @Publica()
+  @HttpCode(204)
+  @Throttle({ general: { limit: limiteActivaciones, ttl: 60_000 } })
+  async activar(@Body() dto: ActivacionDto): Promise<void> {
+    await this.activarCuenta.ejecutar(dto.token, dto.contrasena);
   }
 
   /** GET /api/v1/auth/yo · Usuario autenticado y su barbería. */

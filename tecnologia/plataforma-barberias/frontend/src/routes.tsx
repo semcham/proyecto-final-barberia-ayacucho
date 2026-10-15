@@ -1,12 +1,13 @@
 import { Link, Route, Routes } from 'react-router-dom';
 import { RutaProtegida } from './auth/RutaProtegida';
 import { BarraSuperior } from './components/BarraSuperior';
+import Activar from './pages/Activar';
 import Ingresar from './pages/Ingresar';
 import Inicio from './pages/Inicio';
 import Registro from './pages/Registro';
+import Usuarios from './pages/Usuarios';
 
-// Rutas de la aplicación. US4 agregará /app/usuarios (solo PROPIETARIO) y /activar.
-// Se usan <Routes> (no el router de datos): la aplicación no necesita loaders ni actions.
+// Rutas de la aplicación. Se usan <Routes> (no el router de datos): la aplicación no necesita loaders ni actions.
 
 function Portada() {
   return (
@@ -35,12 +36,22 @@ export function RutasApp() {
       <Route path="/" element={<Portada />} />
       <Route path="/registro" element={<Registro />} />
       <Route path="/ingresar" element={<Ingresar />} />
+      <Route path="/activar" element={<Activar />} />
       <Route
         path="/app"
         element={
           <RutaProtegida>
             <BarraSuperior />
             <Inicio />
+          </RutaProtegida>
+        }
+      />
+      <Route
+        path="/app/usuarios"
+        element={
+          <RutaProtegida roles={['PROPIETARIO']}>
+            <BarraSuperior />
+            <Usuarios />
           </RutaProtegida>
         }
       />

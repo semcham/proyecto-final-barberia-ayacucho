@@ -32,7 +32,8 @@ function mensajeDeError(error: unknown): string {
 export default function Ingresar() {
   const { estado, iniciarSesion } = useSesion();
   const navegar = useNavigate();
-  const desde = (useLocation().state as { desde?: string } | null)?.desde ?? '/app';
+  const estadoNavegacion = useLocation().state as { desde?: string; mensaje?: string } | null;
+  const desde = estadoNavegacion?.desde ?? '/app';
   const [error, setError] = useState<string | null>(null);
   const {
     register,
@@ -55,6 +56,7 @@ export default function Ingresar() {
   return (
     <main className="contenedor">
       <h1>Ingresa a tu barbería</h1>
+      {estadoNavegacion?.mensaje && <p role="status">{estadoNavegacion.mensaje}</p>}
       <form className={estilos.formulario} onSubmit={handleSubmit(enviar)} noValidate>
         <div className={estilos.campo}>
           <label htmlFor="correo">Correo</label>
