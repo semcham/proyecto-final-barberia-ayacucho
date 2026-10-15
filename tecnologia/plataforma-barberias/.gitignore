@@ -1,0 +1,19 @@
+# Secretos locales
+.env
+.env.*
+!.env.example
+
+# Dependencias y artefactos
+node_modules/
+dist/
+build/
+coverage/
+*.log
+*.tsbuildinfo
+
+# Sistema y editores
+.DS_Store
+Thumbs.db
+*.tmp
+*.swp
+.idea/

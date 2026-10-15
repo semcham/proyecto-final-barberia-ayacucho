@@ -60,7 +60,10 @@ paquetes se fijan en `package.json` al iniciar la implementación (constitución
     propiedad.
   Toda tabla con `tenant_id` tiene `ENABLE` + `FORCE ROW LEVEL SECURITY` y la política
   `tenant_isolation` con `USING` y `WITH CHECK` sobre
-  `current_setting('app.tenant_id', true)::uuid`. Sin contexto, la política no devuelve filas.
+  `NULLIF(current_setting('app.tenant_id', true), '')::uuid`. Sin contexto, la política no devuelve
+  filas. El `NULLIF` es necesario: en una conexión del pool que ya usó `set_config(..., true)`,
+  `current_setting` devuelve `''` (no `NULL`) en las transacciones siguientes, y `''::uuid` lanzaría un
+  error en lugar de devolver 0 filas.
   `user_account` (sin `tenant_id`) también tiene RLS: solo se ven cuentas con membresía en el
   tenant actual (ADR-015).
 - **Justificación**: principio III y control 5 de multi-tenancy-y-datos.md. `FORCE` evita que el

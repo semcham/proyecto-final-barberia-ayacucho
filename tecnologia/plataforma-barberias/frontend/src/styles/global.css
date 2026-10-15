@@ -1,0 +1,115 @@
+/* Estilos base, móvil primero (principio IX, RC15): sin librerías de componentes pesadas. */
+
+:root {
+  --color-fondo: #f9fafb;
+  --color-superficie: #ffffff;
+  --color-texto: #111827;
+  --color-texto-suave: #4b5563;
+  --color-primario: #1f2937;
+  --color-primario-texto: #ffffff;
+  --color-acento: #b45309;
+  --color-error: #b91c1c;
+  --color-borde: #d1d5db;
+  --radio: 0.5rem;
+  --espacio: 1rem;
+  color-scheme: light;
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
+  line-height: 1.5;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-fondo: #111827;
+    --color-superficie: #1f2937;
+    --color-texto: #f9fafb;
+    --color-texto-suave: #d1d5db;
+    --color-primario: #f9fafb;
+    --color-primario-texto: #111827;
+    --color-acento: #f59e0b;
+    --color-error: #f87171;
+    --color-borde: #374151;
+    color-scheme: dark;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--color-fondo);
+  color: var(--color-texto);
+  font-size: 1rem;
+}
+
+.contenedor {
+  width: 100%;
+  max-width: 40rem;
+  margin: 0 auto;
+  padding: var(--espacio);
+}
+
+h1 {
+  font-size: 1.5rem;
+  line-height: 1.25;
+}
+
+a {
+  color: var(--color-acento);
+}
+
+/* Controles con área táctil de al menos 44 px. */
+button,
+input,
+select {
+  font: inherit;
+  min-height: 2.75rem;
+}
+
+button {
+  border: none;
+  border-radius: var(--radio);
+  padding: 0 var(--espacio);
+  background: var(--color-primario);
+  color: var(--color-primario-texto);
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+input,
+select {
+  width: 100%;
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio);
+  padding: 0 0.75rem;
+  background: var(--color-superficie);
+  color: var(--color-texto);
+}
+
+:focus-visible {
+  outline: 3px solid var(--color-acento);
+  outline-offset: 2px;
+}
+
+.mensaje-error {
+  color: var(--color-error);
+}
+
+@media (min-width: 48rem) {
+  h1 {
+    font-size: 2rem;
+  }
+}

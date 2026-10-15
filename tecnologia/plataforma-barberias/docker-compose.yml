@@ -1,0 +1,55 @@
+# Entorno de desarrollo local (R20). Sin Redis: esta funcionalidad no tiene lecturas que cachear.
+# Uso: copiar .env.example a .env, luego `docker compose up -d` y `docker compose exec backend npm run migrate`.
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: barberias
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_SUPERUSER_PASSWORD:-postgres_dev}
+    ports:
+      - '5432:5432'
+    volumes:
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+      - datos-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d barberias']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    image: node:22
+    working_dir: /app
+    command: sh -c "npm ci && npm run start:dev"
+    env_file: .env
+    environment:
+      DATABASE_URL_APP: postgres://barberias_app:barberias_app_dev@db:5432/barberias
+      DATABASE_URL_OWNER: postgres://barberias_owner:barberias_owner_dev@db:5432/barberias
+    ports:
+      - '3000:3000'
+    volumes:
+      - ./backend:/app
+      - backend-node-modules:/app/node_modules
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    image: node:22
+    working_dir: /app
+    command: sh -c "npm ci && npm run dev -- --host"
+    environment:
+      VITE_API_PROXY: http://backend:3000
+    ports:
+      - '5173:5173'
+    volumes:
+      - ./frontend:/app
+      - frontend-node-modules:/app/node_modules
+    depends_on:
+      - backend
+
+volumes:
+  datos-postgres:
+  backend-node-modules:
+  frontend-node-modules:

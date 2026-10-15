@@ -1,0 +1,47 @@
+# Integración continua de la plataforma (constitución, principio X).
+# Vive aquí por la excepción del principio XII: GitHub Actions solo lee flujos en .github/workflows/.
+# No contiene lógica de la aplicación: solo ejecuta comandos dentro de tecnologia/plataforma-barberias/.
+name: plataforma-barberias
+
+on:
+  push:
+    branches: [main]
+    paths: ['tecnologia/plataforma-barberias/**', 'specs/**', '.github/workflows/plataforma-barberias.yml']
+  pull_request:
+    paths: ['tecnologia/plataforma-barberias/**', 'specs/**', '.github/workflows/plataforma-barberias.yml']
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: tecnologia/plataforma-barberias/backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tecnologia/plataforma-barberias/backend/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      # Testcontainers usa el Docker del runner de GitHub (ubuntu-latest lo trae instalado).
+      - run: npm run test:int
+      - run: npm run test:arch
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: tecnologia/plataforma-barberias/frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tecnologia/plataforma-barberias/frontend/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
