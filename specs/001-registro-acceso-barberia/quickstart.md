@@ -77,6 +77,25 @@ Se pueden hacer desde la aplicación web o con cualquier cliente HTTP contra
 
 ## 6. Registro de ejecución (T120)
 
+### 6.1 Con Docker Compose (ejecución de referencia)
+
+**Fecha:** 2026-10-15. **Entorno:** Docker 29.8, Docker Compose 5.6, `docker compose up -d` con el
+`docker-compose.yml` del proyecto, `.env` generado desde `.env.example` con claves ES256 de desarrollo y
+`docker compose exec backend npm run migrate` (7 migraciones aplicadas). **Única diferencia con la
+guía:** el puerto 5432 del equipo lo ocupaba un PostgreSQL instalado en Windows, así que se publicó la base
+de Compose en el 55433 con un archivo de override temporal; dentro de la red de Compose el backend usa
+`db:5432` igual que siempre. Los escenarios se ejecutaron por HTTP contra `localhost:3000` y los
+escenarios 14 y 15 con `docker compose exec db psql -U barberias_app -d barberias`.
+
+**Resultado: 15 de 15 conformes**, con la misma evidencia que la tabla de 6.2. Además: el contenedor del
+frontend sirve la aplicación en `localhost:5173` (200, UTF-8) y su proxy reenvía `/api/v1/salud` al backend
+(200); el log del backend no registró errores. **La interfaz no se recorrió a mano en un navegador.**
+
+Las pruebas de integración también se ejecutaron con **Testcontainers** (`npm run test:int` sin
+`TEST_DATABASE_ADMIN_URL`): 237 de 237 en verde contra un contenedor `postgres:16`.
+
+### 6.2 Sin Docker (primera ejecución)
+
 **Fecha:** 2026-10-15. **Cómo se ejecutó:** el equipo de desarrollo no tenía Docker, así que no se usó
 Docker Compose. Se reprodujo el mismo entorno a mano: PostgreSQL 16 local con una base nueva
 (`barberias_quickstart`), el mismo `db/init/01-roles.sql` y las 7 migraciones aplicadas como
@@ -103,5 +122,5 @@ como `barberias_app`. **No se comprobó la interfaz en un navegador**: la parte 
 | 14  | RLS en la base                 | Conforme  | `membership` = 0 y `user_account` = 0 como `barberias_app`                                          |
 | 15  | Contraseñas no legibles        | Conforme  | `permission denied for table user_account`                                                         |
 
-**Pendiente para el cierre formal (sección 5):** repetir con `docker compose up` en un equipo con Docker,
-ver las suites en verde en GitHub Actions, aprobar ADR-015 y validar el rol `BYPASSRLS` en Amazon RDS.
+**Pendiente para el cierre formal (sección 5):** ver las suites en verde en GitHub Actions, aprobar
+ADR-015 y validar el rol `BYPASSRLS` en Amazon RDS. (La repetición con Docker Compose está hecha: 6.1.)
