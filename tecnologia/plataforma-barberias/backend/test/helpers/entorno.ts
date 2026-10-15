@@ -20,3 +20,5 @@ process.env.CORS_ORIGIN = 'http://localhost:5173';
 process.env.FRONTEND_BASE_URL = 'http://localhost:5173';
 process.env.TERMS_VERSION = '2026-10';
 process.env.PRIVACY_POLICY_VERSION = '2026-10';
+// Las pruebas registran muchas barberías desde la misma IP; el límite real (10 por minuto) no aplica aquí.
+process.env.REGISTRO_LIMITE_POR_MINUTO = '1000';

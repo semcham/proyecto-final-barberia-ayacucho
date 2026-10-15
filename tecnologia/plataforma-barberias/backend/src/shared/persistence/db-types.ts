@@ -1,7 +1,7 @@
 import type { ColumnType, Generated } from 'kysely';
 
 // Tipos de las tablas para Kysely. Reflejan las migraciones de migrations/ y data-model.md.
-// Las historias siguientes agregan sus tablas aquí (subscription, plan, terms_acceptance, login_attempt).
+// Las historias siguientes agregan sus tablas aquí (login_attempt en US2).
 
 type Fecha = ColumnType<Date, Date | string | undefined, Date | string>;
 type FechaNula = ColumnType<Date | null, Date | string | null | undefined, Date | string | null>;
@@ -78,6 +78,35 @@ export interface AuditLogTable {
   at: Fecha;
 }
 
+export interface PlanTable {
+  id: string;
+  code: string;
+  trial_days: number | null;
+  max_users: number;
+  max_barbers: number;
+  ai_enabled: boolean;
+}
+
+export interface SubscriptionTable {
+  id: string;
+  tenant_id: string;
+  plan_id: string;
+  status: 'TRIAL' | 'ACTIVE' | 'PAST_DUE' | 'EXPIRED' | 'CANCELLED' | 'SUSPENDED';
+  started_at: Fecha;
+  trial_ends_at: FechaNula;
+  current_period_end: FechaNula;
+}
+
+export interface TermsAcceptanceTable {
+  id: string;
+  tenant_id: string;
+  user_id: string;
+  document: 'TERMINOS' | 'POLITICA_DATOS';
+  text_version: string;
+  accepted_at: Fecha;
+  ip: string | null;
+}
+
 export interface Database {
   tenant: TenantTable;
   role: RoleTable;
@@ -86,4 +115,7 @@ export interface Database {
   auth_session: AuthSessionTable;
   account_activation: AccountActivationTable;
   audit_log: AuditLogTable;
+  plan: PlanTable;
+  subscription: SubscriptionTable;
+  terms_acceptance: TermsAcceptanceTable;
 }

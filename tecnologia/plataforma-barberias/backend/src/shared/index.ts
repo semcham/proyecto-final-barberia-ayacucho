@@ -10,3 +10,4 @@ export { VerificadorBaseDeDatos, BASE_DE_DATOS, type BaseDeDatos } from './persi
 export type { Database } from './persistence/db-types';
 export { AuditLog, type EntradaAuditoria, type AccionAuditada } from './audit/audit-log';
 export { SharedModule } from './shared.module';
+export { Publica, RequiereOperacion, ActorActual, CLAVE_PUBLICA, CLAVE_OPERACION } from './http/decoradores';
