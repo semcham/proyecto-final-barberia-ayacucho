@@ -682,7 +682,18 @@ export interface operations {
             };
             400: components["responses"]["Validacion"];
             401: components["responses"]["NoAutenticado"];
-            403: components["responses"]["AccesoDenegado"];
+            /**
+             * @description `ACCESO_DENEGADO` (rol sin permiso) o, al reactivar con el plan lleno, `SUSCRIPCION_NO_PERMITE`
+             *     con `detalles: [{ "motivo": "LIMITE_USUARIOS", "maximo": 5 }]` (FR-020).
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             404: components["responses"]["NoEncontrado"];
             /** @description `OPERACION_NO_PERMITIDA` — el propietario intenta desactivarse a sí mismo. */
             422: {

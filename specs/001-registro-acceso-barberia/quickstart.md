@@ -10,7 +10,9 @@ Todas las rutas son relativas a `tecnologia/plataforma-barberias/`.
 
 - Docker Desktop con Docker Compose v2.
 - Node.js 22 LTS (solo para ejecutar las pruebas fuera de contenedores).
-- Puertos libres: 5432 (PostgreSQL), 3000 (backend), 5173 (frontend).
+- Puertos libres: 5433 (PostgreSQL de Compose), 3000 (backend), 5173 (frontend). El puerto de la base
+  se cambia con `DB_PUERTO` en `.env` (por defecto 5433, para no chocar con un PostgreSQL instalado en el
+  equipo en el 5432). Dentro de la red de Compose el backend siempre usa `db:5432`.
 
 ## 2. Levantar el entorno
 
@@ -22,7 +24,9 @@ docker compose exec backend npm run migrate     # aplica migraciones como barber
 ```
 
 Esperado: `GET http://localhost:3000/api/v1/salud` → `200 {"estado":"ok"}`; la aplicación web
-abre en `http://localhost:5173`.
+abre en `http://localhost:5173`. Desde el equipo, la base de Compose responde en `localhost:5433` (o el
+`DB_PUERTO` configurado); los comandos `psql` de la sección 4 se ejecutan dentro del contenedor y no
+dependen de ese puerto.
 
 ## 3. Ejecutar las pruebas
 
@@ -81,10 +85,10 @@ Se pueden hacer desde la aplicación web o con cualquier cliente HTTP contra
 
 **Fecha:** 2026-10-15. **Entorno:** Docker 29.8, Docker Compose 5.6, `docker compose up -d` con el
 `docker-compose.yml` del proyecto, `.env` generado desde `.env.example` con claves ES256 de desarrollo y
-`docker compose exec backend npm run migrate` (7 migraciones aplicadas). **Única diferencia con la
-guía:** el puerto 5432 del equipo lo ocupaba un PostgreSQL instalado en Windows, así que se publicó la base
-de Compose en el 55433 con un archivo de override temporal; dentro de la red de Compose el backend usa
-`db:5432` igual que siempre. Los escenarios se ejecutaron por HTTP contra `localhost:3000` y los
+`docker compose exec backend npm run migrate` (7 migraciones aplicadas). En esa primera ejecución el
+puerto 5432 del equipo lo ocupaba un PostgreSQL instalado en Windows y se usó un override temporal; desde
+entonces `docker-compose.yml` publica la base en `DB_PUERTO` (5433 por defecto) y `docker compose up`
+funciona sin override. Los escenarios se ejecutaron por HTTP contra `localhost:3000` y los
 escenarios 14 y 15 con `docker compose exec db psql -U barberias_app -d barberias`.
 
 **Resultado: 15 de 15 conformes**, con la misma evidencia que la tabla de 6.2. Además: el contenedor del

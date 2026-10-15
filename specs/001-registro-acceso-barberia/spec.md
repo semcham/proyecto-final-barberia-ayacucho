@@ -128,7 +128,7 @@ El propietario, que administra todo en su barbería, da de alta a los barberos q
 - **FR-017**: El sistema MUST rechazar la asignación de cualquier rol distinto de barbero al crear usuarios del personal.
 - **FR-018**: El sistema MUST permitir al propietario listar los usuarios de su barbería y desactivarlos y reactivarlos; la desactivación MUST conservar sus datos históricos.
 - **FR-019**: El sistema MUST impedir que la barbería se quede sin propietario activo (el propietario no puede desactivarse a sí mismo).
-- **FR-020**: El sistema MUST rechazar la creación de usuarios cuando la barbería haya alcanzado el límite de usuarios de su plan o de la prueba gratuita.
+- **FR-020**: El sistema MUST rechazar la creación de usuarios y la reactivación de usuarios desactivados cuando la barbería haya alcanzado el límite de usuarios de su plan o de la prueba gratuita. Cuentan los usuarios pendientes de activar y los activos, incluido el propietario. El límite MUST respetarse también ante operaciones simultáneas.
 - **FR-021**: El sistema MUST aplicar control de acceso por rol en cada operación, según la matriz rol × operación del proyecto; una operación no permitida para el rol MUST rechazarse por falta de permiso y registrarse.
 - **FR-022**: El usuario creado por el propietario MUST poder establecer su propia contraseña mediante un mecanismo seguro de un solo uso con vencimiento, sin que el propietario conozca la contraseña final.
 

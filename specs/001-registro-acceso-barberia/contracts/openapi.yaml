@@ -228,7 +228,13 @@ paths:
               schema: { $ref: '#/components/schemas/Usuario' }
         '400': { $ref: '#/components/responses/Validacion' }
         '401': { $ref: '#/components/responses/NoAutenticado' }
-        '403': { $ref: '#/components/responses/AccesoDenegado' }
+        '403':
+          description: |
+            `ACCESO_DENEGADO` (rol sin permiso) o, al reactivar con el plan lleno, `SUSCRIPCION_NO_PERMITE`
+            con `detalles: [{ "motivo": "LIMITE_USUARIOS", "maximo": 5 }]` (FR-020).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
         '404': { $ref: '#/components/responses/NoEncontrado' }
         '422':
           description: '`OPERACION_NO_PERMITIDA` — el propietario intenta desactivarse a sí mismo.'

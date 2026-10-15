@@ -1,14 +1,17 @@
 import { Injectable } from '@nestjs/common';
 import { AuditLog, Clock, TenantId, UnitOfWork } from '../../../../shared';
+import { SuscripcionesApi } from '../../../suscripciones-pagos';
 import { NoEncontrado } from '../domain/errores';
+import { LimiteUsuarios } from '../domain/limite-usuarios';
 import { type Actor, Autorizacion } from './autorizacion';
 import { ActivacionRepository } from './ports/activacion-repository';
 import { SesionRepository } from './ports/sesion-repository';
 import { type UsuarioDetalle, UsuarioRepository } from './ports/usuario-repository';
 
 /**
- * Desactivar o reactivar un usuario de la barbería (FR-018, FR-019). Solo cambia el estado: el rol es fijo.
- * Desactivar revoca sus sesiones en la misma transacción y conserva sus datos.
+ * Desactivar o reactivar un usuario de la barbería (FR-018, FR-019, FR-020). Solo cambia el estado: el
+ * rol es fijo. Desactivar revoca sus sesiones en la misma transacción y conserva sus datos; reactivar
+ * respeta el límite de usuarios del plan.
  */
 @Injectable()
 export class ActualizarUsuario {
@@ -18,6 +21,7 @@ export class ActualizarUsuario {
     private readonly usuarios: UsuarioRepository,
     private readonly sesiones: SesionRepository,
     private readonly activaciones: ActivacionRepository,
+    private readonly suscripciones: SuscripcionesApi,
     private readonly auditoria: AuditLog,
     private readonly reloj: Clock,
   ) {}
@@ -35,6 +39,13 @@ export class ActualizarUsuario {
         await this.usuarios.actualizarEstado(membresia);
         await this.sesiones.revocarTodasDe(usuarioId, this.reloj.ahora());
       } else {
+        if (membresia.estado === 'DESACTIVADA') {
+          // Reactivar vuelve a ocupar cupo del plan (FR-020). Mismo bloqueo de la suscripción que en
+          // CrearUsuario: una reactivación y un alta simultáneas no pueden superar el plan.
+          const tenantId = TenantId.de(actor.tenantId);
+          const maximo = await this.suscripciones.bloquearYObtenerLimiteUsuarios(tenantId);
+          LimiteUsuarios.exigir(await this.usuarios.contarPersonalVigente(), maximo);
+        }
         // El propietario siempre tiene contraseña; el personal la tiene si ya activó su cuenta.
         const tieneContrasena =
           membresia.rol.codigo === 'PROPIETARIO' || (await this.activaciones.tieneActivacionUsada(usuarioId));

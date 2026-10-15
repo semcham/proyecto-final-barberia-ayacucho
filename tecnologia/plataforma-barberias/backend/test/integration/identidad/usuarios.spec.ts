@@ -54,6 +54,42 @@ describe('Límite del plan con altas simultáneas (FR-020)', () => {
     );
     expect(rows[0].vigentes).toBe(5);
   });
+
+  it('con un solo cupo libre, una reactivación y un alta simultáneas: solo una se aplica y la otra da 403', async () => {
+    const e = await crearEscenario();
+    const desactivado = await sembrarUsuario({
+      tenantId: e.barberia.tenantId,
+      rol: 'BARBERO',
+      estado: 'DESACTIVADA',
+    });
+    const conPropietario = { Authorization: `Bearer ${e.tokenPropietario}` };
+    // 3 vigentes (el desactivado no ocupa cupo) + 1 = 4 de 5: queda exactamente un cupo.
+    await prueba.agente
+      .post('/api/v1/usuarios')
+      .set(conPropietario)
+      .send({ nombre: 'Barbero Previo', correo: correoNuevo('previo'), rol: 'BARBERO' })
+      .expect(201);
+
+    const [reactivacion, alta] = await Promise.all([
+      prueba.agente
+        .patch(`/api/v1/usuarios/${desactivado.usuarioId}`)
+        .set(conPropietario)
+        .send({ estado: 'ACTIVA' }),
+      prueba.agente
+        .post('/api/v1/usuarios')
+        .set(conPropietario)
+        .send({ nombre: 'Barbero Simultáneo', correo: correoNuevo('simultaneo'), rol: 'BARBERO' }),
+    ]);
+    const exitos = [reactivacion.status === 200, alta.status === 201].filter(Boolean).length;
+    expect(exitos).toBe(1);
+    expect([reactivacion.status, alta.status]).toContain(403);
+
+    const { rows } = await poolDe('seed').query<{ vigentes: number }>(
+      `SELECT count(*)::int AS vigentes FROM membership WHERE tenant_id = $1 AND status IN ('PENDIENTE', 'ACTIVA')`,
+      [e.barberia.tenantId],
+    );
+    expect(rows[0].vigentes).toBe(5);
+  });
 });
 
 const correoNuevo = (prefijo = 'barbero') => `${prefijo}-${randomBytes(4).toString('hex')}@prueba.pe`;
@@ -207,6 +243,53 @@ describe('Usuarios del personal (integración)', () => {
       .send({ estado: 'DESACTIVADA' })
       .expect(200);
     await crearBarbero(e).expect(201);
+  });
+
+  it('reactivar respeta el límite del plan: 403 con el plan lleno, 200 al liberar un cupo (FR-020)', async () => {
+    const e = await crearEscenario();
+    const desactivado = await sembrarUsuario({
+      tenantId: e.barberia.tenantId,
+      rol: 'BARBERO',
+      estado: 'DESACTIVADA',
+    });
+    // 3 vigentes + 2 altas = 5 de 5: plan lleno.
+    await crearBarbero(e).expect(201);
+    await crearBarbero(e).expect(201);
+
+    const lleno = await prueba.agente
+      .patch(`/api/v1/usuarios/${desactivado.usuarioId}`)
+      .set(comoPropietario(e))
+      .send({ estado: 'ACTIVA' })
+      .expect(403);
+    expect(lleno.body).toMatchObject({
+      codigo: 'SUSCRIPCION_NO_PERMITE',
+      detalles: [{ motivo: 'LIMITE_USUARIOS', maximo: 5 }],
+    });
+    const sigue = await prueba.agente
+      .get(`/api/v1/usuarios/${desactivado.usuarioId}`)
+      .set(comoPropietario(e))
+      .expect(200);
+    expect(sigue.body.estado).toBe('DESACTIVADA');
+
+    // Reactivar a alguien que ya está activo sigue siendo 422, no un 403 de límite.
+    await prueba.agente
+      .patch(`/api/v1/usuarios/${e.barberoActivo.id}`)
+      .set(comoPropietario(e))
+      .send({ estado: 'ACTIVA' })
+      .expect(422);
+
+    // Al desactivar a otro se libera un cupo y la reactivación ya entra.
+    await prueba.agente
+      .patch(`/api/v1/usuarios/${e.barberoActivo.id}`)
+      .set(comoPropietario(e))
+      .send({ estado: 'DESACTIVADA' })
+      .expect(200);
+    const reactivado = await prueba.agente
+      .patch(`/api/v1/usuarios/${desactivado.usuarioId}`)
+      .set(comoPropietario(e))
+      .send({ estado: 'ACTIVA' })
+      .expect(200);
+    expect(['ACTIVA', 'PENDIENTE']).toContain(reactivado.body.estado);
   });
 
   it('desactivar revoca sus sesiones (siguiente solicitud 401, login 403) y conserva sus datos', async () => {

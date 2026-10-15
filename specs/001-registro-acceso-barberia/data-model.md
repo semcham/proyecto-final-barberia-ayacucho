@@ -204,7 +204,7 @@ recurso de otra barbería da 404 sin este registro (escenario 4 de US3).
 | `Activacion`              | `usar(ahora)` una sola vez, antes de `expires_at`, si no revocada                                     | FR-022         |
 | `PoliticaIntentos`        | Decide bloqueo y `Retry-After` a partir de los fallos de la ventana                                   | FR-010         |
 | `Suscripcion` (M03)       | `iniciarPrueba(plan, ahora)` → `TRIAL`, `trial_ends_at = ahora + trial_days`                          | FR-003         |
-| `LimiteUsuarios` (M01)    | `puedeAgregar(actuales, max)`; cuenta `PENDIENTE` + `ACTIVA`                                          | FR-020         |
+| `LimiteUsuarios` (M01)    | `puedeAgregar(actuales, max)`; cuenta `PENDIENTE` + `ACTIVA`. Se aplica al crear y al reactivar, con la fila de `subscription` bloqueada (`FOR UPDATE`) durante la transacción | FR-020         |
 | `Permisos` (M01)          | Matriz `operacion → roles permitidos` de [contracts/rbac.md](contracts/rbac.md); `permite(rol, operacion)` (R22) | FR-021 |
 
 ## 4. Transiciones de estado

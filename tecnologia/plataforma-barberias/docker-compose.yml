@@ -8,7 +8,9 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_SUPERUSER_PASSWORD:-postgres_dev}
     ports:
-      - '5432:5432'
+      # Puerto publicado en el equipo (DB_PUERTO en .env, 5433 por defecto) para no chocar con un PostgreSQL
+      # instalado localmente en el 5432. Dentro de la red de Compose la base sigue en db:5432.
+      - '${DB_PUERTO:-5433}:5432'
     volumes:
       - ./db/init:/docker-entrypoint-initdb.d:ro
       - datos-postgres:/var/lib/postgresql/data

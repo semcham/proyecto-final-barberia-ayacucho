@@ -62,6 +62,7 @@ function crearCasosDeUso(usos: string[]) {
         d('usuarios'),
         d('sesiones'),
         d('activaciones'),
+        d('suscripciones'),
         d('auditoria'),
         d('reloj'),
       ).ejecutar(actor, USUARIO, 'DESACTIVADA'),
