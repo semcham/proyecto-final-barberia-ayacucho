@@ -1,9 +1,12 @@
-import { createBrowserRouter, Link } from 'react-router-dom';
+import { Link, Route, Routes } from 'react-router-dom';
+import { RutaProtegida } from './auth/RutaProtegida';
+import { BarraSuperior } from './components/BarraSuperior';
+import Ingresar from './pages/Ingresar';
 import Inicio from './pages/Inicio';
 import Registro from './pages/Registro';
 
-// Rutas de la aplicación. Las historias agregan aquí sus páginas: /ingresar y la protección de /app (US2),
-// /app/usuarios y /activar (US4).
+// Rutas de la aplicación. US4 agregará /app/usuarios (solo PROPIETARIO) y /activar.
+// Se usan <Routes> (no el router de datos): la aplicación no necesita loaders ni actions.
 
 function Portada() {
   return (
@@ -11,7 +14,7 @@ function Portada() {
       <h1>Barberías Ayacucho</h1>
       <p>Gestiona tu barbería, tus barberos y tus citas desde el celular.</p>
       <p>
-        <Link to="/registro">Registra tu barbería gratis</Link>
+        <Link to="/registro">Registra tu barbería gratis</Link> · <Link to="/ingresar">Ingresar</Link>
       </p>
     </main>
   );
@@ -26,11 +29,22 @@ function NoEncontrada() {
   );
 }
 
-export const rutas = [
-  { path: '/', element: <Portada /> },
-  { path: '/registro', element: <Registro /> },
-  { path: '/app', element: <Inicio /> },
-  { path: '*', element: <NoEncontrada /> },
-];
-
-export const router = createBrowserRouter(rutas);
+export function RutasApp() {
+  return (
+    <Routes>
+      <Route path="/" element={<Portada />} />
+      <Route path="/registro" element={<Registro />} />
+      <Route path="/ingresar" element={<Ingresar />} />
+      <Route
+        path="/app"
+        element={
+          <RutaProtegida>
+            <BarraSuperior />
+            <Inicio />
+          </RutaProtegida>
+        }
+      />
+      <Route path="*" element={<NoEncontrada />} />
+    </Routes>
+  );
+}

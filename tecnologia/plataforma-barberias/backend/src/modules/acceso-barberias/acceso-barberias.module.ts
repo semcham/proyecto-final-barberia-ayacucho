@@ -7,8 +7,15 @@ import { KyselyTenantRepository } from './barberias/infrastructure/kysely-tenant
 import { KyselyTermsAcceptanceRepository } from './barberias/infrastructure/kysely-terms-acceptance-repository';
 import { BarberiasController } from './barberias/presentation/barberias.controller';
 import { Autorizacion } from './identidad/application/autorizacion';
+import { CerrarSesion } from './identidad/application/cerrar-sesion';
 import { EmitirSesion } from './identidad/application/emitir-sesion';
+import { IniciarSesion } from './identidad/application/iniciar-sesion';
+import { ObtenerUsuarioActual } from './identidad/application/obtener-usuario-actual';
+import { IntentosRepository } from './identidad/application/ports/intentos-repository';
 import { PasswordHasher } from './identidad/application/ports/password-hasher';
+import { RenovarSesion } from './identidad/application/renovar-sesion';
+import { KyselyIntentosRepository } from './identidad/infrastructure/kysely-intentos-repository';
+import { AuthController } from './identidad/presentation/auth.controller';
 import { SesionRepository } from './identidad/application/ports/sesion-repository';
 import { TokenSigner } from './identidad/application/ports/token-signer';
 import { UsuarioRepository } from './identidad/application/ports/usuario-repository';
@@ -22,7 +29,7 @@ import { KyselyUsuarioRepository } from './identidad/infrastructure/kysely-usuar
 @Module({
   // M01 → M03 está permitido por la matriz de dependencias; solo se usa su interfaz pública.
   imports: [SuscripcionesPagosModule],
-  controllers: [BarberiasController],
+  controllers: [BarberiasController, AuthController],
   providers: [
     { provide: PasswordHasher, useClass: Argon2PasswordHasher },
     { provide: TokenSigner, useClass: JoseTokenSigner },
@@ -30,10 +37,15 @@ import { KyselyUsuarioRepository } from './identidad/infrastructure/kysely-usuar
     { provide: UsuarioRepository, useClass: KyselyUsuarioRepository },
     { provide: TenantRepository, useClass: KyselyTenantRepository },
     { provide: TermsAcceptanceRepository, useClass: KyselyTermsAcceptanceRepository },
+    { provide: IntentosRepository, useClass: KyselyIntentosRepository },
     EmitirSesion,
     ValidarSolicitud,
     Autorizacion,
     RegistrarBarberia,
+    IniciarSesion,
+    RenovarSesion,
+    CerrarSesion,
+    ObtenerUsuarioActual,
   ],
   exports: [ValidarSolicitud],
 })

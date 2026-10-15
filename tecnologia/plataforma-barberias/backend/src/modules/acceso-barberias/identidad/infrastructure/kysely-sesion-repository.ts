@@ -100,6 +100,23 @@ export class KyselySesionRepository extends SesionRepository {
       .execute();
   }
 
+  async guardarRotacion(sesion: Sesion, hashEsperado: string): Promise<boolean> {
+    const resultado = await this.uow
+      .transaccionActual()
+      .updateTable('auth_session')
+      .set({
+        refresh_token_hash: sesion.hashTokenVigente,
+        previous_token_hash: sesion.hashTokenAnterior,
+        last_used_at: sesion.ultimoUsoEn,
+      })
+      .where('tenant_id', '=', this.tenantId)
+      .where('id', '=', sesion.id)
+      .where('status', '=', 'ACTIVA')
+      .where('refresh_token_hash', '=', hashEsperado)
+      .executeTakeFirst();
+    return Number(resultado.numUpdatedRows) === 1;
+  }
+
   async revocarTodasDe(usuarioId: string, ahora: Date): Promise<void> {
     await this.uow
       .transaccionActual()

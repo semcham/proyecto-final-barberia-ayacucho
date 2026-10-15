@@ -1,7 +1,7 @@
 import type { ColumnType, Generated } from 'kysely';
 
 // Tipos de las tablas para Kysely. Reflejan las migraciones de migrations/ y data-model.md.
-// Las historias siguientes agregan sus tablas aquí (login_attempt en US2).
+// Las historias siguientes agregan sus tablas aquí.
 
 type Fecha = ColumnType<Date, Date | string | undefined, Date | string>;
 type FechaNula = ColumnType<Date | null, Date | string | null | undefined, Date | string | null>;
@@ -107,6 +107,13 @@ export interface TermsAcceptanceTable {
   ip: string | null;
 }
 
+export interface LoginAttemptTable {
+  id: Generated<string>;
+  email_hash: string;
+  ip: string;
+  attempted_at: Fecha;
+}
+
 export interface Database {
   tenant: TenantTable;
   role: RoleTable;
@@ -118,4 +125,5 @@ export interface Database {
   plan: PlanTable;
   subscription: SubscriptionTable;
   terms_acceptance: TermsAcceptanceTable;
+  login_attempt: LoginAttemptTable;
 }

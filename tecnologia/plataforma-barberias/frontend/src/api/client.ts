@@ -68,24 +68,36 @@ async function aApiError(respuesta: Response): Promise<ApiError> {
   }
 }
 
-// Una sola renovación a la vez aunque varias llamadas reciban 401 al mismo tiempo.
-let renovacionEnCurso: Promise<boolean> | null = null;
+// Avisos de "la sesión se perdió" (la renovación falló): la interfaz vuelve a la pantalla de ingreso.
+const alPerderSesion = new Set<() => void>();
 
-/** Pide un token de acceso nuevo con la cookie de renovación. Devuelve false si no hay sesión. */
-export function renovarSesion(): Promise<boolean> {
+/** Se suscribe al aviso de sesión perdida. Devuelve la función para cancelar la suscripción. */
+export function suscribirSesionPerdida(oyente: () => void): () => void {
+  alPerderSesion.add(oyente);
+  return () => alPerderSesion.delete(oyente);
+}
+
+// Una sola renovación a la vez aunque varias llamadas reciban 401 al mismo tiempo.
+let renovacionEnCurso: Promise<SesionResponse | null> | null = null;
+
+/**
+ * Pide un token de acceso nuevo con la cookie de renovación (que el servidor rota). Devuelve la sesión
+ * renovada, o null si no hay sesión válida.
+ */
+export function renovarSesion(): Promise<SesionResponse | null> {
   renovacionEnCurso ??= (async () => {
     try {
       const respuesta = await fetch(`${BASE}/auth/refresh`, { method: 'POST', credentials: 'include' });
       if (!respuesta.ok) {
         tokenEnMemoria.limpiar();
-        return false;
+        return null;
       }
       const sesion = (await respuesta.json()) as SesionResponse;
       tokenEnMemoria.fijar(sesion.tokenAcceso);
-      return true;
+      return sesion;
     } catch {
       tokenEnMemoria.limpiar();
-      return false;
+      return null;
     } finally {
       renovacionEnCurso = null;
     }
@@ -99,8 +111,12 @@ export function renovarSesion(): Promise<boolean> {
  */
 export async function llamarApi<T>(ruta: string, opciones: OpcionesLlamada = {}): Promise<T> {
   let respuesta = await enviar(ruta, opciones);
-  if (respuesta.status === 401 && !opciones.sinRenovar && (await renovarSesion())) {
-    respuesta = await enviar(ruta, opciones);
+  if (respuesta.status === 401 && !opciones.sinRenovar) {
+    if (await renovarSesion()) {
+      respuesta = await enviar(ruta, opciones);
+    } else {
+      alPerderSesion.forEach((oyente) => oyente());
+    }
   }
   if (!respuesta.ok) throw await aApiError(respuesta);
   if (respuesta.status === 204) return undefined as T;

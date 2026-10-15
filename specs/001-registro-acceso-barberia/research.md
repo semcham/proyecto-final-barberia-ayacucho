@@ -156,7 +156,9 @@ paquetes se fijan en `package.json` al iniciar la implementación (constitución
 
 - **Decisión**: contador en PostgreSQL, tabla global `login_attempt` con
   (`email_hash`, `ip`, `intentado_en`). Se rechaza con 429 desde el sexto fallo en 60 s para el par
-  cuenta + IP, con espera creciente (`Retry-After` duplica: 30 s, 60 s, 120 s… hasta 15 min). Un
+  cuenta + IP, con espera creciente desde el último fallo (`Retry-After` duplica en cada racha de 5
+  fallos: 60 s, 120 s, 240 s… hasta 15 min). La primera espera es de 60 s, no de 30, para que el sexto
+  intento hecho en el mismo minuto se rechace siempre (EQ-12). Un
   acierto borra los fallos del par. Cada vez que se registra un intento se borran, en la misma
   sentencia, las filas de más de 24 h (purga oportunista: la tabla nunca crece más allá de un día
   de intentos). Para el resto de la API,

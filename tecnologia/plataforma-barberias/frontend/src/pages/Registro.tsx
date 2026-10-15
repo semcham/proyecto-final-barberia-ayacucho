@@ -3,7 +3,8 @@ import { useMutation } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { Link, useNavigate } from 'react-router-dom';
 import { z } from 'zod';
-import { ApiError, llamarApi, tokenEnMemoria } from '../api/client';
+import { ApiError, llamarApi } from '../api/client';
+import { useSesion } from '../auth/SesionProvider';
 import type { components } from '../api/schema';
 import { VERSION_POLITICA_DATOS, VERSION_TERMINOS } from '../legal';
 import estilos from './Registro.module.css';
@@ -65,6 +66,7 @@ function mensajeDeError(error: unknown): string {
 /** Registro de la barbería con prueba gratuita (HU02, RF01, RF18). No pide datos de pago (FR-004). */
 export default function Registro() {
   const navegar = useNavigate();
+  const { establecer } = useSesion();
   const {
     register,
     handleSubmit,
@@ -83,7 +85,7 @@ export default function Registro() {
         } satisfies SolicitudRegistro,
       }),
     onSuccess: (respuesta) => {
-      tokenEnMemoria.fijar(respuesta.sesion.tokenAcceso);
+      establecer(respuesta.sesion);
       const estado: EstadoBienvenida = { barberia: respuesta.barberia, suscripcion: respuesta.suscripcion };
       navegar('/app', { replace: true, state: estado });
     },

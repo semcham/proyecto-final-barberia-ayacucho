@@ -1,4 +1,5 @@
 import { useLocation } from 'react-router-dom';
+import { useSesion } from '../auth/SesionProvider';
 import type { EstadoBienvenida } from './Registro';
 
 const DIA_MS = 24 * 60 * 60 * 1000;
@@ -8,26 +9,23 @@ function diasRestantes(venceEn: string, ahora = Date.now()): number {
 }
 
 /**
- * Pantalla de bienvenida tras el registro (T072): nombre de la barbería y días restantes de prueba.
- * Por ahora recibe los datos del registro; US2 la conectará a la sesión (GET /auth/yo).
+ * Pantalla principal de la barbería. Justo después del registro también muestra los días de prueba; la
+ * consulta permanente del estado de la suscripción llegará con RF19 (fuera de esta funcionalidad).
  */
 export default function Inicio() {
-  const estado = useLocation().state as EstadoBienvenida | null;
+  const { usuario } = useSesion();
+  const bienvenida = useLocation().state as EstadoBienvenida | null;
+  const nombre = usuario?.barberia.nombre ?? bienvenida?.barberia.nombre ?? 'Tu barbería';
+  const dias = bienvenida ? diasRestantes(bienvenida.suscripcion.venceEn) : null;
 
-  if (!estado) {
-    return (
-      <main className="contenedor">
-        <h1>Bienvenido</h1>
-        <p>Tu barbería está lista.</p>
-      </main>
-    );
-  }
-
-  const dias = diasRestantes(estado.suscripcion.venceEn);
   return (
     <main className="contenedor">
-      <h1>{estado.barberia.nombre}</h1>
-      <p>Tu prueba gratuita está activa: te {dias === 1 ? 'queda 1 día' : `quedan ${dias} días`}.</p>
+      <h1>{nombre}</h1>
+      {dias !== null ? (
+        <p>Tu prueba gratuita está activa: te {dias === 1 ? 'queda 1 día' : `quedan ${dias} días`}.</p>
+      ) : (
+        <p>Hola, {usuario?.nombre}.</p>
+      )}
     </main>
   );
 }

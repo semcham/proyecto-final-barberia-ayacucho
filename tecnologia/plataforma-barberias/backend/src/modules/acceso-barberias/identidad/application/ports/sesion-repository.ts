@@ -27,6 +27,11 @@ export abstract class SesionRepository {
   abstract crear(sesion: Sesion, metadatos: DatosSolicitud): Promise<void>;
   abstract obtener(sesionId: string): Promise<Sesion | null>;
   abstract guardar(sesion: Sesion): Promise<void>;
+  /**
+   * Guarda una sesión recién rotada solo si en la base su token vigente sigue siendo `hashEsperado`.
+   * Devuelve false si otra renovación concurrente ya la rotó (el llamador responde 401).
+   */
+  abstract guardarRotacion(sesion: Sesion, hashEsperado: string): Promise<boolean>;
   abstract revocarTodasDe(usuarioId: string, ahora: Date): Promise<void>;
   /** Borra las sesiones del usuario terminadas (cerradas, revocadas o vencidas) hace más de 30 días (R08). */
   abstract purgarTerminadasDe(usuarioId: string, ahora: Date): Promise<number>;

@@ -5,6 +5,7 @@ import { http, HttpResponse } from 'msw';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { afterEach, describe, expect, it } from 'vitest';
 import { tokenEnMemoria } from '../../src/api/client';
+import { SesionProvider } from '../../src/auth/SesionProvider';
 import Registro from '../../src/pages/Registro';
 import { servidor } from '../setup';
 
@@ -50,11 +51,13 @@ function renderizar() {
   render(
     <QueryClientProvider client={new QueryClient({ defaultOptions: { mutations: { retry: false } } })}>
       <MemoryRouter initialEntries={['/registro']}>
-        <Routes>
-          <Route path="/registro" element={<Registro />} />
-          <Route path="/app" element={<h1>Panel de la barbería</h1>} />
-        </Routes>
-        <RutaActual />
+        <SesionProvider>
+          <Routes>
+            <Route path="/registro" element={<Registro />} />
+            <Route path="/app" element={<h1>Panel de la barbería</h1>} />
+          </Routes>
+          <RutaActual />
+        </SesionProvider>
       </MemoryRouter>
     </QueryClientProvider>,
   );

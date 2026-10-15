@@ -1,8 +1,15 @@
 import { Injectable } from '@nestjs/common';
+import { sql } from 'kysely';
 import { KyselyUnitOfWork, TenantContext } from '../../../../shared';
 import { CorreoNoDisponible } from '../domain/errores';
-import type { Membresia } from '../domain/membresia';
-import { type NuevaCuenta, UsuarioRepository } from '../application/ports/usuario-repository';
+import type { EstadoMembresia, Membresia } from '../domain/membresia';
+import type { CodigoRol } from '../domain/rol';
+import {
+  type CuentaParaAutenticar,
+  type NuevaCuenta,
+  type PerfilUsuario,
+  UsuarioRepository,
+} from '../application/ports/usuario-repository';
 
 const VIOLACION_DE_UNICIDAD = '23505';
 
@@ -56,5 +63,57 @@ export class KyselyUsuarioRepository extends UsuarioRepository {
         status: membresia.estado,
       })
       .execute();
+  }
+
+  async resolverCuenta(correoNormalizado: string): Promise<CuentaParaAutenticar | null> {
+    const { rows } = await sql<{
+      user_id: string;
+      password_hash: string | null;
+      tenant_id: string;
+      role_code: CodigoRol;
+      membership_status: EstadoMembresia;
+      tenant_status: 'ACTIVA' | 'SUSPENDIDA';
+    }>`select * from auth_resolver_cuenta(${correoNormalizado})`.execute(this.uow.transaccionActual());
+    const fila = rows[0];
+    return fila
+      ? {
+          usuarioId: fila.user_id,
+          hashContrasena: fila.password_hash,
+          tenantId: fila.tenant_id,
+          rol: fila.role_code,
+          estadoMembresia: fila.membership_status,
+          estadoBarberia: fila.tenant_status,
+        }
+      : null;
+  }
+
+  async perfil(usuarioId: string): Promise<PerfilUsuario | null> {
+    const tenantId = this.tenantContext.actual().valor;
+    const fila = await this.uow
+      .transaccionActual()
+      .selectFrom('membership')
+      .innerJoin('user_account', 'user_account.id', 'membership.user_id')
+      .innerJoin('tenant', 'tenant.id', 'membership.tenant_id')
+      .select([
+        'user_account.id',
+        'user_account.full_name',
+        'user_account.email',
+        'membership.role_code',
+        'tenant.id as tenant_id',
+        'tenant.name as tenant_name',
+        'tenant.slug as tenant_slug',
+      ])
+      .where('membership.tenant_id', '=', tenantId)
+      .where('membership.user_id', '=', usuarioId)
+      .executeTakeFirst();
+    return fila
+      ? {
+          id: fila.id,
+          nombre: fila.full_name,
+          correo: fila.email,
+          rol: fila.role_code,
+          barberia: { id: fila.tenant_id, nombre: fila.tenant_name, slug: fila.tenant_slug },
+        }
+      : null;
   }
 }
