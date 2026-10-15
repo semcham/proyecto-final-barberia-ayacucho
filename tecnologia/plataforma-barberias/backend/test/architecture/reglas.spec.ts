@@ -41,6 +41,7 @@ describe('Reglas de arquitectura (PR14)', () => {
       'modulos-solo-por-index',
       'm06-solo-por-interfaz-publica',
       'matriz-m03',
+      'kysely-solo-en-infraestructura',
     ])('%s', (regla) => {
       expect(salida).toContain(regla);
     });

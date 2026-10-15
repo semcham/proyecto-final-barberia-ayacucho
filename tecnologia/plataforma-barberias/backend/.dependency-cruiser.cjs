@@ -77,6 +77,22 @@ module.exports = {
       to: { path: '(^|/)src/modules/acceso-barberias/' },
     },
     {
+      name: 'kysely-solo-en-infraestructura',
+      comment:
+        'Solo los repositorios (infrastructure/) y la persistencia de M06 consultan la base: ningún controlador ' +
+        'ni caso de uso puede saltarse un repositorio con contexto de tenant (T095, principio III).',
+      severity: 'error',
+      from: {
+        path: '(^|/)src/',
+        pathNot: [
+          '(^|/)src/modules/.+/infrastructure/',
+          '(^|/)src/shared/persistence/',
+          '(^|/)src/shared/(index|shared\\.module)\\.ts$',
+        ],
+      },
+      to: { path: ['node_modules/kysely/', '(^|/)src/shared/persistence/database\\.ts$'] },
+    },
+    {
       name: 'modulos-sin-host',
       comment: 'Solo el host (raíz de composición) ensambla módulos; ningún módulo depende del host.',
       severity: 'error',
