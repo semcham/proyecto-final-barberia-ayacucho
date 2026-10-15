@@ -24,3 +24,8 @@ en la práctica lo hace alguien sin cuenta.
 ⁴ Salvo sobre sí mismo (422 `OPERACION_NO_PERMITIDA`).
 
 En todas las celdas ✓ con sesión, un `id` de otra barbería da 404 (PR09).
+
+La misma matriz se aplica en dos lugares (R22): el `RolesGuard` del host para las rutas HTTP y
+`Autorizacion.exigir(actor, operacion)` al inicio de cada caso de uso protegido (capa de
+aplicación, ADR-010), con la matriz en `identidad/domain/permisos.ts`. Una prueba verifica que ambas
+coinciden con esta tabla.

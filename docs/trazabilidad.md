@@ -9,10 +9,10 @@ Documentos de origen: [HU](01-analisis-de-sistema/02-historias-del-usuario.md) �
 | HU   | RF                     | AC / EQ                                       | DA               | ADR               | Módulo / componente C4                | Prueba           |
 | ---- | ---------------------- | --------------------------------------------- | ---------------- | ----------------- | ------------------------------------- | ---------------- |
 | HU01 | RF02                   | AC04 / EQ-08, EQ-13                           | DA01             | ADR-003, 010      | M01 (+ M06 auditoría)                 | PR08, PR13       |
-| HU02 | RF01, RF18             | AC04 / EQ-09                                  | DA01             | ADR-003           | M01, M03                              | PR09, PR25       |
+| HU02 | RF01, RF18             | AC04 / EQ-09                                  | DA01             | ADR-003, 015      | M01, M03                              | PR09, PR25       |
 | HU03 | RF03                   | AC04 / EQ-08, EQ-09                           | DA01             | ADR-003, 010      | M01                                   | PR08, PR09       |
-| HU04 | RF06                   | AC04 / EQ-08                                  | DA01             | ADR-010           | M01                                   | PR08             |
-| HU05 | RF04                   | AC04 / EQ-07, EQ-12                           | DA01             | ADR-010           | M01, Host                             | PR07, PR12       |
+| HU04 | RF06                   | AC04 / EQ-08                                  | DA01             | ADR-010, 015      | M01                                   | PR08             |
+| HU05 | RF04                   | AC04 / EQ-07, EQ-12                           | DA01             | ADR-010, 015      | M01, Host                             | PR07, PR09, PR12 |
 | HU06 | RF05, RF33             | AC08 / EQ-18                                  | DA11             | ADR-010, 013      | M01                                   | PR18             |
 | HU07 | RF07                   | AC04 / EQ-08, EQ-09                           | DA01             | ADR-003, 005      | M02                                   | PR08, PR09       |
 | HU08 | RF08                   | AC04 / EQ-09                                  | DA01, DA06       | ADR-003           | M02                                   | PR09             |
@@ -52,10 +52,10 @@ Documentos de origen: [HU](01-analisis-de-sistema/02-historias-del-usuario.md) �
 | Servicio de mensajería WhatsApp                                            | 1–3        | RF30, RF33 (HU06, HU25)                       | ADR-013           | PR06, PR27             |
 | Interfaz web                                                               | 2          | RC01, RC03; HU05–HU28 (pantallas)             | ADR-002           | PR15, PR23             |
 | Backend monolítico modular                                                 | 2          | RF01–RF34                                     | ADR-001, 002, 011 | PR14                   |
-| PostgreSQL                                                                 | 2          | RF12 (HU11), RC04                             | ADR-003, 004, 009 | PR09, PR16, PR22       |
+| PostgreSQL                                                                 | 2          | RF12 (HU11), RC04                             | ADR-003, 004, 009, 015 | PR09, PR16, PR22  |
 | Redis                                                                      | 2          | RF10, RF11 (HU10), AC01                       | ADR-005           | PR01, PR05             |
 | Host y API REST                                                            | 3          | RF04 (HU05), RC03, CORS                       | ADR-001, 010      | PR07, PR26             |
-| M01 Acceso y barberías (identidad)                                         | 3          | RF04, RF05, RF06, RF32 (HU04–HU06, HU27)      | ADR-010           | PR07, PR08, PR18       |
+| M01 Acceso y barberías (identidad)                                         | 3          | RF04, RF05, RF06, RF32 (HU04–HU06, HU27)      | ADR-010, 015      | PR07, PR08, PR09, PR18 |
 | M01 Acceso y barberías (barberías)                                         | 3          | RF01, RF02, RF03 (HU01–HU03)                  | ADR-003           | PR09                   |
 | M02 Catálogo y citas (catálogo)                                            | 3          | RF07–RF10 (HU07–HU10)                         | ADR-005           | PR09, PR01             |
 | M02 Catálogo y citas (citas)                                               | 3          | RF11–RF17, RF34 (HU10–HU16, HU28)             | ADR-009           | PR16, PR02             |
@@ -89,6 +89,6 @@ Cada funcionalidad especificada con Spec Kit enlaza su carpeta en `specs/` con l
 
 | Funcionalidad                                                                                             | HU               | RF                     | Escenarios                                      | ADR                         | Componente                                                                                                            | Pruebas                                  | Estado                                 |
 | --------------------------------------------------------------------------------------------------------- | ---------------- | ---------------------- | ----------------------------------------------- | --------------------------- | --------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- | -------------------------------------- |
-| [001 Registro de barbería, acceso con roles y aislamiento](../specs/001-registro-acceso-barberia/spec.md) | HU02, HU04, HU05 | RF01, RF04, RF06, RF18 | EQ-07, EQ-08, EQ-09, EQ-10, EQ-12, EQ-13, EQ-14 | ADR-003, 010, 002, 011, 014 | M01 (`identidad`, `barberias`), M03 (`suscripciones`, mínimo), M06 (contexto de tenant, transacción, auditoría), Host | PR07, PR08, PR09, PR10, PR12, PR13, PR14 | Especificada y planificada; sin código |
+| [001 Registro de barbería, acceso con roles y aislamiento](../specs/001-registro-acceso-barberia/spec.md) | HU02, HU04, HU05 | RF01, RF04, RF06, RF18 | EQ-07, EQ-08, EQ-09, EQ-10, EQ-12, EQ-13, EQ-14 | ADR-003, 010, 015, 002, 011, 014 | M01 (`identidad`, `barberias`), M03 (`suscripciones`, mínimo), M06 (contexto de tenant, transacción, auditoría), Host | PR07, PR08, PR09, PR10, PR12, PR13, PR14 | Especificada y planificada; sin código |
 
 Plan, modelo de datos y contrato de la funcionalidad: [plan](../specs/001-registro-acceso-barberia/plan.md) · [modelo de datos](../specs/001-registro-acceso-barberia/data-model.md) · [OpenAPI](../specs/001-registro-acceso-barberia/contracts/openapi.yaml).

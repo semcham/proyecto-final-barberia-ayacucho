@@ -122,7 +122,7 @@ proyecto-final-barberia-ayacucho/
 │   │   ├── 04-atributos-de-calidad.md         AC01–AC10
 │   │   ├── 05-restricciones.md                RC01–RC16
 │   │   ├── 06-driver-arquitectonicos.md       DA01–DA12
-│   │   ├── 07-decisiones-arquitectonicas.md   ADR-001–ADR-014
+│   │   ├── 07-decisiones-arquitectonicas.md   ADR-001–ADR-015
 │   │   └── 08-escenarios-atributos-calidad.md EQ-01–EQ-22
 │   │
 │   ├── 02-arquitectura-software/              cómo se organiza el sistema

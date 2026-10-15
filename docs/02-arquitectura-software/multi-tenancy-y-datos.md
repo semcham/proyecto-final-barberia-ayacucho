@@ -27,7 +27,7 @@ Decisiones: [ADR-003](../01-analisis-de-sistema/07-decisiones-arquitectonicas.md
 | 2   | Contexto de tenant por solicitud         | Middleware construye `TenantContext`; los casos de uso lo reciben                      |
 | 3   | Filtro en repositorios                   | Toda consulta lleva `tenant_id`; no hay repositorio sin contexto                       |
 | 4   | **Row-Level Security** en PostgreSQL     | La base rechaza filas de otro tenant aunque el código falle                            |
-| 5   | Rol de base sin privilegio de omitir RLS | La aplicación no usa superusuario ni propietario de tablas; `FORCE ROW LEVEL SECURITY` |
+| 5   | Rol de base sin privilegio de omitir RLS | La aplicación no usa superusuario ni propietario de tablas; `FORCE ROW LEVEL SECURITY`. Única excepción acotada: las 3 funciones de autenticación de ADR-015 |
 | 6   | Claves de caché con tenant               | `t:{tenantId}:...`                                                                     |
 | 7   | Pruebas automáticas de fuga              | PR09 recorre todos los endpoints con un token de otro tenant                           |
 | 8   | Auditoría                                | Registro de acciones sensibles por tenant                                              |
@@ -46,8 +46,19 @@ CREATE POLICY tenant_isolation ON appointment
 
 - _Administrador de la plataforma:_ solo opera sobre tablas globales (`tenant`, `plan`, `subscription`); **no** lee datos de negocio de las barberías. La suspensión se hace sobre `tenant`.
 - _Webhook de pagos:_ llega sin token de usuario. Se identifica el pago por su referencia externa en `payment_transaction` mediante un acceso de sistema restringido y, a partir de ahí, se fija el tenant para actualizar la suscripción.
-- _Inicio de sesión, renovación y activación de cuenta (funcionalidad 001):_ en esos momentos el sistema todavía no conoce la barbería del usuario y las tablas `membership`, `auth_session` y `account_activation` están bajo RLS. Se resuelve con tres funciones `SECURITY DEFINER` propiedad del rol dueño (`auth_resolver_membresia`, `auth_buscar_sesion`, `auth_buscar_activacion`), con `search_path` fijo y `EXECUTE` solo para el rol de la aplicación. Cada una busca por clave exacta, devuelve como máximo una fila y **no acepta `tenant_id` como parámetro**. Con el `tenant_id` obtenido, el resto del flujo corre en una transacción con RLS normal. Es el mismo patrón de "acceso de sistema restringido" del webhook de pagos, y la prueba de aislamiento (PR09) lo cubre. Es una aplicación de [ADR-003](../01-analisis-de-sistema/07-decisiones-arquitectonicas.md) y ADR-010, no un ADR nuevo.
 - _Conexiones agrupadas (pool):_ usar `set_config(..., true)` dentro de la transacción para que el contexto no se filtre entre solicitudes.
+- _Inicio de sesión, renovación y activación de cuenta ([ADR-015](../01-analisis-de-sistema/07-decisiones-arquitectonicas.md#adr-015-autenticación-antes-de-conocer-el-tenant-y-rls-en-user_account)):_ ocurren sin token, cuando el sistema todavía no conoce la barbería del usuario, y las tablas que consultan (`user_account`, `membership`, `auth_session`, `account_activation`) están bajo RLS. Para esos tres casos hay tres funciones `SECURITY DEFINER` (`auth_resolver_cuenta`, `auth_buscar_sesion`, `auth_buscar_activacion`) cuyo dueño es el rol `barberias_auth` (`NOLOGIN BYPASSRLS`, sin propiedad de tablas), con `search_path` fijo y `EXECUTE` solo para el rol de la aplicación. Cada una busca por una clave exacta, devuelve como máximo una fila y **no recibe `tenant_id`**. Con el `tenant_id` obtenido, el resto del flujo corre en una transacción con RLS normal. Con `FORCE ROW LEVEL SECURITY` ni el dueño de las tablas omite RLS; por eso el dueño de las funciones debe ser un rol con `BYPASSRLS`. Es el mismo patrón de "acceso de sistema restringido" del webhook de pagos, y la prueba de aislamiento (PR09) lo cubre. **Por validar:** que Amazon RDS for PostgreSQL permita crear ese rol.
+
+```sql
+-- Ilustrativo. RLS en user_account: solo se ven cuentas con membresía en el tenant actual
+ALTER TABLE user_account ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_account FORCE ROW LEVEL SECURITY;
+CREATE POLICY cuentas_del_tenant ON user_account FOR SELECT
+  USING (EXISTS (SELECT 1 FROM membership m WHERE m.user_id = user_account.id)); -- membership ya filtra por RLS
+CREATE POLICY cuentas_del_tenant_upd ON user_account FOR UPDATE
+  USING (EXISTS (SELECT 1 FROM membership m WHERE m.user_id = user_account.id));
+CREATE POLICY alta_de_cuenta ON user_account FOR INSERT WITH CHECK (true); -- la cuenta nace antes que su membresía
+```
 
 ## 3. Modelo de datos
 
@@ -271,7 +282,7 @@ erDiagram
 
 </details>
 
-_Notas._ `TENANT`, `PLAN` y `USER_ACCOUNT` son tablas globales (sin RLS por `tenant_id`; el acceso se limita por rol de base). Las demás llevan `tenant_id` con RLS. Un correo de cliente puede existir en varias barberías: el cliente se modela como `customer_profile` por tenant.
+_Notas._ `TENANT` y `PLAN` son tablas globales (sin RLS por `tenant_id`; el acceso se limita por rol de base). `USER_ACCOUNT` es global en el sentido de que no lleva `tenant_id` (una cuenta, un correo), pero tiene RLS: el rol de aplicación solo ve las cuentas con membresía en el tenant actual y no puede leer `password_hash` (ADR-015). Las demás llevan `tenant_id` con RLS. Un correo de cliente puede existir en varias barberías: el cliente se modela como `customer_profile` por tenant.
 
 ### 3.1 Correspondencia con las entidades del enunciado
 

@@ -20,6 +20,7 @@ Un ADR registra **qué** se decidió, **por qué**, qué alternativas se descart
 | ADR-012 | Resiliencia ante servicios externos                                | DA05, DA07, DA08, DA12 | Los servicios externos fallan                                                                            | Reintentos, circuit breaker, degradación, conciliación                                                 |
 | ADR-013 | Notificaciones multicanal al cliente (correo y WhatsApp)           | DA05, DA09, DA11       | El cliente debe recibir la fecha de su cita por el canal que elija, sin acoplar el núcleo a un proveedor | Puerto `NotificationChannel` con adaptadores de correo y WhatsApp; consentimiento; respaldo por correo |
 | ADR-014 | Frontend con React, Vite y TypeScript                              | DA06, DA10             | Poco código obligatorio, ecosistema amplio y tipos compartidos con el backend                            | Interfaz web de una sola página que consume la API REST                                                |
+| ADR-015 | Autenticación antes de conocer el tenant y RLS en `user_account`   | DA01, DA11             | Iniciar sesión exige leer datos protegidos por RLS sin conocer aún la barbería                           | Rol `barberias_auth` NOLOGIN BYPASSRLS dueño de solo 3 funciones acotadas; RLS en `user_account`       |
 
 ---
 
@@ -211,3 +212,31 @@ Un ADR registra **qué** se decidió, **por qué**, qué alternativas se descart
 - **Riesgos:** R13, R14 (curva de aprendizaje). **Mitigación:** convenciones simples definidas en el plan de cada funcionalidad y revisión en cada sprint.
 - **Drivers:** DA06, DA10.
 - **Consecuencias:** se actualiza [tecnologías](../02-arquitectura-software/tecnologias.md); las librerías concretas de interfaz se eligen al planificar la primera funcionalidad.
+
+## ADR-015 Autenticación antes de conocer el tenant y RLS en `user_account`
+
+- **Estado:** Propuesto.
+- **Contexto:** ADR-003 y ADR-010 fijan que el `tenant_id` sale del token y que toda tabla de negocio tiene RLS con `FORCE` y un rol de aplicación sin privilegio para omitirla. Pero tres operaciones ocurren **antes** de tener token: iniciar sesión (buscar la cuenta por correo y su membresía), renovar la sesión (buscar la sesión por el hash del token de renovación) y activar una cuenta (buscar el token de activación). Esas filas están en tablas con RLS (`membership`, `auth_session`, `account_activation`). Además, `user_account` era una tabla global sin RLS que guarda correo y nombre del personal de todas las barberías y que el rol de aplicación podía leer completa. Con `FORCE ROW LEVEL SECURITY`, ni siquiera el dueño de las tablas omite RLS, así que una función `SECURITY DEFINER` de ese dueño tampoco encontraría las filas. Detectado al analizar la funcionalidad [001](../../specs/001-registro-acceso-barberia/spec.md).
+- **Problema:** ¿Cómo resolver esas tres búsquedas sin aceptar el tenant del cliente y sin dar al rol de aplicación la capacidad de omitir RLS? ¿Cómo evitar que un error de código exponga cuentas de otras barberías desde `user_account`?
+- **Alternativas:**
+  - (a) Hacer globales `membership`, `auth_session` y `account_activation`: contradice el principio III (datos de negocio sin RLS).
+  - (b) Dar `BYPASSRLS` al rol de aplicación o a un rol de sistema con conexión propia: superficie enorme; cualquier consulta de ese rol omitiría RLS.
+  - (c) Pedir la barbería en el formulario de inicio de sesión o guardarla en la cookie: el tenant vendría del cliente (prohibido por ADR-010).
+  - (d) Políticas RLS con una excepción activada por una variable de sesión (`app.auth_lookup = on`): el propio rol de aplicación podría activarla con `set_config`, así que no protege nada.
+  - (e) **Un rol dedicado `NOLOGIN BYPASSRLS` que solo es dueño de tres funciones `SECURITY DEFINER` acotadas, más RLS en `user_account`.**
+- **Decisión:** opción (e).
+  1. Rol `barberias_auth` con `NOLOGIN NOSUPERUSER NOINHERIT BYPASSRLS`: nadie puede conectarse con él. Es dueño **únicamente** de tres funciones y tiene `SELECT` solo sobre las columnas que ellas leen.
+  2. Funciones, todas con `SECURITY DEFINER`, `SET search_path = public, pg_temp`, `REVOKE ALL ... FROM PUBLIC` y `GRANT EXECUTE` solo a `barberias_app`:
+     - `auth_resolver_cuenta(email)`: datos para verificar la contraseña y la membresía del personal (`user_id`, `password_hash`, `tenant_id`, `role_code`, estado de membresía y estado del tenant).
+     - `auth_buscar_sesion(token_hash)`: sesión por hash del token de renovación vigente o anterior.
+     - `auth_buscar_activacion(token_hash)`: token de activación por su hash.
+     Cada una busca por una clave exacta, devuelve **como máximo una fila**, no recibe `tenant_id` y no lista ni modifica nada. Con el `tenant_id` obtenido, el resto del flujo corre en una transacción normal con RLS.
+  3. `user_account` pasa a tener RLS con `FORCE`: el rol de aplicación solo ve cuentas que tienen membresía en el tenant de la transacción (la subconsulta sobre `membership` ya está filtrada por RLS). La inserción se permite (`WITH CHECK (true)`) porque la cuenta se crea antes que su membresía; por eso esas inserciones no usan `RETURNING`. El rol de aplicación no recibe `SELECT` sobre `password_hash`: solo la lee `auth_resolver_cuenta`.
+  4. `barberias_owner` (migraciones) es miembro de `barberias_auth` solo para asignarle la propiedad de las funciones. La aplicación nunca se conecta como `barberias_owner`.
+- **Justificación:** la omisión de RLS queda encerrada en tres consultas por clave exacta, revisables y probadas, y el rol de aplicación conserva `NOBYPASSRLS`. Es el mismo patrón de "acceso de sistema restringido" que [multi-tenancy y datos](../02-arquitectura-software/multi-tenancy-y-datos.md) prevé para el webhook de pagos. RLS en `user_account` agrega una barrera de base de datos donde antes solo había código.
+- **Ventajas:** el tenant nunca viene del cliente; el rol de aplicación no puede omitir RLS; superficie mínima y auditable; una consulta con un error en el código ya no puede listar cuentas de otra barbería.
+- **Desventajas:** tres funciones SQL que mantener junto con las migraciones; la creación de un rol `BYPASSRLS` exige privilegios elevados al preparar la base; las inserciones en `user_account` no pueden usar `RETURNING`.
+- **Riesgos:** R01 (fuga entre barberías) si una función devolviera más de una fila o aceptara filtros amplios; errores al cambiar las funciones. **Mitigación:** pruebas automáticas (abajo) en CI y revisión obligatoria de cualquier cambio en estas funciones. **Por validar:** que en **Amazon RDS for PostgreSQL** el usuario administrador pueda crear un rol con `BYPASSRLS`; si no se puede, hay que registrar una alternativa en un nuevo ADR antes del despliegue.
+- **Pruebas (parte de PR09):** (1) cada función devuelve 0 o 1 fila, también con entradas inexistentes; (2) ninguna función tiene un parámetro de tenant; (3) `barberias_auth` no puede iniciar sesión y no es dueño de ninguna tabla; (4) `barberias_app` no tiene `BYPASSRLS`, no puede ejecutar otras funciones `SECURITY DEFINER` y no puede leer `user_account.password_hash`; (5) sin contexto de tenant, `SELECT` sobre `user_account` devuelve 0 filas y, con el contexto de A, no aparece ninguna cuenta de B.
+- **Drivers:** DA01, DA11.
+- **Consecuencias:** se actualizan [multi-tenancy y datos](../02-arquitectura-software/multi-tenancy-y-datos.md) (casos especiales y tablas globales) y la [trazabilidad](../trazabilidad.md); la funcionalidad 001 implementa el rol, las funciones y sus pruebas en su fase fundacional.

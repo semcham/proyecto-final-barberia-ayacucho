@@ -91,7 +91,7 @@ El propietario, que administra todo en su barbería, da de alta a los barberos q
 - Falla a mitad del registro (por ejemplo, después de crear la barbería y antes de crear la suscripción): no debe quedar una barbería sin propietario o sin prueba gratuita; el registro se completa entero o no se crea nada.
 - Dos barberías con el mismo nombre comercial: se permite; cada una tiene su propio espacio de trabajo e identificador.
 - El propietario intenta desactivarse a sí mismo: se rechaza, porque cada barbería debe conservar un propietario activo.
-- Un usuario es desactivado mientras tiene una sesión abierta: su credencial vigente deja de aceptarse a más tardar al vencer o al intentar renovarla, y las operaciones sensibles se validan contra su estado actual.
+- Un usuario es desactivado mientras tiene una sesión abierta: su credencial deja de aceptarse en su siguiente solicitud, aunque no haya vencido, y no puede renovarla ni volver a iniciar sesión.
 - La prueba gratuita vence: el usuario puede seguir iniciando sesión; las restricciones de funciones por estado de suscripción corresponden a RF21/RF22 (fuera de esta funcionalidad).
 - Correo escrito con mayúsculas o espacios: se normaliza para que "Ana@Mail.com " y "ana@mail.com" sean la misma cuenta.
 - Entradas con scripts, inyección o longitudes excesivas en cualquier campo: se rechazan con mensaje controlado y no se ejecutan (EQ-10).
@@ -118,7 +118,7 @@ El propietario, que administra todo en su barbería, da de alta a los barberos q
 - **FR-010**: El sistema MUST limitar los intentos de inicio de sesión: a partir del sexto intento fallido en un minuto para la misma cuenta y origen, MUST rechazarlos con espera creciente.
 - **FR-011**: El sistema MUST permitir cerrar sesión; tras hacerlo, la credencial y su renovación MUST quedar invalidadas.
 - **FR-012**: El sistema MUST rechazar como no autenticada toda solicitud a un recurso protegido sin credencial, con credencial vencida, alterada o invalidada, sin revelar detalles del motivo.
-- **FR-013**: El sistema MUST impedir el inicio de sesión y la renovación de sesión a usuarios desactivados y a usuarios operativos de barberías suspendidas.
+- **FR-013**: El sistema MUST impedir el inicio de sesión y la renovación de sesión a usuarios desactivados y a usuarios operativos de barberías suspendidas. "Barbería suspendida" se refiere al estado de la barbería que administra la plataforma (RF02), no al estado de su suscripción (RF21/RF22, fuera de esta funcionalidad).
 - **FR-014**: Las contraseñas MUST almacenarse solo como resumen con algoritmo lento y sal; nunca en texto legible ni en registros.
 
 **Usuarios y roles (RF06)**

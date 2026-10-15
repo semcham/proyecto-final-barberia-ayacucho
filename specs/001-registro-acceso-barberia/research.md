@@ -50,41 +50,49 @@ paquetes se fijan en `package.json` al iniciar la implementación (constitución
 
 ## R04. Roles de PostgreSQL y RLS
 
-- **Decisión**: dos roles. `barberias_owner` es dueño de tablas y ejecuta migraciones.
-  `barberias_app` (usado por la aplicación) es `NOSUPERUSER NOBYPASSRLS`, no es dueño de ninguna
-  tabla, y recibe solo los `GRANT` necesarios. Toda tabla con `tenant_id` tiene
-  `ENABLE` + `FORCE ROW LEVEL SECURITY` y la política `tenant_isolation` con `USING` y
-  `WITH CHECK` sobre `current_setting('app.tenant_id', true)::uuid`. Sin contexto, la política
-  no devuelve filas.
+- **Decisión**: tres roles.
+  - `barberias_owner` es dueño de las tablas y ejecuta las migraciones; está sujeto a RLS por
+    `FORCE`.
+  - `barberias_app` (el que usa la aplicación) es `NOSUPERUSER NOBYPASSRLS`, no es dueño de
+    ninguna tabla y recibe solo los `GRANT` necesarios.
+  - `barberias_auth` es `NOLOGIN NOSUPERUSER NOINHERIT BYPASSRLS` y solo es dueño de las tres
+    funciones de R05 (ADR-015). `barberias_owner` es miembro de él solo para asignarle esa
+    propiedad.
+  Toda tabla con `tenant_id` tiene `ENABLE` + `FORCE ROW LEVEL SECURITY` y la política
+  `tenant_isolation` con `USING` y `WITH CHECK` sobre
+  `current_setting('app.tenant_id', true)::uuid`. Sin contexto, la política no devuelve filas.
+  `user_account` (sin `tenant_id`) también tiene RLS: solo se ven cuentas con membresía en el
+  tenant actual (ADR-015).
 - **Justificación**: principio III y control 5 de multi-tenancy-y-datos.md. `FORCE` evita que el
   dueño se salte RLS por descuido en scripts.
 - **Alternativas**: un solo rol dueño con RLS (puede omitir RLS: prohibido por la constitución).
+- **Pruebas**: para sembrar y comparar datos sin RLS, las pruebas de integración usan el
+  superusuario del contenedor de Testcontainers (solo en pruebas); nunca `barberias_owner`, que
+  vería 0 filas por `FORCE`.
 
 ## R05. Búsquedas previas a conocer el tenant (inicio de sesión, renovación, activación)
 
-- **Decisión**: tres funciones `SECURITY DEFINER` propiedad de `barberias_owner`, con
+- **Decisión** ([ADR-015](../../docs/01-analisis-de-sistema/07-decisiones-arquitectonicas.md#adr-015-autenticación-antes-de-conocer-el-tenant-y-rls-en-user_account)):
+  tres funciones `SECURITY DEFINER` cuyo dueño es `barberias_auth` (`NOLOGIN BYPASSRLS`), con
   `search_path` fijo, sobre las que `barberias_app` solo tiene `EXECUTE`:
-  - `auth_resolver_membresia(user_id)` → `tenant_id`, `role_code`, estado de membresía y estado
-    del tenant del único miembro activo del personal.
+  - `auth_resolver_cuenta(email)` → `user_id`, `password_hash`, `tenant_id`, `role_code`, estado
+    de membresía y estado del tenant de la membresía de personal de esa cuenta.
   - `auth_buscar_sesion(token_hash)` → `session_id`, `tenant_id`, `user_id`, estado y vencimiento.
   - `auth_buscar_activacion(token_hash)` → `activation_id`, `tenant_id`, `user_id`, vencimiento,
     uso.
   Cada función devuelve como máximo una fila buscada por clave exacta (nunca listas) y no acepta
   `tenant_id` como parámetro. Con el `tenant_id` obtenido, el resto del flujo corre en una
   transacción con RLS normal.
-- **Justificación**: al iniciar sesión el tenant aún no se conoce, y `membership`,
-  `auth_session` y `account_activation` están bajo RLS. Es el mismo patrón de "acceso de sistema
-  restringido" que multi-tenancy-y-datos.md ya prevé para el webhook de pagos. La superficie es
-  mínima, se audita y se prueba en PR09.
-- **Alternativas**:
-  - *Hacer globales esas tablas*: viola el principio III (datos de negocio sin RLS).
-  - *Un rol de sistema con `BYPASSRLS` para el login*: superficie mayor que tres funciones
-    puntuales.
-  - *Poner el tenant en la cookie o en el formulario de login*: el tenant vendría del cliente
-    (prohibido).
-- **Seguimiento documental**: añadir este caso a "Casos especiales" de
-  `docs/02-arquitectura-software/multi-tenancy-y-datos.md` en el mismo cambio que lo implemente
-  (principio XI). Es una aplicación de ADR-003/ADR-010, no un ADR nuevo.
+- **Justificación**: al iniciar sesión el tenant aún no se conoce, y `user_account`,
+  `membership`, `auth_session` y `account_activation` están bajo RLS. Con `FORCE`, una función
+  cuyo dueño fuera `barberias_owner` también quedaría sujeta a RLS y no encontraría las filas; por
+  eso el dueño debe ser un rol con `BYPASSRLS` que nadie puede usar para conectarse. Es el mismo
+  patrón de "acceso de sistema restringido" que multi-tenancy-y-datos.md prevé para el webhook de
+  pagos. La superficie es mínima y se prueba en PR09.
+- **Alternativas**: ver ADR-015 (tablas globales, `BYPASSRLS` para un rol con conexión, tenant del
+  cliente, excepción por variable de sesión).
+- **Registro**: decisión registrada como ADR-015 **antes** de implementar (principio XI).
+  **Por validar:** que Amazon RDS for PostgreSQL permita crear el rol `BYPASSRLS`.
 
 ## R06. Hash de contraseñas (dada: Argon2id o bcrypt)
 
@@ -116,8 +124,13 @@ paquetes se fijan en `package.json` al iniciar la implementación (constitución
   renovación opaco de 256 bits; solo se guarda su SHA-256. Se entrega en cookie `HttpOnly`,
   `Secure`, `SameSite=Strict`, `Path=/api/v1/auth`. Cada renovación **rota** el token; si llega
   uno ya rotado (reutilización), se revoca la sesión completa. Vida de la sesión: 7 días
-  deslizantes con tope absoluto de 30 días. Cerrar sesión marca la sesión como `REVOCADA` y borra
+  deslizantes con tope absoluto de 30 días. Cerrar sesión marca la sesión como `CERRADA` y borra
   la cookie.
+- **Retención** (Ley N.° 29733, minimización): `ip` y `user_agent` se guardan para auditoría y se
+  borran, junto con la fila, 30 días después de que la sesión termina (cerrada, revocada o vencida).
+  La purga es oportunista: cada inicio de sesión de un usuario borra sus sesiones terminadas hace
+  más de 30 días, en la misma transacción. Límite conocido: las sesiones de usuarios que no vuelven
+  a entrar quedan hasta que exista un trabajo programado en M06 (fuera de esta funcionalidad).
 - **Justificación**: FR-008 y FR-011. Un token en cookie `HttpOnly` no lo lee JavaScript (mitiga
   XSS); `SameSite=Strict` + ruta limitada mitiga CSRF sobre la renovación.
 - **Alternativas**: token de renovación en `localStorage` (expuesto a XSS); JWT de renovación
@@ -141,7 +154,9 @@ paquetes se fijan en `package.json` al iniciar la implementación (constitución
 - **Decisión**: contador en PostgreSQL, tabla global `login_attempt` con
   (`email_hash`, `ip`, `intentado_en`). Se rechaza con 429 desde el sexto fallo en 60 s para el par
   cuenta + IP, con espera creciente (`Retry-After` duplica: 30 s, 60 s, 120 s… hasta 15 min). Un
-  acierto borra los fallos del par. Limpieza de filas de más de 24 h. Para el resto de la API,
+  acierto borra los fallos del par. Cada vez que se registra un intento se borran, en la misma
+  sentencia, las filas de más de 24 h (purga oportunista: la tabla nunca crece más allá de un día
+  de intentos). Para el resto de la API,
   `@nestjs/throttler` en memoria por instancia como freno general aproximado.
 - **Justificación**: el conteo debe ser correcto con varias instancias (ADR-006); Redis solo puede
   usarse como caché (principio VIII) y este feature no necesita Redis. Bloquear por par cuenta + IP
@@ -167,7 +182,9 @@ paquetes se fijan en `package.json` al iniciar la implementación (constitución
   `tenant_id`, crea `user_account`, `membership` (PROPIETARIO, ACTIVA), `terms_acceptance`, llama a
   `SuscripcionesApi.iniciarPruebaGratuita(tenantId)` (interfaz pública de M03) y escribe la
   auditoría (M06). Si algo falla, todo se revierte. Luego emite la sesión del propietario
-  (entra directo a su espacio, SC-001).
+  (entra directo a su espacio, SC-001). Los identificadores se generan en la aplicación (UUID v7)
+  y la inserción en `user_account` no usa `RETURNING`, porque la política RLS de lectura de esa
+  tabla aún no ve la cuenta hasta que existe su membresía (ADR-015).
 - **Justificación**: FR-002; la matriz permite M01 → M03 y el diagrama C4 ya muestra "Inicia
   prueba". Es una llamada síncrona con efecto requerido, no un efecto secundario, por eso no va por
   evento.
@@ -217,8 +234,9 @@ paquetes se fijan en `package.json` al iniciar la implementación (constitución
 - **Decisión**: M06 expone `AuditLog.registrar({accion, actorId, recurso, resultado, origen})`;
   toma el tenant del contexto. Tabla `audit_log` con RLS y `GRANT INSERT, SELECT` solamente para
   `barberias_app` (sin `UPDATE`/`DELETE`: inmutable para la aplicación, EQ-13). Las denegaciones
-  por rol y los intentos de tenant ajeno se registran fuera de la transacción del caso de uso
-  (que se revierte) con su propia transacción corta.
+  por rol (las detecte el guard o la comprobación de permisos del caso de uso, R22) y los intentos
+  explícitos de tenant ajeno se registran fuera de la transacción del caso de uso (que se revierte)
+  con su propia transacción corta.
 - **Justificación**: FR-027, EQ-13.
 - **Alternativas**: registros de aplicación en archivo (no consultables ni inmutables).
 
@@ -227,14 +245,18 @@ paquetes se fijan en `package.json` al iniciar la implementación (constitución
 - **Decisión**:
   - Backend: Jest + `supertest`. Dominio: unitarias sin infraestructura. Integración y contrato
     HTTP: PostgreSQL 16 real con Testcontainers, aplicando las migraciones y conectando con
-    `barberias_app` (para que RLS actúe de verdad).
+    `barberias_app` (para que RLS actúe de verdad). Para sembrar datos y comparar filas antes y
+    después se usa el superusuario del contenedor, solo en pruebas (R04).
   - **PR09 aislamiento**: (a) suite parametrizada que recorre cada endpoint protegido de la
     funcionalidad con el token de la barbería A sobre recursos de B (ids, cuerpo, encabezado) y
     espera 404/400 y datos de B intactos; (b) prueba directa en base: con `barberias_app`, una
-    consulta sin `set_config` devuelve 0 filas en cada tabla con RLS, y con el contexto de A no
-    aparece ninguna fila de B; (c) cada función `SECURITY DEFINER` devuelve como máximo una fila.
-  - PR07 autenticación, PR08 matriz RBAC parametrizada, PR10 entradas inválidas, PR12 límite de
-    intentos, PR13 auditoría.
+    consulta sin `set_config` devuelve 0 filas en cada tabla con RLS (incluida `user_account`), y
+    con el contexto de A no aparece ninguna fila de B; (c) las pruebas de ADR-015 sobre las tres
+    funciones `SECURITY DEFINER` y los roles; (d) verificación automática de que las consultas de
+    los repositorios filtran por `tenant_id` (principio III).
+  - PR07 autenticación, PR08 matriz RBAC parametrizada (guard) más pruebas unitarias de permisos
+    en cada caso de uso (R22), PR10 entradas inválidas, PR12 límite de intentos, PR13 auditoría
+    (suite propia que recorre todas las acciones de FR-027).
   - **PR14 arquitectura**: `dependency-cruiser` con reglas para la matriz de módulos (solo
     `index.ts` entre módulos) y la regla de capas (`domain` no importa `@nestjs/*`, `kysely`, `pg`,
     `argon2`, `jose` ni otras capas externas).
@@ -258,7 +280,7 @@ paquetes se fijan en `package.json` al iniciar la implementación (constitución
 ## R20. Entorno local
 
 - **Decisión**: `tecnologia/plataforma-barberias/docker-compose.yml` con `postgres:16`
-  (script de inicio que crea `barberias_owner` y `barberias_app`), `backend` (Nest en modo watch)
+  (script de inicio que crea `barberias_owner`, `barberias_app` y `barberias_auth`), `backend` (Nest en modo watch)
   y `frontend` (Vite). Secretos en `.env` local no versionado, con `.env.example` versionado.
   Redis **no** se levanta en esta funcionalidad porque no hay lecturas que cachear.
 - **Justificación**: dado por el usuario; principio VIII no obliga a usar Redis donde no aporta.
@@ -269,3 +291,21 @@ paquetes se fijan en `package.json` al iniciar la implementación (constitución
 - **Decisión**: el formato único de api-rest.md `{ codigo, mensaje, detalles }`, aplicado por un
   filtro global de excepciones que traduce errores de dominio a HTTP y nunca expone trazas.
 - **Justificación**: api-rest.md §1; EQ-07 (sin detalles en 401).
+
+## R22. Autorización por rol en la capa de aplicación
+
+- **Decisión**: cada caso de uso protegido recibe un `Actor` (`usuarioId`, `tenantId`, `rol`,
+  construido por el host a partir del token verificado) y, como primera instrucción, llama a
+  `Autorizacion.exigir(actor, operacion)` en `identidad/application/autorizacion.ts`. La matriz
+  `operacion → roles permitidos` es una regla de dominio pura en
+  `identidad/domain/permisos.ts` y refleja [contracts/rbac.md](contracts/rbac.md). Si el rol no
+  está permitido, lanza `AccesoDenegado` (403 `ACCESO_DENEGADO`) y registra `ACCESO_DENEGADO_ROL`
+  (R17). El `RolesGuard` del host se mantiene como primera barrera en HTTP, con la misma matriz.
+- **Justificación**: la constitución ("Restricciones: RBAC en la capa de aplicación") y ADR-010.
+  Cuando M04 invoque estos casos de uso como herramientas de IA (principio VI), no pasarán por el
+  guard HTTP; la comprobación en la aplicación garantiza el permiso en cualquier punto de entrada.
+- **Alternativas**: solo el guard HTTP (deja fuera a otros puntos de entrada: incumple la
+  constitución); decoradores en los casos de uso (ocultan la regla y acoplan a Nest).
+- **Pruebas**: unitarias por caso de uso con un actor `BARBERO` (debe lanzar `AccesoDenegado` sin
+  tocar repositorios) y con un actor `PROPIETARIO` (debe continuar); una prueba de consistencia
+  verifica que la matriz de `permisos.ts` coincide con la de `RolesGuard`.

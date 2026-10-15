@@ -38,8 +38,10 @@ npm run test            # formularios y manejo de sesión
 ```
 
 Esperado: todo en verde. Suites obligatorias que deben aparecer en el informe:
-`aislamiento-tenant (PR09)`, `autenticacion (PR07)`, `rbac (PR08)`, `entradas (PR10)`,
-`limite-intentos (PR12)`, `auditoria (PR13)`, `arquitectura (PR14)`.
+`aislamiento/rls`, `aislamiento/funciones-definer`, `aislamiento/aislamiento-tenant` y
+`aislamiento/filtro-repositorios` (PR09, ADR-015), `autenticacion (PR07)`, `rbac (PR08)` y
+`autorizacion` (permisos en casos de uso), `entradas (PR10)`, `limite-intentos (PR12)`,
+`auditoria (PR13)`, `arquitectura (PR14)`.
 
 ## 4. Escenarios manuales
 
@@ -61,11 +63,14 @@ Se pueden hacer desde la aplicación web o con cualquier cliente HTTP contra
 | 11 | Autoprotección | El propietario intenta desactivarse a sí mismo | 422 `OPERACION_NO_PERMITIDA` |
 | 12 | Límite del plan | Crear usuarios hasta superar 5 en total | 403 `SUSCRIPCION_NO_PERMITE`, `motivo = LIMITE_USUARIOS` |
 | 13 | Aislamiento (EQ-09) | Registrar "Barbería B" con un usuario. Con el token del propietario de A: `GET /usuarios/{id de B}`, `PATCH` del mismo id, y `POST /usuarios` con `"tenantId": "<id de B>"` en el cuerpo | 404, 404 y 400 respectivamente; los datos de B no cambian; `GET /usuarios` de A no muestra a nadie de B |
-| 14 | RLS en la base | `docker compose exec db psql -U barberias_app -d barberias -c "select count(*) from membership"` | `0` (sin contexto de tenant, RLS no deja ver filas) |
+| 14 | RLS en la base | `docker compose exec db psql -U barberias_app -d barberias -c "select count(*) from membership"` y lo mismo con `user_account` | `0` en ambas (sin contexto de tenant, RLS no deja ver filas; ADR-015) |
+| 15 | Contraseñas no legibles | `docker compose exec db psql -U barberias_app -d barberias -c "select password_hash from user_account"` | Error de permiso: el rol de aplicación no puede leer esa columna |
 
 ## 5. Criterios de cierre
 
-- Escenarios 1–14 conformes.
+- Escenarios 1–15 conformes.
 - Suites de la sección 3 en verde en CI (GitHub Actions bloquea la fusión si fallan).
-- Documentos actualizados en el mismo cambio: caso especial de funciones de autenticación (`docs/02-arquitectura-software/multi-tenancy-y-datos.md`), librerías elegidas
-  (`docs/02-arquitectura-software/tecnologias.md`) y `docs/trazabilidad.md`.
+- ADR-015 aprobado por el equipo y la creación del rol `BYPASSRLS` validada en el entorno de
+  despliegue (Amazon RDS, **por validar**).
+- Documentos actualizados en el mismo cambio que el código: librerías elegidas
+  (`docs/02-arquitectura-software/tecnologias.md`) y estado de componentes en `docs/trazabilidad.md`.

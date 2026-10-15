@@ -15,9 +15,13 @@ con rol BARBERO, que activan su cuenta con un enlace de un solo uso.
 
 El aislamiento descansa en varias barreras: el `tenant_id` sale solo del token, el contexto de
 tenant de M06 fija `app.tenant_id` en cada transacción, los repositorios filtran por tenant,
-PostgreSQL aplica RLS con `FORCE` y un rol sin `BYPASSRLS`, y la suite PR09 lo demuestra. Las
-búsquedas previas a conocer el tenant (login, renovación, activación) usan tres funciones
-`SECURITY DEFINER` acotadas ([research.md](research.md) R05).
+PostgreSQL aplica RLS con `FORCE` (también en `user_account`) y un rol de aplicación sin
+`BYPASSRLS`, y la suite PR09 lo demuestra. Las búsquedas previas a conocer el tenant (login,
+renovación, activación) usan tres funciones `SECURITY DEFINER` acotadas cuyo dueño es el rol
+`barberias_auth` (`NOLOGIN BYPASSRLS`), según
+[ADR-015](../../docs/01-analisis-de-sistema/07-decisiones-arquitectonicas.md#adr-015-autenticación-antes-de-conocer-el-tenant-y-rls-en-user_account)
+y [research.md](research.md) R05. Los permisos por rol se comprueban en dos lugares: el guard HTTP
+y, sobre todo, cada caso de uso en la capa de aplicación (R22).
 
 ## Technical Context
 
@@ -27,8 +31,10 @@ búsquedas previas a conocer el tenant (login, renovación, activación) usan tr
 `@nestjs/throttler`. Frontend: React 19, Vite 6, React Router, TanStack Query, `react-hook-form` +
 `zod`, `openapi-typescript`. Versiones exactas se fijan en `package.json` al iniciar.
 
-**Storage**: PostgreSQL 16 con RLS (`ENABLE` + `FORCE`) en toda tabla con `tenant_id`; roles
-`barberias_owner` (migraciones) y `barberias_app` (`NOBYPASSRLS`). Sin Redis en esta funcionalidad.
+**Storage**: PostgreSQL 16 con RLS (`ENABLE` + `FORCE`) en toda tabla con `tenant_id` y en
+`user_account`; roles `barberias_owner` (migraciones), `barberias_app` (`NOBYPASSRLS`) y
+`barberias_auth` (`NOLOGIN BYPASSRLS`, solo dueño de 3 funciones; creación en Amazon RDS **por
+validar**). Sin Redis en esta funcionalidad.
 
 **Testing**: Backend: Jest + `supertest` + Testcontainers (PostgreSQL real); `dependency-cruiser`
 para PR14. Frontend: Vitest + Testing Library + MSW.
@@ -57,8 +63,8 @@ Gates from `.specify/memory/constitution.md` (v1.0.1).
 | # | Puerta | Antes de Fase 0 | Tras el diseño | Evidencia |
 | - | ------ | --------------- | -------------- | --------- |
 | I | Seis módulos | ✅ | ✅ | Solo M01 (`identidad`, `barberias`), M03 (`suscripciones`, mínimo) y M06. M01→M03 y M01→M06 están permitidos en la matriz. M01 usa `suscripciones-pagos/index.ts` (`iniciarPruebaGratuita`, `obtenerLimiteUsuarios`), nunca sus tablas. Sin módulos nuevos |
-| II | Cuatro capas | ✅ | ✅ | Cada submódulo con `presentation/application/domain/infrastructure`. Puertos donde hay riesgo de cambio: `PasswordHasher`, `TokenSigner`, repositorios, `UnitOfWork`. El dominio no importa Nest, Kysely, `pg`, `argon2` ni `jose` (lo verifica PR14) |
-| III | Aislamiento por barbería | ✅ | ✅ | `tid` solo del JWT verificado (R07, R09); `set_config(..., true)` por transacción (R03); RLS `FORCE` + rol sin bypass (R04); filtro en repositorios; campos de tenant del cliente → 400 (R11); auditoría con tenant. Las funciones `SECURITY DEFINER` (R05) no reciben tenant, devuelven ≤ 1 fila por clave exacta y se prueban en PR09 |
+| II | Cuatro capas | ✅ | ✅ | Cada submódulo con `presentation/application/domain/infrastructure`. Puertos donde hay riesgo de cambio: `PasswordHasher`, `TokenSigner`, repositorios, `UnitOfWork`. El dominio no importa Nest, Kysely, `pg`, `argon2` ni `jose` (lo verifica PR14). RBAC en la capa de aplicación con `Autorizacion.exigir` en cada caso de uso protegido (R22, ADR-010) |
+| III | Aislamiento por barbería | ✅ | ✅ | `tid` solo del JWT verificado (R07, R09); `set_config(..., true)` por transacción (R03); RLS `FORCE` en tablas de tenant y en `user_account`; rol de aplicación sin bypass (R04); filtro por tenant obligatorio en cada repositorio desde su creación y verificado automáticamente; campos de tenant del cliente → 400 (R11); auditoría con tenant. La única omisión de RLS son las 3 funciones de ADR-015 (dueño `barberias_auth`, sin tenant como parámetro, ≤ 1 fila), probadas en PR09 |
 | IV | Citas sin duplicados | N/A | N/A | No se tocan citas |
 | V | Pagos | ✅ | ✅ | El registro no pide ni acepta datos de pago (FR-004); no se toca `PaymentGateway` |
 | VI | IA | N/A | N/A | No se toca M04 |
@@ -66,7 +72,7 @@ Gates from `.specify/memory/constitution.md` (v1.0.1).
 | VIII | Redis solo caché | ✅ | ✅ | No se usa Redis. Revocación y límite de intentos van en PostgreSQL, no en Redis (R09, R10) |
 | IX | Solo web responsive | ✅ | ✅ | SPA React móvil primero |
 | X | Pruebas obligatorias | ✅ | ✅ | Pruebas de dominio, PR07, PR08 ([rbac.md](contracts/rbac.md)), **PR09**, PR10, PR12, PR13 y **PR14**, más pruebas de frontend. PR16 no aplica (no hay reservas). CI bloquea la fusión |
-| XI | ADR | ✅ | ✅ | Todo cabe en ADR-003, -004, -010, -011 y -014; no hace falta un ADR nuevo. Actualizaciones de documentos en el mismo cambio: R05 en `multi-tenancy-y-datos.md`, librerías en `tecnologias.md` (lo pide ADR-014) y `trazabilidad.md` |
+| XI | ADR | ✅ | ✅ | La omisión acotada de RLS para autenticar sin tenant y la RLS en `user_account` quedaron registradas **antes de implementar** como ADR-015 (con `multi-tenancy-y-datos.md` y `trazabilidad.md` ya actualizados). El resto cabe en ADR-003, -004, -010, -011 y -014. Pendiente en el mismo cambio que el código: librerías en `tecnologias.md` (lo pide ADR-014) y estado de componentes en `trazabilidad.md` |
 | XII | Ubicación del código | ✅ | ✅ | Todo el código bajo `tecnologia/plataforma-barberias/`; solo el flujo de CI en `.github/workflows/`, permitido por la excepción de la constitución v1.0.1 |
 
 **Resultado**: pasa sin violaciones. Complexity Tracking vacío.
@@ -78,7 +84,7 @@ Gates from `.specify/memory/constitution.md` (v1.0.1).
 ```text
 specs/001-registro-acceso-barberia/
 ├── plan.md              # Este archivo
-├── research.md          # Fase 0: decisiones R01–R21
+├── research.md          # Fase 0: decisiones R01–R22
 ├── data-model.md        # Fase 1: tablas, RLS, entidades y estados
 ├── quickstart.md        # Fase 1: guía de validación de punta a punta
 ├── contracts/
@@ -96,7 +102,7 @@ tecnologia/plataforma-barberias/
 ├── docker-compose.yml                 # db (postgres:16), backend, frontend
 ├── .env.example
 ├── db/
-│   └── init/01-roles.sql              # crea barberias_owner y barberias_app (NOBYPASSRLS)
+│   └── init/01-roles.sql              # crea barberias_owner, barberias_app (NOBYPASSRLS) y barberias_auth (NOLOGIN BYPASSRLS)
 ├── backend/
 │   ├── package.json
 │   ├── .dependency-cruiser.cjs        # PR14: matriz de módulos + regla de capas
@@ -115,8 +121,9 @@ tecnologia/plataforma-barberias/
 │   │   │   │   │   ├── presentation/  # AuthController, UsuariosController, DTO
 │   │   │   │   │   ├── application/   # IniciarSesion, RenovarSesion, CerrarSesion, ValidarSolicitud,
 │   │   │   │   │   │                  # CrearUsuario, ActivarCuenta, ListarUsuarios, ActualizarUsuario,
-│   │   │   │   │   │                  # RegenerarActivacion; puertos PasswordHasher, TokenSigner, repositorios
-│   │   │   │   │   ├── domain/        # Correo, Contrasena, Rol, Membresia, Sesion, Activacion,
+│   │   │   │   │   │                  # RegenerarActivacion; Autorizacion (RBAC, R22);
+│   │   │   │   │   │                  # puertos PasswordHasher, TokenSigner, repositorios
+│   │   │   │   │   ├── domain/        # Correo, Contrasena, Rol, Permisos, Membresia, Sesion, Activacion,
 │   │   │   │   │   │                  # PoliticaIntentos, LimiteUsuarios, errores de dominio
 │   │   │   │   │   └── infrastructure/ # repositorios Kysely, Argon2Hasher, JoseTokenSigner
 │   │   │   │   └── barberias/
@@ -136,11 +143,12 @@ tecnologia/plataforma-barberias/
 │   │       ├── persistence/           # UnitOfWork (puerto) + KyselyUnitOfWork (set_config por transacción)
 │   │       ├── audit/                 # AuditLog
 │   │       └── clock/                 # Clock (puerto) para probar vencimientos
-│   ├── migrations/                    # Kysely, SQL explícito: tablas, RLS, GRANT, funciones SECURITY DEFINER, semillas
+│   ├── migrations/                    # Kysely, SQL explícito: tablas, RLS, GRANT, funciones SECURITY DEFINER (ADR-015), semillas
 │   └── test/
 │       ├── unit/                      # dominio sin infraestructura
 │       ├── integration/               # Testcontainers: casos de uso + RLS
-│       │   └── aislamiento-tenant.spec.ts   # PR09
+│       │   ├── aislamiento/           # PR09: rls, funciones-definer (ADR-015), aislamiento-tenant, filtro-repositorios
+│       │   └── auditoria.spec.ts      # PR13
 │       ├── contract/                  # HTTP vs openapi.yaml; rbac.spec.ts (PR08)
 │       └── architecture/              # PR14
 └── frontend/
@@ -190,8 +198,8 @@ sequenceDiagram
 | -- | -- | --------- | --- | ---------- | ------ |
 | HU02 | RF01, RF18 | EQ-09 | ADR-003 | M01 `barberias` · `RegistrarBarberia`; M03 `SuscripcionesApi` | Integración de registro, PR09 |
 | HU05 | RF04 | EQ-07, EQ-12 | ADR-010 | M01 `identidad` · `IniciarSesion`, `RenovarSesion`, `CerrarSesion`, `auth.guard` | PR07, PR12 |
-| HU04 | RF06 | EQ-08, EQ-13 | ADR-010 | M01 `identidad` · `CrearUsuario`, `ActualizarUsuario`, `roles.guard`; M06 `AuditLog` | PR08, PR13 |
-| — | (todas) | EQ-09, EQ-10 | ADR-003, ADR-010 | M06 `TenantContext`, `UnitOfWork`; RLS | PR09, PR10 |
+| HU04 | RF06 | EQ-08, EQ-13 | ADR-010 | M01 `identidad` · `CrearUsuario`, `ActualizarUsuario`, `Autorizacion`, `roles.guard`; M06 `AuditLog` | PR08, PR13 |
+| — | (todas) | EQ-09, EQ-10 | ADR-003, ADR-010, ADR-015 | M06 `TenantContext`, `UnitOfWork`; RLS; funciones de autenticación sin tenant | PR09, PR10 |
 | — | — | EQ-14 | ADR-002, ADR-011 | Estructura de capas y módulos | PR14 |
 
 ## Complexity Tracking

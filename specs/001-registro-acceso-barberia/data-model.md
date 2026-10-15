@@ -11,7 +11,7 @@ Nombres de tablas en inglés como en el documento de referencia; entidades de do
 | -------------------- | ------------------ | -------- | --- | ---------------------------------------- |
 | `tenant`             | M01 / barberias    | Global   | No  | `Barberia`                               |
 | `role`               | M01 / identidad    | Global   | No  | `Rol` (objeto de valor)                  |
-| `user_account`       | M01 / identidad    | Global   | No  | `CuentaUsuario`                          |
+| `user_account`       | M01 / identidad    | Global (sin `tenant_id`) | Sí (por membresía, ADR-015) | `CuentaUsuario`  |
 | `membership`         | M01 / identidad    | Tenant   | Sí  | `Membresia`                              |
 | `auth_session`       | M01 / identidad    | Tenant   | Sí  | `Sesion`                                 |
 | `account_activation` | M01 / identidad    | Tenant   | Sí  | `Activacion`                             |
@@ -25,6 +25,11 @@ Tablas globales: acceso de `barberias_app` limitado por `GRANT` por columna/oper
 tenant: `tenant_id uuid NOT NULL`, `ENABLE` + `FORCE ROW LEVEL SECURITY`, política
 `tenant_isolation` (USING y WITH CHECK), `UNIQUE (tenant_id, id)` para claves foráneas compuestas.
 Todas las fechas en `timestamptz` (UTC).
+
+Roles de base de datos (R04, ADR-015): `barberias_owner` (dueño de tablas, migraciones, sujeto a
+RLS por `FORCE`), `barberias_app` (aplicación, `NOBYPASSRLS`) y `barberias_auth` (`NOLOGIN
+BYPASSRLS`, dueño solo de las tres funciones de la sección 5, con `SELECT` solo sobre las columnas
+que ellas leen).
 
 ## 2. Tablas
 
@@ -60,8 +65,11 @@ Solo lectura para `barberias_app`.
 | `is_platform_admin` | boolean      | `DEFAULT false`; siempre `false` en esta funcionalidad                 |
 | `created_at`        | timestamptz  |                                                                        |
 
-No guarda datos de negocio de la barbería. Solo el repositorio de autenticación lee
-`password_hash`; ningún DTO ni registro lo expone.
+No guarda datos de negocio de la barbería. RLS con `FORCE` (ADR-015):
+
+- Política `cuentas_del_tenant` (SELECT y UPDATE): `USING (EXISTS (SELECT 1 FROM membership m WHERE m.user_id = user_account.id))`. Como `membership` ya está filtrada por RLS, solo se ven las cuentas con membresía en el tenant actual; sin contexto, ninguna.
+- Política `alta_de_cuenta` (INSERT): `WITH CHECK (true)`, porque la cuenta se crea antes que su membresía. Por eso estas inserciones no usan `RETURNING` (el id se genera en la aplicación).
+- GRANT a `barberias_app`: `SELECT (id, email, full_name, is_platform_admin, created_at)`, `INSERT` y `UPDATE (password_hash, full_name)`. **Sin** `SELECT` sobre `password_hash`: solo lo lee la función `auth_resolver_cuenta`. Ningún DTO ni registro lo expone.
 
 ### `membership` (Membresía: usuario ↔ barbería con un rol)
 
@@ -93,9 +101,12 @@ No guarda datos de negocio de la barbería. Solo el repositorio de autenticació
 | `created_at`         | timestamptz |                                                           |
 | `last_used_at`       | timestamptz | Para la vida deslizante de 7 días                         |
 | `absolute_expires_at`| timestamptz | `created_at + 30 días`                                    |
-| `ip`, `user_agent`   | inet, varchar(200) | Para auditoría                                     |
+| `ip`, `user_agent`   | inet, varchar(200) | Para auditoría; se borran con la fila (retención abajo) |
+| `ended_at`           | timestamptz NULL | Momento en que pasó a `CERRADA` o `REVOCADA`          |
 
-Índice `(tenant_id, user_id, status)` para revocar todas las sesiones de un usuario.
+Índice `(tenant_id, user_id, status)` para revocar todas las sesiones de un usuario. Retención
+(R08): cada inicio de sesión borra las sesiones terminadas del mismo usuario (cerradas, revocadas o
+vencidas) hace más de 30 días; GRANT `DELETE` a `barberias_app`.
 
 ### `account_activation` (Activación)
 
@@ -134,7 +145,8 @@ Solo `INSERT, SELECT` para `barberias_app`.
 | `ip`           | inet        |                                             |
 | `attempted_at` | timestamptz |                                             |
 
-Índice `(email_hash, ip, attempted_at)`. Purga de filas de más de 24 h. Sin datos de barbería.
+Índice `(email_hash, ip, attempted_at)`. Sin datos de barbería. Purga oportunista (R10): cada
+registro de intento borra en la misma sentencia las filas de más de 24 h.
 
 ### `plan` (M03)
 
@@ -193,6 +205,7 @@ recurso de otra barbería da 404 sin este registro (escenario 4 de US3).
 | `PoliticaIntentos`        | Decide bloqueo y `Retry-After` a partir de los fallos de la ventana                                   | FR-010         |
 | `Suscripcion` (M03)       | `iniciarPrueba(plan, ahora)` → `TRIAL`, `trial_ends_at = ahora + trial_days`                          | FR-003         |
 | `LimiteUsuarios` (M01)    | `puedeAgregar(actuales, max)`; cuenta `PENDIENTE` + `ACTIVA`                                          | FR-020         |
+| `Permisos` (M01)          | Matriz `operacion → roles permitidos` de [contracts/rbac.md](contracts/rbac.md); `permite(rol, operacion)` (R22) | FR-021 |
 
 ## 4. Transiciones de estado
 
@@ -222,23 +235,25 @@ stateDiagram-v2
     ACTIVA --> [*]: vencida (7 días sin uso o 30 absolutos)
 ```
 
-## 5. Funciones `SECURITY DEFINER` (R05)
+## 5. Funciones `SECURITY DEFINER` (R05, ADR-015)
 
 | Función                              | Entrada      | Salida (máx. 1 fila)                                                |
 | ------------------------------------ | ------------ | ------------------------------------------------------------------- |
-| `auth_resolver_membresia(uuid)`      | `user_id`    | `tenant_id`, `role_code`, `membership_status`, `tenant_status`      |
+| `auth_resolver_cuenta(varchar)`      | correo normalizado | `user_id`, `password_hash`, `tenant_id`, `role_code`, `membership_status`, `tenant_status` |
 | `auth_buscar_sesion(char(64))`       | hash de token (vigente o anterior) | `session_id`, `tenant_id`, `user_id`, `status`, `es_token_anterior` |
 | `auth_buscar_activacion(char(64))`   | hash de token | `activation_id`, `tenant_id`, `user_id`, `expires_at`, `used_at`, `revoked_at` |
 
-Propiedad de `barberias_owner`, `SET search_path = public, pg_temp`, `REVOKE ALL FROM PUBLIC`,
-`GRANT EXECUTE TO barberias_app`.
+Dueño: `barberias_auth` (`NOLOGIN NOINHERIT BYPASSRLS`, sin propiedad de tablas; `SELECT` solo
+sobre las columnas que leen las funciones). `SET search_path = public, pg_temp`,
+`REVOKE ALL FROM PUBLIC`, `GRANT EXECUTE TO barberias_app`. Ninguna recibe `tenant_id` ni devuelve
+más de una fila. **Por validar:** creación del rol `BYPASSRLS` en Amazon RDS for PostgreSQL.
 
 ## 6. Consultas clave por caso de uso
 
 | Caso de uso                | Tablas (orden)                                                                                   | Transacción |
 | -------------------------- | ------------------------------------------------------------------------------------------------ | ----------- |
-| `RegistrarBarberia`        | `tenant` → `set_config` → `user_account`, `membership`, `terms_acceptance`, M03 `subscription`, `audit_log`, `auth_session` | Una         |
-| `IniciarSesion`            | `login_attempt` → `user_account` → `auth_resolver_membresia` → `set_config` → `auth_session`     | Una tras resolver |
+| `RegistrarBarberia`        | `tenant` → `set_config` → `user_account` (sin `RETURNING`), `membership`, `terms_acceptance`, M03 `subscription`, `audit_log`, `auth_session` | Una         |
+| `IniciarSesion`            | `login_attempt` → `auth_resolver_cuenta` → `set_config` → `auth_session` (purga de terminadas + nueva) | Una tras resolver |
 | `RenovarSesion`            | `auth_buscar_sesion` → `set_config` → `auth_session` (rotar) + verificación de membresía y tenant | Una         |
 | `CerrarSesion`             | `set_config` (del token) → `auth_session`                                                        | Una         |
 | `ValidarSolicitud` (guard) | `set_config` → `auth_session` ⨝ `membership` ⨝ `tenant` por clave                                 | Lectura     |

@@ -6,7 +6,7 @@ Un driver arquitectónico es un requisito, atributo o restricción que **condici
 
 | ID   | Driver                                      | Prioridad | Origen                       | Problema que plantea                                                  | Decisión que responde              | ¿Por qué influye en la arquitectura?                                                                                        |
 | ---- | ------------------------------------------- | --------- | ---------------------------- | --------------------------------------------------------------------- | ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| DA01 | Seguridad y aislamiento entre barberías     | Alta      | AC04, RC08, RF01, RF06       | Una consulta mal filtrada expone datos de otra barbería               | ADR-003, ADR-010                   | Obliga a tener contexto de tenant en cada solicitud, RLS y pruebas de fuga; afecta datos, capas y API                       |
+| DA01 | Seguridad y aislamiento entre barberías     | Alta      | AC04, RC08, RF01, RF06       | Una consulta mal filtrada expone datos de otra barbería               | ADR-003, ADR-010, ADR-015          | Obliga a tener contexto de tenant en cada solicitud, RLS y pruebas de fuga; afecta datos, capas y API                       |
 | DA02 | Consistencia de reservas                    | Alta      | AC07, RF12, RF14             | Dos clientes reservan el mismo barbero y horario a la vez             | ADR-009, ADR-004                   | La disponibilidad definitiva se decide en PostgreSQL (restricción de exclusión y transacciones), no en caché ni en pantalla |
 | DA03 | Rendimiento bajo concurrencia               | Media     | AC01, RF11, RF12             | Picos de consulta de horarios en horas punta                          | ADR-005, ADR-006                   | Caché selectiva para lecturas y capacidad de repartir carga                                                                 |
 | DA04 | Escalabilidad                               | Media     | AC02, RC06                   | Crecer en barberías sin reescribir                                    | ADR-006, ADR-001                   | Backend sin estado, escalable horizontalmente; ruta de evolución por tenant                                                 |
@@ -23,7 +23,7 @@ Un driver arquitectónico es un requisito, atributo o restricción que **condici
 
 | Driver | RF                     | AC         | EQ                         | ADR                                |
 | ------ | ---------------------- | ---------- | -------------------------- | ---------------------------------- |
-| DA01   | RF01, RF02, RF04, RF06 | AC04, AC08 | EQ-07, EQ-08, EQ-09        | ADR-003, ADR-010                   |
+| DA01   | RF01, RF02, RF04, RF06 | AC04, AC08 | EQ-07, EQ-08, EQ-09        | ADR-003, ADR-010, ADR-015          |
 | DA02   | RF11, RF12, RF13, RF14 | AC07       | EQ-16                      | ADR-004, ADR-009                   |
 | DA03   | RF10, RF11, RF12       | AC01       | EQ-01, EQ-02               | ADR-005, ADR-006                   |
 | DA04   | RF01, RF29             | AC02       | EQ-03                      | ADR-001, ADR-006                   |
