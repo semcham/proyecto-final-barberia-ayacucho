@@ -109,7 +109,7 @@ La Guía 03 recomienda Clean Architecture para sistemas con reglas de negocio co
 - En módulos de CRUD simple (catálogo, reportes, notificaciones), el caso de uso puede ser una clase delgada que llama al repositorio.
 - Los **puertos se crean solo donde hay riesgo de cambio o de fallo**: `PaymentGateway`, `AIProvider`, `EmailSender`, `CitaRepository`, `Cache`.
 - Sin mapeos innecesarios: entidades de dominio y DTO se separan solo en los módulos críticos (M02 citas, M03 suscripciones y pagos, M04 asistente).
-- El ejemplo de código de `tecnologia/boilerplate-clean-arquitecture/` es mínimo: solo el caso de uso Reservar cita.
+- El código se construye en `tecnologia/plataforma-barberias/`; la regla de dependencia se verifica con una prueba de arquitectura (PR14).
 
 ## 7. Evolución: de tres a cuatro capas
 

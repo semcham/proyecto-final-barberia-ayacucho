@@ -44,10 +44,10 @@ _Figura. Componentes arquitectónicos de la plataforma (módulos del backend mon
 
 ## 4. Etiquetas de estado
 
-| Elemento                                                                              | Estado                            |
-| ------------------------------------------------------------------------------------- | --------------------------------- |
-| Documentación y diagramas                                                             | Implementado (este entregable)    |
-| Los 6 módulos                                                                         | Planificado                       |
-| Ejemplo mínimo con Clean Architecture en `tecnologia/boilerplate-clean-arquitecture/` | Prototipado (ejemplo con pruebas) |
-| Aplicación móvil nativa                                                               | Futuro (no se diseña)             |
-| Microservicios                                                                        | Futuro, condicionado              |
+| Elemento                                         | Estado                                        |
+| ------------------------------------------------ | --------------------------------------------- |
+| Documentación y diagramas                        | Implementado (este entregable)                |
+| Los 6 módulos                                    | Planificado                                   |
+| Aplicación en `tecnologia/plataforma-barberias/` | Planificado (se construye con SDD y Spec Kit) |
+| Aplicación móvil nativa                          | Futuro (no se diseña)                         |
+| Microservicios                                   | Futuro, condicionado                          |

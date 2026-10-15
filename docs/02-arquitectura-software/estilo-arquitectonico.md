@@ -75,6 +75,8 @@ _Nota._ Las flechas continuas son llamadas por interfaz pública; las discontinu
 
 ## 4. Organización del código
 
+El código de la aplicación vive en `tecnologia/plataforma-barberias/` (`backend/` y `frontend/`). La estructura siguiente corresponde al backend, es decir, a `tecnologia/plataforma-barberias/backend/src/`.
+
 ```text
 backend/src/
   modules/

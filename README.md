@@ -26,6 +26,7 @@ _Una sola plataforma web para que muchas barberías administren sus servicios, b
 | **Escuela / Universidad** | Escuela Profesional de Ingeniería de Sistemas, Universidad Nacional de San Cristóbal de Huamanga (UNSCH) |
 | **Semestre**              | 2026-II                                                                                                  |
 | **Entregable**            | Documentación de arquitectura (primer sprint del proyecto final)                                         |
+| **Nombre comercial**      | Pendiente de aprobación. En todo el repositorio se usa "la plataforma" o "el sistema".                   |
 
 ## 🎯 1. Descripción del caso de estudio
 
@@ -48,7 +49,7 @@ Plataforma **web** SaaS en la que varias barberías gestionan servicios, barbero
 
 El orden sigue el proceso del curso (Guías 02, 03 y 04): _primero se analizan las necesidades, luego se toman las decisiones de arquitectura_.
 
-> **Núcleo y complementos.** Lo que pide la Guía 04 es: `docs/01-analisis-de-sistema` (01 a 08), `arquitectura-inicial`, `estilo`, `enfoque` y `componentes` de `docs/02-arquitectura-software`, `docs/03-diseño-de-software/diseño-interno`, `docs/04-modelo-c4`, `img` y `tecnologia/boilerplate-clean-arquitecture`. El resto (contexto del negocio, tácticas, multi-tenancy, caché, despliegue, seguridad, tecnologías, gestión y trazabilidad) son **complementos** propios de este proyecto SaaS.
+> **Núcleo y complementos.** Lo que pide la Guía 04 es: `docs/01-analisis-de-sistema` (01 a 08), `arquitectura-inicial`, `estilo`, `enfoque` y `componentes` de `docs/02-arquitectura-software`, `docs/03-diseño-de-software/diseño-interno`, `docs/04-modelo-c4`, `img` y `tecnologia` (la aplicación en `tecnologia/plataforma-barberias`). El resto (contexto del negocio, tácticas, multi-tenancy, caché, despliegue, seguridad, tecnologías, gestión y trazabilidad) son **complementos** propios de este proyecto SaaS.
 
 ### Análisis
 
@@ -121,7 +122,7 @@ proyecto-final-barberia-ayacucho/
 │   │   ├── 04-atributos-de-calidad.md         AC01–AC10
 │   │   ├── 05-restricciones.md                RC01–RC16
 │   │   ├── 06-driver-arquitectonicos.md       DA01–DA12
-│   │   ├── 07-decisiones-arquitectonicas.md   ADR-001–ADR-013
+│   │   ├── 07-decisiones-arquitectonicas.md   ADR-001–ADR-014
 │   │   └── 08-escenarios-atributos-calidad.md EQ-01–EQ-22
 │   │
 │   ├── 02-arquitectura-software/              cómo se organiza el sistema
@@ -164,20 +165,17 @@ proyecto-final-barberia-ayacucho/
 ├── img/                                       21 diagramas en PNG, al mismo nivel que docs (código Mermaid en cada documento)
 │
 └── tecnologia/                                ← recursos tecnológicos
-    └── boilerplate-clean-arquitecture/        ejemplo de Clean Architecture (caso de uso "Reservar cita")
-        ├── README.md                          explica el ejemplo y cómo probarlo
-        ├── package.json
-        └── backend/
-            ├── src/
-            │   ├── host/                      raíz de composición
-            │   ├── shared/                    núcleo compartido (M06)
-            │   └── modules/catalogo-citas/citas/  presentation · application · domain · infrastructure
-            └── tests/                         18 pruebas (dominio, caso de uso, arquitectura)
+    └── plataforma-barberias/                  ← la aplicación (se construye con SDD y Spec Kit)
+        ├── README.md                          qué se construye y cómo
+        ├── backend/                           NestJS: módulos M01–M06 (ver estructura planificada)
+        └── frontend/                          React con Vite y TypeScript
 ```
 
 Las imágenes de los diagramas están en `img/` y se incrustan con rutas relativas. Cada una trae su código Mermaid editable en un bloque desplegable.
 
 ### Estructura planificada del backend
+
+Se ubica en `tecnologia/plataforma-barberias/backend/src/`.
 
 Seis módulos (cinco de negocio y un núcleo compartido). Los módulos con dos responsabilidades cercanas se dividen en submódulos, y cada submódulo lleva las mismas cuatro capas (Clean Architecture). La regla de dependencia apunta siempre hacia el dominio.
 
@@ -273,6 +271,10 @@ Fuentes de consulta que respaldan las decisiones de esta documentación. Las cit
 **Marco legal (Perú)**
 
 - Ley N.° 29733, Ley de Protección de Datos Personales, y su reglamento. Verificar el texto vigente en El Peruano y en <https://www.gob.pe>. Esta documentación no constituye asesoría legal.
+
+**Material del curso**
+
+- Guías 02, 03 y 04 de IS-488 Arquitectura de Software (UNSCH, 2026-II) y material de diagramas C4.
 
 ---
 

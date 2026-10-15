@@ -89,6 +89,8 @@ Contenedor (azul medio) · Componente (azul claro) · Sistema externo (gris) · 
 
 Cada componente del diagrama corresponde a una agrupación real de código (carpeta o paquete) del backend, como pide el modelo C4 para este nivel. Cada módulo contiene submódulos y cada submódulo tiene cuatro subcarpetas: `presentation`, `application`, `domain` e `infrastructure`.
 
+Las rutas son relativas a `tecnologia/plataforma-barberias/`.
+
 | Componente                             | Carpeta del código (planificada)                                                    | Interfaz pública                                                                                   |
 | -------------------------------------- | ----------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
 | Host y API REST                        | `backend/src/host/`                                                                 | Rutas y middleware                                                                                 |

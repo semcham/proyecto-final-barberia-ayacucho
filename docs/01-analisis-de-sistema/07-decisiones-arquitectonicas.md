@@ -19,6 +19,7 @@ Un ADR registra **qué** se decidió, **por qué**, qué alternativas se descart
 | ADR-011 | Clean Architecture como enfoque interno (evolución de 3 a 4 capas) | DA06, DA10             | Dominio independiente de frameworks y proveedores                                                        | Regla de dependencia hacia el interior; abstracciones donde hay riesgo                                 |
 | ADR-012 | Resiliencia ante servicios externos                                | DA05, DA07, DA08, DA12 | Los servicios externos fallan                                                                            | Reintentos, circuit breaker, degradación, conciliación                                                 |
 | ADR-013 | Notificaciones multicanal al cliente (correo y WhatsApp)           | DA05, DA09, DA11       | El cliente debe recibir la fecha de su cita por el canal que elija, sin acoplar el núcleo a un proveedor | Puerto `NotificationChannel` con adaptadores de correo y WhatsApp; consentimiento; respaldo por correo |
+| ADR-014 | Frontend con React, Vite y TypeScript                              | DA06, DA10             | Poco código obligatorio, ecosistema amplio y tipos compartidos con el backend                            | Interfaz web de una sola página que consume la API REST                                                |
 
 ---
 
@@ -168,7 +169,7 @@ Un ADR registra **qué** se decidió, **por qué**, qué alternativas se descart
 - **Desventajas:** curva de aprendizaje; más archivos.
 - **Riesgos:** R13, R14. **Mitigación:** plantillas de módulo, alcance acotado.
 - **Drivers:** DA06, DA10.
-- **Consecuencias:** `tecnologia/boilerplate-clean-arquitecture/` incluye un ejemplo mínimo (caso de uso Reservar cita con pruebas), no el sistema completo.
+- **Consecuencias:** la aplicación se construye en `tecnologia/plataforma-barberias/` con esta estructura de capas y módulos.
 
 ## ADR-012 Resiliencia ante servicios externos
 
@@ -196,3 +197,17 @@ Un ADR registra **qué** se decidió, **por qué**, qué alternativas se descart
 - **Riesgos:** R17 (condiciones del proveedor de WhatsApp), R16 (consentimiento). **Mitigación:** consentimiento registrado, respaldo por correo, simulador del canal en pruebas, evaluar proveedor antes de contratar.
 - **Drivers:** DA05, DA09, DA11.
 - **Consecuencias:** WhatsApp se implementa **solo si el proveedor lo permite**; el MVP puede salir con correo. Ver [diseño interno](../03-diseño-de-software/diseño-interno/diseño-interno-de-modulos.md#7-m05-notificaciones).
+
+## ADR-014 Frontend con React, Vite y TypeScript
+
+- **Estado:** Propuesto.
+- **Contexto:** La interfaz web debe ser responsive y consumir la API REST (RC01, RC03). El equipo es pequeño y el tiempo es limitado (RC06, RC14).
+- **Problema:** ¿Con qué tecnología se construye la interfaz web?
+- **Alternativas:** (a) Angular; (b) **React con Vite y TypeScript**; (c) Vue; (d) páginas renderizadas en servidor.
+- **Decisión:** Interfaz web de una sola página con React, Vite y TypeScript, ubicada en `tecnologia/plataforma-barberias/frontend/`. No contiene reglas críticas de negocio: la validación definitiva ocurre en el backend.
+- **Justificación:** Arranque rápido con poco código obligatorio, amplio ecosistema de componentes (agenda, formularios, gráficos de reportes) y TypeScript compartido con NestJS para reutilizar los tipos de la API.
+- **Ventajas:** curva de aprendizaje corta, mucha documentación y ejemplos, buena generación de código con asistentes de IA.
+- **Desventajas:** menos estructura impuesta que Angular; hay que fijar convenciones de carpetas y de manejo de estado.
+- **Riesgos:** R13, R14 (curva de aprendizaje). **Mitigación:** convenciones simples definidas en el plan de cada funcionalidad y revisión en cada sprint.
+- **Drivers:** DA06, DA10.
+- **Consecuencias:** se actualiza [tecnologías](../02-arquitectura-software/tecnologias.md); las librerías concretas de interfaz se eligen al planificar la primera funcionalidad.
