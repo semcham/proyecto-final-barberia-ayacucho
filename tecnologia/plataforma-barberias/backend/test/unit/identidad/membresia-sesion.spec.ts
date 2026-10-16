@@ -125,3 +125,77 @@ describe('Sesion', () => {
     expect(nueva().debePurgarse(despues(1))).toBe(false);
   });
 });
+
+// T121 · Período de gracia en la rotación del token de renovación (FR-008a, research R23).
+describe('Sesion: período de gracia', () => {
+  const GRACIA_MS = 10_000;
+  const ROTACION = despues(1);
+  const segundos = (s: number) => new Date(ROTACION.getTime() + s * 1000);
+  // hash-1 (inicial) → hash-2 (vigente tras rotar en ROTACION).
+  const rotada = () => {
+    const sesion = Sesion.iniciar('s1', 'tenant-a', 'u1', 'hash-1', T0);
+    sesion.rotar('hash-2', ROTACION);
+    return sesion;
+  };
+
+  it('rotar registra el momento de la rotación y deja la gracia disponible', () => {
+    const sesion = rotada();
+    expect(sesion.rotadaEn).toEqual(ROTACION);
+    expect(sesion.graciaUsadaEn).toBeNull();
+    expect(sesion.hashTokenReemplazado).toBeNull();
+  });
+
+  it('clasifica el vigente, el anterior dentro de la ventana y un token desconocido', () => {
+    const sesion = rotada();
+    expect(sesion.clasificarToken('hash-2', segundos(5), GRACIA_MS)).toBe('VIGENTE');
+    expect(sesion.clasificarToken('hash-1', segundos(5), GRACIA_MS)).toBe('GRACIA');
+    expect(sesion.clasificarToken('hash-1', segundos(10), GRACIA_MS)).toBe('GRACIA');
+    expect(sesion.clasificarToken('otro', segundos(5), GRACIA_MS)).toBe('DESCONOCIDO');
+  });
+
+  it('el anterior fuera de la ventana es una reutilización (robo real)', () => {
+    expect(rotada().clasificarToken('hash-1', segundos(11), GRACIA_MS)).toBe('REUTILIZADO');
+  });
+
+  it('la gracia sirve una sola vez: el segundo uso del anterior es una reutilización', () => {
+    const sesion = rotada();
+    sesion.rotarEnGracia('hash-3', segundos(3));
+    expect(sesion.hashTokenVigente).toBe('hash-3');
+    expect(sesion.graciaUsadaEn).toEqual(segundos(3));
+    expect(sesion.clasificarToken('hash-1', segundos(4), GRACIA_MS)).toBe('REUTILIZADO');
+  });
+
+  it('el token que la gracia dejó sin efecto es una reutilización (robo dentro de la ventana)', () => {
+    const sesion = rotada();
+    sesion.rotarEnGracia('hash-3', segundos(3));
+    expect(sesion.hashTokenReemplazado).toBe('hash-2');
+    expect(sesion.clasificarToken('hash-2', segundos(4), GRACIA_MS)).toBe('REUTILIZADO');
+    expect(sesion.clasificarToken('hash-3', segundos(4), GRACIA_MS)).toBe('VIGENTE');
+  });
+
+  it('la gracia no extiende la ventana: se cuenta desde la rotación', () => {
+    const sesion = rotada();
+    sesion.rotarEnGracia('hash-3', segundos(8));
+    expect(sesion.rotadaEn).toEqual(ROTACION);
+  });
+
+  it('una rotación normal reinicia la gracia para el nuevo token anterior', () => {
+    const sesion = rotada();
+    sesion.rotarEnGracia('hash-3', segundos(3));
+    sesion.rotar('hash-4', segundos(60));
+    expect(sesion.graciaUsadaEn).toBeNull();
+    expect(sesion.hashTokenReemplazado).toBeNull();
+    expect(sesion.clasificarToken('hash-3', segundos(65), GRACIA_MS)).toBe('GRACIA');
+    expect(sesion.clasificarToken('hash-2', segundos(65), GRACIA_MS)).toBe('DESCONOCIDO');
+  });
+
+  it('con gracia 0 el anterior es una reutilización de inmediato (comportamiento previo)', () => {
+    expect(rotada().clasificarToken('hash-1', ROTACION, 0)).toBe('REUTILIZADO');
+  });
+
+  it('no se puede usar la gracia en una sesión que no está vigente', () => {
+    const sesion = rotada();
+    sesion.revocar(segundos(1));
+    expect(() => sesion.rotarEnGracia('hash-3', segundos(2))).toThrow(OperacionNoPermitida);
+  });
+});

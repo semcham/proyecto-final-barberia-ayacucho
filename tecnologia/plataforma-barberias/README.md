@@ -70,7 +70,7 @@ Son los mismos pasos que ejecuta el CI ([`.github/workflows/plataforma-barberias
 - Plan técnico: [plan.md](../../specs/001-registro-acceso-barberia/plan.md) · contrato:
   [openapi.yaml](../../specs/001-registro-acceso-barberia/contracts/openapi.yaml) · permisos:
   [rbac.md](../../specs/001-registro-acceso-barberia/contracts/rbac.md).
-- Decisiones: [ADR-014 a ADR-018](../../docs/01-analisis-de-sistema/07-decisiones-arquitectonicas.md)
-  (frontend, autenticación sin tenant, sistema de diseño, indicador de sesión, carga diferida).
+- Decisiones: [ADR-014 a ADR-019](../../docs/01-analisis-de-sistema/07-decisiones-arquitectonicas.md)
+  (frontend, autenticación sin tenant, sistema de diseño, indicador de sesión, carga diferida, período de gracia en la renovación).
 - Librerías, versiones, licencias y mediciones: [tecnologias.md](../../docs/02-arquitectura-software/tecnologias.md).
 - Imágenes de marca (formato, peso máximo, licencia y autoría): [frontend/public/img/README.md](frontend/public/img/README.md).

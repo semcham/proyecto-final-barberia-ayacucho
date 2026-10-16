@@ -79,9 +79,12 @@ Son los mismos pasos que ejecuta el CI. Esperado: todo en verde. Suites obligato
 el informe del backend: `aislamiento/rls`, `aislamiento/funciones-definer`,
 `aislamiento/aislamiento-tenant` y `aislamiento/filtro-repositorios` (PR09, ADR-015),
 `autenticacion (PR07)`, `rbac (PR08)` y `autorizacion` (permisos en casos de uso), `entradas (PR10)`,
-`limite-intentos (PR12)`, `auditoria (PR13)`, `arquitectura (PR14)`. Del frontend (33 pruebas):
-`registro`, `sesion` (incluye el indicador `hay_sesion`, ADR-017), `usuarios`, `activar`, `client` y
-`components/ui`.
+`limite-intentos (PR12)`, `auditoria (PR13)`, `arquitectura (PR14)`. Del frontend (35 pruebas):
+`registro`, `sesion` (incluye el indicador `hay_sesion`, ADR-017), `usuarios`, `activar`, `client`
+(incluye la renovación con Web Locks, ADR-019) y `components/ui`.
+
+Última ejecución completa (2026-10-16, tras el período de gracia de ADR-019): backend unitarias
+122/122, integración 246/246, arquitectura 10/10; frontend 35/35.
 
 ### 3.1 Calidad de la interfaz (Lighthouse y axe-core)
 
@@ -125,10 +128,13 @@ Se pueden hacer desde la aplicación web o con cualquier cliente HTTP contra
 | 13 | Aislamiento (EQ-09) | Registrar "Barbería B" con un usuario. Con el token del propietario de A: `GET /usuarios/{id de B}`, `PATCH` del mismo id, y `POST /usuarios` con `"tenantId": "<id de B>"` en el cuerpo | 404, 404 y 400 respectivamente; los datos de B no cambian; `GET /usuarios` de A no muestra a nadie de B |
 | 14 | RLS en la base | `docker compose exec db psql -U barberias_app -d barberias -c "select count(*) from membership"` y lo mismo con `user_account` | `0` en ambas (sin contexto de tenant, RLS no deja ver filas; ADR-015) |
 | 15 | Contraseñas no legibles | `docker compose exec db psql -U barberias_app -d barberias -c "select password_hash from user_account"` | Error de permiso: el rol de aplicación no puede leer esa columna |
+| 16 | Recarga doble (FR-008a, SC-010) | Iniciar sesión y guardar la cookie `rt` (C1). `POST /auth/refresh` con C1 y **descartar** la cookie de la respuesta (simula que no llegó al navegador). Antes de 10 s, repetir con C1. Luego, una tercera vez con C1. En otra sesión: renovar, esperar más de 10 s y presentar la cookie anterior | Segunda llamada: 200 con cookie nueva y sesión activa, una fila `SESION_RENOVADA_EN_GRACIA`. Tercera llamada: 401, sesión `REVOCADA` y `SESION_REUTILIZADA`. Pasados 10 s: 401 y revocación. En la aplicación web: recargar dos veces muy rápido no cierra la sesión |
 
 ## 5. Criterios de cierre
 
-- Escenarios 1–15 conformes.
+- Escenarios 1–16 conformes. El 16 se añadió el 2026-10-16 con el período de gracia (ADR-019) y está
+  cubierto por pruebas automáticas; **su ejecución manual está pendiente**, junto con la prueba manual con
+  dos pestañas (renovaciones serializadas con Web Locks).
 - Suites de la sección 3 en verde en CI (GitHub Actions bloquea la fusión si fallan).
 - ADR-015 aprobado por el equipo y la creación del rol `BYPASSRLS` validada en el entorno de
   despliegue (Amazon RDS, **por validar**).

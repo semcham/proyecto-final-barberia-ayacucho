@@ -32,5 +32,8 @@ export default defineConfig({
     setupFiles: ['./test/setup.ts'],
     include: ['test/**/*.spec.{ts,tsx}'],
     passWithNoTests: true,
+    // Las esperas de Testing Library llegan a 5 s (test/setup.ts, pantallas con React.lazy): cada prueba
+    // necesita más margen que esos 5 s para no cortarse en equipos o CI cargados.
+    testTimeout: 15_000,
   },
 });

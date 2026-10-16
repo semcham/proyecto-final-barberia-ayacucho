@@ -263,6 +263,46 @@ description: "Lista de tareas de la funcionalidad 001: registro de barbería, ac
 
 ---
 
+## Phase 8: Mejora · Período de gracia en la rotación del token de renovación (FR-008a, SC-010)
+
+**Purpose**: Evitar la revocación de sesiones legítimas cuando una renovación se interrumpe o se repite muy rápido (riesgo R18), sin debilitar la detección de robo ([research.md](research.md) R23, ADR-019). Toca una función de ADR-015: revisión obligatoria antes de cerrar.
+
+**Independent Test**: Renovar con una cookie, descartar la respuesta y volver a renovar con la misma cookie dentro de 10 s → 200 y sesión activa; repetirlo una tercera vez, presentarla pasados 10 s o presentar la cookie que la gracia dejó sin efecto → 401, sesión revocada y `SESION_REUTILIZADA` en la auditoría.
+
+### Pruebas (primero; deben fallar antes de implementar)
+
+- [X] T121 [P] [US2] Pruebas unitarias de `Sesion` con `Clock` simulado en `tecnologia/plataforma-barberias/backend/test/unit/identidad/membresia-sesion.spec.ts`: `clasificarToken` devuelve `VIGENTE` para el vigente; `GRACIA` para el anterior a los 5 s; `REUTILIZADO` para el anterior a los 11 s, para el anterior tras usar la gracia y para el token reemplazado; `DESCONOCIDO` para otro; con gracia 0 el anterior es `REUTILIZADO` de inmediato; `rotarEnGracia` no cambia `rotatedAt` y una rotación normal posterior reinicia la gracia
+- [X] T122 [P] [US2] Prueba unitaria de la configuración en `tecnologia/plataforma-barberias/backend/test/unit/shared/configuracion.spec.ts`: `REFRESH_GRACIA_SEGUNDOS` vale 10 si no se define, acepta de 0 a 30 y rechaza valores fuera de rango o no enteros al iniciar
+- [X] T123 [P] [US2] Pruebas de integración en `tecnologia/plataforma-barberias/backend/test/integration/identidad/autenticacion.spec.ts`: (a) **recarga doble**: renovar con cookie1 descartando la respuesta y repetir con cookie1 → 200, la cookie nueva sirve, sesión `ACTIVA`, sin `SESION_REUTILIZADA` y con una fila `SESION_RENOVADA_EN_GRACIA`; (b) **robo fuera de la ventana**: renovar, retrasar `rotated_at` 11 s en la base y presentar cookie1 → 401, sesión `REVOCADA`, auditado, y cookie2 y el token de acceso dejan de servir (reemplaza a la prueba actual que reutilizaba de inmediato); (c) **doble reutilización**: cookie1 en gracia → 200, cookie1 otra vez → 401 y revocada; (d) **robo dentro de la ventana**: cookie1 en gracia (el "atacante") y luego cookie2 (el titular) → 401 y revocada; (e) **concurrencia**: dos renovaciones simultáneas con la misma cookie → ambas 200 y sesión `ACTIVA`
+- [X] T124 [P] [US2] Ajustar PR13 en `tecnologia/plataforma-barberias/backend/test/integration/auditoria.spec.ts`: el caso `SESION_REUTILIZADA` retrasa `rotated_at` para simular la reutilización fuera de la ventana; nuevo caso `SESION_RENOVADA_EN_GRACIA` con exactamente una fila completa (`PERMITIDO`)
+- [X] T125 [P] [US2] Ampliar PR09 en `tecnologia/plataforma-barberias/backend/test/integration/aislamiento/funciones-definer.spec.ts`: `auth_buscar_sesion` encuentra el token reemplazado (`es_token_anterior` verdadero), sigue devolviendo 0 o 1 fila y no recibe tenant; `barberias_auth` solo gana `SELECT` sobre `superseded_token_hash`
+- [X] T126 [P] [US2] Prueba del frontend en `tecnologia/plataforma-barberias/frontend/test/api/client.spec.ts`: con `navigator.locks` disponible, `renovarSesion()` pide el bloqueo `renovar-sesion` antes de llamar a `/auth/refresh`; sin `navigator.locks`, renueva igual
+
+### Decisión de arquitectura (constitución XI: antes de implementar)
+
+- [X] T133 [US2] ADR-019 en `docs/01-analisis-de-sistema/07-decisiones-arquitectonicas.md` (estado Propuesto, con las referencias de Okta y Auth0 verificadas en sus fuentes oficiales) y nota en las consecuencias de ADR-015 sobre el cambio en `auth_buscar_sesion`
+
+> **Nota de honestidad (2026-10-16):** el principio XI exige registrar el ADR antes de implementar. El **diseño** (ventana de 10 s, revocación por token reemplazado, auditoría de cada uso, Web Locks) se presentó y aprobó antes de escribir código, pero el **texto** de ADR-019 se redactó **después** de implementar T127–T132, y en la primera versión de este archivo la tarea figuraba al final de la fase. Se reordenó aquí tras `/speckit-analyze` (hallazgo C1). ADR-019 quedó en el mismo cambio que el código, sin confirmar todavía. En adelante, el ADR se escribe antes de la primera tarea de implementación.
+
+### Implementación
+
+- [X] T127 [US2] Migración `tecnologia/plataforma-barberias/backend/migrations/0008_periodo_gracia_renovacion.ts` (registrada en `migrations/index.ts`): columnas `rotated_at`, `grace_used_at` y `superseded_token_hash` (con índice único parcial) en `auth_session`; `GRANT SELECT (superseded_token_hash)` a `barberias_auth`; `CREATE OR REPLACE` de `auth_buscar_sesion` con la misma firma que también busca por `superseded_token_hash`; `down` que lo revierte. Actualizar `src/shared/persistence/db-types.ts`
+- [X] T128 [US2] Dominio en `tecnologia/plataforma-barberias/backend/src/modules/acceso-barberias/identidad/domain/sesion.ts`: campos `rotadaEn`, `graciaUsadaEn` y `hashTokenReemplazado`; `rotar()` fija `rotadaEn` y limpia la gracia; `clasificarToken(hash, ahora, graciaMs)`; `rotarEnGracia(nuevoHash, ahora)` (depende de T127 solo por los nombres de columnas)
+- [X] T129 [P] [US2] Configuración `REFRESH_GRACIA_SEGUNDOS` (entero de 0 a 30, por defecto 10) en `tecnologia/plataforma-barberias/backend/src/shared/config/configuracion.ts` y en `tecnologia/plataforma-barberias/.env.example`
+- [X] T130 [US2] Repositorio y puerto (`application/ports/sesion-repository.ts`, `infrastructure/kysely-sesion-repository.ts`): método nuevo `bloquearParaRenovar(sesionId, usuarioId)`, que lee lo mismo que `estadoDeAcceso` con la fila de la sesión bloqueada (`FOR UPDATE OF auth_session`; membresía y barbería sin bloquear); se elimina `guardarRotacion` (la actualización condicional queda reemplazada por el bloqueo) y su caso en la prueba PR09 `test/integration/aislamiento/filtro-repositorios.spec.ts` pasa a cubrir `bloquearParaRenovar`; `guardar` y `crear` persisten las columnas nuevas
+- [X] T131 [US2] Caso de uso `tecnologia/plataforma-barberias/backend/src/modules/acceso-barberias/identidad/application/renovar-sesion.ts`: dentro de la transacción del tenant, bloquear la sesión, clasificar el token y aplicar rotación normal, gracia (auditada `SESION_RENOVADA_EN_GRACIA`), revocación (`SESION_REUTILIZADA`) o 401; agregar la acción a `src/shared/audit/audit-log.ts`
+- [X] T132 [P] [US2] Frontend `tecnologia/plataforma-barberias/frontend/src/api/client.ts`: `renovarSesion()` se ejecuta dentro de `navigator.locks.request('renovar-sesion', …)` cuando existe, manteniendo la agrupación dentro de la pestaña
+
+### Documentación y cierre
+
+- [X] T136 [P] Documentación afectada: riesgo R18 mitigado con su riesgo residual en `docs/05-gestion/05-riesgos.md`; reglas de rotación en `docs/02-arquitectura-software/seguridad-y-privacidad.md`; fila en `docs/trazabilidad.md`; escenario manual 16 (recarga doble) y recuentos de pruebas en [quickstart.md](quickstart.md); recuentos en `docs/05-gestion/04-pruebas.md`
+- [X] T134 Revisión de la migración `0008` y de `auth_buscar_sesion` (ADR-015) con el responsable antes de cerrar la fase — **aprobada el 2026-10-16**
+- [X] T135 Ejecutar todas las suites (backend: formato, lint, build, unitarias, integración, arquitectura; frontend: formato, lint, build, pruebas) y ejecutar `/speckit-analyze` — **2026-10-16:** backend unitarias 122/122, integración 246/246 (base de Compose con `TEST_DATABASE_ADMIN_URL`), arquitectura 10/10; frontend 35/35; formato, lint y build en verde. Durante la ejecución una prueba del frontend se cortó por tiempo bajo carga (5,36 s contra el límite de 5 s, igual a la espera máxima de Testing Library): se subió `testTimeout` a 15 s en `tecnologia/plataforma-barberias/frontend/vite.config.ts` (hallazgo L1). `/speckit-analyze`: 1 CRITICAL (C1, documental), 3 MEDIUM y 5 LOW, corregidos salvo L3 (prueba manual con dos pestañas, aceptada por el responsable)
+
+**Checkpoint**: SC-010 cumplido; suites en verde; ADR-019 en estado Propuesto.
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies
@@ -274,6 +314,7 @@ description: "Lista de tareas de la funcionalidad 001: registro de barbería, ac
 - **US3 (Phase 5)**: depende de US2 (la suite HTTP necesita `GET /auth/yo`) y de US1 (T093 verifica los repositorios de US1).
 - **US4 (Phase 6)**: depende de US3 (amplía sus suites en T101) y de US1 (`SuscripcionesApi.obtenerLimiteUsuarios`, `UsuarioRepository`).
 - **Polish (Phase 7)**: después de todas las historias.
+- **Mejora (Phase 8)**: después de Polish; amplía US2. Pruebas T121–T126 en paralelo; ADR-019 (T133) antes de implementar; luego T127 → T128 → T130 → T131 (T129 y T132 en paralelo); T136, T134 y T135 al final.
 
 ### User Story Dependencies
 

@@ -60,7 +60,8 @@ La matriz se convierte en una **prueba parametrizada** (PR08): cada celda es un 
 ## 4. Autenticación y sesiones
 
 - Contraseñas con algoritmo de hash lento y sal: Argon2id en la funcionalidad 001 (ver [tecnologías](tecnologias.md)).
-- Token de acceso de vida corta (15 min) y token de refresco rotativo; cierre de sesión revoca el refresco. Si llega un token de refresco ya rotado, se trata como robo: la sesión se revoca y se audita `SESION_REUTILIZADA` (efecto secundario posible: R18 en la [matriz de riesgos](../05-gestion/05-riesgos.md)).
+- Token de acceso de vida corta (15 min) y token de refresco rotativo; cierre de sesión revoca el refresco. Si llega un token de refresco ya rotado, se trata como robo: la sesión se revoca y se audita `SESION_REUTILIZADA`.
+- **Período de gracia (ADR-019):** el token de refresco inmediatamente anterior se acepta **una sola vez** durante 10 s tras la rotación (`REFRESH_GRACIA_SEGUNDOS`, de 0 a 30), para no cerrar la sesión cuando una renovación se interrumpe o se repite (riesgo R18 de la [matriz de riesgos](../05-gestion/05-riesgos.md)); cada uso se audita (`SESION_RENOVADA_EN_GRACIA`). Fuera de la ventana, el segundo uso o el token que la gracia dejó sin efecto revocan la sesión. La renovación bloquea la fila de la sesión y la interfaz serializa las renovaciones entre pestañas (Web Locks).
 - El token contiene `sub`, `role` y `tenant_id`; no contiene datos personales innecesarios.
 - Mensajes de error genéricos en el inicio de sesión.
 

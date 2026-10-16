@@ -204,8 +204,8 @@ describe('PR13 · Auditoría de acciones sensibles', () => {
     vieneDeLaSolicitud(filas[0], 'correlacion-ajeno');
   });
 
-  it('SESION_REUTILIZADA al usar un token de renovación ya rotado', async () => {
-    const e = await crearEscenario();
+  /** Inicia sesión como el barbero del escenario y renueva una vez; devuelve la cookie ya rotada. */
+  async function cookieRotada(e: Awaited<ReturnType<typeof crearEscenario>>) {
     const inicio = await prueba.agente
       .post('/api/v1/auth/login')
       .send({ correo: e.barberoActivo.correo, contrasena: e.barberoActivo.contrasena })
@@ -215,6 +215,37 @@ describe('PR13 · Auditoría de acciones sensibles', () => {
       .find((c) => c.startsWith('rt='))
       ?.split(';')[0] as string;
     await prueba.agente.post('/api/v1/auth/refresh').set('Cookie', cookie).expect(200);
+    return cookie;
+  }
+
+  it('SESION_RENOVADA_EN_GRACIA al repetir la renovación con el token anterior dentro de la ventana', async () => {
+    const e = await crearEscenario();
+    const cookie = await cookieRotada(e);
+
+    const filas = await registrosNuevos(e.barberia.tenantId, () =>
+      prueba.agente
+        .post('/api/v1/auth/refresh')
+        .set({ Cookie: cookie, 'X-Correlation-Id': 'correlacion-gracia' })
+        .expect(200),
+    );
+    expect(filas).toHaveLength(1);
+    esCompleto(filas[0], {
+      tenantId: e.barberia.tenantId,
+      actorId: e.barberoActivo.id,
+      accion: 'SESION_RENOVADA_EN_GRACIA',
+      resultado: 'PERMITIDO',
+    });
+    vieneDeLaSolicitud(filas[0], 'correlacion-gracia');
+  });
+
+  it('SESION_REUTILIZADA al usar un token de renovación ya rotado fuera del período de gracia', async () => {
+    const e = await crearEscenario();
+    const cookie = await cookieRotada(e);
+    // Simula que la rotación ocurrió hace 11 s (fuera de la ventana de 10 s), sin esperar.
+    await poolDe('seed').query(
+      `UPDATE auth_session SET rotated_at = rotated_at - interval '11 seconds' WHERE tenant_id = $1`,
+      [e.barberia.tenantId],
+    );
 
     const filas = await registrosNuevos(e.barberia.tenantId, () =>
       prueba.agente

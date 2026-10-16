@@ -81,13 +81,25 @@ export function suscribirSesionPerdida(oyente: () => void): () => void {
 let renovacionEnCurso: Promise<SesionResponse | null> | null = null;
 
 /**
+ * Ejecuta la renovación con el bloqueo "renovar-sesion" de la Web Locks API, compartido por todas las
+ * pestañas del sitio: la segunda pestaña renueva después de la primera, ya con la cookie nueva, y no
+ * presenta el token que la primera acaba de rotar (FR-008a). Sin la API, se renueva directamente.
+ */
+function conBloqueoEntrePestanas<T>(tarea: () => Promise<T>): Promise<T> {
+  const locks = typeof navigator === 'undefined' ? undefined : navigator.locks;
+  return locks ? (locks.request('renovar-sesion', tarea) as Promise<T>) : tarea();
+}
+
+/**
  * Pide un token de acceso nuevo con la cookie de renovación (que el servidor rota). Devuelve la sesión
  * renovada, o null si no hay sesión válida.
  */
 export function renovarSesion(): Promise<SesionResponse | null> {
   renovacionEnCurso ??= (async () => {
     try {
-      const respuesta = await fetch(`${BASE}/auth/refresh`, { method: 'POST', credentials: 'include' });
+      const respuesta = await conBloqueoEntrePestanas(() =>
+        fetch(`${BASE}/auth/refresh`, { method: 'POST', credentials: 'include' }),
+      );
       if (!respuesta.ok) {
         tokenEnMemoria.limpiar();
         return null;

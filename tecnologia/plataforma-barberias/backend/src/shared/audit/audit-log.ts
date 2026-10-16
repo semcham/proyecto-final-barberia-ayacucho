@@ -12,7 +12,8 @@ export type AccionAuditada =
   | 'ACTIVACION_REGENERADA'
   | 'ACCESO_DENEGADO_ROL'
   | 'ACCESO_TENANT_AJENO'
-  | 'SESION_REUTILIZADA';
+  | 'SESION_REUTILIZADA'
+  | 'SESION_RENOVADA_EN_GRACIA';
 
 export interface EntradaAuditoria {
   accion: AccionAuditada;

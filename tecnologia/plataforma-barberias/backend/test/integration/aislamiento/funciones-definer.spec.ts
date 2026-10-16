@@ -97,6 +97,19 @@ describe('ADR-015: autenticación sin tenant y RLS en user_account', () => {
       expect(ninguna).toHaveLength(0);
     });
 
+    it('auth_buscar_sesion: también encuentra el token reemplazado por el período de gracia (T125, migración 0008)', async () => {
+      const sembrada = await sembrarSesion({ tenantId: b.tenantId, usuarioId: b.propietarioId });
+      const reemplazado = randomBytes(32).toString('base64url');
+      await poolDe('seed').query(
+        'UPDATE auth_session SET superseded_token_hash = $1 WHERE refresh_token_hash = $2',
+        [hash(reemplazado), hash(sembrada.tokenRenovacion)],
+      );
+      const filas = await comoApp(
+        async (c) => (await c.query('SELECT * FROM auth_buscar_sesion($1)', [hash(reemplazado)])).rows,
+      );
+      expect(filas).toEqual([expect.objectContaining({ tenant_id: b.tenantId, es_token_anterior: true })]);
+    });
+
     it('auth_buscar_activacion: 1 fila por su hash, 0 si no existe', async () => {
       const filas = await comoApp(
         async (c) =>
@@ -138,6 +151,25 @@ describe('ADR-015: autenticación sin tenant y RLS en user_account', () => {
       [FUNCIONES],
     );
     expect(duenos.rows).toEqual([{ dueno: 'barberias_auth', prosecdef: true }]);
+  });
+
+  it('(3b) en auth_session, barberias_auth solo lee las columnas que usa auth_buscar_sesion', async () => {
+    const { rows } = await poolDe('seed').query<{ column_name: string }>(
+      `SELECT column_name FROM information_schema.column_privileges
+       WHERE grantee = 'barberias_auth' AND table_name = 'auth_session' AND privilege_type = 'SELECT'
+       ORDER BY column_name`,
+    );
+    expect(rows.map((fila) => fila.column_name)).toEqual(
+      [
+        'id',
+        'previous_token_hash',
+        'refresh_token_hash',
+        'status',
+        'superseded_token_hash',
+        'tenant_id',
+        'user_id',
+      ].sort(),
+    );
   });
 
   describe('(4) barberias_app', () => {

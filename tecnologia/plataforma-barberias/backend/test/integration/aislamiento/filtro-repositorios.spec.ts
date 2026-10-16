@@ -151,10 +151,10 @@ describe('PR09 · Filtro explícito por tenant en los repositorios (principio II
       ['crear', () => repo().crear(nueva(), {})],
       ['obtener', () => repo().obtener(uuidv7())],
       ['guardar', () => repo().guardar(nueva())],
-      ['guardarRotacion', () => repo().guardarRotacion(nueva(), 'b'.repeat(64))],
       ['revocarTodasDe', () => repo().revocarTodasDe(a.propietarioId, new Date())],
       ['purgarTerminadasDe', () => repo().purgarTerminadasDe(a.propietarioId, new Date())],
       ['estadoDeAcceso', () => repo().estadoDeAcceso(uuidv7(), a.propietarioId)],
+      ['bloquearParaRenovar', () => repo().bloquearParaRenovar(uuidv7(), a.propietarioId)],
     ])('%s', async (_metodo, llamar) => verificar(await sentenciasDe(llamar)));
   });
 

@@ -109,32 +109,101 @@ describe('Autenticación (PR07)', () => {
     await login(vencida.correo, vencida.contrasena).expect(200);
   });
 
-  it('renovar rota la cookie; reutilizar la anterior revoca la sesión y queda auditado', async () => {
-    const inicio = await login(barberia.correo, barberia.contrasena).expect(200);
-    const cookie1 = cookieDe(inicio.headers);
-    const sid = decodeJwt(inicio.body.tokenAcceso).sid as string;
+  describe('rotación del token de renovación y período de gracia (FR-008a, T123)', () => {
+    const renovar = (cookie: string) => prueba.agente.post('/api/v1/auth/refresh').set('Cookie', cookie);
 
-    const renovada = await prueba.agente.post('/api/v1/auth/refresh').set('Cookie', cookie1).expect(200);
-    const cookie2 = cookieDe(renovada.headers);
-    expect(cookie2).not.toBe(cookie1);
-    expect(decodeJwt(renovada.body.tokenAcceso).sid).toBe(sid);
+    /** Inicia sesión en una barbería nueva (auditoría aislada) y renueva una vez: cookie1 → cookie2. */
+    async function sesionRotada() {
+      const propia = await sembrarBarberia();
+      const inicio = await login(propia.correo, propia.contrasena).expect(200);
+      const cookie1 = cookieDe(inicio.headers);
+      const sid = decodeJwt(inicio.body.tokenAcceso).sid as string;
+      const renovada = await renovar(cookie1).expect(200);
+      const cookie2 = cookieDe(renovada.headers);
+      expect(cookie2).not.toBe(cookie1);
+      expect(decodeJwt(renovada.body.tokenAcceso).sid).toBe(sid);
+      return { propia, sid, cookie1, cookie2, tokenAcceso: renovada.body.tokenAcceso as string };
+    }
 
-    await prueba.agente.post('/api/v1/auth/refresh').set('Cookie', cookie1).expect(401);
-    // La sesión quedó revocada: ni la cookie vigente ni el token de acceso sirven ya.
-    await prueba.agente.post('/api/v1/auth/refresh').set('Cookie', cookie2).expect(401);
-    await prueba.agente
-      .get('/api/v1/auth/yo')
-      .set('Authorization', `Bearer ${renovada.body.tokenAcceso}`)
-      .expect(401);
+    const sesionEnBase = async (tenantId: string, sid: string) =>
+      (await filasDe('auth_session', tenantId)).find((fila) => fila.id === sid);
+    const acciones = async (tenantId: string) =>
+      (await filasDe('audit_log', tenantId)).map((fila) => fila.action);
 
-    const sesion = (await filasDe('auth_session', barberia.tenantId)).find((fila) => fila.id === sid);
-    expect(sesion?.status).toBe('REVOCADA');
-    const auditoria = await filasDe('audit_log', barberia.tenantId);
-    expect(auditoria).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ action: 'SESION_REUTILIZADA', actor_id: barberia.propietarioId }),
-      ]),
-    );
+    /** Simula que la rotación ocurrió hace `segundos` (sin esperar en la prueba). */
+    async function retrasarRotacion(sid: string, segundos: number) {
+      await poolDe('seed').query(
+        `UPDATE auth_session SET rotated_at = rotated_at - make_interval(secs => $2) WHERE id = $1`,
+        [sid, segundos],
+      );
+    }
+
+    it('recarga doble: la cookie anterior dentro de la ventana se acepta una vez y la sesión sigue activa', async () => {
+      // La respuesta de la primera renovación "se pierde": el navegador sigue con cookie1.
+      const { propia, sid, cookie1 } = await sesionRotada();
+
+      const repetida = await renovar(cookie1).expect(200);
+      const cookie3 = cookieDe(repetida.headers);
+      await renovar(cookie3).expect(200);
+
+      expect((await sesionEnBase(propia.tenantId, sid))?.status).toBe('ACTIVA');
+      const registradas = await acciones(propia.tenantId);
+      expect(registradas).not.toContain('SESION_REUTILIZADA');
+      expect(registradas.filter((accion) => accion === 'SESION_RENOVADA_EN_GRACIA')).toHaveLength(1);
+    });
+
+    it('robo real: la cookie anterior fuera de la ventana revoca la sesión y queda auditado', async () => {
+      const { propia, sid, cookie1, cookie2, tokenAcceso } = await sesionRotada();
+      await retrasarRotacion(sid, 11);
+
+      await renovar(cookie1).expect(401);
+      // La sesión quedó revocada: ni la cookie vigente ni el token de acceso sirven ya.
+      await renovar(cookie2).expect(401);
+      await prueba.agente.get('/api/v1/auth/yo').set('Authorization', `Bearer ${tokenAcceso}`).expect(401);
+
+      expect((await sesionEnBase(propia.tenantId, sid))?.status).toBe('REVOCADA');
+      expect(await filasDe('audit_log', propia.tenantId)).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ action: 'SESION_REUTILIZADA', actor_id: propia.propietarioId }),
+        ]),
+      );
+    });
+
+    it('doble reutilización: el segundo uso de la cookie anterior dentro de la ventana revoca la sesión', async () => {
+      const { propia, sid, cookie1 } = await sesionRotada();
+
+      const enGracia = await renovar(cookie1).expect(200);
+      await renovar(cookie1).expect(401);
+      await renovar(cookieDe(enGracia.headers)).expect(401);
+
+      expect((await sesionEnBase(propia.tenantId, sid))?.status).toBe('REVOCADA');
+      expect(await acciones(propia.tenantId)).toContain('SESION_REUTILIZADA');
+    });
+
+    it('robo dentro de la ventana: si el titular presenta la cookie que la gracia dejó sin efecto, se revoca', async () => {
+      const { propia, sid, cookie1, cookie2 } = await sesionRotada();
+
+      // Un atacante usa la cookie anterior en la ventana; el titular legítimo conserva cookie2.
+      const atacante = await renovar(cookie1).expect(200);
+      await renovar(cookie2).expect(401);
+      await renovar(cookieDe(atacante.headers)).expect(401);
+
+      expect((await sesionEnBase(propia.tenantId, sid))?.status).toBe('REVOCADA');
+      expect(await acciones(propia.tenantId)).toContain('SESION_REUTILIZADA');
+    });
+
+    it('dos renovaciones simultáneas con la misma cookie se atienden en orden y no revocan la sesión', async () => {
+      const propia = await sembrarBarberia();
+      const inicio = await login(propia.correo, propia.contrasena).expect(200);
+      const cookie = cookieDe(inicio.headers);
+      const sid = decodeJwt(inicio.body.tokenAcceso).sid as string;
+
+      const respuestas = await Promise.all([renovar(cookie), renovar(cookie)]);
+
+      expect(respuestas.map((respuesta) => respuesta.status)).toEqual([200, 200]);
+      expect((await sesionEnBase(propia.tenantId, sid))?.status).toBe('ACTIVA');
+      expect(await acciones(propia.tenantId)).not.toContain('SESION_REUTILIZADA');
+    });
   });
 
   it('tras cerrar sesión, el token de acceso y la cookie dan 401 de inmediato (SC-004)', async () => {

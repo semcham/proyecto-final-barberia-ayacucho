@@ -23,6 +23,14 @@ renovación, activación) usan tres funciones `SECURITY DEFINER` acotadas cuyo d
 y [research.md](research.md) R05. Los permisos por rol se comprueban en dos lugares: el guard HTTP
 y, sobre todo, cada caso de uso en la capa de aplicación (R22).
 
+**Mejora del 2026-10-16 (FR-008a, ADR-019, [research.md](research.md) R23):** período de gracia de
+un solo uso (`REFRESH_GRACIA_SEGUNDOS`, 10 s por defecto) en la rotación del token de renovación.
+La renovación bloquea la fila de la sesión y clasifica el token (vigente, anterior en gracia,
+reutilizado o reemplazado); la migración `0008` agrega `rotated_at`, `grace_used_at` y
+`superseded_token_hash`, y amplía `auth_buscar_sesion` para encontrar el token reemplazado. Como
+toca una función de ADR-015, el cambio exige la revisión obligatoria que ese ADR fija. La interfaz
+serializa las renovaciones entre pestañas con la Web Locks API.
+
 ## Technical Context
 
 **Language/Version**: TypeScript 5 (`strict`) sobre Node.js 22 LTS
@@ -81,6 +89,19 @@ Gates from `.specify/memory/constitution.md` (v1.0.1).
 | XII | Ubicación del código | ✅ | ✅ | Todo el código bajo `tecnologia/plataforma-barberias/`; solo el flujo de CI en `.github/workflows/`, permitido por la excepción de la constitución v1.0.1 |
 
 **Resultado**: pasa. La única excepción (omisión acotada de RLS en 3 funciones, ADR-015) está justificada en Complexity Tracking, como exige la gobernanza de la constitución.
+
+### Reevaluación tras el diseño de la mejora (2026-10-16, FR-008a, ADR-019)
+
+Solo cambian los principios que toca el período de gracia; el resto sigue igual que en la tabla anterior.
+
+| # | Principio | Resultado | Evidencia |
+| - | --------- | --------- | --------- |
+| II | Cuatro capas | ✅ | La regla del token (`clasificarToken`, `rotarEnGracia`) vive en el dominio sin dependencias; `RenovarSesion` lee la ventana de `Configuracion` (M06), igual que `EnlaceActivacion`; el bloqueo queda en el repositorio. PR14 sin violaciones |
+| III | Aislamiento por barbería | ✅ | Siguen siendo 3 funciones `SECURITY DEFINER`; `auth_buscar_sesion` conserva su firma (un parámetro, sin tenant) y como máximo una fila, y ahora también busca por `superseded_token_hash`. `barberias_auth` gana `SELECT` solo sobre esa columna; el rol de aplicación sigue `NOBYPASSRLS` y la renovación sigue en la transacción del tenant con RLS. PR09 ampliado (token reemplazado y permisos por columna). Revisión de ADR-015 aprobada (T134) |
+| X | Pruebas obligatorias | ✅ | Unitarias de dominio con reloj simulado; integración de la recarga doble, robo fuera y dentro de la ventana, doble reutilización y concurrencia; PR09, PR13 y Vitest de la renovación con Web Locks |
+| XI | ADR | ⚠️ cumplido con desvío de orden | ADR-019 registrado y documentos actualizados en el mismo cambio que el código. El diseño se aprobó antes de implementar, pero el texto del ADR se redactó después (ver la nota en `tasks.md`, fase 8) |
+
+**Resultado**: pasa; Complexity Tracking no cambia (la omisión de RLS sigue limitada a las mismas 3 funciones).
 
 ## Project Structure
 
@@ -221,6 +242,7 @@ sequenceDiagram
 | — | — | EQ-14 | ADR-002, ADR-011 | Estructura de capas y módulos | PR14 |
 | HU02, HU04, HU05 | RF01, RF04, RF06 | — (atributo AC06, usabilidad) | ADR-014, ADR-016, ADR-018 | Interfaz web: sistema de diseño, estructura de la aplicación y carga diferida de pantallas | Vitest (registro, usuarios, activar, componentes base); axe-core y Lighthouse (quickstart 3.1) |
 | HU05 | RF04 | EQ-07 | ADR-010, ADR-017 | Interfaz web: `SesionProvider` e indicador `hay_sesion` | Vitest `sesion` |
+| HU05 | RF04 (FR-008a) | EQ-07, EQ-13 | ADR-010, ADR-015, ADR-019 | M01 `identidad` · `Sesion.clasificarToken`, `RenovarSesion` con bloqueo de la sesión; migración `0008`; interfaz: renovación serializada entre pestañas | Unitarias de `Sesion`; integración `autenticacion` (recarga doble, robo fuera de la ventana, doble reutilización, token reemplazado, concurrencia); PR09 `funciones-definer`; PR13; Vitest `client` |
 
 ## Complexity Tracking
 

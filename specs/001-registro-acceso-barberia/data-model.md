@@ -97,6 +97,9 @@ No guarda datos de negocio de la barbería. RLS con `FORCE` (ADR-015):
 | `user_id`            | uuid        | FK compuesta con la membresía del mismo tenant            |
 | `refresh_token_hash` | char(64)    | SHA-256 hex del token vigente; `UNIQUE`                   |
 | `previous_token_hash`| char(64) NULL | Último token rotado, para detectar reutilización        |
+| `rotated_at`         | timestamptz NULL | Momento en que el token vigente reemplazó al anterior; inicio del período de gracia (R23) |
+| `grace_used_at`      | timestamptz NULL | Momento en que se aceptó el token anterior en el período de gracia; `NULL` si no se usó (R23) |
+| `superseded_token_hash` | char(64) NULL | Token vigente que el uso de la gracia dejó sin efecto; presentarlo revoca la sesión (R23) |
 | `status`             | varchar(16) | `CHECK IN ('ACTIVA','CERRADA','REVOCADA')`                |
 | `created_at`         | timestamptz |                                                           |
 | `last_used_at`       | timestamptz | Para la vida deslizante de 7 días                         |
@@ -178,7 +181,7 @@ registro de intento borra en la misma sentencia las filas de más de 24 h.
 | `id`         | uuid PK     |                                                                        |
 | `tenant_id`  | uuid        | Tenant del actor (del contexto)                                        |
 | `actor_id`   | uuid NULL   | `NULL` solo en el registro anónimo previo a crear la cuenta            |
-| `action`     | varchar(48) | `BARBERIA_REGISTRADA`, `USUARIO_CREADO`, `USUARIO_DESACTIVADO`, `USUARIO_REACTIVADO`, `ACTIVACION_REGENERADA`, `ACCESO_DENEGADO_ROL`, `ACCESO_TENANT_AJENO`, `SESION_REUTILIZADA` |
+| `action`     | varchar(48) | `BARBERIA_REGISTRADA`, `USUARIO_CREADO`, `USUARIO_DESACTIVADO`, `USUARIO_REACTIVADO`, `ACTIVACION_REGENERADA`, `ACCESO_DENEGADO_ROL`, `ACCESO_TENANT_AJENO`, `SESION_REUTILIZADA`, `SESION_RENOVADA_EN_GRACIA` |
 | `resource`   | varchar(80) | p. ej. `usuario:<id>`                                                  |
 | `result`     | varchar(12) | `PERMITIDO` / `DENEGADO`                                               |
 | `ip`         | inet        |                                                                        |
@@ -200,7 +203,7 @@ recurso de otra barbería da 404 sin este registro (escenario 4 de US3).
 | `Slug`                    | Derivado del nombre; solo `[a-z0-9-]`                                                                 | —              |
 | `Rol`                     | `PROPIETARIO`, `BARBERO`; `esAsignablePorPropietario()` solo `BARBERO`                                | FR-015, FR-017 |
 | `Membresia`               | Un rol, fijo; transiciones de estado (abajo); el propietario no puede desactivarse a sí mismo          | FR-016, FR-018, FR-019 |
-| `Sesion`                  | `rotar()`, `cerrar()`, `revocar()`; `estaVigente(ahora)` con 7 días deslizantes y 30 absolutos; detecta reutilización | FR-008, FR-011 |
+| `Sesion`                  | `rotar()`, `cerrar()`, `revocar()`; `estaVigente(ahora)` con 7 días deslizantes y 30 absolutos; `clasificarToken(hash, ahora, graciaMs)` → `VIGENTE`, `GRACIA`, `REUTILIZADO` o `DESCONOCIDO`; `rotarEnGracia()` de un solo uso que no extiende la ventana | FR-008, FR-008a, FR-011 |
 | `Activacion`              | `usar(ahora)` una sola vez, antes de `expires_at`, si no revocada                                     | FR-022         |
 | `PoliticaIntentos`        | Decide bloqueo y `Retry-After` a partir de los fallos de la ventana                                   | FR-010         |
 | `Suscripcion` (M03)       | `iniciarPrueba(plan, ahora)` → `TRIAL`, `trial_ends_at = ahora + trial_days`                          | FR-003         |
@@ -235,12 +238,25 @@ stateDiagram-v2
     ACTIVA --> [*]: vencida (7 días sin uso o 30 absolutos)
 ```
 
+### Token de renovación dentro de una sesión (FR-008a, R23)
+
+Con la fila de la sesión bloqueada (`FOR UPDATE`), el token presentado se clasifica así (`G` =
+`REFRESH_GRACIA_SEGUNDOS`, 10 por defecto, de 0 a 30):
+
+| Token presentado | Condición | Resultado |
+| --- | --- | --- |
+| Vigente | — | Rotación normal: el vigente pasa a anterior, `rotated_at = ahora`, `grace_used_at` y `superseded_token_hash` a `NULL` |
+| Anterior | `ahora − rotated_at ≤ G` y `grace_used_at` nulo | Gracia: token nuevo; el vigente pasa a `superseded_token_hash`; `grace_used_at = ahora`; `rotated_at` no cambia. Auditoría `SESION_RENOVADA_EN_GRACIA` |
+| Anterior | Fuera de la ventana o gracia ya usada | Revocación (`REVOCADA`) y `SESION_REUTILIZADA` |
+| Reemplazado | — | Revocación y `SESION_REUTILIZADA` |
+| Otro | — | 401, sin cambios |
+
 ## 5. Funciones `SECURITY DEFINER` (R05, ADR-015)
 
 | Función                              | Entrada      | Salida (máx. 1 fila)                                                |
 | ------------------------------------ | ------------ | ------------------------------------------------------------------- |
 | `auth_resolver_cuenta(varchar)`      | correo normalizado | `user_id`, `password_hash`, `tenant_id`, `role_code`, `membership_status`, `tenant_status` |
-| `auth_buscar_sesion(char(64))`       | hash de token (vigente o anterior) | `session_id`, `tenant_id`, `user_id`, `status`, `es_token_anterior` |
+| `auth_buscar_sesion(char(64))`       | hash de token (vigente, anterior o reemplazado; el último desde la migración `0008`) | `session_id`, `tenant_id`, `user_id`, `status`, `es_token_anterior` (verdadero si no es el vigente) |
 | `auth_buscar_activacion(char(64))`   | hash de token | `activation_id`, `tenant_id`, `user_id`, `expires_at`, `used_at`, `revoked_at` |
 
 Dueño: `barberias_auth` (`NOLOGIN NOINHERIT BYPASSRLS`, sin propiedad de tablas; `SELECT` solo

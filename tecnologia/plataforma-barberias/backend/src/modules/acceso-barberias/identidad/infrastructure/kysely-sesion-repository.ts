@@ -22,6 +22,9 @@ const COLUMNAS = [
   'auth_session.last_used_at',
   'auth_session.absolute_expires_at',
   'auth_session.ended_at',
+  'auth_session.rotated_at',
+  'auth_session.grace_used_at',
+  'auth_session.superseded_token_hash',
 ] as const;
 
 function aDominio(fila: FilaSesion): Sesion {
@@ -36,6 +39,9 @@ function aDominio(fila: FilaSesion): Sesion {
     ultimoUsoEn: fila.last_used_at,
     venceAbsolutoEn: fila.absolute_expires_at,
     terminadaEn: fila.ended_at,
+    rotadaEn: fila.rotated_at,
+    graciaUsadaEn: fila.grace_used_at,
+    hashTokenReemplazado: fila.superseded_token_hash,
   });
 }
 
@@ -67,6 +73,9 @@ export class KyselySesionRepository extends SesionRepository {
         last_used_at: sesion.ultimoUsoEn,
         absolute_expires_at: sesion.venceAbsolutoEn,
         ended_at: sesion.terminadaEn,
+        rotated_at: sesion.rotadaEn,
+        grace_used_at: sesion.graciaUsadaEn,
+        superseded_token_hash: sesion.hashTokenReemplazado,
         ip: metadatos.ip ?? null,
         user_agent: metadatos.userAgent?.slice(0, 200) ?? null,
       })
@@ -94,27 +103,13 @@ export class KyselySesionRepository extends SesionRepository {
         status: sesion.estado,
         last_used_at: sesion.ultimoUsoEn,
         ended_at: sesion.terminadaEn,
+        rotated_at: sesion.rotadaEn,
+        grace_used_at: sesion.graciaUsadaEn,
+        superseded_token_hash: sesion.hashTokenReemplazado,
       })
       .where('tenant_id', '=', this.tenantId)
       .where('id', '=', sesion.id)
       .execute();
-  }
-
-  async guardarRotacion(sesion: Sesion, hashEsperado: string): Promise<boolean> {
-    const resultado = await this.uow
-      .transaccionActual()
-      .updateTable('auth_session')
-      .set({
-        refresh_token_hash: sesion.hashTokenVigente,
-        previous_token_hash: sesion.hashTokenAnterior,
-        last_used_at: sesion.ultimoUsoEn,
-      })
-      .where('tenant_id', '=', this.tenantId)
-      .where('id', '=', sesion.id)
-      .where('status', '=', 'ACTIVA')
-      .where('refresh_token_hash', '=', hashEsperado)
-      .executeTakeFirst();
-    return Number(resultado.numUpdatedRows) === 1;
   }
 
   async revocarTodasDe(usuarioId: string, ahora: Date): Promise<void> {
@@ -169,7 +164,19 @@ export class KyselySesionRepository extends SesionRepository {
   }
 
   async estadoDeAcceso(sesionId: string, usuarioId: string): Promise<EstadoDeAcceso | null> {
-    const fila = await this.uow
+    return this.leerEstadoDeAcceso(sesionId, usuarioId, false);
+  }
+
+  async bloquearParaRenovar(sesionId: string, usuarioId: string): Promise<EstadoDeAcceso | null> {
+    return this.leerEstadoDeAcceso(sesionId, usuarioId, true);
+  }
+
+  private async leerEstadoDeAcceso(
+    sesionId: string,
+    usuarioId: string,
+    bloquear: boolean,
+  ): Promise<EstadoDeAcceso | null> {
+    const consulta = this.uow
       .transaccionActual()
       .selectFrom('auth_session')
       .innerJoin('membership', (join) =>
@@ -187,8 +194,9 @@ export class KyselySesionRepository extends SesionRepository {
       .where('auth_session.tenant_id', '=', this.tenantId)
       .where('membership.tenant_id', '=', this.tenantId)
       .where('auth_session.id', '=', sesionId)
-      .where('auth_session.user_id', '=', usuarioId)
-      .executeTakeFirst();
+      .where('auth_session.user_id', '=', usuarioId);
+    // Solo se bloquea la fila de la sesión: membresía y barbería se leen sin bloquear.
+    const fila = await (bloquear ? consulta.forUpdate('auth_session') : consulta).executeTakeFirst();
     if (!fila) return null;
     return {
       sesion: aDominio(fila),

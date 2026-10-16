@@ -126,7 +126,8 @@ paquetes se fijan en `package.json` al iniciar la implementación (constitución
 - **Decisión**: al iniciar sesión se crea una fila `auth_session` (bajo RLS) y un token de
   renovación opaco de 256 bits; solo se guarda su SHA-256. Se entrega en cookie `HttpOnly`,
   `Secure`, `SameSite=Strict`, `Path=/api/v1/auth`. Cada renovación **rota** el token; si llega
-  uno ya rotado (reutilización), se revoca la sesión completa. Vida de la sesión: 7 días
+  uno ya rotado (reutilización), se revoca la sesión completa, salvo el uso único dentro del período
+  de gracia (R23, añadido el 2026-10-16). Vida de la sesión: 7 días
   deslizantes con tope absoluto de 30 días. Cerrar sesión marca la sesión como `CERRADA` y borra
   la cookie.
 - **Retención** (Ley N.° 29733, minimización): `ip` y `user_agent` se guardan para auditoría y se
@@ -314,3 +315,50 @@ paquetes se fijan en `package.json` al iniciar la implementación (constitución
 - **Pruebas**: unitarias por caso de uso con un actor `BARBERO` (debe lanzar `AccesoDenegado` sin
   tocar repositorios) y con un actor `PROPIETARIO` (debe continuar); una prueba de consistencia
   verifica que la matriz de `permisos.ts` coincide con la de `RolesGuard`.
+
+## R23. Período de gracia en la rotación del token de renovación (mejora del 2026-10-16)
+
+- **Problema** (riesgo R18 de la matriz de riesgos): si una renovación se completa en el servidor
+  pero su respuesta no llega al navegador (recarga doble, pestaña cerrada, red cortada), el
+  navegador conserva el token anterior y la siguiente renovación se toma como robo y revoca la
+  sesión. Además, dos renovaciones simultáneas con el mismo token podían pisarse: la segunda leía el
+  token ya rotado y lo volvía a rotar, dejando a la primera con un token "anterior".
+- **Decisión**:
+  1. La renovación bloquea la fila de la sesión (`SELECT … FOR UPDATE`) y decide sobre ella, de modo
+     que dos renovaciones con el mismo token se atienden una tras otra.
+  2. Se clasifica el token presentado: **vigente** → rotación normal; **anterior** dentro de
+     `REFRESH_GRACIA_SEGUNDOS` (10 por defecto, de 0 a 30) desde la rotación y sin gracia usada →
+     se acepta una vez, se emite un token nuevo y el vigente pasa a **reemplazado**; **anterior**
+     fuera de la ventana o con la gracia ya usada → **revocación**; **reemplazado** → **revocación**;
+     cualquier otro → 401.
+  3. La gracia no extiende la ventana (se cuenta desde la rotación) y se reinicia en la siguiente
+     rotación normal. Cada uso queda auditado como `SESION_RENOVADA_EN_GRACIA`.
+  4. En la interfaz, las renovaciones se serializan entre pestañas con la Web Locks API
+     (`navigator.locks`), si el navegador la tiene: la segunda pestaña renueva después de la primera,
+     ya con el token nuevo en la cookie.
+- **Por qué 10 segundos**: debe cubrir el tiempo entre que el servidor confirma la rotación y la
+  siguiente renovación con el token viejo: recargar, arrancar la aplicación y llamar a
+  `/auth/refresh`. En la medición de la interfaz (Lighthouse en modo celular con red lenta simulada,
+  2026-10-16) el arranque rondó 2 a 3 s; en 3G real se estima hasta unos 5 s. Diez segundos dan el
+  doble de margen y mantienen corta la ventana en la que un token robado sirve (y solo una vez).
+  Valor por validar con datos de uso.
+- **Referencias** (consultadas el 2026-10-16): Okta llama a esto "grace period for token rotation",
+  30 s por defecto y configurable de 0 a 60 s, durante los cuales el token anterior sigue siendo
+  válido ([Okta Developer](https://developer.okta.com/docs/guides/refresh-tokens/main/)). Auth0 lo
+  llama "Rotation Overlap Period" (`leeway`), en segundos y desactivado por defecto; durante esa
+  ventana Auth0 no aplica la detección de robo
+  ([Auth0 Docs](https://auth0.com/docs/secure/tokens/refresh-tokens/configure-refresh-token-rotation)).
+  Este diseño es más estricto que ambos: un solo uso y detección del token reemplazado.
+- **Justificación**: elimina las revocaciones por cortes legítimos sin debilitar la detección: fuera
+  de la ventana todo sigue igual; dentro, el token anterior sirve una vez, y si un atacante usa la
+  gracia, el titular legítimo presentará el token reemplazado y la sesión se revoca.
+- **Alternativas**: aceptar el anterior sin límite de usos durante la ventana (un token robado
+  serviría varias veces); devolver otra vez el mismo token vigente (solo se guarda su hash);
+  no rotar durante la gracia (el navegador seguiría con el token viejo y la siguiente renovación
+  caería fuera de la ventana); revocar todas las sesiones del usuario (cambia el comportamiento sin
+  que el problema lo pida).
+- **Riesgo residual**: si dos pestañas renuevan a la vez en un navegador sin Web Locks y sus
+  respuestas llegan en orden invertido, el navegador puede quedarse con el token reemplazado y la
+  sesión se revoca.
+- **Datos**: columnas `rotated_at`, `grace_used_at` y `superseded_token_hash` en `auth_session`;
+  `auth_buscar_sesion` (ADR-015) encuentra también el token reemplazado (migración `0008`).

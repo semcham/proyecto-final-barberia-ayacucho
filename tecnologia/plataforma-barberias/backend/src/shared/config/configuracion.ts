@@ -18,6 +18,16 @@ function entero(nombre: string, porDefecto: number): number {
   return numero;
 }
 
+function enteroEnRango(nombre: string, porDefecto: number, minimo: number, maximo: number): number {
+  const valor = process.env[nombre];
+  if (valor === undefined || valor.trim() === '') return porDefecto;
+  const numero = Number(valor);
+  if (!Number.isInteger(numero) || numero < minimo || numero > maximo) {
+    throw new Error(`La variable de entorno ${nombre} debe ser un entero entre ${minimo} y ${maximo}`);
+  }
+  return numero;
+}
+
 // Los PEM pueden venir en una sola línea con "\n" literales (formato de .env).
 function pem(valor: string): string {
   return valor.replace(/\\n/g, '\n');
@@ -46,6 +56,10 @@ export class Configuracion {
     memoriaKib: entero('ARGON2_MEMORY_KIB', 19456),
     iteraciones: entero('ARGON2_TIME_COST', 2),
     paralelismo: entero('ARGON2_PARALLELISM', 1),
+  };
+  readonly sesion = {
+    /** Período de gracia de la rotación del token de renovación (FR-008a): 10 s; 0 lo desactiva. */
+    graciaRenovacionSegundos: enteroEnRango('REFRESH_GRACIA_SEGUNDOS', 10, 0, 30),
   };
   readonly corsOrigen = process.env.CORS_ORIGIN ?? 'http://localhost:5173';
   readonly frontendBaseUrl = process.env.FRONTEND_BASE_URL ?? 'http://localhost:5173';

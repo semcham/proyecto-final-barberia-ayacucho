@@ -52,6 +52,10 @@ export interface AuthSessionTable {
   ended_at: FechaNula;
   ip: string | null;
   user_agent: string | null;
+  // Período de gracia (migración 0008, FR-008a).
+  rotated_at: FechaNula;
+  grace_used_at: FechaNula;
+  superseded_token_hash: string | null;
 }
 
 export interface AccountActivationTable {

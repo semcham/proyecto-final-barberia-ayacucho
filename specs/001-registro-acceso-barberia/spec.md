@@ -6,9 +6,11 @@
 
 **Status**: Draft
 
+**Updated**: 2026-10-16 · mejora: período de gracia en la renovación de la sesión (FR-008a, SC-010; riesgo R18)
+
 **Input**: User description: "Registro de barbería, inicio de sesión con roles y aislamiento por barbería. Una barbería se registra y se crea su espacio de trabajo con su propietario y una prueba gratuita (RF01, RF18). Los usuarios inician y cierran sesión y reciben un token firmado con su rol y su barbería (RF04). El propietario crea usuarios con rol: administrativo o barbero (RF06). Un usuario nunca puede ver ni modificar datos de otra barbería. Lee docs/01-analisis-de-sistema/03-requisitos-funcionales.md, 02-historias-del-usuario.md y 08-escenarios-atributos-calidad.md para los criterios de aceptación y las historias relacionadas."
 
-**Trazabilidad**: HU02, HU04, HU05 → RF01, RF04, RF06, RF18 → EQ-07, EQ-08, EQ-09, EQ-10, EQ-12, EQ-13 → ADR-003, ADR-010 → M01 Acceso y barberías (RF18 en M03) → PR07, PR08, PR09, PR10, PR12, PR13.
+**Trazabilidad**: HU02, HU04, HU05 → RF01, RF04, RF06, RF18 → EQ-07, EQ-08, EQ-09, EQ-10, EQ-12, EQ-13 → ADR-003, ADR-010, ADR-015, ADR-019 → M01 Acceso y barberías (RF18 en M03) → PR07, PR08, PR09, PR10, PR12, PR13.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -46,6 +48,8 @@ Un usuario de una barbería (propietario o barbero) inicia sesión con su correo
 4. **Given** un usuario con sesión iniciada, **When** cierra sesión, **Then** su credencial y su posibilidad de renovarla quedan invalidadas y cualquier uso posterior se rechaza como no autenticado.
 5. **Given** una solicitud a un recurso protegido sin credencial, con credencial vencida o con credencial alterada, **When** llega al sistema, **Then** se rechaza como no autenticada sin revelar detalles del motivo.
 6. **Given** un usuario desactivado o una barbería suspendida, **When** uno de sus usuarios operativos intenta iniciar sesión, **Then** se rechaza el acceso y no se emite credencial.
+7. **Given** un usuario cuya renovación se completó en el servidor pero cuya respuesta no llegó al navegador (recargó la página dos veces muy rápido o se cortó la red), **When** vuelve a renovar con el medio de renovación anterior dentro del período de gracia, **Then** la renovación se acepta una sola vez, recibe un medio de renovación nuevo y su sesión sigue activa.
+8. **Given** un medio de renovación ya reemplazado, **When** se presenta fuera del período de gracia, por segunda vez dentro de él, o se presenta el medio que la gracia dejó sin efecto, **Then** se trata como posible robo: la sesión completa se revoca, cualquier uso posterior se rechaza y queda en la auditoría.
 
 ---
 
@@ -92,6 +96,9 @@ El propietario, que administra todo en su barbería, da de alta a los barberos q
 - Dos barberías con el mismo nombre comercial: se permite; cada una tiene su propio espacio de trabajo e identificador.
 - El propietario intenta desactivarse a sí mismo: se rechaza, porque cada barbería debe conservar un propietario activo.
 - Un usuario es desactivado mientras tiene una sesión abierta: su credencial deja de aceptarse en su siguiente solicitud, aunque no haya vencido, y no puede renovarla ni volver a iniciar sesión.
+- La renovación se interrumpe después de que el servidor la completó (recarga doble, pestaña cerrada, red cortada): el navegador conserva el medio de renovación anterior; dentro del período de gracia se acepta una vez, sin cerrar la sesión (FR-008a).
+- Dos pestañas del mismo navegador renuevan a la vez: la interfaz las ordena para que la segunda use el medio ya renovado; en el servidor, dos renovaciones simultáneas con el mismo medio se atienden una tras otra (la segunda cae en el período de gracia) y ninguna revoca la sesión.
+- Alguien roba un medio de renovación y lo usa dentro del período de gracia: cuando el titular legítimo presente el medio que quedó sin efecto, la sesión se revoca y queda auditado (la gracia no oculta el robo).
 - La prueba gratuita vence: el usuario puede seguir iniciando sesión; las restricciones de funciones por estado de suscripción corresponden a RF21/RF22 (fuera de esta funcionalidad).
 - Correo escrito con mayúsculas o espacios: se normaliza para que "Ana@Mail.com " y "ana@mail.com" sean la misma cuenta.
 - Entradas con scripts, inyección o longitudes excesivas en cualquier campo: se rechazan con mensaje controlado y no se ejecutan (EQ-10).
@@ -114,6 +121,7 @@ El propietario, que administra todo en su barbería, da de alta a los barberos q
 
 - **FR-007**: El sistema MUST permitir a los usuarios activos de una barbería iniciar sesión con correo y contraseña.
 - **FR-008**: Al iniciar sesión, el sistema MUST emitir una credencial de sesión firmada, de vida corta, que contenga la identidad del usuario, su rol y su barbería, junto con un medio para renovarla sin volver a escribir la contraseña mientras la sesión siga vigente.
+- **FR-008a**: El medio de renovación (en el plan y el código, "token de renovación") MUST cambiar en cada uso. El sistema MUST aceptar el medio inmediatamente anterior **una sola vez** si se presenta dentro de un período de gracia corto desde su reemplazo (10 segundos, configurable entre 0 y 30; 0 desactiva la gracia), emitiendo uno nuevo. MUST revocar la sesión completa y auditarlo si el medio anterior se presenta fuera de ese período o por segunda vez, o si se presenta el medio que el uso de la gracia dejó sin efecto. Las renovaciones simultáneas con el mismo medio MUST resolverse de forma ordenada, sin revocar la sesión.
 - **FR-009**: Ante credenciales inválidas, el sistema MUST responder con un mensaje genérico idéntico, sin indicar si falló el correo o la contraseña.
 - **FR-010**: El sistema MUST limitar los intentos de inicio de sesión: a partir del sexto intento fallido en un minuto para la misma cuenta y origen, MUST rechazarlos con espera creciente.
 - **FR-011**: El sistema MUST permitir cerrar sesión; tras hacerlo, la credencial y su renovación MUST quedar invalidadas.
@@ -141,7 +149,7 @@ El propietario, que administra todo en su barbería, da de alta a los barberos q
 
 **Auditoría y validación**
 
-- **FR-027**: El sistema MUST registrar en auditoría, con quién, qué, cuándo, desde dónde y sobre qué barbería: el registro de una barbería, la creación de usuarios, las desactivaciones y reactivaciones, los accesos denegados por rol y los intentos explícitos de indicar otra barbería (campo `tenantId`, `tenant_id` o `barberiaId`, o encabezado `X-Tenant-Id`).
+- **FR-027**: El sistema MUST registrar en auditoría, con quién, qué, cuándo, desde dónde y sobre qué barbería: el registro de una barbería, la creación de usuarios, las desactivaciones y reactivaciones, los accesos denegados por rol, los intentos explícitos de indicar otra barbería (campo `tenantId`, `tenant_id` o `barberiaId`, o encabezado `X-Tenant-Id`), la reutilización de un medio de renovación (revocación) y cada renovación aceptada en el período de gracia (FR-008a).
 - **FR-028**: El sistema MUST validar todas las entradas (formato, longitud, caracteres) y rechazar las inválidas con un mensaje controlado, sin ejecutar su contenido.
 - **FR-029**: El correo MUST normalizarse (sin espacios y sin distinguir mayúsculas) para la unicidad y el inicio de sesión.
 
@@ -168,6 +176,7 @@ El propietario, que administra todo en su barbería, da de alta a los barberos q
 - **SC-007**: El 100 % de las acciones sensibles listadas en FR-027 generan un registro de auditoría completo (EQ-13).
 - **SC-008**: El inicio de sesión con credenciales correctas se completa en menos de 2 segundos para el 95 % de los intentos en operación normal.
 - **SC-009**: El propietario crea un usuario barbero nuevo en menos de 1 minuto.
+- **SC-010**: 0 sesiones revocadas por una renovación interrumpida y repetida dentro del período de gracia, o por dos renovaciones simultáneas con el mismo medio; el 100 % de las reutilizaciones fuera del período, repetidas o con el medio dejado sin efecto revocan la sesión y quedan auditadas.
 
 ## Assumptions
 
@@ -181,4 +190,5 @@ El propietario, que administra todo en su barbería, da de alta a los barberos q
 - Las restricciones de funciones según estado de suscripción (RF21, RF22), el pago (RF23–RF25) y el registro de clientes (RF05) quedan fuera del alcance.
 - La recuperación de contraseña olvidada queda fuera del alcance de esta funcionalidad y se tratará por separado.
 - Las medidas numéricas (5 intentos por minuto, tiempos de respuesta) provienen de los escenarios EQ del proyecto y son propuestas por validar.
+- El período de gracia de 10 segundos (FR-008a) cubre recargar la página y volver a renovar en redes móviles lentas con margen, sin dar a un medio robado más que un uso breve y auditado. Es una propuesta por validar con datos de uso real (ver [research.md](research.md) y ADR-019).
 - La plataforma es solo web responsive; los usuarios acceden desde el navegador de su celular o computadora.

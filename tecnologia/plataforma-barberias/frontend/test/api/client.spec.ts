@@ -1,6 +1,6 @@
 import { http, HttpResponse } from 'msw';
-import { afterEach, describe, expect, it } from 'vitest';
-import { ApiError, llamarApi, tokenEnMemoria } from '../../src/api/client';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { ApiError, llamarApi, renovarSesion, tokenEnMemoria } from '../../src/api/client';
 import { servidor } from '../setup';
 
 // Cliente HTTP (T053): token en memoria, una sola renovación ante 401 y errores tipados.
@@ -73,5 +73,44 @@ describe('llamarApi', () => {
   it('devuelve undefined en respuestas 204', async () => {
     servidor.use(http.post('/api/v1/auth/logout', () => new HttpResponse(null, { status: 204 })));
     await expect(llamarApi('/auth/logout', { metodo: 'POST' })).resolves.toBeUndefined();
+  });
+});
+
+// T126 · Renovación serializada entre pestañas con la Web Locks API (FR-008a, research R23).
+describe('renovarSesion entre pestañas', () => {
+  const sesion = { tokenAcceso: 'renovado', tipo: 'Bearer', expiraEn: 900, usuario: {} };
+
+  afterEach(() => {
+    tokenEnMemoria.limpiar();
+    vi.unstubAllGlobals();
+  });
+
+  it('con navigator.locks, renueva dentro del bloqueo "renovar-sesion"', async () => {
+    const orden: string[] = [];
+    const request = vi.fn(async (nombre: string, tarea: () => Promise<unknown>) => {
+      orden.push(`bloqueo:${nombre}`);
+      const resultado = await tarea();
+      orden.push('liberado');
+      return resultado;
+    });
+    vi.stubGlobal('navigator', { ...navigator, locks: { request } });
+    servidor.use(
+      http.post('/api/v1/auth/refresh', () => {
+        orden.push('refresh');
+        return HttpResponse.json(sesion);
+      }),
+    );
+
+    await expect(renovarSesion()).resolves.toMatchObject({ tokenAcceso: 'renovado' });
+    expect(request).toHaveBeenCalledTimes(1);
+    expect(orden).toEqual(['bloqueo:renovar-sesion', 'refresh', 'liberado']);
+    expect(tokenEnMemoria.obtener()).toBe('renovado');
+  });
+
+  it('sin navigator.locks, renueva igual', async () => {
+    vi.stubGlobal('navigator', { ...navigator, locks: undefined });
+    servidor.use(http.post('/api/v1/auth/refresh', () => HttpResponse.json(sesion)));
+
+    await expect(renovarSesion()).resolves.toMatchObject({ tokenAcceso: 'renovado' });
   });
 });

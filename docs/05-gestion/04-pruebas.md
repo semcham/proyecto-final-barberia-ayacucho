@@ -59,7 +59,7 @@ Las pruebas de este catálogo son **planificadas**, salvo las que ya ejecutó la
 
 ### 2.1 Ejecutadas en la funcionalidad 001
 
-En el entorno local (PostgreSQL 16 real, Testcontainers y Docker Compose), con resultados en verde: PR07, PR08, PR09, PR10, PR12, PR13 y PR14 (backend), las pruebas de interfaz (Vitest, 33 pruebas), PR29 y PR30. La aceptación de extremo a extremo con una herramienta automatizada sigue **planificada**; mientras tanto, los escenarios de la [guía rápida](../../specs/001-registro-acceso-barberia/quickstart.md) se recorrieron por HTTP y en Chrome (§6). Su ejecución en CI está **por confirmar**.
+En el entorno local (PostgreSQL 16 real, Testcontainers y Docker Compose), con resultados en verde: PR07, PR08, PR09, PR10, PR12, PR13 y PR14 (backend), las pruebas de interfaz (Vitest, 35 pruebas), PR29 y PR30. Recuentos de la última ejecución completa (2026-10-16, tras el período de gracia de ADR-019): backend unitarias 122, integración 246 y arquitectura 10; frontend 35, todas en verde. La aceptación de extremo a extremo con una herramienta automatizada sigue **planificada**; mientras tanto, los escenarios de la [guía rápida](../../specs/001-registro-acceso-barberia/quickstart.md) se recorrieron por HTTP y en Chrome (§6). Su ejecución en CI está **por confirmar**.
 
 ## 3. Datos y entornos
 
