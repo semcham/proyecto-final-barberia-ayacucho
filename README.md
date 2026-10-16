@@ -9,7 +9,7 @@
 ![Estilo](https://img.shields.io/badge/estilo-monolito%20modular-2da44e)
 ![Multi-tenancy](https://img.shields.io/badge/multi--tenancy-tenant__id%20%2B%20RLS-d29922)
 ![Modelo](<https://img.shields.io/badge/modelo-C4%20(4%20niveles)-0969da>)
-![Estado](<https://img.shields.io/badge/estado-documentaci%C3%B3n%20(planificado)-lightgrey>)
+![Estado](<https://img.shields.io/badge/estado-funcionalidad%20001%20implementada-2da44e>)
 
 _Una sola plataforma web para que muchas barberías administren sus servicios, barberos, horarios y citas, con datos aislados por barbería._
 
@@ -122,7 +122,7 @@ proyecto-final-barberia-ayacucho/
 │   │   ├── 04-atributos-de-calidad.md         AC01–AC10
 │   │   ├── 05-restricciones.md                RC01–RC16
 │   │   ├── 06-driver-arquitectonicos.md       DA01–DA12
-│   │   ├── 07-decisiones-arquitectonicas.md   ADR-001–ADR-015
+│   │   ├── 07-decisiones-arquitectonicas.md   ADR-001–ADR-018
 │   │   └── 08-escenarios-atributos-calidad.md EQ-01–EQ-22
 │   │
 │   ├── 02-arquitectura-software/              cómo se organiza el sistema
@@ -164,11 +164,21 @@ proyecto-final-barberia-ayacucho/
 │
 ├── img/                                       21 diagramas en PNG, al mismo nivel que docs (código Mermaid en cada documento)
 │
+├── specs/                                     especificaciones de Spec Kit (una carpeta por funcionalidad)
+│   └── 001-registro-acceso-barberia/          spec, plan, tareas, contrato OpenAPI, guía rápida
+│
+├── .github/workflows/                         integración continua (formato, lint, build y pruebas)
+│
 └── tecnologia/                                ← recursos tecnológicos
     └── plataforma-barberias/                  ← la aplicación (se construye con SDD y Spec Kit)
-        ├── README.md                          qué se construye y cómo
-        ├── backend/                           NestJS: módulos M01–M06 (ver estructura planificada)
-        └── frontend/                          React con Vite y TypeScript
+        ├── README.md                          qué contiene y cómo ejecutarla
+        ├── docker-compose.yml                 entorno de desarrollo: db, backend y frontend
+        ├── backend/                           NestJS: hoy M01, M03 (mínimo) y M06 (ver estructura del backend)
+        └── frontend/                          React con Vite y TypeScript, sistema de diseño propio con Radix UI
+            ├── src/styles/                    tokens del sistema de diseño (tema claro y oscuro)
+            ├── src/components/                ui/ (componentes base), app/ (estructura), marca/ (ilustración)
+            ├── src/pages/                     registro, ingreso, activación, inicio y usuarios
+            └── public/                        favicon, robots.txt e img/ (fotos de marca y su licencia)
 ```
 
 Las imágenes de los diagramas están en `img/` y se incrustan con rutas relativas. Cada una trae su código Mermaid editable en un bloque desplegable.
@@ -213,12 +223,25 @@ Si el sistema crece, un submódulo puede promoverse a módulo (o extraerse como 
 | IA                          | Puerto `AIProvider`, herramientas cerradas por rol, sin SQL libre                    |
 | Notificaciones              | Puerto `NotificationChannel` (correo y WhatsApp), asíncrono, con respaldo por correo |
 | Despliegue                  | AWS: Application Load Balancer + varias instancias idénticas del backend             |
+| Interfaz web                | React + Vite + TypeScript; sistema de diseño propio (tema claro y oscuro) con Radix UI; WCAG 2.2 AA; pantallas con carga diferida (ADR-014, 016, 018) |
+| Sesión en el navegador      | Token de acceso solo en memoria; renovación con cookie HttpOnly; indicador `hay_sesion` (ADR-010, 017) |
+
+## ▶️ Cómo ejecutar la aplicación
+
+```powershell
+cd tecnologia/plataforma-barberias
+Copy-Item .env.example .env      # completar las claves JWT de desarrollo
+docker compose up -d
+docker compose exec backend npm run migrate
+```
+
+Aplicación web en <http://localhost:5173> y API en <http://localhost:3000/api/v1/salud>. Ejecución sin Docker, comprobaciones (las mismas del CI) y notas del entorno en el [README de la aplicación](tecnologia/plataforma-barberias/README.md); guía completa con los escenarios de validación en [quickstart.md](specs/001-registro-acceso-barberia/quickstart.md).
 
 ## 🔎 5. Reglas de rigor aplicadas
 
 - Cada dato de Perú o Ayacucho lleva fuente, nivel (nacional o regional) y estado de verificación. Ninguna cifra nacional se atribuye a Ayacucho.
 - Los umbrales numéricos son **metas propuestas por validar** con pruebas. Los precios de planes son **ejemplos hipotéticos**.
-- Cada componente se etiqueta como **implementado, prototipado, planificado o futuro**. En este entregable todo es **planificado**, salvo la documentación misma.
+- Cada componente se etiqueta como **implementado, prototipado, planificado o futuro**. Hoy está **implementada** la funcionalidad 001 (registro de barbería, acceso con roles y aislamiento, con su interfaz web); el resto sigue **planificado**. El estado de cada componente está en la [trazabilidad](docs/trazabilidad.md).
 - Diagramas en Mermaid (compatibles con GitHub). Citas en APA 7.
 
 ## 🏷️ 6. Convenciones

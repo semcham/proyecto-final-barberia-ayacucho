@@ -29,7 +29,10 @@ y, sobre todo, cada caso de uso en la capa de aplicación (R22).
 
 **Primary Dependencies**: Backend: NestJS 11, Kysely + `pg`, `argon2`, `jose`, `class-validator`,
 `@nestjs/throttler`. Frontend: React 19, Vite 6, React Router, TanStack Query, `react-hook-form` +
-`zod`, `openapi-typescript`. Versiones exactas se fijan en `package.json` al iniciar.
+`zod`, `openapi-typescript`; tras el rediseño, Radix UI (`react-dialog`, `react-dropdown-menu`,
+`react-tooltip`, `react-toast`) y fuentes autohospedadas `@fontsource-variable` (Fraunces e Inter)
+(ADR-016). Versiones exactas fijadas en `package.json` (ver
+[tecnologías §5](../../docs/02-arquitectura-software/tecnologias.md)).
 
 **Storage**: PostgreSQL 16 con RLS (`ENABLE` + `FORCE`) en toda tabla con `tenant_id` y en
 `user_account`; roles `barberias_owner` (migraciones), `barberias_app` (`NOBYPASSRLS`) y
@@ -45,7 +48,9 @@ ADR-006). Navegadores móviles y de escritorio actuales.
 **Project Type**: Aplicación web: API REST (NestJS) + SPA responsive (React).
 
 **Performance Goals**: Inicio de sesión p95 < 2 s (SC-008); registro completo en < 3 min de
-interacción (SC-001); guard de autenticación con una sola consulta por clave por solicitud.
+interacción (SC-001); guard de autenticación con una sola consulta por clave por solicitud. Interfaz:
+JavaScript inicial ≤ 400 KB sin comprimir (carga diferida por pantalla, ADR-018), Lighthouse ≥ 90 en
+rendimiento (modo celular), accesibilidad y buenas prácticas, y WCAG 2.2 AA (ADR-016).
 
 **Constraints**: `tenant_id` nunca desde el cliente; 0 fugas entre barberías (SC-003); 100 % de
 tokens inválidos o de sesión cerrada rechazados (SC-004); sexto fallo de login en 60 s → 429
@@ -153,13 +158,24 @@ tecnologia/plataforma-barberias/
 │       └── architecture/              # PR14
 └── frontend/
     ├── package.json
+    ├── index.html                     # aplica el tema guardado antes de pintar
+    ├── public/                        # favicon.svg, robots.txt, img/ (fotos de marca y su README)
     ├── src/
     │   ├── api/                       # cliente HTTP + tipos generados de openapi.yaml
-    │   ├── auth/                      # SesionProvider: token en memoria, renovación silenciosa
-    │   ├── pages/                     # Registro, Ingresar, Activar, Usuarios
+    │   ├── auth/                      # SesionProvider (token en memoria, renovación silenciosa),
+    │   │                              # indicadorSesion (cookie hay_sesion, ADR-017), RutaProtegida, PantallaCarga
+    │   ├── styles/                    # tokens.css (tema claro y oscuro) y global.css (ADR-016)
     │   ├── components/
-    │   └── routes.tsx                 # rutas protegidas por rol
-    └── test/
+    │   │   ├── ui/                    # sistema de diseño: Boton, Campo, Tarjeta, EtiquetaEstado,
+    │   │   │                          # ModalConfirmacion, Avisos, Menu, Ayuda, Esqueleto, EstadoVacio, ConmutadorTema
+    │   │   ├── app/                   # DisenoApp (barra lateral, cabecera, navegación inferior), MenuUsuario,
+    │   │   │                          # EncabezadoPagina (migas de pan)
+    │   │   ├── marca/                 # ImagenMarca e IlustracionBarberia (SVG propio)
+    │   │   └── MarcoAcceso, Logo, Icono, IndicadorFortaleza
+    │   ├── pages/                     # Registro, Ingresar, Activar, Inicio, Usuarios, DialogoEnlace
+    │   ├── tema.ts                    # preferencia de tema (sistema, claro, oscuro)
+    │   └── routes.tsx                 # rutas protegidas por rol, cargadas con React.lazy (ADR-018)
+    └── test/                          # Vitest + Testing Library + MSW
 ```
 
 **Structure Decision**: Aplicación web con backend y frontend separados dentro de
@@ -203,6 +219,8 @@ sequenceDiagram
 | HU04 | RF06 | EQ-08, EQ-13 | ADR-010 | M01 `identidad` · `CrearUsuario`, `ActualizarUsuario`, `Autorizacion`, `roles.guard`; M06 `AuditLog` | PR08, PR13 |
 | — | (todas) | EQ-09, EQ-10 | ADR-003, ADR-010, ADR-015 | M06 `TenantContext`, `UnitOfWork`; RLS; funciones de autenticación sin tenant | PR09, PR10 |
 | — | — | EQ-14 | ADR-002, ADR-011 | Estructura de capas y módulos | PR14 |
+| HU02, HU04, HU05 | RF01, RF04, RF06 | — (atributo AC06, usabilidad) | ADR-014, ADR-016, ADR-018 | Interfaz web: sistema de diseño, estructura de la aplicación y carga diferida de pantallas | Vitest (registro, usuarios, activar, componentes base); axe-core y Lighthouse (quickstart 3.1) |
+| HU05 | RF04 | EQ-07 | ADR-010, ADR-017 | Interfaz web: `SesionProvider` e indicador `hay_sesion` | Vitest `sesion` |
 
 ## Complexity Tracking
 

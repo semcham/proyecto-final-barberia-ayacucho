@@ -59,10 +59,21 @@ La matriz se convierte en una **prueba parametrizada** (PR08): cada celda es un 
 
 ## 4. Autenticación y sesiones
 
-- Contraseñas con algoritmo de hash lento y sal (Argon2id o bcrypt, a definir en tecnologías).
-- Token de acceso de vida corta (propuesta: 15 min) y token de refresco rotativo; cierre de sesión revoca el refresco.
+- Contraseñas con algoritmo de hash lento y sal: Argon2id en la funcionalidad 001 (ver [tecnologías](tecnologias.md)).
+- Token de acceso de vida corta (15 min) y token de refresco rotativo; cierre de sesión revoca el refresco. Si llega un token de refresco ya rotado, se trata como robo: la sesión se revoca y se audita `SESION_REUTILIZADA` (efecto secundario posible: R18 en la [matriz de riesgos](../05-gestion/05-riesgos.md)).
 - El token contiene `sub`, `role` y `tenant_id`; no contiene datos personales innecesarios.
 - Mensajes de error genéricos en el inicio de sesión.
+
+### 4.1 Qué guarda el navegador
+
+| Dato | Dónde | Características | Decisión |
+| --- | --- | --- | --- |
+| Token de acceso | Memoria de la página (nunca en `localStorage`, `sessionStorage` ni cookies) | Se pierde al recargar; se recupera con la renovación | ADR-010 |
+| Token de renovación `rt` | Cookie | `HttpOnly`, `Secure`, `SameSite=Strict`, `Path=/api/v1/auth`, 7 días, rotativa; JavaScript no puede leerla | ADR-010 |
+| Indicador `hay_sesion=1` | Cookie | No secreta ni da acceso; `SameSite=Strict`, `Secure` con HTTPS, 7 días; solo evita llamar a `/auth/refresh` sin sesión | ADR-017 |
+| Preferencia de tema (`tema`) | `localStorage` | Solo `claro` u `oscuro`; sin datos personales; si no se puede guardar, se usa el tema del sistema | ADR-016 |
+
+Las cookies `rt` y `hay_sesion` son técnicas (necesarias para mantener la sesión) y deben figurar en la política de privacidad y de cookies.
 
 ## 5. Privacidad y protección de datos personales (Ley N.° 29733)
 

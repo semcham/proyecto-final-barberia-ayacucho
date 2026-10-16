@@ -92,13 +92,27 @@ Varias instancias del mismo monolito **siguen siendo una arquitectura monolític
 - **Configuración y secretos:** variables de entorno o AWS Secrets Manager; nunca en el repositorio (EQ-11).
 - **Monitoreo y registro:** logs estructurados con identificador de correlación enviados a Amazon CloudWatch; métricas de latencia, errores, circuit breakers y conexiones (incluidas las del ALB); alertas (EQ-21).
 
+### 4.1 Aplicación web (archivos estáticos)
+
+La interfaz se publica como archivos estáticos (`npm run build` en `frontend/` genera `dist/`) en un servidor de estáticos o CDN, por ejemplo Amazon S3 con CloudFront (**por validar**), separado de las instancias del backend.
+
+| Tema | Diseño |
+| --- | --- |
+| Mismo sitio que la API | Servir la interfaz y `/api/*` bajo el mismo dominio (la CDN reenvía `/api/*` al ALB). La cookie de renovación `rt` es `SameSite=Strict` con `Path=/api/v1/auth` y el indicador `hay_sesion` (ADR-017) se lee desde la interfaz: ambos necesitan el mismo sitio |
+| Caché de archivos con hash | `assets/*` llevan un hash en el nombre: `Cache-Control: public, max-age=31536000, immutable` |
+| `index.html` | Sin caché (`no-cache`): cada visita descubre los archivos de la versión vigente |
+| Rutas de la aplicación | Cualquier ruta que no sea un archivo (`/app/usuarios`, `/registro`) responde con `index.html` |
+| Versión anterior (ADR-018, R19) | Conservar los `assets/*` de la versión anterior al menos un día, para que una pestaña abierta antes del despliegue pueda seguir navegando |
+| `robots.txt` y `favicon.svg` | Se publican en la raíz; `robots.txt` excluye `/app` y `/activar` |
+| Compresión | Brotli o gzip para JS, CSS y SVG (las fuentes `woff2` ya vienen comprimidas) |
+
 ## 5. CORS y HTTPS
 
 | Tema           | Diseño                                                                                                                                        |
 | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
 | HTTPS          | Terminación TLS en el ALB con certificado de AWS Certificate Manager; redirección de HTTP a HTTPS; cabecera HSTS                              |
 | CORS           | El backend acepta únicamente los orígenes de la interfaz web (lista explícita); métodos y cabeceras limitados; no se usa `*` con credenciales |
-| Cookies/Tokens | Token en cabecera `Authorization`; si se usan cookies, `Secure`, `HttpOnly`, `SameSite`                                                       |
+| Cookies/Tokens | Token de acceso en cabecera `Authorization` (solo en memoria del navegador); renovación con cookie `rt` `Secure`, `HttpOnly`, `SameSite=Strict`; indicador no secreto `hay_sesion` (ADR-017). Detalle en [seguridad y privacidad](seguridad-y-privacidad.md) |
 | Webhooks       | Ruta pública con verificación de firma y límite de tasa (AWS WAF opcional frente al ALB)                                                      |
 
 ## 6. Alta disponibilidad: lo que NO se afirma

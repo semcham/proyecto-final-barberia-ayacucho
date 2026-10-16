@@ -24,7 +24,9 @@ jobs:
           cache: npm
           cache-dependency-path: tecnologia/plataforma-barberias/backend/package-lock.json
       - run: npm ci
+      - run: npx prettier --check .
       - run: npm run lint
+      - run: npm run build
       - run: npm test
       # Testcontainers usa el Docker del runner de GitHub (ubuntu-latest lo trae instalado).
       - run: npm run test:int
@@ -43,5 +45,8 @@ jobs:
           cache: npm
           cache-dependency-path: tecnologia/plataforma-barberias/frontend/package-lock.json
       - run: npm ci
+      - run: npx prettier --check .
       - run: npm run lint
+      # Incluye tsc --noEmit (errores de tipos) y el build de producción de Vite.
+      - run: npm run build
       - run: npm test

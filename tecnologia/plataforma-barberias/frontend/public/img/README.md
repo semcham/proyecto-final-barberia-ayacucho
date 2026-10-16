@@ -29,6 +29,14 @@ navegador.
 
 ## Registro de imágenes
 
-| Archivo | Autor | Fuente | Licencia | Fecha |
-| ------- | ----- | ------ | -------- | ----- |
-| —       | —     | —      | —        | —     |
+Incluye las imágenes en código (SVG) que forman parte de la identidad visual, aunque no estén en esta
+carpeta.
+
+| Archivo                                                                         | Autor               | Fuente                                                     | Licencia                                            | Fecha              |
+| ------------------------------------------------------------------------------- | ------------------- | ---------------------------------------------------------- | --------------------------------------------------- | ------------------ |
+| `src/components/marca/IlustracionBarberia.tsx` (poste, tijeras, navaja y peine) | Equipo del proyecto | Dibujo propio en SVG                                       | La del repositorio (`UNLICENSED`, uso del proyecto) | 2026-10-16         |
+| `public/favicon.svg`                                                            | Equipo del proyecto | Dibujo propio en SVG (mismo trazo que el icono de tijeras) | La del repositorio (`UNLICENSED`, uso del proyecto) | 2026-10-16         |
+| Iconos de `src/components/Icono.tsx`                                            | Equipo del proyecto | Trazos propios en SVG                                      | La del repositorio (`UNLICENSED`, uso del proyecto) | 2026-10-15         |
+| Fotos en `public/img/`                                                          | —                   | —                                                          | —                                                   | Aún no hay ninguna |
+
+Decisión de diseño relacionada: [ADR-016](../../../../../docs/01-analisis-de-sistema/07-decisiones-arquitectonicas.md).

@@ -71,15 +71,17 @@ Fuente: `specs/001-registro-acceso-barberia/research.md`. Versiones exactas (sin
 | Calidad de código             | ESLint 9 (`typescript-eslint`), Prettier 3                                   | Estilo y reglas de importación entre módulos                                | —        |
 | Frontend                      | React 19, Vite 6, React Router 7, TanStack Query 5                           | Interfaz y llamadas a la API                                                | R19      |
 | Formularios                   | `react-hook-form` 7 y `zod` 3                                                | Validación de ayuda en el cliente                                           | R19      |
-| Componentes accesibles        | Radix UI: `@radix-ui/react-dialog` 1.3.1, `react-dropdown-menu` 2.2.1, `react-tooltip` 1.4.1, `react-toast` 1.3.1 | Modal de confirmación, menús, ayudas emergentes y avisos (foco, teclado y ARIA resueltos); sin estilos propios | —        |
-| Tipografía                    | `@fontsource-variable/fraunces` 5.3.0 (títulos) e `@fontsource-variable/inter` 5.3.0 (cuerpo), eje de peso | Fuentes autohospedadas, sin CDN; el navegador descarga solo el subconjunto latino (≈ 37 KB y 48 KB) | —        |
+| Componentes accesibles        | Radix UI: `@radix-ui/react-dialog` 1.3.1, `react-dropdown-menu` 2.2.1, `react-tooltip` 1.4.1, `react-toast` 1.3.1 | Modal de confirmación, menús, ayudas emergentes y avisos (foco, teclado y ARIA resueltos); sin estilos propios | ADR-016  |
+| Tipografía                    | `@fontsource-variable/fraunces` 5.3.0 (títulos) e `@fontsource-variable/inter` 5.3.0 (cuerpo), eje de peso | Fuentes autohospedadas, sin CDN; el navegador descarga solo el subconjunto latino (≈ 37 KB y 48 KB) | ADR-016  |
 | Tipos de la API               | `openapi-typescript` 7                                                       | Generar tipos desde `contracts/openapi.yaml`                                | R19      |
 | Pruebas del frontend          | Vitest 3, Testing Library, MSW 2                                             | Formularios, sesión y simulación de la API                                  | R18      |
-| Entorno local                 | Docker Compose con `postgres:16`; `tsx` para ejecutar las migraciones        | Reproducir el entorno                                                       | R20      |
+| Entorno local                 | Docker Compose con `postgres:16`; `tsx` para ejecutar las migraciones; `VITE_SONDEO` para que Vite detecte cambios en el volumen montado (Windows y macOS) | Reproducir el entorno                                                       | R20      |
 
 Esta funcionalidad **no** levanta Redis: no hay lecturas que cachear.
 
 ### 5.1 Interfaz: criterios y rendimiento
+
+Decisiones: [ADR-016](../01-analisis-de-sistema/07-decisiones-arquitectonicas.md#adr-016-sistema-de-diseño-propio-con-componentes-accesibles-de-radix) (sistema de diseño), [ADR-017](../01-analisis-de-sistema/07-decisiones-arquitectonicas.md#adr-017-indicador-de-sesión-hay_sesion-en-el-navegador) (indicador de sesión) y [ADR-018](../01-analisis-de-sistema/07-decisiones-arquitectonicas.md#adr-018-carga-diferida-de-rutas-y-librerías-en-archivos-separados) (carga diferida).
 
 - **Sin librería de componentes completa.** Radix aporta solo el comportamiento accesible de las piezas
   difíciles (atrapar y devolver el foco, navegación por teclado, `role` y `aria-*`); el aspecto sale del
@@ -110,3 +112,14 @@ Esta funcionalidad **no** levanta Redis: no hay lecturas que cachear.
   claro y oscuro): sin incumplimientos WCAG 2.2 A ni AA. Queda un aviso de buena práctica (`region`)
   mientras un menú o una ayuda emergente está abierta, porque Radix los dibuja en un portal fuera de los
   *landmarks*.
+
+### 5.2 Licencias de terceros en la interfaz
+
+| Componente                                         | Licencia             | Obligación práctica                                                                                   |
+| -------------------------------------------------- | -------------------- | ----------------------------------------------------------------------------------------------------- |
+| Fraunces e Inter (`@fontsource-variable` 5.3.0)    | SIL OFL 1.1          | Uso comercial libre; no vender las fuentes por separado; conservar su aviso de licencia (va en el paquete) |
+| Radix UI (4 paquetes)                              | MIT                  | Conservar el aviso de copyright y licencia en la distribución (va en el paquete)                       |
+| Ilustración, iconos y favicon (SVG)                | Propios del proyecto | Sin dependencias de terceros; registrados en `frontend/public/img/README.md`                          |
+| Fotos de marca (cuando existan)                    | Según cada foto      | Requisitos y registro de autoría en `frontend/public/img/README.md`                                   |
+
+Licencias leídas del `package.json` de cada paquete instalado (2026-10-16).

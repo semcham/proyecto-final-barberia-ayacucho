@@ -21,11 +21,13 @@ Escala: probabilidad (Baja, Media, Alta) × impacto (Bajo, Medio, Alto) = priori
 | R15 | El proveedor de pagos no confirma Yape o no entrega credenciales de pruebas | Media | Medio | Media | Puerto desacoplado; evaluar más de un proveedor; simulador | Activación manual del plan en el MVP | Decisión pendiente |
 | R16 | Incumplimiento de la normativa de datos personales | Media | Alto | **Alta** | Consentimiento, derechos, seguridad (ver seguridad y privacidad); revisión legal | Corregir y notificar | Por validar con asesoría legal |
 | R17 | Condiciones del proveedor de WhatsApp (consentimiento, plantillas aprobadas, costos) o bloqueo del canal | Media | Medio | Media | Puerto `NotificationChannel` desacoplado; correo como respaldo; simulador; evaluar proveedor antes de contratar (ADR-013) | Operar solo con correo | Decisión pendiente |
+| R18 | Cierre de sesión involuntario por "reutilización" del token de renovación: si una renovación se interrumpe después de que el servidor rotó el token (dos recargas rápidas, pestaña cerrada o red cortada a mitad de la respuesta), el navegador conserva el token anterior; en la siguiente renovación el backend lo trata como robo, registra `SESION_REUTILIZADA` y revoca la sesión. Observado al medir con Lighthouse (2026-10-16) | Media | Medio | Media | Detección de reutilización por diseño (protege ante robo de `rt`, funcionalidad 001); mitigación propuesta: aceptar el token anterior durante un margen de gracia corto (por ejemplo, 30 s) solo para la misma sesión, devolviendo el token vigente sin rotar de nuevo. Requiere cambio en el backend y prueba de concurrencia | El usuario vuelve a ingresar; revisar `audit_log` (`SESION_REUTILIZADA`) para distinguir cortes de red de robos reales | Decisión pendiente (cambio de backend) |
+| R19 | Fallo al navegar tras publicar una versión nueva: una pestaña abierta con la versión anterior pide un archivo de pantalla (chunk) que ya no existe (ADR-018) | Media | Bajo | Baja | Conservar los chunks de la versión anterior al menos un día; `index.html` sin caché ([despliegue](../02-arquitectura-software/despliegue-y-escalabilidad.md)) | Recargar la página | Reducido por diseño; a aplicar en el despliegue |
 
 ## Riesgos reducidos por diseño frente a riesgos que requieren pruebas o monitoreo
 
 | Reducidos por diseño (pero a demostrar) | Requieren pruebas, monitoreo u operación |
 |---|---|
-| R02, R05, R07, R08, R09 | R01, R03, R04, R06, R10, R11, R12, R13, R14, R16, R17 |
+| R02, R05, R07, R08, R09, R19 | R01, R03, R04, R06, R10, R11, R12, R13, R14, R16, R17, R18 |
 
 *Nota.* "Reducido por diseño" no significa eliminado: cada uno tiene su prueba asociada.

@@ -1,6 +1,6 @@
 # Estrategia de pruebas
 
-Todas las pruebas son **planificadas**. Los criterios son **metas propuestas**; los resultados medidos se registrarán en el Sprint 6 y hasta entonces no se presenta ninguna cifra como lograda.
+Las pruebas de este catálogo son **planificadas**, salvo las que ya ejecutó la funcionalidad 001 (ver §2.1 y la [trazabilidad](../trazabilidad.md#41-funcionalidad-001-componentes-implementados-y-su-evidencia)). Los criterios son **metas propuestas**; los resultados medidos se registran en la trazabilidad de cada funcionalidad y en el Sprint 6.
 
 ## 1. Niveles de prueba
 
@@ -18,6 +18,9 @@ Todas las pruebas son **planificadas**. Los criterios son **metas propuestas**; 
 | Pagos en ambiente de pruebas | Webhooks, idempotencia | Credenciales de pruebas del proveedor y simulador | Registros |
 | Recuperación | Restauración de respaldo | Procedimiento documentado | Acta del simulacro |
 | Usabilidad | Reserva simple | Observación con usuarios | Notas y tiempos |
+| Interfaz | Formularios, sesión, pantallas y componentes base, con la API simulada | Vitest, Testing Library y MSW | Informe en CI |
+| Accesibilidad | WCAG 2.2 A y AA en los estados interactivos, tema claro y oscuro | axe-core en Chrome; revisión con teclado | Informe con los estados revisados |
+| Rendimiento de la interfaz | Peso inicial y métricas de carga en celular | Lighthouse (mediana de 3 pasadas) | Puntajes y métricas por pantalla |
 
 ## 2. Catálogo de pruebas (PRnn ↔ EQ-nn)
 
@@ -51,6 +54,12 @@ Todas las pruebas son **planificadas**. Los criterios son **metas propuestas**; 
 | PR26 | Contrato de la API REST | RC03 | Esquemas válidos | Planificado |
 | PR27 | Notificación de la cita por correo y WhatsApp: confirmación, recordatorio, aviso de cambio, respaldo por correo, consentimiento, sin duplicados entre instancias | HU25, EQ-06, EQ-18 | 100 % de citas con aviso por algún canal; 0 envíos por WhatsApp sin consentimiento; 0 recordatorios duplicados | Planificado |
 | PR28 | Recordatorio del día de la cita y enlaces de acción: envío en la hora configurada, un solo uso, vencimiento, alcance a una cita, cancelación libera el horario, sin respuesta no cancela, sin duplicados entre instancias | HU28, EQ-08, EQ-09 | 100 % de enlaces reutilizados o vencidos rechazados; 0 acceso a otras citas; 0 recordatorios duplicados | Planificado |
+| PR29 | Accesibilidad de la interfaz | AC06; ADR-016 | 0 incumplimientos WCAG 2.2 A/AA (axe-core); foco visible y uso completo con teclado | Ejecutada en local (funcionalidad 001): 30 estados, 0 incumplimientos |
+| PR30 | Rendimiento de la interfaz en celular | AC01; ADR-018 | Lighthouse ≥ 90 en rendimiento, accesibilidad y buenas prácticas; JavaScript inicial ≤ 400 KB | Ejecutada en local (funcionalidad 001): 92–99 en celular; 372 KB |
+
+### 2.1 Ejecutadas en la funcionalidad 001
+
+En el entorno local (PostgreSQL 16 real, Testcontainers y Docker Compose), con resultados en verde: PR07, PR08, PR09, PR10, PR12, PR13 y PR14 (backend), las pruebas de interfaz (Vitest, 33 pruebas), PR29 y PR30. La aceptación de extremo a extremo con una herramienta automatizada sigue **planificada**; mientras tanto, los escenarios de la [guía rápida](../../specs/001-registro-acceso-barberia/quickstart.md) se recorrieron por HTTP y en Chrome (§6). Su ejecución en CI está **por confirmar**.
 
 ## 3. Datos y entornos
 

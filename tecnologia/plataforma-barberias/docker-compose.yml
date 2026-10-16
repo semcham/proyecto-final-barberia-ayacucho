@@ -44,7 +44,8 @@ services:
     environment:
       VITE_API_PROXY: http://backend:3000
       # El volumen montado desde Windows/macOS no notifica cambios: Vite los sondea para recargar.
-      VITE_SONDEO: 'true'
+      # En Linux se puede poner VITE_SONDEO=false en .env para ahorrar CPU.
+      VITE_SONDEO: ${VITE_SONDEO:-true}
     ports:
       - '5173:5173'
     volumes:

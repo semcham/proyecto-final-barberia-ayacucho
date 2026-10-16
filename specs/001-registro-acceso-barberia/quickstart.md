@@ -19,33 +19,89 @@ Todas las rutas son relativas a `tecnologia/plataforma-barberias/`.
 ```powershell
 cd tecnologia/plataforma-barberias
 Copy-Item .env.example .env      # completar claves JWT de desarrollo (ver comentarios del archivo)
-docker compose up -d --build
+docker compose up -d
 docker compose exec backend npm run migrate     # aplica migraciones como barberias_owner
 ```
+
+Resumen de ejecución también en el [README de la aplicación](../../tecnologia/plataforma-barberias/README.md).
 
 Esperado: `GET http://localhost:3000/api/v1/salud` → `200 {"estado":"ok"}`; la aplicación web
 abre en `http://localhost:5173`. Desde el equipo, la base de Compose responde en `localhost:5433` (o el
 `DB_PUERTO` configurado); los comandos `psql` de la sección 4 se ejecutan dentro del contenedor y no
 dependen de ese puerto.
 
+Notas sobre el contenedor `frontend`:
+
+- `VITE_SONDEO` (por defecto `true`, ver `.env.example`) hace que Vite revise los archivos cada 300 ms: en
+  Windows y macOS el volumen montado no avisa los cambios y, sin esto, la aplicación seguiría mostrando la
+  versión anterior del código. En Linux se puede poner `VITE_SONDEO=false` en `.env`.
+- `backend` y `frontend` guardan `node_modules` en un volumen propio y ejecutan `npm ci` al arrancar. **Tras
+  agregar o actualizar dependencias**, hay que reiniciarlos (`docker compose restart frontend` o
+  `backend`); si no, siguen con las dependencias anteriores.
+
+### 2.1 Sin Docker (backend y frontend locales)
+
+Con PostgreSQL 16 propio o solo la base de Compose (`docker compose up -d db`), y con `DATABASE_URL_APP` y
+`DATABASE_URL_OWNER` de `.env` apuntando al puerto de esa base:
+
+```powershell
+cd tecnologia/plataforma-barberias/backend
+npm ci
+npx tsx --env-file=../.env src/shared/persistence/migrate.ts
+npm run build
+node --env-file=../.env dist/src/main.js         # API en http://localhost:3000
+cd ../frontend
+npm ci
+$env:VITE_API_PROXY = 'http://localhost:3000'    # sin esto, el proxy apunta a http://backend:3000 (Compose)
+npm run dev                                      # http://localhost:5173
+```
+
 ## 3. Ejecutar las pruebas
 
 ```powershell
 cd tecnologia/plataforma-barberias/backend
 npm ci
+npx prettier --check .  # formato
+npm run lint
+npm run build           # compilación de TypeScript
 npm run test            # unitarias de dominio (sin base)
 npm run test:int        # integración y contrato HTTP con PostgreSQL en Testcontainers
 npm run test:arch       # PR14: matriz de módulos y regla de capas
 cd ../frontend
 npm ci
-npm run test            # formularios y manejo de sesión
+npx prettier --check .
+npm run lint
+npm run build           # tsc --noEmit y build de producción de Vite
+npm run test            # formularios, sesión, usuarios, activación y componentes base
 ```
 
-Esperado: todo en verde. Suites obligatorias que deben aparecer en el informe:
-`aislamiento/rls`, `aislamiento/funciones-definer`, `aislamiento/aislamiento-tenant` y
-`aislamiento/filtro-repositorios` (PR09, ADR-015), `autenticacion (PR07)`, `rbac (PR08)` y
-`autorizacion` (permisos en casos de uso), `entradas (PR10)`, `limite-intentos (PR12)`,
-`auditoria (PR13)`, `arquitectura (PR14)`.
+Son los mismos pasos que ejecuta el CI. Esperado: todo en verde. Suites obligatorias que deben aparecer en
+el informe del backend: `aislamiento/rls`, `aislamiento/funciones-definer`,
+`aislamiento/aislamiento-tenant` y `aislamiento/filtro-repositorios` (PR09, ADR-015),
+`autenticacion (PR07)`, `rbac (PR08)` y `autorizacion` (permisos en casos de uso), `entradas (PR10)`,
+`limite-intentos (PR12)`, `auditoria (PR13)`, `arquitectura (PR14)`. Del frontend (33 pruebas):
+`registro`, `sesion` (incluye el indicador `hay_sesion`, ADR-017), `usuarios`, `activar`, `client` y
+`components/ui`.
+
+### 3.1 Calidad de la interfaz (Lighthouse y axe-core)
+
+Medición manual, sin instalar nada global ni descargar navegadores (registro de la última en
+[tecnologías §5.1](../../docs/02-arquitectura-software/tecnologias.md)):
+
+1. `npm run build` en `frontend/` y servirlo con `vite preview --port 4173`, con `VITE_API_PROXY`
+   apuntando al backend en ejecución.
+2. En una carpeta temporal fuera del repositorio (por ejemplo `tmp/`, que está en `.gitignore`), instalar
+   `lighthouse`, `axe-core` y `playwright-core` con versión exacta, y usar el Chrome ya instalado
+   (`channel: 'chrome'`).
+3. Lighthouse en modo celular y escritorio, mediana de 3 pasadas por pantalla. Para las pantallas con
+   sesión, iniciar sesión antes de cada pasada (ver R18 en la
+   [matriz de riesgos](../../docs/05-gestion/05-riesgos.md)).
+4. axe-core con las reglas WCAG 2.2 A y AA sobre los estados interactivos (menús abiertos, modales,
+   errores de formulario, avisos, 320 px) en tema claro y oscuro.
+5. Borrar la carpeta temporal al terminar.
+
+Metas: Lighthouse ≥ 90 en rendimiento (celular), accesibilidad y buenas prácticas; 0 incumplimientos
+WCAG A/AA en axe.
 
 ## 4. Escenarios manuales
 
@@ -78,6 +134,7 @@ Se pueden hacer desde la aplicación web o con cualquier cliente HTTP contra
   despliegue (Amazon RDS, **por validar**).
 - Documentos actualizados en el mismo cambio que el código: librerías elegidas
   (`docs/02-arquitectura-software/tecnologias.md`) y estado de componentes en `docs/trazabilidad.md`.
+- Interfaz con las metas de 3.1: Lighthouse ≥ 90 y 0 incumplimientos WCAG A/AA.
 
 ## 6. Registro de ejecución (T120)
 
@@ -93,7 +150,8 @@ escenarios 14 y 15 con `docker compose exec db psql -U barberias_app -d barberia
 
 **Resultado: 15 de 15 conformes**, con la misma evidencia que la tabla de 6.2. Además: el contenedor del
 frontend sirve la aplicación en `localhost:5173` (200, UTF-8) y su proxy reenvía `/api/v1/salud` al backend
-(200); el log del backend no registró errores. **La interfaz no se recorrió a mano en un navegador.**
+(200); el log del backend no registró errores. En esta ejecución la interfaz no se recorrió en un
+navegador; eso se hizo después del rediseño (ver 6.3).
 
 Las pruebas de integración también se ejecutaron con **Testcontainers** (`npm run test:int` sin
 `TEST_DATABASE_ADMIN_URL`): 237 de 237 en verde contra un contenedor `postgres:16`.
@@ -105,8 +163,9 @@ Docker Compose. Se reprodujo el mismo entorno a mano: PostgreSQL 16 local con un
 (`barberias_quickstart`), el mismo `db/init/01-roles.sql` y las 7 migraciones aplicadas como
 `barberias_owner`, y el backend **compilado** (`node dist/src/main.js`) conectado como `barberias_app`. Los
 escenarios se ejecutaron por HTTP con un script contra ese backend, y los escenarios 14 y 15 con `psql`
-como `barberias_app`. **No se comprobó la interfaz en un navegador**: la parte visual de los escenarios 1,
-3, 6 y 7 la cubren las pruebas del frontend (Vitest + MSW), no esta ejecución.
+como `barberias_app`. En esta ejecución no se comprobó la interfaz en un navegador: la parte visual de los
+escenarios 1, 3, 6 y 7 la cubrían las pruebas del frontend (Vitest + MSW). Ver 6.3 para el recorrido
+posterior en Chrome.
 
 | #   | Escenario                      | Resultado | Evidencia                                                                                          |
 | --- | ------------------------------ | --------- | -------------------------------------------------------------------------------------------------- |
@@ -126,5 +185,29 @@ como `barberias_app`. **No se comprobó la interfaz en un navegador**: la parte 
 | 14  | RLS en la base                 | Conforme  | `membership` = 0 y `user_account` = 0 como `barberias_app`                                          |
 | 15  | Contraseñas no legibles        | Conforme  | `permission denied for table user_account`                                                         |
 
+### 6.3 Interfaz en el navegador (tras el rediseño, ADR-016 a ADR-018)
+
+**Fecha:** 2026-10-16. **Cómo se ejecutó:** base en Docker Compose (`docker compose up -d db`), backend
+compilado y frontend locales (sección 2.1), y Chrome del equipo controlado con `playwright-core` instalado
+en una carpeta temporal. Anchos de 320, 768 y 1280 px, tema claro y oscuro, servidor de desarrollo y build
+de producción (`vite preview`).
+
+**Recorrido conforme:**
+
+- Escenarios 1, 3, 6 y 7 desde la interfaz: registro con prueba gratuita, ingreso, creación de barbero con
+  el enlace de activación (copiar al portapapeles) y pantalla de activación.
+- Desactivar, reactivar y generar un nuevo enlace desde el menú de cada fila, con modal de confirmación y
+  aviso de resultado; búsqueda sin tildes y filtro por estado.
+- Teclado: "Saltar al contenido", menús con flechas y Escape, foco inicial en Cancelar en las
+  confirmaciones y foco devuelto al control de origen al cerrar.
+- Sin desborde horizontal en 320 px; sin errores de JavaScript; la primera visita sin sesión no llama a
+  `/auth/refresh` (ADR-017).
+- Lighthouse y axe-core según 3.1: resultados en
+  [tecnologías §5.1](../../docs/02-arquitectura-software/tecnologias.md).
+
+**Observación:** al medir con sesión apareció `SESION_REUTILIZADA` en `audit_log` y la sesión se cerró
+(riesgo R18 en la [matriz de riesgos](../../docs/05-gestion/05-riesgos.md)).
+
 **Pendiente para el cierre formal (sección 5):** ver las suites en verde en GitHub Actions, aprobar
-ADR-015 y validar el rol `BYPASSRLS` en Amazon RDS. (La repetición con Docker Compose está hecha: 6.1.)
+ADR-015 (y ADR-016 a ADR-018) y validar el rol `BYPASSRLS` en Amazon RDS. (La repetición con Docker
+Compose está hecha: 6.1.)

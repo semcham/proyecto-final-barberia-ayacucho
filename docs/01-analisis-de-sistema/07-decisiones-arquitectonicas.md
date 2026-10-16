@@ -21,6 +21,9 @@ Un ADR registra **qué** se decidió, **por qué**, qué alternativas se descart
 | ADR-013 | Notificaciones multicanal al cliente (correo y WhatsApp)           | DA05, DA09, DA11       | El cliente debe recibir la fecha de su cita por el canal que elija, sin acoplar el núcleo a un proveedor | Puerto `NotificationChannel` con adaptadores de correo y WhatsApp; consentimiento; respaldo por correo |
 | ADR-014 | Frontend con React, Vite y TypeScript                              | DA06, DA10             | Poco código obligatorio, ecosistema amplio y tipos compartidos con el backend                            | Interfaz web de una sola página que consume la API REST                                                |
 | ADR-015 | Autenticación antes de conocer el tenant y RLS en `user_account`   | DA01, DA11             | Iniciar sesión exige leer datos protegidos por RLS sin conocer aún la barbería                           | Rol `barberias_auth` NOLOGIN BYPASSRLS dueño de solo 3 funciones acotadas; RLS en `user_account`       |
+| ADR-016 | Sistema de diseño propio con componentes accesibles de Radix       | DA06, DA10             | Interfaz coherente, accesible (WCAG AA) y liviana sin depender de una librería de componentes completa    | Tokens CSS, tema claro y oscuro, Radix solo para comportamiento, fuentes autohospedadas, SVG propios   |
+| ADR-017 | Indicador de sesión `hay_sesion` en el navegador                   | DA01, DA11             | No llamar a `/auth/refresh` cuando seguro no hay sesión (401 en consola y métricas)                      | Cookie no secreta de 7 días, sin acceso a nada; la cookie de renovación sigue siendo HttpOnly          |
+| ADR-018 | Carga diferida de rutas y librerías en archivos separados          | DA03, DA10             | Bajar el JavaScript inicial para celulares con red lenta                                                 | `React.lazy` por pantalla; React, TanStack Query y formularios en chunks propios                       |
 
 ---
 
@@ -211,7 +214,7 @@ Un ADR registra **qué** se decidió, **por qué**, qué alternativas se descart
 - **Desventajas:** menos estructura impuesta que Angular; hay que fijar convenciones de carpetas y de manejo de estado.
 - **Riesgos:** R13, R14 (curva de aprendizaje). **Mitigación:** convenciones simples definidas en el plan de cada funcionalidad y revisión en cada sprint.
 - **Drivers:** DA06, DA10.
-- **Consecuencias:** se actualiza [tecnologías](../02-arquitectura-software/tecnologias.md); las librerías concretas de interfaz se eligen al planificar la primera funcionalidad.
+- **Consecuencias:** se actualiza [tecnologías](../02-arquitectura-software/tecnologias.md); las librerías concretas de interfaz se eligieron con la funcionalidad 001: React Router, TanStack Query, `react-hook-form` y `zod` (plan de 001), y el sistema de diseño, la sesión en el navegador y la carga de pantallas en ADR-016, ADR-017 y ADR-018.
 
 ## ADR-015 Autenticación antes de conocer el tenant y RLS en `user_account`
 
@@ -240,3 +243,51 @@ Un ADR registra **qué** se decidió, **por qué**, qué alternativas se descart
 - **Pruebas (parte de PR09):** (1) cada función devuelve 0 o 1 fila, también con entradas inexistentes; (2) ninguna función tiene un parámetro de tenant; (3) `barberias_auth` no puede iniciar sesión y no es dueño de ninguna tabla; (4) `barberias_app` no tiene `BYPASSRLS`, no puede ejecutar otras funciones `SECURITY DEFINER` y no puede leer `user_account.password_hash`; (5) sin contexto de tenant, `SELECT` sobre `user_account` devuelve 0 filas y, con el contexto de A, no aparece ninguna cuenta de B.
 - **Drivers:** DA01, DA11.
 - **Consecuencias:** se actualizan [multi-tenancy y datos](../02-arquitectura-software/multi-tenancy-y-datos.md) (casos especiales y tablas globales) y la [trazabilidad](../trazabilidad.md); la funcionalidad 001 implementa el rol, las funciones y sus pruebas en su fase fundacional.
+
+## ADR-016 Sistema de diseño propio con componentes accesibles de Radix
+
+- **Estado:** Propuesto.
+- **Contexto:** La interfaz se usa sobre todo desde el celular (RC01, AC06) por propietarios y barberos con experiencia digital variable, y en redes móviles de calidad irregular (RC15). Tras la funcionalidad 001 las pantallas tenían estilos sueltos por archivo, sin tema oscuro, sin modal accesible (se usaba `window.confirm`) ni avisos. Las piezas interactivas difíciles (ventana modal, menú desplegable, ayuda emergente, avisos) exigen manejar foco, teclado y atributos ARIA, lo que es fácil de hacer mal.
+- **Problema:** ¿Cómo lograr una interfaz coherente, accesible (WCAG 2.2 AA) y liviana, con tema claro y oscuro, sin atarse a la apariencia de un tercero?
+- **Alternativas:** (a) librería de componentes completa (MUI, Chakra, Ant Design): rápida, pero pesada y con apariencia propia difícil de cambiar; (b) Tailwind con componentes propios: hay que resolver la accesibilidad a mano; (c) todo a mano, incluido el foco y el teclado de modales y menús; (d) **sistema de diseño propio en CSS (tokens) y Radix UI solo para el comportamiento accesible**.
+- **Decisión:** opción (d).
+  1. **Tokens** en `frontend/src/styles/tokens.css` (color, tipografía, espaciado, radios, sombras, movimiento, capas). Los módulos CSS no escriben valores sueltos.
+  2. **Tema claro y oscuro** con `light-dark()`: sigue a `prefers-color-scheme` y el conmutador (Sistema, Claro, Oscuro) lo fija con `data-theme` en `<html>`. La preferencia se guarda en `localStorage` como comodidad: si el navegador no deja guardar, se usa el tema del sistema. Un script en `index.html` la aplica antes de pintar.
+  3. **Radix UI** (`react-dialog`, `react-dropdown-menu`, `react-tooltip`, `react-toast`) sin estilos propios, envuelto en componentes del proyecto (`components/ui/`). Los menús se usan **no modales** para no ocultar el resto de la página a los lectores de pantalla.
+  4. **Fuentes autohospedadas** con `@fontsource-variable` (Fraunces para títulos, Inter para el cuerpo; solo el eje de peso), sin CDN.
+  5. **Iconos e ilustración propios en SVG**. La foto real del panel de marca, cuando exista, sigue las reglas de `frontend/public/img/README.md`.
+  6. **Meta de accesibilidad AA:** el cobre de relleno (`--color-acento`) solo lleva texto oscuro encima; como texto o borde de estado se usa la variante oscura (`--color-enlace`). Foco visible y `prefers-reduced-motion`.
+- **Justificación:** Radix resuelve lo que más suele fallar (atrapar y devolver el foco, teclado, `role` y `aria-*`) y deja la apariencia al proyecto. Los tokens permiten dos temas sin duplicar estilos y cambiar la identidad sin tocar las pantallas.
+- **Ventajas:** accesibilidad comprobada (axe-core: 0 incumplimientos WCAG A/AA en 30 estados; Lighthouse 100 en accesibilidad); peso moderado (solo se descargan las piezas de Radix que usa cada pantalla); identidad propia.
+- **Desventajas:** los componentes del sistema de diseño se mantienen en el proyecto; `light-dark()` exige navegadores de 2024 en adelante; las fuentes suman unos 85 KB en la primera visita.
+- **Riesgos:** R13 (complejidad). **Mitigación:** pocos componentes base, documentados en el código y con pruebas (`test/components/ui.spec.tsx`). Radix y las fuentes van con versión exacta.
+- **Drivers:** DA06, DA10.
+- **Consecuencias:** se actualizan [tecnologías](../02-arquitectura-software/tecnologias.md) (versiones, licencias y mediciones) y la [trazabilidad](../trazabilidad.md). Un aviso de buena práctica de axe (`region`) permanece mientras un menú o ayuda emergente está abierto, porque Radix los dibuja en un portal fuera de los *landmarks*.
+
+## ADR-017 Indicador de sesión `hay_sesion` en el navegador
+
+- **Estado:** Propuesto.
+- **Contexto:** ADR-010 y la funcionalidad 001 guardan el token de acceso solo en memoria y la renovación en una cookie `rt` HttpOnly. Al cargar la página la interfaz llamaba siempre a `POST /auth/refresh` para recuperar la sesión; un visitante nuevo, o alguien que cerró sesión, recibía un 401 seguro, que ensucia la consola, las métricas de errores y Lighthouse (buenas prácticas). JavaScript no puede saber si existe `rt`, precisamente porque es HttpOnly.
+- **Problema:** ¿Cómo evitar esa llamada cuando seguro no hay sesión, sin exponer la cookie de renovación ni cambiar el contrato de la API?
+- **Alternativas:** (a) aceptar el 401; (b) que `/auth/refresh` responda 204 sin cookie: cambia el contrato (`openapi.yaml`) y mezcla "sin sesión" con éxito; (c) una marca en `localStorage`: las pruebas exigen no guardar nada de la sesión en el almacenamiento del navegador y no caduca junto con `rt`; (d) **una cookie no secreta `hay_sesion=1` con la misma duración que `rt`**.
+- **Decisión:** opción (d). La interfaz marca `hay_sesion=1` (`Max-Age` de 7 días, `Path=/`, `SameSite=Strict` y `Secure` con HTTPS) al iniciar sesión, registrarse o renovar, y la borra al cerrar sesión o si una renovación falla. Sin la marca, la sesión empieza como anónima y no se llama a `/auth/refresh` (`frontend/src/auth/indicadorSesion.ts`, `SesionProvider.tsx`).
+- **Justificación:** la marca no es secreta ni da acceso a nada: solo dice "vale la pena intentar renovar". La autenticación sigue dependiendo de `rt` (HttpOnly) y del token en memoria.
+- **Ventajas:** sin 401 en la primera visita ni tras cerrar sesión; sin cambios en el backend ni en el contrato; caduca igual que `rt`.
+- **Desventajas:** si alguien borra solo esa cookie, la sesión no se recupera al recargar y hay que volver a ingresar (la sesión del servidor vence sola). Es una cookie más que declarar en la política de privacidad.
+- **Riesgos:** R01 no aumenta (la marca no autentica). **Mitigación:** pruebas en `test/auth/sesion.spec.tsx` (visitante nuevo sin llamada, marca al ingresar y al cerrar sesión, se quita si la renovación falla).
+- **Drivers:** DA01, DA11.
+- **Consecuencias:** se actualiza [seguridad y privacidad](../02-arquitectura-software/seguridad-y-privacidad.md) (qué guarda el navegador). Relacionado: R18 en la [matriz de riesgos](../05-gestion/05-riesgos.md).
+
+## ADR-018 Carga diferida de rutas y librerías en archivos separados
+
+- **Estado:** Propuesto.
+- **Contexto:** Tras el rediseño, el JavaScript de la interfaz era un solo archivo de 573 KB (179 KB comprimido): quien entraba a registrarse descargaba también el panel y las librerías de menús y ventanas. El público usa celulares con redes de calidad variable (RC15) y AC01 pide tiempos aceptables.
+- **Problema:** ¿Cómo bajar lo que se descarga al abrir la aplicación sin cambiar su estructura ni agregar un framework de renderizado en servidor?
+- **Alternativas:** (a) un solo archivo; (b) renderizado en servidor o generación estática: cambia el despliegue y la arquitectura (ADR-014); (c) **carga diferida por pantalla con `React.lazy` y librerías en archivos propios**.
+- **Decisión:** opción (c). Cada pantalla (Registro, Ingresar, Activar, Inicio, Usuarios) y el diseño del panel se cargan con `React.lazy` y `Suspense` (`frontend/src/routes.tsx`); React, TanStack Query y los formularios van en chunks propios (`vite.config.ts`, `manualChunks`); en las pantallas de acceso el conmutador de tema se descarga después de pintar el formulario.
+- **Justificación:** el JavaScript inicial bajó a 372 KB (unos 123 KB comprimido); Lighthouse en modo celular queda entre 92 y 99 en todas las pantallas (mediana de 3 pasadas; ver [tecnologías](../02-arquitectura-software/tecnologias.md)).
+- **Ventajas:** primera carga más liviana; las librerías, que cambian poco, se reutilizan desde la caché del navegador entre despliegues.
+- **Desventajas:** una breve pantalla "Cargando…" al visitar una pantalla por primera vez; más archivos que servir.
+- **Riesgos:** R19: tras publicar una versión nueva, una pestaña abierta con la versión anterior puede pedir un chunk que ya no existe y fallar al navegar. **Mitigación:** conservar en el servidor los chunks de la versión anterior durante al menos un día y servir `index.html` sin caché ([despliegue](../02-arquitectura-software/despliegue-y-escalabilidad.md)).
+- **Drivers:** DA03, DA10.
+- **Consecuencias:** se actualizan [despliegue y escalabilidad](../02-arquitectura-software/despliegue-y-escalabilidad.md) (cómo servir la aplicación web) y la [matriz de riesgos](../05-gestion/05-riesgos.md).

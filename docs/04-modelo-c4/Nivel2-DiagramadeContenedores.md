@@ -67,9 +67,9 @@ Persona (azul oscuro) · Contenedor aplicación (azul medio) · Contenedor almac
 
 | Contenedor                 | Responsabilidad                                                                            | Tecnología (propuesta)            | Origen           | ADR               | Estado      |
 | -------------------------- | ------------------------------------------------------------------------------------------ | --------------------------------- | ---------------- | ----------------- | ----------- |
-| Interfaz web               | Presentación para los cuatro roles; consume la API; validación básica; sin reglas críticas | Angular o React (por decidir)     | RC01, RC03, AC06 | ADR-002           | Planificado |
-| Backend monolítico modular | Casos de uso, reglas, seguridad, integraciones; 6 módulos con 4 capas; sin estado          | TypeScript con NestJS (propuesta) | Todos los RF     | ADR-001, 002, 011 | Planificado |
-| PostgreSQL                 | Fuente de verdad: datos de negocio, restricciones de exclusión, RLS, auditoría             | PostgreSQL                        | RC04, RF12       | ADR-003, 004, 009 | Planificado |
+| Interfaz web               | Presentación para los cuatro roles; consume la API; validación básica; sin reglas críticas | React 19, Vite 6 y TypeScript; sistema de diseño propio con Radix UI; pantallas con carga diferida | RC01, RC03, AC06 | ADR-002, 014, 016, 017, 018 | Implementado en parte (funcionalidad 001: registro, ingreso, activación, inicio y usuarios) |
+| Backend monolítico modular | Casos de uso, reglas, seguridad, integraciones; 6 módulos con 4 capas; sin estado          | TypeScript con NestJS 11          | Todos los RF     | ADR-001, 002, 011 | Implementado en parte (funcionalidad 001: M01, M03 mínimo y M06) |
+| PostgreSQL                 | Fuente de verdad: datos de negocio, restricciones de exclusión, RLS, auditoría             | PostgreSQL 16                     | RC04, RF12       | ADR-003, 004, 009, 015 | Implementado en parte (tablas y RLS de la funcionalidad 001) |
 | Redis                      | Caché selectiva y contadores de límite de solicitudes                                      | Redis                             | AC01, DA03       | ADR-005           | Planificado |
 
 ## Relaciones con sistemas externos (protocolos)
