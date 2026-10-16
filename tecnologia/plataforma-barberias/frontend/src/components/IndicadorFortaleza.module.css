@@ -1,0 +1,46 @@
+.indicador {
+  --color-nivel: var(--color-error);
+  display: flex;
+  align-items: center;
+  gap: var(--espacio-3);
+}
+
+.indicador[data-nivel='2'] {
+  --color-nivel: var(--color-aviso);
+}
+
+.indicador[data-nivel='3'],
+.indicador[data-nivel='4'] {
+  --color-nivel: var(--color-exito);
+}
+
+.barras {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: var(--espacio-1);
+  flex: 1;
+}
+
+.barras span {
+  height: 0.3rem;
+  border-radius: var(--radio-pildora);
+  background: var(--color-borde);
+  transition: background-color var(--transicion);
+}
+
+.barras .llena {
+  background: var(--color-nivel);
+}
+
+.texto {
+  margin: 0;
+  min-width: 8.5rem;
+  font-size: var(--texto-xs);
+  color: var(--color-texto-suave);
+  text-align: right;
+}
+
+.texto strong {
+  color: var(--color-nivel);
+  font-weight: var(--peso-fuerte);
+}

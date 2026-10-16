@@ -1,0 +1,32 @@
+.logo {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--espacio-3);
+  color: var(--color-texto);
+  text-decoration: none;
+  border-radius: var(--radio);
+}
+
+.logo:hover {
+  color: var(--color-texto);
+}
+
+.sello {
+  display: inline-grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, var(--color-acento-hover), var(--color-acento-activo));
+  color: var(--color-acento-texto);
+  box-shadow:
+    0 0 0 3px var(--color-fondo),
+    0 0 0 4px var(--color-acento-borde);
+}
+
+.nombre {
+  font-family: var(--fuente-titulos);
+  font-size: var(--texto-lg);
+  font-weight: var(--peso-titulo);
+  letter-spacing: 0.01em;
+}

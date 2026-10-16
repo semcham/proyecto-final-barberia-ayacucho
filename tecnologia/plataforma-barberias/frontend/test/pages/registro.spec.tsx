@@ -92,7 +92,8 @@ describe('Página de registro', () => {
     renderizar();
     expect(screen.queryByLabelText(/tarjeta|pago|cvv|vencimiento/i)).not.toBeInTheDocument();
     expect(document.querySelectorAll('input[autocomplete^="cc-"]')).toHaveLength(0);
-    expect(screen.getByText(/sin tarjeta/i)).toBeInTheDocument();
+    // El beneficio aparece en el panel de marca (escritorio) y en el encabezado del formulario (siempre).
+    expect(screen.getAllByText(/sin tarjeta/i).length).toBeGreaterThanOrEqual(1);
   });
 
   it('con datos válidos registra, guarda el token en memoria y entra al panel', async () => {

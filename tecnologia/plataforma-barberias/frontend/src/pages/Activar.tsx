@@ -1,10 +1,14 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { z } from 'zod';
 import { ApiError, llamarApi } from '../api/client';
-import estilos from './Registro.module.css';
+import { AlertaError, BotonEnviar, CampoContrasena } from '../components/Campo';
+import { Icono } from '../components/Icono';
+import { IndicadorFortaleza } from '../components/IndicadorFortaleza';
+import { MarcoAcceso } from '../components/MarcoAcceso';
+import estilos from './Acceso.module.css';
 
 const esquema = z
   .object({
@@ -20,6 +24,12 @@ const esquema = z
   });
 
 type Formulario = z.infer<typeof esquema>;
+
+const MARCO = {
+  antetitulo: 'Te sumaron al equipo',
+  titular: 'Únete a tu barbería',
+  descripcion: 'Crea tu contraseña y empieza a trabajar con tu equipo desde el celular.',
+} as const;
 
 const ENLACE_INVALIDO = 'El enlace no es válido o ya venció. Pide uno nuevo al propietario.';
 
@@ -41,18 +51,22 @@ export default function Activar() {
   const {
     register,
     handleSubmit,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<Formulario>({ resolver: zodResolver(esquema) });
+  const contrasena = useWatch({ control, name: 'contrasena' }) ?? '';
 
   if (!token) {
     return (
-      <main className="contenedor">
-        <h1>Activa tu cuenta</h1>
-        <p role="alert" className="mensaje-error">
-          {ENLACE_INVALIDO}
-        </p>
-        <Link to="/ingresar">Ir a ingresar</Link>
-      </main>
+      <MarcoAcceso {...MARCO}>
+        <div className={estilos.encabezado}>
+          <h1>Activa tu cuenta</h1>
+        </div>
+        <AlertaError>{ENLACE_INVALIDO}</AlertaError>
+        <Link to="/ingresar" className={`boton boton--secundario boton--bloque ${estilos.enlaceAccion}`}>
+          Ir a ingresar
+        </Link>
+      </MarcoAcceso>
     );
   }
 
@@ -74,35 +88,34 @@ export default function Activar() {
   };
 
   return (
-    <main className="contenedor">
-      <h1>Activa tu cuenta</h1>
-      <p>Crea la contraseña con la que ingresarás a la barbería.</p>
+    <MarcoAcceso {...MARCO}>
+      <div className={estilos.encabezado}>
+        <h1>Activa tu cuenta</h1>
+        <p className={estilos.lema}>
+          <Icono nombre="candado" tamano={18} />
+          Crea la contraseña con la que ingresarás a la barbería.
+        </p>
+      </div>
       <form className={estilos.formulario} onSubmit={handleSubmit(enviar)} noValidate>
-        <div className={estilos.campo}>
-          <label htmlFor="contrasena">Contraseña</label>
-          <input id="contrasena" type="password" autoComplete="new-password" {...register('contrasena')} />
-          <p className={estilos.ayuda}>Al menos 10 caracteres. Una frase fácil de recordar funciona bien.</p>
-          {errors.contrasena && <p className="mensaje-error">{errors.contrasena.message}</p>}
-        </div>
-        <div className={estilos.campo}>
-          <label htmlFor="confirmacion">Repite la contraseña</label>
-          <input
-            id="confirmacion"
-            type="password"
-            autoComplete="new-password"
-            {...register('confirmacion')}
-          />
-          {errors.confirmacion && <p className="mensaje-error">{errors.confirmacion.message}</p>}
-        </div>
-        {error && (
-          <p role="alert" className="mensaje-error">
-            {error}
-          </p>
-        )}
-        <button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? 'Activando…' : 'Activar mi cuenta'}
-        </button>
+        <CampoContrasena
+          id="contrasena"
+          etiqueta="Contraseña"
+          autoComplete="new-password"
+          registro={register('contrasena')}
+          ayuda="Al menos 10 caracteres. Una frase fácil de recordar funciona bien."
+          error={errors.contrasena?.message}
+          extra={<IndicadorFortaleza valor={contrasena} />}
+        />
+        <CampoContrasena
+          id="confirmacion"
+          etiqueta="Repite la contraseña"
+          autoComplete="new-password"
+          registro={register('confirmacion')}
+          error={errors.confirmacion?.message}
+        />
+        {error && <AlertaError>{error}</AlertaError>}
+        <BotonEnviar cargando={isSubmitting} texto="Activar mi cuenta" textoCargando="Activando…" />
       </form>
-    </main>
+    </MarcoAcceso>
   );
 }

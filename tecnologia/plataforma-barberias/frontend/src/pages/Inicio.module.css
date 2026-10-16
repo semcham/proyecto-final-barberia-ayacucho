@@ -1,0 +1,139 @@
+.bienvenida {
+  margin-bottom: var(--espacio-6);
+}
+
+.bienvenida h1 {
+  overflow-wrap: anywhere;
+}
+
+.saludo {
+  margin: 0;
+  font-size: var(--texto-lg);
+  color: var(--color-texto-suave);
+}
+
+.iconoTarjeta {
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 2.75rem;
+  height: 2.75rem;
+  border: 1px solid var(--color-acento-borde);
+  border-radius: var(--radio);
+  background: var(--color-acento-suave);
+  color: var(--color-acento);
+}
+
+.prueba {
+  margin-bottom: var(--espacio-6);
+  border-color: var(--color-acento-borde);
+  background: linear-gradient(135deg, rgb(212 162 76 / 0.1), transparent 60%), var(--color-superficie);
+}
+
+.pruebaCabecera {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--espacio-4);
+}
+
+.pruebaCabecera h2 {
+  margin-bottom: var(--espacio-1);
+}
+
+.pruebaCabecera p {
+  margin: 0;
+  font-size: var(--texto-sm);
+}
+
+.progreso {
+  height: 0.5rem;
+  margin-top: var(--espacio-5);
+  border-radius: var(--radio-pildora);
+  background: var(--color-superficie-hundida);
+  overflow: hidden;
+}
+
+.progreso span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--color-acento-activo), var(--color-acento-hover));
+}
+
+.accesos {
+  display: grid;
+  gap: var(--espacio-4);
+}
+
+.acceso {
+  display: flex;
+  align-items: center;
+  gap: var(--espacio-4);
+  color: var(--color-texto);
+  text-decoration: none;
+}
+
+.accesoEnlace {
+  transition:
+    border-color var(--transicion),
+    transform var(--transicion);
+}
+
+.accesoEnlace:hover {
+  color: var(--color-texto);
+  border-color: var(--color-acento-borde);
+}
+
+.accesoEnlace:focus-visible {
+  outline: none;
+  box-shadow: var(--anillo-foco);
+}
+
+.accesoTexto {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-1);
+  flex: 1;
+  min-width: 0;
+}
+
+.accesoTexto > span {
+  font-size: var(--texto-sm);
+  color: var(--color-texto-suave);
+  overflow-wrap: anywhere;
+}
+
+.flecha {
+  color: var(--color-acento);
+  transition: transform var(--transicion);
+}
+
+.accesoEnlace:hover .flecha {
+  transform: translateX(3px);
+}
+
+.proximamente {
+  align-self: flex-start;
+  padding: 0.125rem var(--espacio-2);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio-pildora);
+  font-size: var(--texto-xs);
+  color: var(--color-texto-tenue);
+  white-space: nowrap;
+}
+
+@media (min-width: 48rem) {
+  .accesos {
+    grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  }
+
+  .acceso {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .flecha,
+  .proximamente {
+    margin-top: auto;
+  }
+}

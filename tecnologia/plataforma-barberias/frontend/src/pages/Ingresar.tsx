@@ -5,7 +5,10 @@ import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { z } from 'zod';
 import { ApiError } from '../api/client';
 import { useSesion } from '../auth/SesionProvider';
-import estilos from './Registro.module.css';
+import { AlertaError, BotonEnviar, Campo, CampoContrasena } from '../components/Campo';
+import { Icono } from '../components/Icono';
+import { MarcoAcceso } from '../components/MarcoAcceso';
+import estilos from './Acceso.module.css';
 
 const esquema = z.object({
   correo: z.string().trim().min(1, 'Ingresa tu correo.').max(254),
@@ -54,41 +57,63 @@ export default function Ingresar() {
   };
 
   return (
-    <main className="contenedor">
-      <h1>Ingresa a tu barbería</h1>
-      {estadoNavegacion?.mensaje && <p role="status">{estadoNavegacion.mensaje}</p>}
+    <MarcoAcceso
+      antetitulo="Qué bueno verte"
+      titular="Tu barbería, lista para la jornada"
+      descripcion="Ingresa con tu correo y tu contraseña para ver tu barbería y a tu equipo."
+      puntos={[
+        {
+          icono: 'celular',
+          titulo: 'Desde cualquier celular',
+          texto: 'Tu sesión funciona en el navegador, sin instalar nada.',
+        },
+        {
+          icono: 'escudo',
+          titulo: 'Acceso protegido',
+          texto: 'Cada persona entra con su propia cuenta y su rol.',
+        },
+      ]}
+      pie={
+        <p>
+          ¿Aún no registras tu barbería? <Link to="/registro">Empieza gratis</Link>
+        </p>
+      }
+    >
+      <div className={estilos.encabezado}>
+        <h1>Ingresa a tu barbería</h1>
+        <p className={estilos.lema}>Usa el correo con el que te registraste.</p>
+      </div>
+      {estadoNavegacion?.mensaje && (
+        <p role="status" className={estilos.aviso}>
+          <Icono nombre="check" tamano={18} />
+          <span>{estadoNavegacion.mensaje}</span>
+        </p>
+      )}
       <form className={estilos.formulario} onSubmit={handleSubmit(enviar)} noValidate>
-        <div className={estilos.campo}>
-          <label htmlFor="correo">Correo</label>
-          <input id="correo" type="email" inputMode="email" autoComplete="username" {...register('correo')} />
-          {errors.correo && <p className="mensaje-error">{errors.correo.message}</p>}
-        </div>
+        <Campo
+          id="correo"
+          etiqueta="Correo"
+          icono="correo"
+          type="email"
+          inputMode="email"
+          autoComplete="username"
+          placeholder="tucorreo@ejemplo.com"
+          registro={register('correo')}
+          error={errors.correo?.message}
+        />
 
-        <div className={estilos.campo}>
-          <label htmlFor="contrasena">Contraseña</label>
-          <input
-            id="contrasena"
-            type="password"
-            autoComplete="current-password"
-            {...register('contrasena')}
-          />
-          {errors.contrasena && <p className="mensaje-error">{errors.contrasena.message}</p>}
-        </div>
+        <CampoContrasena
+          id="contrasena"
+          etiqueta="Contraseña"
+          autoComplete="current-password"
+          registro={register('contrasena')}
+          error={errors.contrasena?.message}
+        />
 
-        {error && (
-          <p role="alert" className="mensaje-error">
-            {error}
-          </p>
-        )}
+        {error && <AlertaError>{error}</AlertaError>}
 
-        <button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? 'Ingresando…' : 'Ingresar'}
-        </button>
+        <BotonEnviar cargando={isSubmitting} texto="Ingresar" textoCargando="Ingresando…" />
       </form>
-
-      <p className={estilos.pie}>
-        ¿Aún no registras tu barbería? <Link to="/registro">Empieza gratis</Link>
-      </p>
-    </main>
+    </MarcoAcceso>
   );
 }

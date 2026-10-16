@@ -1,0 +1,162 @@
+/* Móvil primero: una sola columna con el formulario; el panel de marca aparece desde 60rem. */
+
+.marco {
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+.panel {
+  display: none;
+}
+
+.principal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--espacio-5);
+  width: 100%;
+  padding: var(--espacio-5) var(--espacio-4) var(--espacio-10);
+}
+
+.logoMovil {
+  align-self: stretch;
+  max-width: var(--ancho-formulario);
+  width: 100%;
+  margin: 0 auto;
+}
+
+.tarjeta {
+  width: 100%;
+  max-width: var(--ancho-formulario);
+}
+
+.tarjeta h1 {
+  font-size: var(--texto-2xl);
+  margin-bottom: var(--espacio-2);
+}
+
+.pie {
+  max-width: var(--ancho-formulario);
+  text-align: center;
+  font-size: var(--texto-sm);
+  color: var(--color-texto-suave);
+}
+
+.pie p {
+  margin: 0;
+}
+
+.pie a {
+  font-weight: var(--peso-fuerte);
+}
+
+@media (min-width: 30rem) {
+  .principal {
+    padding-top: var(--espacio-8);
+  }
+
+  .tarjeta {
+    padding: var(--espacio-8);
+  }
+}
+
+@media (min-width: 60rem) {
+  .marco {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .panel {
+    position: sticky;
+    top: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: var(--espacio-10);
+    height: 100vh;
+    height: 100dvh;
+    padding: var(--espacio-10) var(--espacio-12);
+    border-right: 1px solid var(--color-borde);
+    background:
+      radial-gradient(ellipse 70% 60% at 0% 100%, rgb(212 162 76 / 0.16), transparent 70%),
+      repeating-linear-gradient(135deg, transparent 0 22px, rgb(212 162 76 / 0.035) 22px 24px),
+      var(--color-superficie-hundida);
+    overflow: hidden;
+  }
+
+  .principal {
+    justify-content: center;
+    padding: var(--espacio-12) var(--espacio-8);
+  }
+
+  .logoMovil {
+    display: none;
+  }
+}
+
+.mensaje {
+  max-width: 30rem;
+}
+
+.titular {
+  margin: 0 0 var(--espacio-4);
+  font-family: var(--fuente-titulos);
+  font-size: var(--texto-4xl);
+  font-weight: var(--peso-titulo);
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+.descripcion {
+  font-size: var(--texto-lg);
+  color: var(--color-texto-suave);
+  margin-bottom: var(--espacio-8);
+}
+
+.puntos {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-5);
+}
+
+.puntos li {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--espacio-4);
+}
+
+.puntos li > span:last-child {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-1);
+}
+
+.puntos strong {
+  font-weight: var(--peso-fuerte);
+}
+
+.puntos li > span:last-child > span {
+  font-size: var(--texto-sm);
+  color: var(--color-texto-suave);
+}
+
+.iconoPunto {
+  display: inline-grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 1px solid var(--color-acento-borde);
+  border-radius: var(--radio);
+  background: var(--color-acento-suave);
+  color: var(--color-acento);
+}
+
+.firma {
+  margin: 0;
+  font-size: var(--texto-sm);
+  color: var(--color-texto-tenue);
+}

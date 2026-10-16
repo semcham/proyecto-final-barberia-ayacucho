@@ -1,0 +1,95 @@
+/*
+ * Tokens del sistema de diseño. Toda pantalla usa estas variables: no se escriben colores, tamaños ni
+ * sombras sueltos en los módulos CSS. Identidad: barbería clásica, fondo oscuro cálido y acento dorado cobre.
+ */
+
+:root {
+  color-scheme: dark;
+
+  /* Color: fondos y superficies (de más profundo a más elevado). */
+  --color-fondo: #0f0d0b;
+  --color-superficie: #1a1714;
+  --color-superficie-elevada: #241f1a;
+  --color-superficie-hundida: #13110e;
+  --color-borde: #3a322a;
+  --color-borde-fuerte: #5a4d40;
+
+  /* Color: texto. */
+  --color-texto: #f4eee6;
+  --color-texto-suave: #bdb2a4;
+  --color-texto-tenue: #8f8478;
+
+  /* Color: acento dorado cobre y su texto (contraste 7:1 o más sobre el acento). */
+  --color-acento: #d4a24c;
+  --color-acento-hover: #e2b462;
+  --color-acento-activo: #b98a3a;
+  --color-acento-texto: #1a1209;
+  --color-acento-suave: rgb(212 162 76 / 0.14);
+  --color-acento-borde: rgb(212 162 76 / 0.45);
+
+  /* Color: estados. */
+  --color-exito: #7bd8a0;
+  --color-exito-fondo: rgb(123 216 160 / 0.12);
+  --color-aviso: #f2c462;
+  --color-aviso-fondo: rgb(242 196 98 / 0.12);
+  --color-neutro: #9a9086;
+  --color-neutro-fondo: rgb(154 144 134 / 0.14);
+  --color-error: #f28b82;
+  --color-error-fondo: rgb(242 139 130 / 0.12);
+  --color-peligro: #c9473d;
+  --color-peligro-hover: #d85a50;
+
+  /* Tipografía: títulos con serifa de sistema (carácter clásico) y cuerpo con la fuente del sistema. */
+  --fuente-titulos: 'Iowan Old Style', 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif;
+  --fuente-cuerpo: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --fuente-mono: ui-monospace, 'Cascadia Mono', 'SF Mono', Menlo, Consolas, monospace;
+
+  --texto-xs: 0.75rem;
+  --texto-sm: 0.875rem;
+  --texto-base: 1rem;
+  --texto-lg: 1.125rem;
+  --texto-xl: 1.375rem;
+  --texto-2xl: 1.75rem;
+  --texto-3xl: 2.25rem;
+  --texto-4xl: 2.875rem;
+
+  --peso-normal: 400;
+  --peso-medio: 500;
+  --peso-fuerte: 600;
+  --peso-titulo: 700;
+
+  --interlineado: 1.55;
+  --interlineado-titulos: 1.15;
+
+  /* Espaciado (escala de 4 px). */
+  --espacio-1: 0.25rem;
+  --espacio-2: 0.5rem;
+  --espacio-3: 0.75rem;
+  --espacio-4: 1rem;
+  --espacio-5: 1.25rem;
+  --espacio-6: 1.5rem;
+  --espacio-8: 2rem;
+  --espacio-10: 2.5rem;
+  --espacio-12: 3rem;
+  --espacio-16: 4rem;
+
+  /* Bordes redondeados. */
+  --radio-sm: 0.375rem;
+  --radio: 0.625rem;
+  --radio-lg: 1rem;
+  --radio-xl: 1.5rem;
+  --radio-pildora: 999px;
+
+  /* Sombras sutiles (sobre fondo oscuro se apoyan en un borde claro muy tenue). */
+  --sombra-sm: 0 1px 2px rgb(0 0 0 / 0.4);
+  --sombra: 0 4px 14px rgb(0 0 0 / 0.35), 0 1px 0 rgb(255 255 255 / 0.03) inset;
+  --sombra-lg: 0 18px 48px rgb(0 0 0 / 0.5), 0 1px 0 rgb(255 255 255 / 0.04) inset;
+  --anillo-foco: 0 0 0 3px rgb(212 162 76 / 0.55);
+
+  /* Controles: área táctil de al menos 44 px (principio IX, RC15). */
+  --alto-control: 2.875rem;
+  --ancho-contenido: 72rem;
+  --ancho-formulario: 28rem;
+
+  --transicion: 160ms ease;
+}

@@ -1,0 +1,55 @@
+/* Contenido de la tarjeta en las pantallas de acceso (registro, ingreso y activación). */
+
+.encabezado {
+  margin-bottom: var(--espacio-6);
+}
+
+.lema {
+  display: flex;
+  align-items: center;
+  gap: var(--espacio-2);
+  margin: 0;
+  color: var(--color-texto-suave);
+}
+
+.lema svg {
+  color: var(--color-acento);
+}
+
+.formulario {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-5);
+}
+
+.aceptaciones {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-2);
+  margin: 0;
+  padding: 0;
+  border: none;
+  min-width: 0;
+}
+
+.aviso {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--espacio-3);
+  margin: 0 0 var(--espacio-5);
+  padding: var(--espacio-3) var(--espacio-4);
+  border: 1px solid rgb(123 216 160 / 0.4);
+  border-radius: var(--radio);
+  background: var(--color-exito-fondo);
+  color: var(--color-exito);
+  font-size: var(--texto-sm);
+}
+
+.aviso svg {
+  margin-top: 0.1rem;
+}
+
+.enlaceAccion {
+  display: inline-flex;
+  margin-top: var(--espacio-5);
+}

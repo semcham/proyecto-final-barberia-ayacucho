@@ -1,13 +1,17 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation } from '@tanstack/react-query';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { Link, useNavigate } from 'react-router-dom';
 import { z } from 'zod';
 import { ApiError, llamarApi } from '../api/client';
 import { useSesion } from '../auth/SesionProvider';
 import type { components } from '../api/schema';
 import { VERSION_POLITICA_DATOS, VERSION_TERMINOS } from '../legal';
-import estilos from './Registro.module.css';
+import { AlertaError, BotonEnviar, Campo, CampoContrasena } from '../components/Campo';
+import { Icono } from '../components/Icono';
+import { IndicadorFortaleza } from '../components/IndicadorFortaleza';
+import { MarcoAcceso, type PuntoValor } from '../components/MarcoAcceso';
+import estilos from './Acceso.module.css';
 
 type RespuestaRegistro = components['schemas']['RegistroBarberiaResponse'];
 type SolicitudRegistro = components['schemas']['RegistroBarberiaRequest'];
@@ -43,6 +47,24 @@ const esquema = z.object({
 
 type Formulario = z.infer<typeof esquema>;
 
+const PUNTOS_VALOR: PuntoValor[] = [
+  {
+    icono: 'celular',
+    titulo: 'Todo desde tu celular',
+    texto: 'Gestiona tu barbería desde donde estés, sin instalar nada.',
+  },
+  {
+    icono: 'usuarios',
+    titulo: 'Tu equipo, cada uno con su acceso',
+    texto: 'Crea cuentas para tus barberos y decide quién puede entrar.',
+  },
+  {
+    icono: 'escudo',
+    titulo: 'Tus datos, solo tuyos',
+    texto: 'La información de tu barbería está separada de la de las demás.',
+  },
+];
+
 const MENSAJE_POR_CAMPO: Record<string, string> = {
   'propietario.correo': 'Revisa el correo.',
   'propietario.contrasena':
@@ -70,8 +92,10 @@ export default function Registro() {
   const {
     register,
     handleSubmit,
+    control,
     formState: { errors },
   } = useForm<Formulario>({ resolver: zodResolver(esquema), mode: 'onSubmit' });
+  const contrasena = useWatch({ control, name: 'contrasena' }) ?? '';
 
   const registro = useMutation({
     mutationFn: (datos: Formulario) =>
@@ -92,68 +116,117 @@ export default function Registro() {
   });
 
   return (
-    <main className="contenedor">
-      <h1>Registra tu barbería</h1>
-      <p className={estilos.lema}>Empieza tu prueba gratuita de 14 días, sin tarjeta.</p>
+    <MarcoAcceso
+      antetitulo="Prueba gratuita"
+      titular="14 días gratis para ordenar tu barbería"
+      descripcion="Sin tarjeta y sin compromiso. Crea tu cuenta en un minuto y empieza hoy mismo."
+      puntos={PUNTOS_VALOR}
+      pie={
+        <p>
+          ¿Ya tienes cuenta? <Link to="/ingresar">Ingresa aquí</Link>
+        </p>
+      }
+    >
+      <div className={estilos.encabezado}>
+        <h1>Registra tu barbería</h1>
+        <p className={estilos.lema}>
+          <Icono nombre="tarjetaTachada" tamano={18} />
+          Empieza tu prueba gratuita de 14 días, sin tarjeta.
+        </p>
+      </div>
 
       <form
         className={estilos.formulario}
         onSubmit={handleSubmit((datos) => registro.mutate(datos))}
         noValidate
       >
-        <div className={estilos.campo}>
-          <label htmlFor="nombreBarberia">Nombre de la barbería</label>
-          <input id="nombreBarberia" autoComplete="organization" {...register('nombreBarberia')} />
-          {errors.nombreBarberia && <p className="mensaje-error">{errors.nombreBarberia.message}</p>}
-        </div>
+        <Campo
+          id="nombreBarberia"
+          etiqueta="Nombre de la barbería"
+          icono="tienda"
+          autoComplete="organization"
+          placeholder="Ej.: Barbería Huamanga"
+          registro={register('nombreBarberia')}
+          error={errors.nombreBarberia?.message}
+        />
 
-        <div className={estilos.campo}>
-          <label htmlFor="nombre">Tu nombre</label>
-          <input id="nombre" autoComplete="name" {...register('nombre')} />
-          {errors.nombre && <p className="mensaje-error">{errors.nombre.message}</p>}
-        </div>
+        <Campo
+          id="nombre"
+          etiqueta="Tu nombre"
+          icono="usuario"
+          autoComplete="name"
+          registro={register('nombre')}
+          error={errors.nombre?.message}
+        />
 
-        <div className={estilos.campo}>
-          <label htmlFor="correo">Correo</label>
-          <input id="correo" type="email" inputMode="email" autoComplete="email" {...register('correo')} />
-          {errors.correo && <p className="mensaje-error">{errors.correo.message}</p>}
-        </div>
+        <Campo
+          id="correo"
+          etiqueta="Correo"
+          icono="correo"
+          type="email"
+          inputMode="email"
+          autoComplete="email"
+          placeholder="tucorreo@ejemplo.com"
+          registro={register('correo')}
+          error={errors.correo?.message}
+        />
 
-        <div className={estilos.campo}>
-          <label htmlFor="contrasena">Contraseña</label>
-          <input id="contrasena" type="password" autoComplete="new-password" {...register('contrasena')} />
-          <p className={estilos.ayuda}>Al menos 10 caracteres. Una frase fácil de recordar funciona bien.</p>
-          {errors.contrasena && <p className="mensaje-error">{errors.contrasena.message}</p>}
-        </div>
+        <CampoContrasena
+          id="contrasena"
+          etiqueta="Contraseña"
+          autoComplete="new-password"
+          registro={register('contrasena')}
+          ayuda="Al menos 10 caracteres. Una frase fácil de recordar funciona bien."
+          error={errors.contrasena?.message}
+          extra={<IndicadorFortaleza valor={contrasena} />}
+        />
 
-        <div className={estilos.casilla}>
-          <input id="aceptaTerminos" type="checkbox" {...register('aceptaTerminos')} />
-          <label htmlFor="aceptaTerminos">Acepto los términos de uso (versión {VERSION_TERMINOS})</label>
-        </div>
-        {errors.aceptaTerminos && <p className="mensaje-error">{errors.aceptaTerminos.message}</p>}
-
-        <div className={estilos.casilla}>
-          <input id="aceptaPolitica" type="checkbox" {...register('aceptaPolitica')} />
-          <label htmlFor="aceptaPolitica">
-            Acepto la política de tratamiento de datos (versión {VERSION_POLITICA_DATOS})
+        <fieldset className={estilos.aceptaciones}>
+          <legend className="sr-only">Aceptaciones</legend>
+          <label className="casilla">
+            <input
+              id="aceptaTerminos"
+              type="checkbox"
+              aria-invalid={errors.aceptaTerminos ? true : undefined}
+              aria-describedby={errors.aceptaTerminos ? 'aceptaTerminos-error' : undefined}
+              {...register('aceptaTerminos')}
+            />
+            <span>Acepto los términos de uso (versión {VERSION_TERMINOS})</span>
           </label>
-        </div>
-        {errors.aceptaPolitica && <p className="mensaje-error">{errors.aceptaPolitica.message}</p>}
+          {errors.aceptaTerminos && (
+            <p id="aceptaTerminos-error" className="mensaje-error">
+              <Icono nombre="alerta" tamano={16} />
+              {errors.aceptaTerminos.message}
+            </p>
+          )}
 
-        {registro.isError && (
-          <p role="alert" className="mensaje-error">
-            {mensajeDeError(registro.error)}
-          </p>
-        )}
+          <label className="casilla">
+            <input
+              id="aceptaPolitica"
+              type="checkbox"
+              aria-invalid={errors.aceptaPolitica ? true : undefined}
+              aria-describedby={errors.aceptaPolitica ? 'aceptaPolitica-error' : undefined}
+              {...register('aceptaPolitica')}
+            />
+            <span>Acepto la política de tratamiento de datos (versión {VERSION_POLITICA_DATOS})</span>
+          </label>
+          {errors.aceptaPolitica && (
+            <p id="aceptaPolitica-error" className="mensaje-error">
+              <Icono nombre="alerta" tamano={16} />
+              {errors.aceptaPolitica.message}
+            </p>
+          )}
+        </fieldset>
 
-        <button type="submit" disabled={registro.isPending}>
-          {registro.isPending ? 'Creando tu barbería…' : 'Crear mi barbería'}
-        </button>
+        {registro.isError && <AlertaError>{mensajeDeError(registro.error)}</AlertaError>}
+
+        <BotonEnviar
+          cargando={registro.isPending}
+          texto="Crear mi barbería"
+          textoCargando="Creando tu barbería…"
+          icono="flecha"
+        />
       </form>
-
-      <p className={estilos.pie}>
-        ¿Ya tienes cuenta? <Link to="/ingresar">Ingresa aquí</Link>
-      </p>
-    </main>
+    </MarcoAcceso>
   );
 }

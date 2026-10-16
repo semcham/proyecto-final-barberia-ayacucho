@@ -12,7 +12,8 @@ export function RutaProtegida({ children, roles }: { children: ReactNode; roles?
 
   if (estado === 'cargando') {
     return (
-      <main className="contenedor" aria-busy="true">
+      <main className="contenedor cargando" aria-busy="true">
+        <span className="girador" aria-hidden="true" />
         <p>Cargando…</p>
       </main>
     );

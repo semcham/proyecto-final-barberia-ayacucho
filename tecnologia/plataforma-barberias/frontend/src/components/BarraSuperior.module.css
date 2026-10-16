@@ -1,42 +1,177 @@
+/* Móvil primero: identidad y cuenta en la primera fila, navegación en pestañas debajo. */
+
 .barra {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--espacio);
-  padding: 0.75rem var(--espacio);
-  background: var(--color-superficie);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: rgb(19 17 14 / 0.88);
+  backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--color-borde);
 }
 
+.interior {
+  display: grid;
+  grid-template-areas:
+    'identidad cuenta'
+    'navegacion navegacion';
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--espacio-3) var(--espacio-4);
+  max-width: var(--ancho-contenido);
+  margin: 0 auto;
+  padding: var(--espacio-3) var(--espacio-4) 0;
+}
+
 .identidad {
+  grid-area: identidad;
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  gap: var(--espacio-3);
   min-width: 0;
 }
 
-.identidad strong,
-.identidad span {
+.sello {
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, var(--color-acento-hover), var(--color-acento-activo));
+  color: var(--color-acento-texto);
+}
+
+.textos {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.25;
+}
+
+.textos strong,
+.textos span {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.identidad span {
-  font-size: 0.875rem;
+.textos strong {
+  font-family: var(--fuente-titulos);
+  font-size: var(--texto-lg);
+}
+
+.textos span {
+  font-size: var(--texto-xs);
   color: var(--color-texto-suave);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .navegacion {
+  grid-area: navegacion;
   display: flex;
-  gap: 0.75rem;
+  gap: var(--espacio-1);
+  overflow-x: auto;
 }
 
-.navegacion a {
+.enlace {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--espacio-2);
+  min-height: var(--alto-control);
+  padding: 0 var(--espacio-3);
+  border-bottom: 2px solid transparent;
+  color: var(--color-texto-suave);
+  font-weight: var(--peso-fuerte);
+  font-size: var(--texto-sm);
   text-decoration: none;
-  font-weight: 600;
+  white-space: nowrap;
 }
 
-.navegacion a[aria-current='page'] {
-  text-decoration: underline;
+.enlace:hover {
+  color: var(--color-texto);
+}
+
+.enlace:focus-visible {
+  outline-offset: -2px;
+  border-radius: var(--radio-sm);
+}
+
+.activo,
+.activo:hover {
+  color: var(--color-acento);
+  border-bottom-color: var(--color-acento);
+}
+
+.cuenta {
+  grid-area: cuenta;
+  display: flex;
+  align-items: center;
+  gap: var(--espacio-2);
+}
+
+.avatar {
+  display: inline-grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border: 1px solid var(--color-borde-fuerte);
+  border-radius: 50%;
+  background: var(--color-superficie-elevada);
+  font-size: var(--texto-xs);
+  font-weight: var(--peso-fuerte);
+  color: var(--color-texto);
+}
+
+.nombre {
+  display: none;
+  max-width: 12rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--texto-sm);
+  color: var(--color-texto-suave);
+}
+
+/* En pantallas angostas el botón muestra solo el icono; el texto queda para lectores de pantalla. */
+.textoSalir {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.salir {
+  min-width: var(--alto-control);
+}
+
+@media (min-width: 48rem) {
+  .interior {
+    grid-template-areas: 'identidad navegacion cuenta';
+    grid-template-columns: auto 1fr auto;
+    gap: var(--espacio-8);
+    padding: 0 var(--espacio-8);
+  }
+
+  .navegacion {
+    align-self: stretch;
+  }
+
+  .enlace {
+    min-height: 4rem;
+  }
+
+  .nombre {
+    display: inline;
+  }
+
+  .textoSalir {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip: auto;
+  }
 }

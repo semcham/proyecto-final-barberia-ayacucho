@@ -6,6 +6,9 @@ import { z } from 'zod';
 import { ApiError, llamarApi } from '../api/client';
 import type { components } from '../api/schema';
 import { useSesion } from '../auth/SesionProvider';
+import { AlertaError, Campo } from '../components/Campo';
+import { Icono } from '../components/Icono';
+import { iniciales } from '../components/iniciales';
 import estilos from './Usuarios.module.css';
 
 type Usuario = components['schemas']['Usuario'];
@@ -20,6 +23,12 @@ const ETIQUETA_ESTADO: Record<Usuario['estado'], string> = {
   PENDIENTE: 'Pendiente de activar',
   ACTIVA: 'Activo',
   DESACTIVADA: 'Desactivado',
+};
+
+const CLASE_ESTADO: Record<Usuario['estado'], string> = {
+  PENDIENTE: 'etiqueta etiqueta--pendiente',
+  ACTIVA: 'etiqueta etiqueta--activa',
+  DESACTIVADA: 'etiqueta etiqueta--desactivada',
 };
 
 const esquemaNuevo = z.object({
@@ -46,23 +55,34 @@ function DialogoEnlace({ enlace, onCerrar }: { enlace: EnlaceActivacion; onCerra
     setCopiado(true);
   };
   return (
-    <div role="dialog" aria-labelledby="titulo-enlace" className={estilos.dialogo}>
-      <h2 id="titulo-enlace">Enlace de activación</h2>
-      <p>
-        Entrégaselo al barbero para que cree su contraseña. Sirve una sola vez y vence el{' '}
-        {new Date(enlace.venceEn).toLocaleString('es-PE', { dateStyle: 'medium', timeStyle: 'short' })}.
-      </p>
-      <input
-        readOnly
-        value={enlace.enlace}
-        aria-label="Enlace de activación"
-        onFocus={(e) => e.target.select()}
-      />
-      <div className={estilos.acciones}>
-        <button type="button" onClick={copiar}>
+    <div role="dialog" aria-labelledby="titulo-enlace" className={`tarjeta ${estilos.dialogo}`}>
+      <div className={estilos.dialogoCabecera}>
+        <span className={estilos.iconoDialogo}>
+          <Icono nombre="enlace" />
+        </span>
+        <div>
+          <h2 id="titulo-enlace">Enlace de activación</h2>
+          <p className="texto-suave">
+            Entrégaselo al barbero para que cree su contraseña. Sirve una sola vez y vence el{' '}
+            {new Date(enlace.venceEn).toLocaleString('es-PE', { dateStyle: 'medium', timeStyle: 'short' })}.
+          </p>
+        </div>
+      </div>
+      <div className={estilos.copiar}>
+        <input
+          readOnly
+          className={`entrada ${estilos.enlace}`}
+          value={enlace.enlace}
+          aria-label="Enlace de activación"
+          onFocus={(e) => e.target.select()}
+        />
+        <button type="button" className="boton boton--primario" onClick={copiar}>
+          <Icono nombre={copiado ? 'check' : 'copiar'} tamano={18} />
           {copiado ? 'Copiado' : 'Copiar enlace'}
         </button>
-        <button type="button" className={estilos.secundario} onClick={onCerrar}>
+      </div>
+      <div className={estilos.dialogoPie}>
+        <button type="button" className="boton boton--fantasma boton--pequeno" onClick={onCerrar}>
           Cerrar
         </button>
       </div>
@@ -138,115 +158,193 @@ export default function Usuarios() {
 
   return (
     <main className="contenedor">
-      <h1>Usuarios</h1>
-
-      <section aria-labelledby="titulo-nuevo" className={estilos.tarjeta}>
-        <h2 id="titulo-nuevo">Nuevo barbero</h2>
-        <form className={estilos.formulario} onSubmit={handleSubmit((d) => crear.mutate(d))} noValidate>
-          <label htmlFor="nombre-barbero">Nombre</label>
-          <input id="nombre-barbero" autoComplete="off" {...register('nombre')} />
-          {errors.nombre && <p className="mensaje-error">{errors.nombre.message}</p>}
-          <label htmlFor="correo-barbero">Correo</label>
-          <input
-            id="correo-barbero"
-            type="email"
-            inputMode="email"
-            autoComplete="off"
-            {...register('correo')}
-          />
-          {errors.correo && <p className="mensaje-error">{errors.correo.message}</p>}
-          <button type="submit" disabled={crear.isPending}>
-            {crear.isPending ? 'Creando…' : 'Crear barbero'}
-          </button>
-        </form>
-      </section>
-
-      {enlace && <DialogoEnlace enlace={enlace} onCerrar={() => setEnlace(null)} />}
-
-      {error && (
-        <p role="alert" className="mensaje-error">
-          {error}
+      <header className={estilos.cabecera}>
+        <p className="antetitulo">Equipo</p>
+        <h1>Usuarios</h1>
+        <p className="texto-suave">
+          Crea cuentas para tus barberos y controla quién puede ingresar a la barbería.
         </p>
-      )}
+      </header>
 
-      <div className={estilos.filtro}>
-        <label htmlFor="filtro-estado">Mostrar</label>
-        <select
-          id="filtro-estado"
-          value={estado}
-          onChange={(e) => {
-            setEstado(e.target.value as FiltroEstado);
-            setPagina(1);
-          }}
-        >
-          <option value="">Todos</option>
-          <option value="ACTIVA">Activos</option>
-          <option value="PENDIENTE">Pendientes de activar</option>
-          <option value="DESACTIVADA">Desactivados</option>
-        </select>
+      <div className={estilos.distribucion}>
+        <section aria-labelledby="titulo-nuevo" className={`tarjeta ${estilos.nuevo}`}>
+          <h2 id="titulo-nuevo">Nuevo barbero</h2>
+          <p className={`texto-suave ${estilos.ayudaNuevo}`}>
+            Le generaremos un enlace para que cree su propia contraseña.
+          </p>
+          <form className={estilos.formulario} onSubmit={handleSubmit((d) => crear.mutate(d))} noValidate>
+            <Campo
+              id="nombre-barbero"
+              etiqueta="Nombre"
+              icono="usuario"
+              autoComplete="off"
+              registro={register('nombre')}
+              error={errors.nombre?.message}
+            />
+            <Campo
+              id="correo-barbero"
+              etiqueta="Correo"
+              icono="correo"
+              type="email"
+              inputMode="email"
+              autoComplete="off"
+              registro={register('correo')}
+              error={errors.correo?.message}
+            />
+            <button
+              type="submit"
+              className="boton boton--primario boton--bloque"
+              disabled={crear.isPending}
+              aria-busy={crear.isPending || undefined}
+            >
+              {crear.isPending ? (
+                <span className="girador" aria-hidden="true" />
+              ) : (
+                <Icono nombre="mas" tamano={18} />
+              )}
+              {crear.isPending ? 'Creando…' : 'Crear barbero'}
+            </button>
+          </form>
+        </section>
+
+        <div className={estilos.columna}>
+          {enlace && <DialogoEnlace enlace={enlace} onCerrar={() => setEnlace(null)} />}
+
+          {error && <AlertaError>{error}</AlertaError>}
+
+          <div className={estilos.herramientas}>
+            <div className={estilos.filtro}>
+              <label htmlFor="filtro-estado" className="campo__etiqueta">
+                Mostrar
+              </label>
+              <select
+                id="filtro-estado"
+                className="entrada"
+                value={estado}
+                onChange={(e) => {
+                  setEstado(e.target.value as FiltroEstado);
+                  setPagina(1);
+                }}
+              >
+                <option value="">Todos</option>
+                <option value="ACTIVA">Activos</option>
+                <option value="PENDIENTE">Pendientes de activar</option>
+                <option value="DESACTIVADA">Desactivados</option>
+              </select>
+            </div>
+            {datos && (
+              <p className={estilos.total}>{datos.total === 1 ? '1 persona' : `${datos.total} personas`}</p>
+            )}
+          </div>
+
+          {consulta.isPending && (
+            <p className={estilos.estadoLista} aria-busy="true">
+              <span className="girador" aria-hidden="true" />
+              Cargando usuarios…
+            </p>
+          )}
+          {consulta.isError && (
+            <p className={`mensaje-error ${estilos.estadoLista}`}>
+              <Icono nombre="alerta" tamano={16} />
+              {mensajeDeError(consulta.error)}
+            </p>
+          )}
+
+          {datos && datos.datos.length === 0 && (
+            <p className={estilos.estadoLista}>No hay usuarios con este filtro.</p>
+          )}
+
+          {datos && datos.datos.length > 0 && (
+            <ul className={estilos.lista} aria-label="Usuarios de la barbería">
+              {datos.datos.map((usuario) => {
+                const esPropietario = usuario.rol === 'PROPIETARIO';
+                const soyYo = usuario.id === yo?.id;
+                const clase =
+                  usuario.estado === 'DESACTIVADA'
+                    ? `${estilos.usuario} ${estilos.inactivo}`
+                    : estilos.usuario;
+                return (
+                  <li key={usuario.id} className={clase}>
+                    <span className={estilos.avatar} aria-hidden="true">
+                      {iniciales(usuario.nombre)}
+                    </span>
+                    <div className={estilos.datos}>
+                      <strong>{usuario.nombre}</strong>
+                      <span className={estilos.correo}>{usuario.correo}</span>
+                      <span className={estilos.etiquetas}>
+                        <span className="etiqueta etiqueta--rol">
+                          {esPropietario ? 'Propietario' : 'Barbero'}
+                        </span>
+                        <span className={CLASE_ESTADO[usuario.estado]}>
+                          {ETIQUETA_ESTADO[usuario.estado]}
+                        </span>
+                        {soyYo && <span className="etiqueta etiqueta--rol">Tú</span>}
+                      </span>
+                    </div>
+                    {!esPropietario && !soyYo && (
+                      <div className={estilos.acciones}>
+                        {usuario.estado === 'PENDIENTE' && (
+                          <button
+                            type="button"
+                            className="boton boton--secundario boton--pequeno"
+                            onClick={() => regenerar.mutate(usuario.id)}
+                          >
+                            <Icono nombre="enlace" tamano={16} />
+                            Nuevo enlace
+                          </button>
+                        )}
+                        {usuario.estado === 'DESACTIVADA' ? (
+                          <button
+                            type="button"
+                            className="boton boton--secundario boton--pequeno"
+                            onClick={() => cambiarEstado.mutate({ id: usuario.id, nuevo: 'ACTIVA' })}
+                          >
+                            <Icono nombre="recargar" tamano={16} />
+                            Reactivar
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            className="boton boton--peligro boton--pequeno"
+                            onClick={() => desactivar(usuario)}
+                          >
+                            <Icono nombre="bloquear" tamano={16} />
+                            Desactivar
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+
+          {paginas > 1 && (
+            <nav className={estilos.paginacion} aria-label="Páginas">
+              <button
+                type="button"
+                className="boton boton--secundario boton--pequeno"
+                disabled={pagina <= 1}
+                onClick={() => setPagina((p) => p - 1)}
+              >
+                Anterior
+              </button>
+              <span>
+                Página {pagina} de {paginas}
+              </span>
+              <button
+                type="button"
+                className="boton boton--secundario boton--pequeno"
+                disabled={pagina >= paginas}
+                onClick={() => setPagina((p) => p + 1)}
+              >
+                Siguiente
+              </button>
+            </nav>
+          )}
+        </div>
       </div>
-
-      {consulta.isPending && <p>Cargando usuarios…</p>}
-      {consulta.isError && <p className="mensaje-error">{mensajeDeError(consulta.error)}</p>}
-
-      {datos && (
-        <ul className={estilos.lista} aria-label="Usuarios de la barbería">
-          {datos.datos.map((usuario) => {
-            const esPropietario = usuario.rol === 'PROPIETARIO';
-            const soyYo = usuario.id === yo?.id;
-            return (
-              <li key={usuario.id} className={estilos.usuario}>
-                <div>
-                  <strong>{usuario.nombre}</strong>
-                  <span>{usuario.correo}</span>
-                  <span>
-                    {esPropietario ? 'Propietario' : 'Barbero'} · {ETIQUETA_ESTADO[usuario.estado]}
-                  </span>
-                </div>
-                {!esPropietario && !soyYo && (
-                  <div className={estilos.acciones}>
-                    {usuario.estado === 'PENDIENTE' && (
-                      <button
-                        type="button"
-                        className={estilos.secundario}
-                        onClick={() => regenerar.mutate(usuario.id)}
-                      >
-                        Nuevo enlace
-                      </button>
-                    )}
-                    {usuario.estado === 'DESACTIVADA' ? (
-                      <button
-                        type="button"
-                        onClick={() => cambiarEstado.mutate({ id: usuario.id, nuevo: 'ACTIVA' })}
-                      >
-                        Reactivar
-                      </button>
-                    ) : (
-                      <button type="button" className={estilos.peligro} onClick={() => desactivar(usuario)}>
-                        Desactivar
-                      </button>
-                    )}
-                  </div>
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      )}
-
-      {paginas > 1 && (
-        <nav className={estilos.paginacion} aria-label="Páginas">
-          <button type="button" disabled={pagina <= 1} onClick={() => setPagina((p) => p - 1)}>
-            Anterior
-          </button>
-          <span>
-            Página {pagina} de {paginas}
-          </span>
-          <button type="button" disabled={pagina >= paginas} onClick={() => setPagina((p) => p + 1)}>
-            Siguiente
-          </button>
-        </nav>
-      )}
     </main>
   );
 }
