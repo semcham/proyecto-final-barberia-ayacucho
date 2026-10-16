@@ -1,0 +1,135 @@
+/* Región de avisos: abajo en el celular (sobre la navegación inferior), abajo a la derecha en escritorio. */
+.region {
+  position: fixed;
+  z-index: var(--capa-aviso);
+  left: 0;
+  right: 0;
+  bottom: var(--alto-navegacion-inferior, 0px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-2);
+  margin: 0;
+  padding: var(--espacio-4);
+  list-style: none;
+  outline: none;
+  pointer-events: none;
+}
+
+.aviso {
+  --color-tono: var(--color-enlace);
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--espacio-3);
+  padding: var(--espacio-3) var(--espacio-3) var(--espacio-3) var(--espacio-4);
+  border: 1px solid var(--color-borde);
+  border-left: 3px solid var(--color-tono);
+  border-radius: var(--radio);
+  background: var(--color-superficie);
+  box-shadow: var(--sombra-lg);
+  pointer-events: auto;
+}
+
+.aviso[data-state='open'] {
+  animation: entrar var(--duracion-lenta) var(--curva-salida);
+}
+
+.aviso[data-state='closed'] {
+  animation: salir var(--duracion) var(--curva);
+}
+
+.aviso[data-swipe='move'] {
+  transform: translateX(var(--radix-toast-swipe-move-x));
+}
+
+.aviso[data-swipe='cancel'] {
+  transform: translateX(0);
+  transition: transform var(--duracion) var(--curva);
+}
+
+.aviso[data-swipe='end'] {
+  animation: deslizar var(--duracion) var(--curva);
+}
+
+.exito {
+  --color-tono: var(--color-exito);
+}
+
+.error {
+  --color-tono: var(--color-error);
+}
+
+.icono {
+  display: inline-flex;
+  margin-top: 0.1rem;
+  color: var(--color-tono);
+}
+
+.textos {
+  flex: 1;
+  min-width: 0;
+}
+
+.titulo {
+  font-weight: var(--peso-fuerte);
+  font-size: var(--texto-sm);
+}
+
+.descripcion {
+  margin-top: var(--espacio-1);
+  font-size: var(--texto-sm);
+  color: var(--color-texto-suave);
+}
+
+.cerrar {
+  display: inline-grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border: none;
+  border-radius: var(--radio-sm);
+  background: transparent;
+  color: var(--color-texto-suave);
+  cursor: pointer;
+}
+
+.cerrar:hover {
+  background: var(--color-superficie-hundida);
+  color: var(--color-texto);
+}
+
+.cerrar:focus-visible {
+  outline: none;
+  box-shadow: var(--anillo-foco);
+}
+
+@media (min-width: 40rem) {
+  .region {
+    left: auto;
+    bottom: 0;
+    width: 24rem;
+    padding: var(--espacio-6);
+  }
+}
+
+@keyframes entrar {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+
+@keyframes salir {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes deslizar {
+  from {
+    transform: translateX(var(--radix-toast-swipe-end-x));
+  }
+  to {
+    transform: translateX(110%);
+  }
+}

@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { Icono, type NombreIcono } from './Icono';
 import { Logo } from './Logo';
+import { ConmutadorTema } from './ui';
 import estilos from './MarcoAcceso.module.css';
 
 export interface PuntoValor {
@@ -58,8 +59,11 @@ export function MarcoAcceso({
       </aside>
 
       <main className={estilos.principal}>
-        <div className={estilos.logoMovil}>
-          <Logo />
+        <div className={estilos.superior}>
+          <div className={estilos.logoMovil}>
+            <Logo />
+          </div>
+          <ConmutadorTema />
         </div>
         <div className={`tarjeta ${estilos.tarjeta}`}>{children}</div>
         {pie && <div className={estilos.pie}>{pie}</div>}

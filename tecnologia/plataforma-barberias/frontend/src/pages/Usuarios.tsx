@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { ApiError, llamarApi } from '../api/client';
 import type { components } from '../api/schema';
 import { useSesion } from '../auth/SesionProvider';
-import { AlertaError, Campo } from '../components/Campo';
+import { Alerta, Campo, EtiquetaEstado, type TonoEtiqueta } from '../components/ui';
 import { Icono } from '../components/Icono';
 import { iniciales } from '../components/iniciales';
 import estilos from './Usuarios.module.css';
@@ -25,10 +25,10 @@ const ETIQUETA_ESTADO: Record<Usuario['estado'], string> = {
   DESACTIVADA: 'Desactivado',
 };
 
-const CLASE_ESTADO: Record<Usuario['estado'], string> = {
-  PENDIENTE: 'etiqueta etiqueta--pendiente',
-  ACTIVA: 'etiqueta etiqueta--activa',
-  DESACTIVADA: 'etiqueta etiqueta--desactivada',
+const TONO_ESTADO: Record<Usuario['estado'], TonoEtiqueta> = {
+  PENDIENTE: 'aviso',
+  ACTIVA: 'exito',
+  DESACTIVADA: 'neutro',
 };
 
 const esquemaNuevo = z.object({
@@ -82,7 +82,7 @@ function DialogoEnlace({ enlace, onCerrar }: { enlace: EnlaceActivacion; onCerra
         </button>
       </div>
       <div className={estilos.dialogoPie}>
-        <button type="button" className="boton boton--fantasma boton--pequeno" onClick={onCerrar}>
+        <button type="button" className="boton boton--fantasma boton--sm" onClick={onCerrar}>
           Cerrar
         </button>
       </div>
@@ -210,7 +210,7 @@ export default function Usuarios() {
         <div className={estilos.columna}>
           {enlace && <DialogoEnlace enlace={enlace} onCerrar={() => setEnlace(null)} />}
 
-          {error && <AlertaError>{error}</AlertaError>}
+          {error && <Alerta>{error}</Alerta>}
 
           <div className={estilos.herramientas}>
             <div className={estilos.filtro}>
@@ -272,13 +272,13 @@ export default function Usuarios() {
                       <strong>{usuario.nombre}</strong>
                       <span className={estilos.correo}>{usuario.correo}</span>
                       <span className={estilos.etiquetas}>
-                        <span className="etiqueta etiqueta--rol">
+                        <EtiquetaEstado tono="contorno">
                           {esPropietario ? 'Propietario' : 'Barbero'}
-                        </span>
-                        <span className={CLASE_ESTADO[usuario.estado]}>
+                        </EtiquetaEstado>
+                        <EtiquetaEstado tono={TONO_ESTADO[usuario.estado]}>
                           {ETIQUETA_ESTADO[usuario.estado]}
-                        </span>
-                        {soyYo && <span className="etiqueta etiqueta--rol">Tú</span>}
+                        </EtiquetaEstado>
+                        {soyYo && <EtiquetaEstado tono="contorno">Tú</EtiquetaEstado>}
                       </span>
                     </div>
                     {!esPropietario && !soyYo && (
@@ -286,7 +286,7 @@ export default function Usuarios() {
                         {usuario.estado === 'PENDIENTE' && (
                           <button
                             type="button"
-                            className="boton boton--secundario boton--pequeno"
+                            className="boton boton--secundario boton--sm"
                             onClick={() => regenerar.mutate(usuario.id)}
                           >
                             <Icono nombre="enlace" tamano={16} />
@@ -296,7 +296,7 @@ export default function Usuarios() {
                         {usuario.estado === 'DESACTIVADA' ? (
                           <button
                             type="button"
-                            className="boton boton--secundario boton--pequeno"
+                            className="boton boton--secundario boton--sm"
                             onClick={() => cambiarEstado.mutate({ id: usuario.id, nuevo: 'ACTIVA' })}
                           >
                             <Icono nombre="recargar" tamano={16} />
@@ -305,7 +305,7 @@ export default function Usuarios() {
                         ) : (
                           <button
                             type="button"
-                            className="boton boton--peligro boton--pequeno"
+                            className="boton boton--peligro boton--sm"
                             onClick={() => desactivar(usuario)}
                           >
                             <Icono nombre="bloquear" tamano={16} />
@@ -324,7 +324,7 @@ export default function Usuarios() {
             <nav className={estilos.paginacion} aria-label="Páginas">
               <button
                 type="button"
-                className="boton boton--secundario boton--pequeno"
+                className="boton boton--secundario boton--sm"
                 disabled={pagina <= 1}
                 onClick={() => setPagina((p) => p - 1)}
               >
@@ -335,7 +335,7 @@ export default function Usuarios() {
               </span>
               <button
                 type="button"
-                className="boton boton--secundario boton--pequeno"
+                className="boton boton--secundario boton--sm"
                 disabled={pagina >= paginas}
                 onClick={() => setPagina((p) => p + 1)}
               >

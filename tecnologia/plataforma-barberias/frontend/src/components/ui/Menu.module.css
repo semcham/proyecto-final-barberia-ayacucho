@@ -1,0 +1,87 @@
+.menu {
+  z-index: var(--capa-flotante);
+  min-width: 13rem;
+  padding: var(--espacio-1);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio);
+  background: var(--color-superficie);
+  box-shadow: var(--sombra-lg);
+  transform-origin: var(--radix-dropdown-menu-content-transform-origin);
+  animation: entrar var(--duracion) var(--curva-salida);
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: var(--espacio-3);
+  min-height: var(--alto-control-sm);
+  padding: 0 var(--espacio-3);
+  border-radius: var(--radio-sm);
+  font-size: var(--texto-sm);
+  color: var(--color-texto);
+  cursor: pointer;
+  outline: none;
+  user-select: none;
+}
+
+.item svg {
+  color: var(--color-texto-suave);
+}
+
+.item[data-highlighted] {
+  background: var(--color-acento-suave);
+}
+
+.item[data-highlighted] svg {
+  color: var(--color-enlace);
+}
+
+.item[data-disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.peligro,
+.peligro svg,
+.peligro[data-highlighted] svg {
+  color: var(--color-error);
+}
+
+.peligro[data-highlighted] {
+  background: var(--color-error-fondo);
+}
+
+.textoRadio {
+  flex: 1;
+}
+
+.indicador {
+  display: inline-flex;
+}
+
+.indicador svg,
+.item[data-highlighted] .indicador svg {
+  color: var(--color-enlace);
+}
+
+.etiqueta {
+  padding: var(--espacio-2) var(--espacio-3) var(--espacio-1);
+  font-size: var(--texto-xs);
+  font-weight: var(--peso-fuerte);
+  letter-spacing: var(--tracking-mayusculas);
+  text-transform: uppercase;
+  color: var(--color-texto-tenue);
+}
+
+.separador {
+  height: 1px;
+  margin: var(--espacio-1) 0;
+  background: var(--color-borde);
+}
+
+@keyframes entrar {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}

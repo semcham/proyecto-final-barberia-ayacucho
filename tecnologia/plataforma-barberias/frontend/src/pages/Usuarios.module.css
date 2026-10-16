@@ -40,7 +40,7 @@
 /* Enlace de activación recién generado. */
 .dialogo {
   border-color: var(--color-acento-borde);
-  background: linear-gradient(135deg, rgb(212 162 76 / 0.1), transparent 60%), var(--color-superficie);
+  background: linear-gradient(135deg, var(--color-acento-suave), transparent 60%), var(--color-superficie);
   box-shadow: var(--sombra-lg);
   animation: aparecer 220ms ease-out;
 }
@@ -136,7 +136,7 @@
 }
 
 .estadoLista :global(.girador) {
-  color: var(--color-acento);
+  color: var(--color-enlace);
 }
 
 /* Lista de personas como tarjetas. */
@@ -179,7 +179,7 @@
   border: 1px solid var(--color-acento-borde);
   border-radius: 50%;
   background: var(--color-acento-suave);
-  color: var(--color-acento);
+  color: var(--color-enlace);
   font-family: var(--fuente-titulos);
   font-weight: var(--peso-titulo);
 }

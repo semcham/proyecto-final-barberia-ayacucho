@@ -21,13 +21,13 @@
   border: 1px solid var(--color-acento-borde);
   border-radius: var(--radio);
   background: var(--color-acento-suave);
-  color: var(--color-acento);
+  color: var(--color-enlace);
 }
 
 .prueba {
   margin-bottom: var(--espacio-6);
   border-color: var(--color-acento-borde);
-  background: linear-gradient(135deg, rgb(212 162 76 / 0.1), transparent 60%), var(--color-superficie);
+  background: linear-gradient(135deg, var(--color-acento-suave), transparent 60%), var(--color-superficie);
 }
 
 .pruebaCabecera {
@@ -104,7 +104,7 @@
 }
 
 .flecha {
-  color: var(--color-acento);
+  color: var(--color-enlace);
   transition: transform var(--transicion);
 }
 

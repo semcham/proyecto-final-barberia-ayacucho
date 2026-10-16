@@ -1,0 +1,39 @@
+.esqueleto {
+  display: block;
+  border-radius: var(--radio-sm);
+  background: linear-gradient(
+    90deg,
+    var(--color-superficie-hundida) 0%,
+    var(--color-borde) 50%,
+    var(--color-superficie-hundida) 100%
+  );
+  background-size: 200% 100%;
+  animation: brillo 1.4s ease-in-out infinite;
+}
+
+.redondo {
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.texto {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-2);
+  width: 100%;
+}
+
+@keyframes brillo {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .esqueleto {
+    animation: none;
+  }
+}

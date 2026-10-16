@@ -1,10 +1,10 @@
 import { type InputHTMLAttributes, type ReactNode, useState } from 'react';
 import type { UseFormRegisterReturn } from 'react-hook-form';
-import { Icono, type NombreIcono } from './Icono';
+import { Icono, type NombreIcono } from '../Icono';
 
 type AtributosEntrada = Pick<
   InputHTMLAttributes<HTMLInputElement>,
-  'type' | 'autoComplete' | 'inputMode' | 'placeholder'
+  'type' | 'autoComplete' | 'inputMode' | 'placeholder' | 'enterKeyHint'
 >;
 
 interface PropiedadesCampo extends AtributosEntrada {
@@ -66,7 +66,8 @@ export function CampoContrasena({
   error,
   extra,
   autoComplete,
-}: Omit<PropiedadesCampo, 'type' | 'icono' | 'inputMode' | 'placeholder'>) {
+  placeholder,
+}: Omit<PropiedadesCampo, 'type' | 'icono' | 'inputMode'>) {
   const [visible, setVisible] = useState(false);
   return (
     <ContenedorCampo id={id} etiqueta={etiqueta} ayuda={ayuda} error={error} extra={extra}>
@@ -80,6 +81,7 @@ export function CampoContrasena({
             type={visible ? 'text' : 'password'}
             className="entrada entrada--con-icono entrada--con-accion"
             autoComplete={autoComplete}
+            placeholder={placeholder}
             autoCapitalize="none"
             spellCheck={false}
             aria-invalid={error ? true : undefined}
@@ -139,44 +141,5 @@ function ContenedorCampo({
         </p>
       )}
     </div>
-  );
-}
-
-/** Alerta de error de la pantalla (una sola por pantalla, con role="alert"). */
-export function AlertaError({ children }: { children: ReactNode }) {
-  return (
-    <p role="alert" className="alerta alerta--error">
-      <Icono nombre="alerta" tamano={18} />
-      <span>{children}</span>
-    </p>
-  );
-}
-
-/** Botón principal de envío con estado de carga visible. */
-export function BotonEnviar({
-  cargando,
-  texto,
-  textoCargando,
-  icono,
-}: {
-  cargando: boolean;
-  texto: string;
-  textoCargando: string;
-  icono?: NombreIcono;
-}) {
-  return (
-    <button
-      type="submit"
-      className="boton boton--primario boton--bloque"
-      disabled={cargando}
-      aria-busy={cargando || undefined}
-    >
-      {cargando ? (
-        <span className="girador" aria-hidden="true" />
-      ) : (
-        icono && <Icono nombre={icono} tamano={18} />
-      )}
-      {cargando ? textoCargando : texto}
-    </button>
   );
 }

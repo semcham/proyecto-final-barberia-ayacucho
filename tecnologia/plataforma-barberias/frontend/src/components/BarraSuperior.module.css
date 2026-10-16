@@ -4,7 +4,7 @@
   position: sticky;
   top: 0;
   z-index: 10;
-  background: rgb(19 17 14 / 0.88);
+  background: var(--color-cabecera);
   backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--color-borde);
 }

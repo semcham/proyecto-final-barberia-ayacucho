@@ -3,7 +3,17 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#0f0d0b" />
+    <meta name="theme-color" content="#f7f3ec" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0f0d0b" media="(prefers-color-scheme: dark)" />
+    <meta name="description" content="Gestiona tu barbería, tus barberos y tus citas desde el celular." />
+    <script>
+      // Aplica el tema guardado antes de pintar, para evitar un parpadeo (ver src/tema.ts).
+      try {
+        var t = localStorage.getItem('tema');
+        if (t === 'claro') document.documentElement.dataset.theme = 'light';
+        if (t === 'oscuro') document.documentElement.dataset.theme = 'dark';
+      } catch (e) {}
+    </script>
     <title>Barberías Ayacucho</title>
   </head>
   <body>

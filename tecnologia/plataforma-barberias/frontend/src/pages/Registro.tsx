@@ -7,7 +7,7 @@ import { ApiError, llamarApi } from '../api/client';
 import { useSesion } from '../auth/SesionProvider';
 import type { components } from '../api/schema';
 import { VERSION_POLITICA_DATOS, VERSION_TERMINOS } from '../legal';
-import { AlertaError, BotonEnviar, Campo, CampoContrasena } from '../components/Campo';
+import { Alerta, Boton, Campo, CampoContrasena } from '../components/ui';
 import { Icono } from '../components/Icono';
 import { IndicadorFortaleza } from '../components/IndicadorFortaleza';
 import { MarcoAcceso, type PuntoValor } from '../components/MarcoAcceso';
@@ -218,14 +218,17 @@ export default function Registro() {
           )}
         </fieldset>
 
-        {registro.isError && <AlertaError>{mensajeDeError(registro.error)}</AlertaError>}
+        {registro.isError && <Alerta>{mensajeDeError(registro.error)}</Alerta>}
 
-        <BotonEnviar
+        <Boton
+          type="submit"
+          bloque
           cargando={registro.isPending}
-          texto="Crear mi barbería"
           textoCargando="Creando tu barbería…"
-          icono="flecha"
-        />
+          iconoFinal="flecha"
+        >
+          Crear mi barbería
+        </Boton>
       </form>
     </MarcoAcceso>
   );

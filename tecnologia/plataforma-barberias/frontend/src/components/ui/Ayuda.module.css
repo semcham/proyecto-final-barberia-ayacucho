@@ -1,0 +1,25 @@
+.ayuda {
+  z-index: var(--capa-flotante);
+  max-width: 16rem;
+  padding: var(--espacio-1) var(--espacio-3);
+  border-radius: var(--radio-sm);
+  background: var(--color-texto);
+  color: var(--color-fondo);
+  font-size: var(--texto-xs);
+  font-weight: var(--peso-medio);
+  line-height: var(--interlineado-ajustado);
+  box-shadow: var(--sombra);
+  transform-origin: var(--radix-tooltip-content-transform-origin);
+  animation: entrar var(--duracion) var(--curva-salida);
+}
+
+.flecha {
+  fill: var(--color-texto);
+}
+
+@keyframes entrar {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}

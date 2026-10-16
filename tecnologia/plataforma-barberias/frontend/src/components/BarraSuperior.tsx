@@ -1,6 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useSesion } from '../auth/SesionProvider';
 import { Icono } from './Icono';
+import { ConmutadorTema } from './ui';
 import { iniciales } from './iniciales';
 import estilos from './BarraSuperior.module.css';
 
@@ -45,13 +46,14 @@ export function BarraSuperior() {
         </nav>
 
         <div className={estilos.cuenta}>
+          <ConmutadorTema tamano="sm" />
           <span className={estilos.avatar} aria-hidden="true">
             {iniciales(usuario?.nombre ?? '')}
           </span>
           <span className={estilos.nombre}>{usuario?.nombre}</span>
           <button
             type="button"
-            className={`boton boton--fantasma boton--pequeno ${estilos.salir}`}
+            className={`boton boton--fantasma boton--sm ${estilos.salir}`}
             onClick={salir}
           >
             <Icono nombre="salir" tamano={18} />

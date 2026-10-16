@@ -5,7 +5,7 @@ import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { z } from 'zod';
 import { ApiError } from '../api/client';
 import { useSesion } from '../auth/SesionProvider';
-import { AlertaError, BotonEnviar, Campo, CampoContrasena } from '../components/Campo';
+import { Alerta, Boton, Campo, CampoContrasena } from '../components/ui';
 import { Icono } from '../components/Icono';
 import { MarcoAcceso } from '../components/MarcoAcceso';
 import estilos from './Acceso.module.css';
@@ -110,9 +110,11 @@ export default function Ingresar() {
           error={errors.contrasena?.message}
         />
 
-        {error && <AlertaError>{error}</AlertaError>}
+        {error && <Alerta>{error}</Alerta>}
 
-        <BotonEnviar cargando={isSubmitting} texto="Ingresar" textoCargando="Ingresando…" />
+        <Boton type="submit" bloque cargando={isSubmitting} textoCargando="Ingresando…">
+          Ingresar
+        </Boton>
       </form>
     </MarcoAcceso>
   );

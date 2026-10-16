@@ -4,7 +4,7 @@ import { useForm, useWatch } from 'react-hook-form';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { z } from 'zod';
 import { ApiError, llamarApi } from '../api/client';
-import { AlertaError, BotonEnviar, CampoContrasena } from '../components/Campo';
+import { Alerta, Boton, CampoContrasena } from '../components/ui';
 import { Icono } from '../components/Icono';
 import { IndicadorFortaleza } from '../components/IndicadorFortaleza';
 import { MarcoAcceso } from '../components/MarcoAcceso';
@@ -62,7 +62,7 @@ export default function Activar() {
         <div className={estilos.encabezado}>
           <h1>Activa tu cuenta</h1>
         </div>
-        <AlertaError>{ENLACE_INVALIDO}</AlertaError>
+        <Alerta>{ENLACE_INVALIDO}</Alerta>
         <Link to="/ingresar" className={`boton boton--secundario boton--bloque ${estilos.enlaceAccion}`}>
           Ir a ingresar
         </Link>
@@ -113,8 +113,10 @@ export default function Activar() {
           registro={register('confirmacion')}
           error={errors.confirmacion?.message}
         />
-        {error && <AlertaError>{error}</AlertaError>}
-        <BotonEnviar cargando={isSubmitting} texto="Activar mi cuenta" textoCargando="Activando…" />
+        {error && <Alerta>{error}</Alerta>}
+        <Boton type="submit" bloque cargando={isSubmitting} textoCargando="Activando…">
+          Activar mi cuenta
+        </Boton>
       </form>
     </MarcoAcceso>
   );

@@ -1,0 +1,55 @@
+.etiqueta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--espacio-2);
+  padding: 0.125rem var(--espacio-3);
+  border: 1px solid;
+  border-radius: var(--radio-pildora);
+  font-size: var(--texto-xs);
+  font-weight: var(--peso-fuerte);
+  line-height: 1.6;
+  white-space: nowrap;
+}
+
+.punto {
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 50%;
+  background: currentcolor;
+}
+
+.exito {
+  color: var(--color-exito);
+  background: var(--color-exito-fondo);
+  border-color: var(--color-exito-borde);
+}
+
+.aviso {
+  color: var(--color-aviso);
+  background: var(--color-aviso-fondo);
+  border-color: var(--color-aviso-borde);
+}
+
+.neutro {
+  color: var(--color-neutro);
+  background: var(--color-neutro-fondo);
+  border-color: var(--color-neutro-borde);
+}
+
+.error {
+  color: var(--color-error);
+  background: var(--color-error-fondo);
+  border-color: var(--color-error-borde);
+}
+
+.acento {
+  color: var(--color-enlace);
+  background: var(--color-acento-suave);
+  border-color: var(--color-acento-borde);
+}
+
+.contorno {
+  color: var(--color-texto-suave);
+  background: transparent;
+  border-color: var(--color-borde-fuerte);
+}

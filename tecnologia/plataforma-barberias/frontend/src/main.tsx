@@ -4,6 +4,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter } from 'react-router-dom';
 import { SesionProvider } from './auth/SesionProvider';
 import { RutasApp } from './routes';
+import '@fontsource-variable/fraunces/wght.css';
+import '@fontsource-variable/inter/wght.css';
 import './styles/global.css';
 
 const clienteConsultas = new QueryClient({

@@ -1,0 +1,38 @@
+.vacio {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--espacio-10) var(--espacio-5);
+  border: 1px dashed var(--color-borde-fuerte);
+  border-radius: var(--radio-lg);
+  text-align: center;
+}
+
+.icono {
+  display: inline-grid;
+  place-items: center;
+  width: 3.25rem;
+  height: 3.25rem;
+  margin-bottom: var(--espacio-4);
+  border-radius: 50%;
+  background: var(--color-acento-suave);
+  color: var(--color-enlace);
+}
+
+.titulo {
+  margin: 0;
+  font-family: var(--fuente-titulos);
+  font-size: var(--texto-lg);
+  font-weight: var(--peso-titulo);
+}
+
+.descripcion {
+  max-width: 28rem;
+  margin: var(--espacio-2) 0 0;
+  font-size: var(--texto-sm);
+  color: var(--color-texto-suave);
+}
+
+.accion {
+  margin-top: var(--espacio-5);
+}

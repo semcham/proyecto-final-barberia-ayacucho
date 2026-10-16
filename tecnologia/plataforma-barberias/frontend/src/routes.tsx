@@ -3,6 +3,7 @@ import { RutaProtegida } from './auth/RutaProtegida';
 import { BarraSuperior } from './components/BarraSuperior';
 import { Icono } from './components/Icono';
 import { Logo } from './components/Logo';
+import { ProveedorAvisos } from './components/ui';
 import Activar from './pages/Activar';
 import Ingresar from './pages/Ingresar';
 import Inicio from './pages/Inicio';
@@ -54,30 +55,32 @@ function NoEncontrada() {
 
 export function RutasApp() {
   return (
-    <Routes>
-      <Route path="/" element={<Portada />} />
-      <Route path="/registro" element={<Registro />} />
-      <Route path="/ingresar" element={<Ingresar />} />
-      <Route path="/activar" element={<Activar />} />
-      <Route
-        path="/app"
-        element={
-          <RutaProtegida>
-            <BarraSuperior />
-            <Inicio />
-          </RutaProtegida>
-        }
-      />
-      <Route
-        path="/app/usuarios"
-        element={
-          <RutaProtegida roles={['PROPIETARIO']}>
-            <BarraSuperior />
-            <Usuarios />
-          </RutaProtegida>
-        }
-      />
-      <Route path="*" element={<NoEncontrada />} />
-    </Routes>
+    <ProveedorAvisos>
+      <Routes>
+        <Route path="/" element={<Portada />} />
+        <Route path="/registro" element={<Registro />} />
+        <Route path="/ingresar" element={<Ingresar />} />
+        <Route path="/activar" element={<Activar />} />
+        <Route
+          path="/app"
+          element={
+            <RutaProtegida>
+              <BarraSuperior />
+              <Inicio />
+            </RutaProtegida>
+          }
+        />
+        <Route
+          path="/app/usuarios"
+          element={
+            <RutaProtegida roles={['PROPIETARIO']}>
+              <BarraSuperior />
+              <Usuarios />
+            </RutaProtegida>
+          }
+        />
+        <Route path="*" element={<NoEncontrada />} />
+      </Routes>
+    </ProveedorAvisos>
   );
 }

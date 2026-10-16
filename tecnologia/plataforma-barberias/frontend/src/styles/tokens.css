@@ -1,67 +1,98 @@
 /*
- * Tokens del sistema de diseño. Toda pantalla usa estas variables: no se escriben colores, tamaños ni
- * sombras sueltos en los módulos CSS. Identidad: barbería clásica, fondo oscuro cálido y acento dorado cobre.
+ * Tokens del sistema de diseño. Toda pantalla usa estas variables: no se escriben colores, tamaños ni sombras
+ * sueltos en los módulos CSS. Identidad: barbería clásica, tonos cálidos y acento dorado cobre.
+ *
+ * Tema: sigue a prefers-color-scheme y el conmutador lo fija con data-theme="light" | "dark" en <html>.
+ * Cada color se declara una sola vez con light-dark(claro, oscuro), que se resuelve según color-scheme.
  */
 
 :root {
+  color-scheme: light dark;
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
   color-scheme: dark;
+}
 
-  /* Color: fondos y superficies (de más profundo a más elevado). */
-  --color-fondo: #0f0d0b;
-  --color-superficie: #1a1714;
-  --color-superficie-elevada: #241f1a;
-  --color-superficie-hundida: #13110e;
-  --color-borde: #3a322a;
-  --color-borde-fuerte: #5a4d40;
+:root {
+  /* ---------- Color: fondos y superficies (de más profundo a más elevado) ---------- */
+  --color-fondo: light-dark(#f7f3ec, #0f0d0b);
+  --color-superficie: light-dark(#ffffff, #1a1714);
+  --color-superficie-elevada: light-dark(#fbf8f3, #241f1a);
+  --color-superficie-hundida: light-dark(#f2ece2, #13110e);
+  --color-borde: light-dark(#e4dacb, #3a322a);
+  --color-borde-fuerte: light-dark(#cbbba5, #5a4d40);
+  --color-cabecera: light-dark(rgb(247 243 236 / 0.86), rgb(19 17 14 / 0.86));
+  --color-velo: light-dark(rgb(31 26 21 / 0.45), rgb(0 0 0 / 0.65));
 
-  /* Color: texto. */
-  --color-texto: #f4eee6;
-  --color-texto-suave: #bdb2a4;
-  --color-texto-tenue: #8f8478;
+  /* ---------- Color: texto (AA sobre fondo y superficies) ---------- */
+  --color-texto: light-dark(#1f1a15, #f4eee6);
+  --color-texto-suave: light-dark(#5a4f44, #bdb2a4);
+  --color-texto-tenue: light-dark(#6f6457, #8f8478);
 
-  /* Color: acento dorado cobre y su texto (contraste 7:1 o más sobre el acento). */
-  --color-acento: #d4a24c;
-  --color-acento-hover: #e2b462;
-  --color-acento-activo: #b98a3a;
+  /* ---------- Color: acento dorado cobre ---------- */
+  /* Relleno de botones y sellos; su texto es --color-acento-texto (6:1 o más en ambos temas). */
+  --color-acento: light-dark(#c08a35, #d4a24c);
+  --color-acento-hover: light-dark(#cc9744, #e2b462);
+  --color-acento-activo: light-dark(#a87628, #b98a3a);
   --color-acento-texto: #1a1209;
-  --color-acento-suave: rgb(212 162 76 / 0.14);
-  --color-acento-borde: rgb(212 162 76 / 0.45);
+  /* El acento usado como texto, icono o enlace sobre superficies (AA en ambos temas). */
+  --color-enlace: light-dark(#8a5a1c, #e2b462);
+  --color-enlace-hover: light-dark(#6e4510, #f0c77e);
+  --color-acento-suave: light-dark(rgb(192 138 53 / 0.12), rgb(212 162 76 / 0.14));
+  --color-acento-borde: light-dark(rgb(168 118 40 / 0.45), rgb(212 162 76 / 0.45));
+  --color-acento-brillo: light-dark(rgb(192 138 53 / 0.1), rgb(212 162 76 / 0.08));
 
-  /* Color: estados. */
-  --color-exito: #7bd8a0;
-  --color-exito-fondo: rgb(123 216 160 / 0.12);
-  --color-aviso: #f2c462;
-  --color-aviso-fondo: rgb(242 196 98 / 0.12);
-  --color-neutro: #9a9086;
-  --color-neutro-fondo: rgb(154 144 134 / 0.14);
-  --color-error: #f28b82;
-  --color-error-fondo: rgb(242 139 130 / 0.12);
-  --color-peligro: #c9473d;
-  --color-peligro-hover: #d85a50;
+  /* ---------- Color: estados ---------- */
+  --color-exito: light-dark(#1e7b4b, #7bd8a0);
+  --color-exito-fondo: light-dark(rgb(30 123 75 / 0.1), rgb(123 216 160 / 0.12));
+  --color-exito-borde: light-dark(rgb(30 123 75 / 0.35), rgb(123 216 160 / 0.35));
+  --color-aviso: light-dark(#8a5d00, #f2c462);
+  --color-aviso-fondo: light-dark(rgb(178 120 0 / 0.1), rgb(242 196 98 / 0.12));
+  --color-aviso-borde: light-dark(rgb(138 93 0 / 0.35), rgb(242 196 98 / 0.35));
+  --color-neutro: light-dark(#6b6259, #a39a90);
+  --color-neutro-fondo: light-dark(rgb(107 98 89 / 0.1), rgb(163 154 144 / 0.14));
+  --color-neutro-borde: light-dark(rgb(107 98 89 / 0.3), rgb(163 154 144 / 0.35));
+  --color-error: light-dark(#b3261e, #f28b82);
+  --color-error-fondo: light-dark(rgb(179 38 30 / 0.08), rgb(242 139 130 / 0.12));
+  --color-error-borde: light-dark(rgb(179 38 30 / 0.35), rgb(242 139 130 / 0.4));
+  /* Relleno del botón de peligro y su texto. */
+  --color-peligro: light-dark(#b3261e, #f28b82);
+  --color-peligro-hover: light-dark(#9c1f18, #f6a39b);
+  --color-peligro-texto: light-dark(#ffffff, #2a0d0a);
 
-  /* Tipografía: títulos con serifa de sistema (carácter clásico) y cuerpo con la fuente del sistema. */
-  --fuente-titulos: 'Iowan Old Style', 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif;
-  --fuente-cuerpo: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  /* ---------- Tipografía ---------- */
+  --fuente-titulos: 'Fraunces Variable', 'Iowan Old Style', 'Palatino Linotype', Georgia, serif;
+  --fuente-cuerpo:
+    'Inter Variable', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   --fuente-mono: ui-monospace, 'Cascadia Mono', 'SF Mono', Menlo, Consolas, monospace;
 
+  /* Escala: fija hasta lg y fluida en los títulos (320 px → 1280 px). */
   --texto-xs: 0.75rem;
   --texto-sm: 0.875rem;
   --texto-base: 1rem;
   --texto-lg: 1.125rem;
-  --texto-xl: 1.375rem;
-  --texto-2xl: 1.75rem;
-  --texto-3xl: 2.25rem;
-  --texto-4xl: 2.875rem;
+  --texto-xl: clamp(1.25rem, 1.15rem + 0.4vw, 1.375rem);
+  --texto-2xl: clamp(1.5rem, 1.3rem + 0.9vw, 1.875rem);
+  --texto-3xl: clamp(1.875rem, 1.5rem + 1.6vw, 2.5rem);
+  --texto-4xl: clamp(2.25rem, 1.6rem + 2.8vw, 3.25rem);
 
   --peso-normal: 400;
   --peso-medio: 500;
   --peso-fuerte: 600;
-  --peso-titulo: 700;
+  --peso-titulo: 650;
 
   --interlineado: 1.55;
-  --interlineado-titulos: 1.15;
+  --interlineado-ajustado: 1.3;
+  --interlineado-titulos: 1.12;
+  --tracking-titulos: -0.015em;
+  --tracking-mayusculas: 0.1em;
 
-  /* Espaciado (escala de 4 px). */
+  /* ---------- Espaciado (escala de 4 px) ---------- */
   --espacio-1: 0.25rem;
   --espacio-2: 0.5rem;
   --espacio-3: 0.75rem;
@@ -72,24 +103,50 @@
   --espacio-10: 2.5rem;
   --espacio-12: 3rem;
   --espacio-16: 4rem;
+  --espacio-20: 5rem;
 
-  /* Bordes redondeados. */
+  /* ---------- Bordes redondeados ---------- */
   --radio-sm: 0.375rem;
   --radio: 0.625rem;
-  --radio-lg: 1rem;
-  --radio-xl: 1.5rem;
+  --radio-lg: 0.875rem;
+  --radio-xl: 1.25rem;
   --radio-pildora: 999px;
 
-  /* Sombras sutiles (sobre fondo oscuro se apoyan en un borde claro muy tenue). */
-  --sombra-sm: 0 1px 2px rgb(0 0 0 / 0.4);
-  --sombra: 0 4px 14px rgb(0 0 0 / 0.35), 0 1px 0 rgb(255 255 255 / 0.03) inset;
-  --sombra-lg: 0 18px 48px rgb(0 0 0 / 0.5), 0 1px 0 rgb(255 255 255 / 0.04) inset;
-  --anillo-foco: 0 0 0 3px rgb(212 162 76 / 0.55);
+  /* ---------- Sombras (suaves en claro; en oscuro se apoyan en un borde interior tenue) ---------- */
+  --sombra-xs: 0 1px 2px light-dark(rgb(60 40 20 / 0.06), rgb(0 0 0 / 0.35));
+  --sombra-sm:
+    0 1px 2px light-dark(rgb(60 40 20 / 0.06), rgb(0 0 0 / 0.4)),
+    0 1px 3px light-dark(rgb(60 40 20 / 0.06), rgb(0 0 0 / 0.2));
+  --sombra:
+    0 4px 14px light-dark(rgb(60 40 20 / 0.08), rgb(0 0 0 / 0.35)),
+    0 1px 0 light-dark(rgb(255 255 255 / 0), rgb(255 255 255 / 0.03)) inset;
+  --sombra-lg:
+    0 18px 48px light-dark(rgb(60 40 20 / 0.14), rgb(0 0 0 / 0.55)),
+    0 1px 0 light-dark(rgb(255 255 255 / 0), rgb(255 255 255 / 0.04)) inset;
+  --anillo-foco: 0 0 0 3px light-dark(rgb(168 118 40 / 0.45), rgb(212 162 76 / 0.55));
+  --anillo-foco-error: 0 0 0 3px light-dark(rgb(179 38 30 / 0.3), rgb(242 139 130 / 0.35));
 
+  /* ---------- Movimiento ---------- */
+  --duracion-rapida: 120ms;
+  --duracion: 200ms;
+  --duracion-lenta: 320ms;
+  --curva: cubic-bezier(0.2, 0, 0, 1);
+  --curva-salida: cubic-bezier(0.16, 1, 0.3, 1);
+  --transicion: var(--duracion-rapida) var(--curva);
+
+  /* ---------- Capas ---------- */
+  --capa-cabecera: 20;
+  --capa-navegacion: 30;
+  --capa-velo: 40;
+  --capa-modal: 50;
+  --capa-aviso: 60;
+  --capa-flotante: 70;
+
+  /* ---------- Medidas ---------- */
   /* Controles: área táctil de al menos 44 px (principio IX, RC15). */
   --alto-control: 2.875rem;
+  --alto-control-sm: 2.5rem;
   --ancho-contenido: 72rem;
   --ancho-formulario: 28rem;
-
-  --transicion: 160ms ease;
+  --ancho-lateral: 16rem;
 }

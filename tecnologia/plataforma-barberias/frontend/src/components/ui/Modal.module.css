@@ -1,0 +1,106 @@
+.velo {
+  position: fixed;
+  inset: 0;
+  z-index: var(--capa-velo);
+  background: var(--color-velo);
+  backdrop-filter: blur(2px);
+  animation: aparecer var(--duracion) var(--curva);
+}
+
+/* En el celular la ventana sube desde abajo; en pantallas anchas queda centrada. */
+.modal {
+  position: fixed;
+  z-index: var(--capa-modal);
+  left: 0;
+  right: 0;
+  bottom: 0;
+  max-height: 90dvh;
+  overflow-y: auto;
+  padding: var(--espacio-6) var(--espacio-5) calc(var(--espacio-6) + env(safe-area-inset-bottom));
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio-xl) var(--radio-xl) 0 0;
+  background: var(--color-superficie);
+  box-shadow: var(--sombra-lg);
+  animation: subir var(--duracion-lenta) var(--curva-salida);
+}
+
+.modal:focus-visible {
+  outline: none;
+}
+
+.cabecera {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--espacio-4);
+}
+
+.icono {
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 50%;
+  background: var(--color-acento-suave);
+  color: var(--color-enlace);
+}
+
+.iconoPeligro {
+  background: var(--color-error-fondo);
+  color: var(--color-error);
+}
+
+.titulo {
+  margin: 0 0 var(--espacio-2);
+  font-size: var(--texto-xl);
+}
+
+.descripcion {
+  margin: 0;
+  color: var(--color-texto-suave);
+}
+
+.acciones {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: var(--espacio-2);
+  margin-top: var(--espacio-6);
+}
+
+@media (min-width: 40rem) {
+  .modal {
+    left: 50%;
+    right: auto;
+    top: 50%;
+    bottom: auto;
+    width: min(28rem, calc(100vw - 2rem));
+    padding: var(--espacio-6);
+    border-radius: var(--radio-xl);
+    transform: translate(-50%, -50%);
+    animation: escalar var(--duracion) var(--curva-salida);
+  }
+
+  .acciones {
+    flex-direction: row;
+    justify-content: flex-end;
+  }
+}
+
+@keyframes aparecer {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes subir {
+  from {
+    transform: translateY(100%);
+  }
+}
+
+@keyframes escalar {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -48%) scale(0.97);
+  }
+}

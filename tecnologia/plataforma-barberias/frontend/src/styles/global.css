@@ -1,4 +1,4 @@
-/* Estilos base y utilidades compartidas, móvil primero (principio IX, RC15): sin librerías de componentes. */
+/* Estilos base y primitivas compartidas, móvil primero (principio IX, RC15). */
 
 @import './tokens.css';
 
@@ -13,6 +13,7 @@ html {
   line-height: var(--interlineado);
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
+  font-feature-settings: 'cv11', 'ss01';
 }
 
 body {
@@ -20,11 +21,13 @@ body {
   min-height: 100vh;
   min-height: 100dvh;
   background:
-    radial-gradient(ellipse 80% 50% at 50% -10%, rgb(212 162 76 / 0.08), transparent 70%), var(--color-fondo);
+    radial-gradient(ellipse 80% 50% at 50% -10%, var(--color-acento-brillo), transparent 70%),
+    var(--color-fondo);
   background-attachment: fixed;
   color: var(--color-texto);
   font-size: var(--texto-base);
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 h1,
@@ -32,14 +35,15 @@ h2,
 h3 {
   font-family: var(--fuente-titulos);
   font-weight: var(--peso-titulo);
+  font-optical-sizing: auto;
   line-height: var(--interlineado-titulos);
-  letter-spacing: -0.01em;
+  letter-spacing: var(--tracking-titulos);
   margin: 0 0 var(--espacio-3);
   text-wrap: balance;
 }
 
 h1 {
-  font-size: var(--texto-2xl);
+  font-size: var(--texto-3xl);
 }
 
 h2 {
@@ -52,26 +56,32 @@ h3 {
 
 p {
   margin: 0 0 var(--espacio-3);
+  text-wrap: pretty;
 }
 
 a {
-  color: var(--color-acento);
+  color: var(--color-enlace);
   text-underline-offset: 0.2em;
   text-decoration-thickness: 1px;
   transition: color var(--transicion);
 }
 
 a:hover {
-  color: var(--color-acento-hover);
+  color: var(--color-enlace-hover);
 }
 
 svg {
   flex-shrink: 0;
 }
 
-/* Foco siempre visible con el anillo del acento. */
+img {
+  max-width: 100%;
+  display: block;
+}
+
+/* Foco siempre visible con el anillo del acento (solo con teclado). */
 :focus-visible {
-  outline: 2px solid var(--color-acento);
+  outline: 2px solid var(--color-enlace);
   outline-offset: 2px;
 }
 
@@ -88,7 +98,7 @@ textarea {
   color: inherit;
 }
 
-/* ---------- Diseño ---------- */
+/* ---------- Utilidades de diseño ---------- */
 
 .contenedor {
   width: 100%;
@@ -109,14 +119,6 @@ textarea {
   border: 0;
 }
 
-.tarjeta {
-  background: var(--color-superficie);
-  border: 1px solid var(--color-borde);
-  border-radius: var(--radio-lg);
-  box-shadow: var(--sombra);
-  padding: var(--espacio-5);
-}
-
 .antetitulo {
   display: inline-flex;
   align-items: center;
@@ -124,18 +126,19 @@ textarea {
   margin: 0 0 var(--espacio-2);
   font-size: var(--texto-xs);
   font-weight: var(--peso-fuerte);
-  letter-spacing: 0.12em;
+  letter-spacing: var(--tracking-mayusculas);
   text-transform: uppercase;
-  color: var(--color-acento);
+  color: var(--color-enlace);
 }
 
 .texto-suave {
   color: var(--color-texto-suave);
 }
 
-/* ---------- Botones ---------- */
+/* ---------- Botón (componente Boton y enlaces con aspecto de botón) ---------- */
 
 .boton {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -150,6 +153,7 @@ textarea {
   text-decoration: none;
   white-space: nowrap;
   cursor: pointer;
+  user-select: none;
   transition:
     background-color var(--transicion),
     border-color var(--transicion),
@@ -169,14 +173,19 @@ textarea {
 
 .boton:disabled {
   cursor: not-allowed;
-  opacity: 0.6;
+  opacity: 0.55;
+}
+
+.boton[aria-busy='true'] {
+  cursor: progress;
+  opacity: 0.85;
 }
 
 .boton--primario {
   background: linear-gradient(180deg, var(--color-acento-hover), var(--color-acento));
   color: var(--color-acento-texto);
   box-shadow:
-    var(--sombra-sm),
+    var(--sombra-xs),
     0 1px 0 rgb(255 255 255 / 0.25) inset;
 }
 
@@ -190,12 +199,14 @@ textarea {
 }
 
 .boton--secundario {
-  background: var(--color-superficie-elevada);
+  background: var(--color-superficie);
   border-color: var(--color-borde);
   color: var(--color-texto);
+  box-shadow: var(--sombra-xs);
 }
 
 .boton--secundario:hover:not(:disabled) {
+  background: var(--color-superficie-elevada);
   border-color: var(--color-borde-fuerte);
   color: var(--color-texto);
 }
@@ -206,32 +217,44 @@ textarea {
 }
 
 .boton--fantasma:hover:not(:disabled) {
-  background: var(--color-superficie-elevada);
+  background: var(--color-superficie-hundida);
   color: var(--color-texto);
 }
 
 .boton--peligro {
-  background: transparent;
-  border-color: rgb(242 139 130 / 0.4);
-  color: var(--color-error);
+  background: var(--color-peligro);
+  color: var(--color-peligro-texto);
 }
 
 .boton--peligro:hover:not(:disabled) {
-  background: var(--color-error-fondo);
-  border-color: var(--color-error);
+  background: var(--color-peligro-hover);
+  color: var(--color-peligro-texto);
 }
 
-.boton--pequeno {
-  min-height: 2.5rem;
+.boton--peligro:focus-visible {
+  box-shadow: var(--anillo-foco-error);
+}
+
+.boton--sm {
+  min-height: var(--alto-control-sm);
   padding: 0 var(--espacio-3);
   font-size: var(--texto-sm);
+}
+
+.boton--icono {
+  padding: 0;
+  width: var(--alto-control);
+}
+
+.boton--icono.boton--sm {
+  width: var(--alto-control-sm);
 }
 
 .boton--bloque {
   width: 100%;
 }
 
-/* Indicador de carga dentro de un botón (el texto del botón también cambia). */
+/* Indicador de carga (el texto del botón también cambia, para lectores de pantalla). */
 .girador {
   width: 1.1em;
   height: 1.1em;
@@ -245,6 +268,16 @@ textarea {
   to {
     transform: rotate(360deg);
   }
+}
+
+/* ---------- Tarjeta ---------- */
+
+.tarjeta {
+  background: var(--color-superficie);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio-lg);
+  box-shadow: var(--sombra-sm);
+  padding: var(--espacio-5);
 }
 
 /* ---------- Campos ---------- */
@@ -270,6 +303,7 @@ textarea {
 .campo__icono {
   position: absolute;
   left: var(--espacio-3);
+  display: inline-flex;
   color: var(--color-texto-tenue);
   pointer-events: none;
   transition: color var(--transicion);
@@ -279,10 +313,11 @@ textarea {
   width: 100%;
   min-height: var(--alto-control);
   padding: 0 var(--espacio-3);
-  background: var(--color-superficie-hundida);
-  border: 1px solid var(--color-borde);
+  background: var(--color-superficie);
+  border: 1px solid var(--color-borde-fuerte);
   border-radius: var(--radio);
   color: var(--color-texto);
+  box-shadow: var(--sombra-xs);
   transition:
     border-color var(--transicion),
     box-shadow var(--transicion),
@@ -291,10 +326,11 @@ textarea {
 
 .entrada::placeholder {
   color: var(--color-texto-tenue);
+  opacity: 1;
 }
 
 .entrada:hover {
-  border-color: var(--color-borde-fuerte);
+  border-color: var(--color-texto-tenue);
 }
 
 .entrada:focus,
@@ -302,7 +338,6 @@ textarea {
   outline: none;
   border-color: var(--color-acento);
   box-shadow: var(--anillo-foco);
-  background: var(--color-superficie);
 }
 
 .entrada[aria-invalid='true'] {
@@ -310,7 +345,11 @@ textarea {
 }
 
 .entrada[aria-invalid='true']:focus {
-  box-shadow: 0 0 0 3px rgb(242 139 130 / 0.35);
+  box-shadow: var(--anillo-foco-error);
+}
+
+.entrada[readonly] {
+  background: var(--color-superficie-hundida);
 }
 
 .entrada--con-icono {
@@ -322,7 +361,7 @@ textarea {
 }
 
 .campo__control:focus-within .campo__icono {
-  color: var(--color-acento);
+  color: var(--color-enlace);
 }
 
 .campo__accion {
@@ -338,11 +377,14 @@ textarea {
   background: transparent;
   color: var(--color-texto-suave);
   cursor: pointer;
+  transition:
+    color var(--transicion),
+    background-color var(--transicion);
 }
 
 .campo__accion:hover {
   color: var(--color-texto);
-  background: var(--color-superficie-elevada);
+  background: var(--color-superficie-hundida);
 }
 
 .campo__accion:focus-visible {
@@ -359,7 +401,7 @@ textarea {
 select.entrada {
   appearance: none;
   padding-right: 2.5rem;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23bdb2a4' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238f8478' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 0.75rem center;
   cursor: pointer;
@@ -373,7 +415,7 @@ select.entrada {
   padding: var(--espacio-3);
   border: 1px solid var(--color-borde);
   border-radius: var(--radio);
-  background: var(--color-superficie-hundida);
+  background: var(--color-superficie);
   cursor: pointer;
   transition:
     border-color var(--transicion),
@@ -427,7 +469,7 @@ select.entrada {
   color: var(--color-texto);
 }
 
-/* ---------- Mensajes ---------- */
+/* ---------- Mensajes en línea ---------- */
 
 .mensaje-error {
   display: flex;
@@ -436,6 +478,10 @@ select.entrada {
   margin: 0;
   font-size: var(--texto-sm);
   color: var(--color-error);
+}
+
+.mensaje-error svg {
+  margin-top: 0.15rem;
 }
 
 .alerta {
@@ -454,66 +500,15 @@ select.entrada {
 }
 
 .alerta--error {
-  border-color: rgb(242 139 130 / 0.4);
+  border-color: var(--color-error-borde);
   background: var(--color-error-fondo);
   color: var(--color-error);
 }
 
 .alerta--exito {
-  border-color: rgb(123 216 160 / 0.4);
+  border-color: var(--color-exito-borde);
   background: var(--color-exito-fondo);
   color: var(--color-exito);
-}
-
-/* ---------- Etiquetas de estado ---------- */
-
-.etiqueta {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--espacio-2);
-  padding: 0.125rem var(--espacio-3);
-  border: 1px solid;
-  border-radius: var(--radio-pildora);
-  font-size: var(--texto-xs);
-  font-weight: var(--peso-fuerte);
-  line-height: 1.6;
-  white-space: nowrap;
-}
-
-.etiqueta::before {
-  content: '';
-  width: 0.4rem;
-  height: 0.4rem;
-  border-radius: 50%;
-  background: currentcolor;
-}
-
-.etiqueta--activa {
-  color: var(--color-exito);
-  background: var(--color-exito-fondo);
-  border-color: rgb(123 216 160 / 0.35);
-}
-
-.etiqueta--pendiente {
-  color: var(--color-aviso);
-  background: var(--color-aviso-fondo);
-  border-color: rgb(242 196 98 / 0.35);
-}
-
-.etiqueta--desactivada {
-  color: var(--color-neutro);
-  background: var(--color-neutro-fondo);
-  border-color: rgb(154 144 134 / 0.35);
-}
-
-.etiqueta--rol {
-  color: var(--color-texto-suave);
-  background: transparent;
-  border-color: var(--color-borde);
-}
-
-.etiqueta--rol::before {
-  display: none;
 }
 
 /* ---------- Pantalla de carga ---------- */
@@ -527,17 +522,17 @@ select.entrada {
   color: var(--color-texto-suave);
 }
 
+.cargando p {
+  margin: 0;
+}
+
 .cargando .girador {
-  color: var(--color-acento);
+  color: var(--color-enlace);
   width: 1.5rem;
   height: 1.5rem;
 }
 
 @media (min-width: 48rem) {
-  h1 {
-    font-size: var(--texto-3xl);
-  }
-
   .contenedor {
     padding: var(--espacio-10) var(--espacio-8) var(--espacio-16);
   }
@@ -554,5 +549,6 @@ select.entrada {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

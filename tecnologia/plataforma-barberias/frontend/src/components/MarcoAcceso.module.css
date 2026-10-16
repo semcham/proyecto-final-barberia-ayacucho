@@ -18,11 +18,13 @@
   padding: var(--espacio-5) var(--espacio-4) var(--espacio-10);
 }
 
-.logoMovil {
-  align-self: stretch;
-  max-width: var(--ancho-formulario);
+.superior {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--espacio-3);
   width: 100%;
-  margin: 0 auto;
+  max-width: var(--ancho-formulario);
 }
 
 .tarjeta {
@@ -78,19 +80,27 @@
     padding: var(--espacio-10) var(--espacio-12);
     border-right: 1px solid var(--color-borde);
     background:
-      radial-gradient(ellipse 70% 60% at 0% 100%, rgb(212 162 76 / 0.16), transparent 70%),
-      repeating-linear-gradient(135deg, transparent 0 22px, rgb(212 162 76 / 0.035) 22px 24px),
+      radial-gradient(ellipse 70% 60% at 0% 100%, var(--color-acento-suave), transparent 70%),
+      repeating-linear-gradient(135deg, transparent 0 22px, var(--color-acento-brillo) 22px 24px),
       var(--color-superficie-hundida);
     overflow: hidden;
   }
 
   .principal {
+    position: relative;
     justify-content: center;
     padding: var(--espacio-12) var(--espacio-8);
   }
 
   .logoMovil {
     display: none;
+  }
+
+  .superior {
+    position: absolute;
+    top: var(--espacio-6);
+    right: var(--espacio-6);
+    width: auto;
   }
 }
 
@@ -152,7 +162,7 @@
   border: 1px solid var(--color-acento-borde);
   border-radius: var(--radio);
   background: var(--color-acento-suave);
-  color: var(--color-acento);
+  color: var(--color-enlace);
 }
 
 .firma {
