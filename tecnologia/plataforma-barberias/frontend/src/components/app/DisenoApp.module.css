@@ -1,0 +1,320 @@
+/* Móvil primero: cabecera compacta arriba y navegación fija abajo. Barra lateral desde 64rem. */
+
+.app {
+  --alto-cabecera: 4rem;
+  --alto-nav-inferior: calc(4rem + env(safe-area-inset-bottom));
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+.saltar {
+  position: absolute;
+  z-index: var(--capa-flotante);
+  top: var(--espacio-2);
+  left: var(--espacio-2);
+  padding: var(--espacio-2) var(--espacio-4);
+  border-radius: var(--radio);
+  background: var(--color-acento);
+  color: var(--color-acento-texto);
+  font-weight: var(--peso-fuerte);
+  text-decoration: none;
+  transform: translateY(-200%);
+  transition: transform var(--transicion);
+}
+
+.saltar:focus-visible {
+  transform: none;
+  outline: none;
+  box-shadow: var(--anillo-foco);
+}
+
+/* ---------- Barra lateral (en el celular solo queda la navegación, abajo) ---------- */
+
+.marca,
+.barberia,
+.proximamente {
+  display: none;
+}
+
+.navegacion {
+  position: fixed;
+  z-index: var(--capa-navegacion);
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--alto-nav-inferior);
+  padding-bottom: env(safe-area-inset-bottom);
+  border-top: 1px solid var(--color-borde);
+  background: var(--color-cabecera);
+  backdrop-filter: blur(12px);
+}
+
+.navegacion ul {
+  display: flex;
+  justify-content: center;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.navegacion li {
+  flex: 1;
+  max-width: 8rem;
+}
+
+.enlace {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+  height: 100%;
+  color: var(--color-texto-suave);
+  font-size: var(--texto-xs);
+  font-weight: var(--peso-fuerte);
+  text-decoration: none;
+  transition: color var(--transicion);
+}
+
+.enlace:hover {
+  color: var(--color-texto);
+}
+
+.enlace:focus-visible {
+  outline-offset: -4px;
+  border-radius: var(--radio);
+}
+
+.activo,
+.activo:hover {
+  color: var(--color-enlace);
+}
+
+.activo::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 30%;
+  right: 30%;
+  height: 3px;
+  border-radius: 0 0 var(--radio-pildora) var(--radio-pildora);
+  background: var(--color-enlace);
+}
+
+/* ---------- Cabecera ---------- */
+
+.cabecera {
+  position: sticky;
+  top: 0;
+  z-index: var(--capa-cabecera);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--espacio-3);
+  height: var(--alto-cabecera);
+  padding: 0 var(--espacio-4);
+  border-bottom: 1px solid var(--color-borde);
+  background: var(--color-cabecera);
+  backdrop-filter: blur(12px);
+}
+
+.cabeceraMovil {
+  display: flex;
+  align-items: center;
+  gap: var(--espacio-3);
+  min-width: 0;
+}
+
+.cabeceraMovil strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--fuente-titulos);
+  font-size: var(--texto-lg);
+}
+
+.fecha {
+  display: none;
+  margin: 0;
+  font-size: var(--texto-sm);
+  color: var(--color-texto-suave);
+}
+
+.herramientas {
+  display: flex;
+  align-items: center;
+  gap: var(--espacio-2);
+  flex-shrink: 0;
+}
+
+/* ---------- Contenido ---------- */
+
+.contenido {
+  width: 100%;
+  max-width: var(--ancho-contenido);
+  margin: 0 auto;
+  padding: var(--espacio-5) var(--espacio-4) calc(var(--alto-nav-inferior) + var(--espacio-8));
+}
+
+.contenido:focus {
+  outline: none;
+}
+
+@media (min-width: 48rem) {
+  .contenido {
+    padding-left: var(--espacio-8);
+    padding-right: var(--espacio-8);
+  }
+
+  .cabecera {
+    padding: 0 var(--espacio-8);
+  }
+}
+
+/* ---------- Escritorio ---------- */
+
+@media (min-width: 64rem) {
+  .app {
+    display: grid;
+    grid-template-columns: var(--ancho-lateral) minmax(0, 1fr);
+  }
+
+  .lateral {
+    position: sticky;
+    top: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--espacio-6);
+    height: 100vh;
+    height: 100dvh;
+    padding: var(--espacio-5) var(--espacio-4);
+    border-right: 1px solid var(--color-borde);
+    background: var(--color-superficie);
+    overflow-y: auto;
+  }
+
+  .marca {
+    display: block;
+    padding: 0 var(--espacio-2);
+  }
+
+  .barberia {
+    display: flex;
+    flex-direction: column;
+    gap: var(--espacio-1);
+    padding: var(--espacio-3);
+    border: 1px solid var(--color-borde);
+    border-radius: var(--radio);
+    background: var(--color-superficie-elevada);
+  }
+
+  .barberia strong {
+    font-family: var(--fuente-titulos);
+    font-size: var(--texto-base);
+    line-height: var(--interlineado-ajustado);
+    overflow-wrap: anywhere;
+  }
+
+  .barberiaEtiqueta {
+    font-size: var(--texto-xs);
+    font-weight: var(--peso-fuerte);
+    letter-spacing: var(--tracking-mayusculas);
+    text-transform: uppercase;
+    color: var(--color-texto-tenue);
+  }
+
+  .navegacion {
+    position: static;
+    height: auto;
+    padding: 0;
+    border: none;
+    background: none;
+    backdrop-filter: none;
+  }
+
+  .navegacion ul {
+    flex-direction: column;
+    gap: var(--espacio-1);
+  }
+
+  .navegacion li {
+    max-width: none;
+  }
+
+  .enlace {
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: var(--espacio-3);
+    min-height: var(--alto-control-sm);
+    padding: 0 var(--espacio-3);
+    border-radius: var(--radio);
+    font-size: var(--texto-sm);
+  }
+
+  .enlace:hover {
+    background: var(--color-superficie-hundida);
+  }
+
+  .activo,
+  .activo:hover {
+    background: var(--color-acento-suave);
+  }
+
+  .activo::before {
+    top: 25%;
+    bottom: 25%;
+    left: 0;
+    right: auto;
+    width: 3px;
+    height: auto;
+    border-radius: 0 var(--radio-pildora) var(--radio-pildora) 0;
+  }
+
+  .proximamente {
+    display: block;
+    margin-top: auto;
+    padding: var(--espacio-3);
+    border: 1px dashed var(--color-borde-fuerte);
+    border-radius: var(--radio);
+  }
+
+  .proximamenteTitulo {
+    margin: 0 0 var(--espacio-2);
+    font-size: var(--texto-xs);
+    font-weight: var(--peso-fuerte);
+    letter-spacing: var(--tracking-mayusculas);
+    text-transform: uppercase;
+    color: var(--color-texto-tenue);
+  }
+
+  .proximamente ul {
+    display: flex;
+    flex-direction: column;
+    gap: var(--espacio-2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .proximamente li {
+    display: flex;
+    align-items: center;
+    gap: var(--espacio-3);
+    font-size: var(--texto-sm);
+    color: var(--color-texto-tenue);
+  }
+
+  .cabeceraMovil {
+    display: none;
+  }
+
+  .fecha {
+    display: block;
+  }
+
+  .contenido {
+    padding: var(--espacio-8) var(--espacio-10) var(--espacio-16);
+  }
+}

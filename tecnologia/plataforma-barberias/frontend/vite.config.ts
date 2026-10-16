@@ -10,6 +10,8 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: { '/api': { target: destinoApi, changeOrigin: true } },
+    // En Docker sobre Windows o macOS el volumen montado no avisa los cambios de archivos: se sondean.
+    watch: process.env.VITE_SONDEO === 'true' ? { usePolling: true, interval: 300 } : undefined,
   },
   test: {
     environment: 'jsdom',

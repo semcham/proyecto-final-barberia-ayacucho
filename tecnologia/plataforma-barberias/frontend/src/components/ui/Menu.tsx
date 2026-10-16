@@ -80,8 +80,9 @@ export function MenuItemRadio({
   );
 }
 
-export function MenuEtiqueta({ children }: { children: ReactNode }) {
-  return <DropdownMenu.Label className={estilos.etiqueta}>{children}</DropdownMenu.Label>;
+/** Texto no interactivo dentro del menú (un encabezado o un resumen). */
+export function MenuEtiqueta({ children, className }: { children: ReactNode; className?: string }) {
+  return <DropdownMenu.Label className={className ?? estilos.etiqueta}>{children}</DropdownMenu.Label>;
 }
 
 export function MenuSeparador() {

@@ -15,6 +15,16 @@ globalThis.fetch = (entrada: RequestInfo | URL, init?: RequestInit) =>
     init,
   );
 
+// APIs del navegador que jsdom no trae y que usan los menús y ventanas de Radix (posicionamiento y puntero).
+globalThis.ResizeObserver ??= class {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+};
+Element.prototype.hasPointerCapture ??= () => false;
+Element.prototype.releasePointerCapture ??= () => {};
+Element.prototype.scrollIntoView ??= () => {};
+
 beforeAll(() => servidor.listen({ onUnhandledRequest: 'error' }));
 afterEach(() => {
   servidor.resetHandlers();

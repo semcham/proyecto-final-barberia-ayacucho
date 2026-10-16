@@ -1,14 +1,5 @@
 /* Móvil primero: formulario y lista apilados; en escritorio, formulario fijo a la izquierda. */
 
-.cabecera {
-  margin-bottom: var(--espacio-6);
-}
-
-.cabecera p:last-child {
-  margin: 0;
-  max-width: 40rem;
-}
-
 .distribucion {
   display: grid;
   gap: var(--espacio-6);

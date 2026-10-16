@@ -1,0 +1,72 @@
+.encabezado {
+  margin-bottom: var(--espacio-6);
+}
+
+.migas ol {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--espacio-1);
+  margin: 0 0 var(--espacio-4);
+  padding: 0;
+  list-style: none;
+  font-size: var(--texto-sm);
+}
+
+.migas li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--espacio-1);
+}
+
+.migas a {
+  color: var(--color-texto-suave);
+  text-decoration: none;
+  border-radius: var(--radio-sm);
+}
+
+.migas a:hover {
+  color: var(--color-enlace);
+  text-decoration: underline;
+}
+
+.migas [aria-current='page'] {
+  color: var(--color-texto);
+  font-weight: var(--peso-medio);
+}
+
+.separador {
+  display: inline-flex;
+  color: var(--color-texto-tenue);
+}
+
+.fila {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--espacio-4);
+}
+
+.textos {
+  min-width: 0;
+  flex: 1 1 20rem;
+}
+
+.titulo {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.descripcion {
+  max-width: 42rem;
+  margin: var(--espacio-2) 0 0;
+  font-size: var(--texto-lg);
+  color: var(--color-texto-suave);
+}
+
+.acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--espacio-2);
+}

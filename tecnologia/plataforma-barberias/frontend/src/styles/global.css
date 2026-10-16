@@ -336,7 +336,7 @@ textarea {
 .entrada:focus,
 .entrada:focus-visible {
   outline: none;
-  border-color: var(--color-acento);
+  border-color: var(--color-enlace);
   box-shadow: var(--anillo-foco);
 }
 
@@ -454,7 +454,7 @@ select.entrada {
 }
 
 .casilla input:checked {
-  border-color: var(--color-acento);
+  border-color: var(--color-enlace);
   background-color: var(--color-acento);
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231a1209' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E");
 }
@@ -539,6 +539,13 @@ select.entrada {
 
   .tarjeta {
     padding: var(--espacio-6);
+  }
+}
+
+/* Con la navegación inferior del celular, los avisos (toasts) se muestran por encima de ella. */
+@media (max-width: 63.99rem) {
+  body:has([data-diseno-app]) {
+    --alto-navegacion-inferior: calc(4rem + env(safe-area-inset-bottom));
   }
 }
 

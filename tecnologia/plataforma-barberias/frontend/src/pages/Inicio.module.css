@@ -1,17 +1,3 @@
-.bienvenida {
-  margin-bottom: var(--espacio-6);
-}
-
-.bienvenida h1 {
-  overflow-wrap: anywhere;
-}
-
-.saludo {
-  margin: 0;
-  font-size: var(--texto-lg);
-  color: var(--color-texto-suave);
-}
-
 .iconoTarjeta {
   display: inline-grid;
   place-items: center;

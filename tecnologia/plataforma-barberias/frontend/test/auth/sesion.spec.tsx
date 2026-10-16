@@ -149,7 +149,10 @@ describe('Sesión en la interfaz', () => {
       }),
     );
     renderizar('/app');
-    await userEvent.setup().click(await screen.findByRole('button', { name: /cerrar sesión/i }));
+    // Cerrar sesión está en el menú de usuario de la cabecera.
+    const persona = userEvent.setup();
+    await persona.click(await screen.findByRole('button', { name: /rosa quispe/i }));
+    await persona.click(await screen.findByRole('menuitem', { name: /cerrar sesión/i }));
 
     expect(await screen.findByRole('heading', { name: /ingresa a tu barbería/i })).toBeInTheDocument();
     expect(rutaActual()).toBe('/ingresar');

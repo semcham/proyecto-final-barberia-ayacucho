@@ -43,6 +43,8 @@ services:
     command: sh -c "npm ci && npm run dev -- --host"
     environment:
       VITE_API_PROXY: http://backend:3000
+      # El volumen montado desde Windows/macOS no notifica cambios: Vite los sondea para recargar.
+      VITE_SONDEO: 'true'
     ports:
       - '5173:5173'
     volumes:

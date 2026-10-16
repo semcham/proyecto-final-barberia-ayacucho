@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { ApiError, llamarApi } from '../api/client';
 import type { components } from '../api/schema';
 import { useSesion } from '../auth/SesionProvider';
+import { EncabezadoPagina } from '../components/app/EncabezadoPagina';
 import { Alerta, Campo, EtiquetaEstado, type TonoEtiqueta } from '../components/ui';
 import { Icono } from '../components/Icono';
 import { iniciales } from '../components/iniciales';
@@ -157,14 +158,13 @@ export default function Usuarios() {
   const paginas = datos ? Math.max(1, Math.ceil(datos.total / TAMANO_PAGINA)) : 1;
 
   return (
-    <main className="contenedor">
-      <header className={estilos.cabecera}>
-        <p className="antetitulo">Equipo</p>
-        <h1>Usuarios</h1>
-        <p className="texto-suave">
-          Crea cuentas para tus barberos y controla quién puede ingresar a la barbería.
-        </p>
-      </header>
+    <>
+      <EncabezadoPagina
+        migas={[{ etiqueta: 'Inicio', a: '/app' }, { etiqueta: 'Usuarios' }]}
+        antetitulo="Equipo"
+        titulo="Usuarios"
+        descripcion="Crea cuentas para tus barberos y controla quién puede ingresar a la barbería."
+      />
 
       <div className={estilos.distribucion}>
         <section aria-labelledby="titulo-nuevo" className={`tarjeta ${estilos.nuevo}`}>
@@ -345,6 +345,6 @@ export default function Usuarios() {
           )}
         </div>
       </div>
-    </main>
+    </>
   );
 }

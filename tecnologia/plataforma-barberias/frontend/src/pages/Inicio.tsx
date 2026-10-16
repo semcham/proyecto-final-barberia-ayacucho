@@ -1,5 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useSesion } from '../auth/SesionProvider';
+import { EncabezadoPagina } from '../components/app/EncabezadoPagina';
 import { Icono } from '../components/Icono';
 import type { EstadoBienvenida } from './Registro';
 import estilos from './Inicio.module.css';
@@ -24,18 +25,19 @@ export default function Inicio() {
   const esPropietario = usuario?.rol === 'PROPIETARIO';
 
   return (
-    <main className="contenedor">
-      <section className={estilos.bienvenida}>
-        <p className="antetitulo">Panel de tu barbería</p>
-        <h1>{nombre}</h1>
-        {dias !== null ? (
-          <p className={estilos.saludo}>
-            Tu prueba gratuita está activa: te {dias === 1 ? 'queda 1 día' : `quedan ${dias} días`}.
-          </p>
-        ) : (
-          <p className={estilos.saludo}>Hola, {usuario?.nombre}.</p>
-        )}
-      </section>
+    <>
+      <EncabezadoPagina
+        migas={[{ etiqueta: 'Inicio' }]}
+        antetitulo="Panel de tu barbería"
+        titulo={nombre}
+        descripcion={
+          dias !== null ? (
+            <>Tu prueba gratuita está activa: te {dias === 1 ? 'queda 1 día' : `quedan ${dias} días`}.</>
+          ) : (
+            <>Hola, {usuario?.nombre}.</>
+          )
+        }
+      />
 
       {dias !== null && venceEn && (
         <section className={`tarjeta ${estilos.prueba}`} aria-labelledby="titulo-prueba">
@@ -96,6 +98,6 @@ export default function Inicio() {
           </span>
         </div>
       </section>
-    </main>
+    </>
   );
 }

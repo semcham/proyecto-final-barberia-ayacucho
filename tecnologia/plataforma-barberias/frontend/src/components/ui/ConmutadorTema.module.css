@@ -1,0 +1,36 @@
+.disparador {
+  gap: var(--espacio-2);
+  min-width: var(--alto-control-sm);
+}
+
+.disparador[data-state='open'] {
+  border-color: var(--color-enlace);
+  box-shadow: var(--anillo-foco);
+}
+
+.flecha {
+  display: inline-flex;
+  color: var(--color-texto-tenue);
+}
+
+/* En pantallas angostas: solo el icono (el texto queda para lectores de pantalla). */
+.texto,
+.flecha {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+@media (min-width: 30rem) {
+  .texto,
+  .flecha {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip: auto;
+  }
+}

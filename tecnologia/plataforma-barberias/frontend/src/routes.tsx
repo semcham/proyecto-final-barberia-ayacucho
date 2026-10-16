@@ -1,6 +1,6 @@
 import { Link, Route, Routes } from 'react-router-dom';
 import { RutaProtegida } from './auth/RutaProtegida';
-import { BarraSuperior } from './components/BarraSuperior';
+import { DisenoApp } from './components/app/DisenoApp';
 import { Icono } from './components/Icono';
 import { Logo } from './components/Logo';
 import { ProveedorAvisos } from './components/ui';
@@ -65,20 +65,20 @@ export function RutasApp() {
           path="/app"
           element={
             <RutaProtegida>
-              <BarraSuperior />
-              <Inicio />
+              <DisenoApp />
             </RutaProtegida>
           }
-        />
-        <Route
-          path="/app/usuarios"
-          element={
-            <RutaProtegida roles={['PROPIETARIO']}>
-              <BarraSuperior />
-              <Usuarios />
-            </RutaProtegida>
-          }
-        />
+        >
+          <Route index element={<Inicio />} />
+          <Route
+            path="usuarios"
+            element={
+              <RutaProtegida roles={['PROPIETARIO']}>
+                <Usuarios />
+              </RutaProtegida>
+            }
+          />
+        </Route>
         <Route path="*" element={<NoEncontrada />} />
       </Routes>
     </ProveedorAvisos>
