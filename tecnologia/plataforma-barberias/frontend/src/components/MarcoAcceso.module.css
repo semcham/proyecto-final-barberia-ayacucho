@@ -176,3 +176,9 @@
   font-size: var(--texto-sm);
   color: var(--color-texto-tenue);
 }
+
+.reservaTema {
+  display: inline-block;
+  width: 7.25rem;
+  height: var(--alto-control-sm);
+}

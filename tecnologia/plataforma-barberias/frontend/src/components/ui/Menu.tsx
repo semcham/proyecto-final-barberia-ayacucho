@@ -6,7 +6,14 @@ import estilos from './Menu.module.css';
 // Menú desplegable accesible (Radix): flechas para moverse, Enter para elegir, Escape para cerrar y el foco
 // vuelve al disparador. Se usa en el menú de usuario, el conmutador de tema y las acciones por fila.
 
-export const Menu = DropdownMenu.Root;
+/**
+ * Raíz del menú, no modal: no oculta el resto de la página a los lectores de pantalla (aria-hidden) mientras
+ * está abierto. El foco igual queda en el menú, Escape lo cierra y vuelve al disparador (patrón WAI-ARIA de
+ * botón de menú).
+ */
+export function Menu(props: DropdownMenu.DropdownMenuProps) {
+  return <DropdownMenu.Root modal={false} {...props} />;
+}
 export const MenuDisparador = DropdownMenu.Trigger;
 export const MenuGrupoRadio = DropdownMenu.RadioGroup;
 

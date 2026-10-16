@@ -1,0 +1,5 @@
+# Páginas públicas indexables: portada, registro e ingreso. El panel y la activación son privados.
+User-agent: *
+Allow: /
+Disallow: /app
+Disallow: /activar

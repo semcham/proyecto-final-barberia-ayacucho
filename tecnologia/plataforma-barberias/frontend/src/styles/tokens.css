@@ -32,7 +32,7 @@
   /* ---------- Color: texto (AA sobre fondo y superficies) ---------- */
   --color-texto: light-dark(#1f1a15, #f4eee6);
   --color-texto-suave: light-dark(#5a4f44, #bdb2a4);
-  --color-texto-tenue: light-dark(#6f6457, #8f8478);
+  --color-texto-tenue: light-dark(#6f6457, #9a8e81);
 
   /* ---------- Color: acento dorado cobre ---------- */
   /* Relleno de botones y sellos; su texto es --color-acento-texto (6:1 o más en ambos temas). */

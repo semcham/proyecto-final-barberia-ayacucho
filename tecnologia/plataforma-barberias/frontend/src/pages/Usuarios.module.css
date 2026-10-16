@@ -79,9 +79,15 @@
   border-color: var(--color-borde-fuerte);
 }
 
-.inactivo .avatar,
-.inactivo .datos {
-  opacity: 0.65;
+/* Fila desactivada: tonos neutros (no opacidad, que bajaría el contraste del texto por debajo de AA). */
+.inactivo .avatar {
+  border-color: var(--color-neutro-borde);
+  background: var(--color-neutro-fondo);
+  color: var(--color-neutro);
+}
+
+.inactivo .nombre strong {
+  color: var(--color-texto-suave);
 }
 
 .persona {

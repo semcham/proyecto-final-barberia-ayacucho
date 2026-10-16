@@ -71,8 +71,42 @@ Fuente: `specs/001-registro-acceso-barberia/research.md`. Versiones exactas (sin
 | Calidad de código             | ESLint 9 (`typescript-eslint`), Prettier 3                                   | Estilo y reglas de importación entre módulos                                | —        |
 | Frontend                      | React 19, Vite 6, React Router 7, TanStack Query 5                           | Interfaz y llamadas a la API                                                | R19      |
 | Formularios                   | `react-hook-form` 7 y `zod` 3                                                | Validación de ayuda en el cliente                                           | R19      |
+| Componentes accesibles        | Radix UI: `@radix-ui/react-dialog` 1.3.1, `react-dropdown-menu` 2.2.1, `react-tooltip` 1.4.1, `react-toast` 1.3.1 | Modal de confirmación, menús, ayudas emergentes y avisos (foco, teclado y ARIA resueltos); sin estilos propios | —        |
+| Tipografía                    | `@fontsource-variable/fraunces` 5.3.0 (títulos) e `@fontsource-variable/inter` 5.3.0 (cuerpo), eje de peso | Fuentes autohospedadas, sin CDN; el navegador descarga solo el subconjunto latino (≈ 37 KB y 48 KB) | —        |
 | Tipos de la API               | `openapi-typescript` 7                                                       | Generar tipos desde `contracts/openapi.yaml`                                | R19      |
 | Pruebas del frontend          | Vitest 3, Testing Library, MSW 2                                             | Formularios, sesión y simulación de la API                                  | R18      |
 | Entorno local                 | Docker Compose con `postgres:16`; `tsx` para ejecutar las migraciones        | Reproducir el entorno                                                       | R20      |
 
 Esta funcionalidad **no** levanta Redis: no hay lecturas que cachear.
+
+### 5.1 Interfaz: criterios y rendimiento
+
+- **Sin librería de componentes completa.** Radix aporta solo el comportamiento accesible de las piezas
+  difíciles (atrapar y devolver el foco, navegación por teclado, `role` y `aria-*`); el aspecto sale del
+  sistema de diseño propio (`frontend/src/styles/tokens.css`, tema claro y oscuro con `light-dark()`). Los
+  menús se usan en modo no modal para no ocultar el resto de la página a los lectores de pantalla.
+- **Iconos e ilustración propios en SVG**, sin paquetes de iconos.
+- **Carga por pantalla** con `React.lazy`: el JavaScript inicial bajó de 573 KB a 372 KB (≈ 123 KB
+  comprimido); React, TanStack Query y los formularios van en archivos aparte para aprovechar la caché del
+  navegador entre despliegues.
+- **En las pantallas de acceso** el conmutador de tema se descarga después de pintar el formulario, para
+  sacar el menú de Radix de la ruta crítica.
+- **Medición con Lighthouse 12.3** (2026-10-16, build de producción con `vite preview`, Chrome 155; modo
+  celular con la limitación de red y CPU por defecto; mediana de 3 pasadas por pantalla y dispositivo):
+
+  | Pantalla              | Rendimiento (celular / escritorio) | Accesibilidad | Buenas prácticas | SEO |
+  | --------------------- | ---------------------------------- | ------------- | ---------------- | --- |
+  | Portada               | 96 / 100                           | 100           | 100              | 100 |
+  | Registro              | 92 / 100                           | 100           | 100              | 100 |
+  | Ingresar              | 92 / 100                           | 100           | 100              | 100 |
+  | Activar               | 92 / 100                           | 100           | 100              | —   |
+  | Inicio (con sesión)   | 99 / 100                           | 100           | 100              | —   |
+  | Usuarios (con sesión) | 99 / 100                           | 100           | 100              | —   |
+
+  El SEO de Activar y de las pantallas con sesión no aplica: `robots.txt` las excluye a propósito. En
+  celular el LCP de las pantallas de acceso ronda 2,9 s (red lenta simulada); el resto de métricas, CLS 0
+  y TBT de 50 a 120 ms.
+- **axe-core 4.10** sobre 30 estados (menús abiertos, modales, errores de formulario, avisos, 320 px; tema
+  claro y oscuro): sin incumplimientos WCAG 2.2 A ni AA. Queda un aviso de buena práctica (`region`)
+  mientras un menú o una ayuda emergente está abierta, porque Radix los dibuja en un portal fuera de los
+  *landmarks*.

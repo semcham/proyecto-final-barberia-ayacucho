@@ -1,8 +1,7 @@
-import type { ReactNode } from 'react';
+import { lazy, type ReactNode, Suspense } from 'react';
 import { Icono, type NombreIcono } from './Icono';
 import { Logo } from './Logo';
 import { ImagenMarca } from './marca/ImagenMarca';
-import { ConmutadorTema } from './ui';
 import estilos from './MarcoAcceso.module.css';
 
 export interface PuntoValor {
@@ -16,6 +15,12 @@ export interface PuntoValor {
  * Ejemplo: const FOTO_MARCA = '/img/barberia.webp';
  */
 const FOTO_MARCA: string | undefined = undefined;
+
+// El conmutador de tema (menú de Radix) se descarga después de pintar el formulario: no está en la ruta
+// crítica de las pantallas de acceso. Mientras llega, un hueco del mismo tamaño evita saltos de diseño.
+const ConmutadorTema = lazy(() =>
+  import('./ui/ConmutadorTema').then((modulo) => ({ default: modulo.ConmutadorTema })),
+);
 
 interface PropiedadesMarco {
   antetitulo: string;
@@ -71,7 +76,9 @@ export function MarcoAcceso({
           <div className={estilos.logoMovil}>
             <Logo />
           </div>
-          <ConmutadorTema />
+          <Suspense fallback={<span className={estilos.reservaTema} aria-hidden="true" />}>
+            <ConmutadorTema />
+          </Suspense>
         </div>
         <div className={`tarjeta ${estilos.tarjeta}`}>{children}</div>
         {pie && <div className={estilos.pie}>{pie}</div>}
