@@ -101,6 +101,7 @@ export default function Activar() {
           id="contrasena"
           etiqueta="Contraseña"
           autoComplete="new-password"
+          placeholder="Crea una contraseña"
           registro={register('contrasena')}
           ayuda="Al menos 10 caracteres. Una frase fácil de recordar funciona bien."
           error={errors.contrasena?.message}
@@ -110,6 +111,7 @@ export default function Activar() {
           id="confirmacion"
           etiqueta="Repite la contraseña"
           autoComplete="new-password"
+          placeholder="Escríbela otra vez"
           registro={register('confirmacion')}
           error={errors.confirmacion?.message}
         />

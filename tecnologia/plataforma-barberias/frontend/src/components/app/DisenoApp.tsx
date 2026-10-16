@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useSesion } from '../../auth/SesionProvider';
 import { Icono, type NombreIcono } from '../Icono';
@@ -103,7 +104,16 @@ export function DisenoApp() {
         </header>
 
         <main id="contenido" tabIndex={-1} className={estilos.contenido}>
-          <Outlet />
+          <Suspense
+            fallback={
+              <div className={estilos.cargandoPagina} aria-busy="true">
+                <span className="girador" aria-hidden="true" />
+                <span>Cargando…</span>
+              </div>
+            }
+          >
+            <Outlet />
+          </Suspense>
         </main>
       </div>
     </div>

@@ -6,6 +6,7 @@ import { type ReactNode, useState } from 'react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { afterEach, describe, expect, it } from 'vitest';
 import { llamarApi, tokenEnMemoria } from '../../src/api/client';
+import { indicadorSesion } from '../../src/auth/indicadorSesion';
 import { RutaProtegida } from '../../src/auth/RutaProtegida';
 import { SesionProvider } from '../../src/auth/SesionProvider';
 import { RutasApp } from '../../src/routes';
@@ -79,6 +80,7 @@ describe('Sesión en la interfaz', () => {
     expect(await screen.findByRole('heading', { name: 'Barbería Huamanga' })).toBeInTheDocument();
     expect(rutaActual()).toBe('/app');
     expect(tokenEnMemoria.obtener()).toBe('token-de-acceso');
+    expect(indicadorSesion.presente()).toBe(true);
     expect(localStorage.length).toBe(0);
     expect(sessionStorage.length).toBe(0);
     expect(document.cookie).not.toContain('token-de-acceso');
@@ -96,6 +98,27 @@ describe('Sesión en la interfaz', () => {
     renderizar('/app');
     expect(await screen.findByRole('heading', { name: /ingresa a tu barbería/i })).toBeInTheDocument();
     expect(rutaActual()).toBe('/ingresar');
+  });
+
+  it('un visitante sin sesión reciente no llama a /auth/refresh (evita un 401 seguro)', async () => {
+    indicadorSesion.quitar();
+    let renovaciones = 0;
+    servidor.use(
+      http.post('/api/v1/auth/refresh', () => {
+        renovaciones += 1;
+        return noAutenticado();
+      }),
+    );
+    renderizar('/app');
+    expect(await screen.findByRole('heading', { name: /ingresa a tu barbería/i })).toBeInTheDocument();
+    expect(rutaActual()).toBe('/ingresar');
+    expect(renovaciones).toBe(0);
+  });
+
+  it('si la renovación falla al cargar, se quita el indicador de sesión', async () => {
+    renderizar('/app');
+    expect(await screen.findByRole('heading', { name: /ingresa a tu barbería/i })).toBeInTheDocument();
+    expect(indicadorSesion.presente()).toBe(false);
   });
 
   it('un 401 dispara una sola renovación; si falla, la sesión se pierde y vuelve a /ingresar', async () => {
@@ -157,6 +180,7 @@ describe('Sesión en la interfaz', () => {
     expect(await screen.findByRole('heading', { name: /ingresa a tu barbería/i })).toBeInTheDocument();
     expect(rutaActual()).toBe('/ingresar');
     expect(cerro).toBe(true);
+    expect(indicadorSesion.presente()).toBe(false);
     expect(tokenEnMemoria.obtener()).toBeNull();
   });
 

@@ -107,7 +107,7 @@ describe('Página de usuarios', () => {
     expect(within(dialogo).getByRole('button', { name: /copiado/i })).toBeInTheDocument();
   });
 
-  it('desactivar pide confirmación y solo envía el cambio si se confirma', async () => {
+  it('desactivar desde el menú de la fila pide confirmación y solo envía el cambio si se confirma', async () => {
     const cambios: unknown[] = [];
     servidor.use(
       http.post('/api/v1/auth/refresh', () => sesionDe(PROPIETARIO, 'PROPIETARIO')),
@@ -117,17 +117,45 @@ describe('Página de usuarios', () => {
         return HttpResponse.json(usuario(BARBERO, 'BARBERO', 'DESACTIVADA'));
       }),
     );
-    const confirmar = vi.spyOn(window, 'confirm').mockReturnValueOnce(false).mockReturnValueOnce(true);
     renderizar('/app/usuarios');
     const persona = userEvent.setup();
     const filaBarbero = (await screen.findByText(BARBERO.nombre)).closest('li') as HTMLElement;
+    const abrirDesactivar = async () => {
+      await persona.click(within(filaBarbero).getByRole('button', { name: /acciones para luis huamán/i }));
+      await persona.click(await screen.findByRole('menuitem', { name: /desactivar/i }));
+      return screen.findByRole('alertdialog', { name: /desactivar a luis huamán/i });
+    };
 
-    await persona.click(within(filaBarbero).getByRole('button', { name: /desactivar/i }));
-    expect(confirmar).toHaveBeenCalledTimes(1);
+    // Cancelar no envía nada.
+    let confirmacion = await abrirDesactivar();
+    await persona.click(within(confirmacion).getByRole('button', { name: 'Cancelar' }));
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
     expect(cambios).toEqual([]);
 
-    await persona.click(within(filaBarbero).getByRole('button', { name: /desactivar/i }));
+    // Confirmar envía el cambio y muestra un aviso de éxito.
+    confirmacion = await abrirDesactivar();
+    await persona.click(within(confirmacion).getByRole('button', { name: /sí, desactivar/i }));
     await vi.waitFor(() => expect(cambios).toEqual([{ id: BARBERO.id, estado: 'DESACTIVADA' }]));
+    expect(await screen.findByText(/cuenta de luis huamán desactivada/i)).toBeInTheDocument();
+  });
+
+  it('la búsqueda filtra por nombre o correo sin distinguir tildes', async () => {
+    servidor.use(
+      http.post('/api/v1/auth/refresh', () => sesionDe(PROPIETARIO, 'PROPIETARIO')),
+      http.get('/api/v1/usuarios', () => HttpResponse.json(LISTA)),
+    );
+    renderizar('/app/usuarios');
+    const persona = userEvent.setup();
+    await screen.findByText(BARBERO.nombre);
+
+    await persona.type(screen.getByRole('searchbox', { name: /buscar/i }), 'huaman');
+    const lista = screen.getByRole('list', { name: /usuarios de la barbería/i });
+    expect(within(lista).getByText(BARBERO.nombre)).toBeInTheDocument();
+    expect(within(lista).queryByText(PROPIETARIO.nombre)).not.toBeInTheDocument();
+
+    await persona.clear(screen.getByRole('searchbox', { name: /buscar/i }));
+    await persona.type(screen.getByRole('searchbox', { name: /buscar/i }), 'nadie');
+    expect(screen.getByText(/sin resultados/i)).toBeInTheDocument();
   });
 
   it('el propietario no ve acciones sobre su propia fila', async () => {

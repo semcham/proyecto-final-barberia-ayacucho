@@ -1,0 +1,87 @@
+/* Colores de la ilustración: se apoyan en los tokens (el panel de marca fija color-scheme: dark). */
+
+.ilustracion {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.vidrio {
+  fill: #f4eee6;
+}
+
+.rayaRoja {
+  fill: #9e3a2c;
+}
+
+.rayaCobre {
+  fill: var(--color-acento);
+}
+
+.oroClaro {
+  stop-color: var(--color-acento-hover);
+}
+
+.oroOscuro {
+  stop-color: var(--color-acento-activo);
+}
+
+.oroBanda {
+  fill: var(--color-acento-activo);
+}
+
+.soporte {
+  fill: var(--color-borde-fuerte);
+}
+
+.anillo {
+  fill: none;
+  stroke: var(--color-acento-borde);
+  stroke-width: 1.5;
+}
+
+.anilloPunteado {
+  fill: none;
+  stroke: var(--color-acento-borde);
+  stroke-width: 1.5;
+  stroke-dasharray: 2 10;
+  stroke-linecap: round;
+}
+
+.mango {
+  fill: none;
+  stroke: var(--color-acento);
+  stroke-width: 7;
+  stroke-linecap: round;
+}
+
+.aro {
+  fill: none;
+  stroke: var(--color-acento);
+  stroke-width: 7;
+}
+
+.tornillo {
+  fill: var(--color-superficie-hundida);
+  stroke: var(--color-acento-hover);
+  stroke-width: 3;
+}
+
+.mangoNavaja {
+  fill: #3b2a1e;
+  stroke: var(--color-acento);
+  stroke-width: 2;
+}
+
+.vetaNavaja {
+  fill: #5a4030;
+}
+
+.lomo {
+  fill: #7d776f;
+}
+
+.destello {
+  fill: var(--color-acento-hover);
+  opacity: 0.85;
+}

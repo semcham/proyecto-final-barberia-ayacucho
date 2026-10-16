@@ -201,6 +201,7 @@ const TRAZOS = {
     </>
   ),
   chevronDerecha: <path d="m9 6 6 6-6 6" />,
+  chevronIzquierda: <path d="m15 6-6 6 6 6" />,
   chevronAbajo: <path d="m6 9 6 6 6-6" />,
   dinero: (
     <>

@@ -10,4 +10,6 @@ export const manejadoresBase = [
       { status: 401 },
     ),
   ),
+  // El panel del propietario consulta su equipo para el indicador de barberos activos.
+  http.get('/api/v1/usuarios', () => HttpResponse.json({ datos: [], total: 0, pagina: 1, tamano: 100 })),
 ];

@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
+import { PantallaCarga } from './PantallaCarga';
 import { type UsuarioActual, useSesion } from './SesionProvider';
 
 /**
@@ -11,12 +12,7 @@ export function RutaProtegida({ children, roles }: { children: ReactNode; roles?
   const ubicacion = useLocation();
 
   if (estado === 'cargando') {
-    return (
-      <main className="contenedor cargando" aria-busy="true">
-        <span className="girador" aria-hidden="true" />
-        <p>Cargando…</p>
-      </main>
-    );
+    return <PantallaCarga />;
   }
   if (estado === 'anonimo' || !usuario) {
     return <Navigate to="/ingresar" replace state={{ desde: ubicacion.pathname }} />;

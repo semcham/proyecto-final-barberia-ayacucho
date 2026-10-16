@@ -155,6 +155,7 @@ export default function Registro() {
           etiqueta="Tu nombre"
           icono="usuario"
           autoComplete="name"
+          placeholder="Ej.: Rosa Quispe"
           registro={register('nombre')}
           error={errors.nombre?.message}
         />
@@ -175,6 +176,7 @@ export default function Registro() {
           id="contrasena"
           etiqueta="Contraseña"
           autoComplete="new-password"
+          placeholder="Crea una contraseña"
           registro={register('contrasena')}
           ayuda="Al menos 10 caracteres. Una frase fácil de recordar funciona bien."
           error={errors.contrasena?.message}

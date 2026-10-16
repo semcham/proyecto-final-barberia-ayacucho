@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { Icono, type NombreIcono } from './Icono';
 import { Logo } from './Logo';
+import { ImagenMarca } from './marca/ImagenMarca';
 import { ConmutadorTema } from './ui';
 import estilos from './MarcoAcceso.module.css';
 
@@ -9,6 +10,12 @@ export interface PuntoValor {
   titulo: string;
   texto: string;
 }
+
+/**
+ * Foto real del panel de marca (ver public/img/README.md). Mientras sea undefined se usa la ilustración propia.
+ * Ejemplo: const FOTO_MARCA = '/img/barberia.webp';
+ */
+const FOTO_MARCA: string | undefined = undefined;
 
 interface PropiedadesMarco {
   antetitulo: string;
@@ -34,6 +41,7 @@ export function MarcoAcceso({
   return (
     <div className={estilos.marco}>
       <aside className={estilos.panel}>
+        <ImagenMarca src={FOTO_MARCA} />
         <Logo />
         <div className={estilos.mensaje}>
           <p className="antetitulo">{antetitulo}</p>

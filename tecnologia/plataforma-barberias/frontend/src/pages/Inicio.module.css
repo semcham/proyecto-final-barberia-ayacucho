@@ -2,38 +2,67 @@
   display: inline-grid;
   place-items: center;
   flex-shrink: 0;
-  width: 2.75rem;
-  height: 2.75rem;
+  width: 2.5rem;
+  height: 2.5rem;
   border: 1px solid var(--color-acento-borde);
   border-radius: var(--radio);
   background: var(--color-acento-suave);
   color: var(--color-enlace);
 }
 
+.seccion {
+  margin-top: var(--espacio-8);
+}
+
+.tituloSeccion {
+  margin: 0 0 var(--espacio-3);
+  font-family: var(--fuente-cuerpo);
+  font-size: var(--texto-sm);
+  font-weight: var(--peso-fuerte);
+  letter-spacing: var(--tracking-mayusculas);
+  text-transform: uppercase;
+  color: var(--color-texto-suave);
+}
+
+/* ---------- Prueba gratuita ---------- */
+
 .prueba {
-  margin-bottom: var(--espacio-6);
   border-color: var(--color-acento-borde);
   background: linear-gradient(135deg, var(--color-acento-suave), transparent 60%), var(--color-superficie);
 }
 
 .pruebaCabecera {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--espacio-4);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: var(--espacio-2) var(--espacio-4);
 }
 
-.pruebaCabecera h2 {
+.pruebaTextos h2 {
   margin-bottom: var(--espacio-1);
 }
 
-.pruebaCabecera p {
+.pruebaTextos p {
   margin: 0;
   font-size: var(--texto-sm);
 }
 
+.pruebaDias {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: var(--texto-sm);
+  color: var(--color-texto-suave);
+}
+
+.pruebaDias strong {
+  font-family: var(--fuente-titulos);
+  font-size: var(--texto-2xl);
+  color: var(--color-texto);
+}
+
 .progreso {
   height: 0.5rem;
-  margin-top: var(--espacio-5);
+  margin-top: var(--espacio-4);
   border-radius: var(--radio-pildora);
   background: var(--color-superficie-hundida);
   overflow: hidden;
@@ -44,11 +73,65 @@
   height: 100%;
   border-radius: inherit;
   background: linear-gradient(90deg, var(--color-acento-activo), var(--color-acento-hover));
+  transition: width var(--duracion-lenta) var(--curva-salida);
 }
+
+/* ---------- Indicadores ---------- */
+
+.indicadores {
+  display: grid;
+  gap: var(--espacio-3);
+}
+
+/* En el celular: icono y etiqueta en una fila; el valor y el detalle debajo, a todo el ancho. */
+.indicador {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-3);
+  min-width: 0;
+}
+
+.indicadorCabecera {
+  display: flex;
+  align-items: center;
+  gap: var(--espacio-3);
+}
+
+.indicadorEtiqueta {
+  margin: 0;
+  font-family: var(--fuente-cuerpo);
+  font-size: var(--texto-sm);
+  font-weight: var(--peso-fuerte);
+  letter-spacing: 0;
+  color: var(--color-texto-suave);
+}
+
+.indicadorValor {
+  display: flex;
+  align-items: center;
+  min-height: 2.5rem;
+  margin: 0;
+}
+
+.numero {
+  font-family: var(--fuente-titulos);
+  font-size: var(--texto-3xl);
+  font-weight: var(--peso-titulo);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.indicadorDetalle {
+  margin: 0;
+  font-size: var(--texto-sm);
+  color: var(--color-texto-suave);
+}
+
+/* ---------- Accesos rápidos ---------- */
 
 .accesos {
   display: grid;
-  gap: var(--espacio-4);
+  gap: var(--espacio-3);
 }
 
 .acceso {
@@ -62,12 +145,14 @@
 .accesoEnlace {
   transition:
     border-color var(--transicion),
+    box-shadow var(--transicion),
     transform var(--transicion);
 }
 
 .accesoEnlace:hover {
   color: var(--color-texto);
   border-color: var(--color-acento-borde);
+  box-shadow: var(--sombra);
 }
 
 .accesoEnlace:focus-visible {
@@ -90,6 +175,7 @@
 }
 
 .flecha {
+  display: inline-flex;
   color: var(--color-enlace);
   transition: transform var(--transicion);
 }
@@ -98,28 +184,21 @@
   transform: translateX(3px);
 }
 
-.proximamente {
-  align-self: flex-start;
-  padding: 0.125rem var(--espacio-2);
-  border: 1px solid var(--color-borde);
-  border-radius: var(--radio-pildora);
-  font-size: var(--texto-xs);
-  color: var(--color-texto-tenue);
-  white-space: nowrap;
-}
+@media (min-width: 40rem) {
+  .pruebaCabecera {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
 
-@media (min-width: 48rem) {
+  .pruebaDias {
+    grid-column: auto;
+    text-align: right;
+  }
+
+  .indicadores {
+    grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  }
+
   .accesos {
-    grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
-  }
-
-  .acceso {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .flecha,
-  .proximamente {
-    margin-top: auto;
+    grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
   }
 }

@@ -106,6 +106,7 @@ export default function Ingresar() {
           id="contrasena"
           etiqueta="Contraseña"
           autoComplete="current-password"
+          placeholder="Tu contraseña"
           registro={register('contrasena')}
           error={errors.contrasena?.message}
         />

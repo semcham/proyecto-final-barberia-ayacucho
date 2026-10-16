@@ -13,6 +13,20 @@ export default defineConfig({
     // En Docker sobre Windows o macOS el volumen montado no avisa los cambios de archivos: se sondean.
     watch: process.env.VITE_SONDEO === 'true' ? { usePolling: true, interval: 300 } : undefined,
   },
+  build: {
+    rollupOptions: {
+      output: {
+        // Librerías en archivos propios: cambian poco, así el navegador las reutiliza entre despliegues.
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return undefined;
+          if (/[\\/](react|react-dom|scheduler|react-router|react-router-dom)[\\/]/.test(id)) return 'react';
+          if (id.includes('@tanstack')) return 'consultas';
+          if (/[\\/](zod|react-hook-form|@hookform)[\\/]/.test(id)) return 'formularios';
+          return undefined;
+        },
+      },
+    },
+  },
   test: {
     environment: 'jsdom',
     setupFiles: ['./test/setup.ts'],

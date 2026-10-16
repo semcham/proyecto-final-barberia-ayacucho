@@ -1,0 +1,57 @@
+@media (min-width: 40rem) {
+  .dialogo {
+    width: min(34rem, calc(100vw - 2rem));
+  }
+}
+
+.icono {
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 50%;
+  background: var(--color-acento);
+  color: var(--color-acento-texto);
+}
+
+.copiar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-2);
+  margin-top: var(--espacio-5);
+}
+
+.enlace {
+  font-family: var(--fuente-mono);
+  font-size: var(--texto-sm);
+  color: var(--color-enlace);
+  text-overflow: ellipsis;
+}
+
+.consejo {
+  display: flex;
+  align-items: center;
+  gap: var(--espacio-2);
+  margin: var(--espacio-3) 0 0;
+  font-size: var(--texto-sm);
+  color: var(--color-texto-suave);
+}
+
+@media (min-width: 30rem) {
+  .copiar {
+    flex-direction: row;
+  }
+
+  .copiar .enlace {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+.vence {
+  display: block;
+  margin-top: var(--espacio-1);
+  font-weight: var(--peso-medio);
+  color: var(--color-texto);
+}

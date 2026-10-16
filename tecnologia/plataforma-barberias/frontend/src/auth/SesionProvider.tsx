@@ -1,6 +1,7 @@
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { llamarApi, renovarSesion, suscribirSesionPerdida, tokenEnMemoria } from '../api/client';
 import type { components } from '../api/schema';
+import { indicadorSesion } from './indicadorSesion';
 
 type SesionResponse = components['schemas']['SesionResponse'];
 export type UsuarioActual = components['schemas']['UsuarioActual'];
@@ -20,32 +21,39 @@ const ContextoSesion = createContext<ValorSesion | null>(null);
 
 /**
  * Sesión del usuario en la interfaz (R19). El token de acceso vive solo en memoria; al cargar la página se
- * recupera con la cookie HttpOnly de renovación. Si una renovación falla, la sesión pasa a anónima.
+ * recupera con la cookie HttpOnly de renovación, solo si hubo una sesión reciente (indicadorSesion). Si una
+ * renovación falla, la sesión pasa a anónima.
  */
 export function SesionProvider({ children }: { children: ReactNode }) {
-  const [estado, setEstado] = useState<EstadoSesion>('cargando');
+  // Sin sesión reciente se empieza como anónimo y no se intenta renovar (la respuesta sería un 401 seguro).
+  const [estado, setEstado] = useState<EstadoSesion>(() =>
+    indicadorSesion.presente() ? 'cargando' : 'anonimo',
+  );
   const [usuario, setUsuario] = useState<UsuarioActual | null>(null);
 
   const establecer = useCallback((sesion: SesionResponse) => {
     tokenEnMemoria.fijar(sesion.tokenAcceso);
+    indicadorSesion.marcar();
     setUsuario(sesion.usuario);
     setEstado('autenticado');
   }, []);
 
   const quedarAnonimo = useCallback(() => {
     tokenEnMemoria.limpiar();
+    indicadorSesion.quitar();
     setUsuario(null);
     setEstado('anonimo');
   }, []);
 
   useEffect(() => {
     let vigente = true;
+    const cancelar = suscribirSesionPerdida(quedarAnonimo);
+    if (!indicadorSesion.presente()) return cancelar;
     void renovarSesion().then((sesion) => {
       if (!vigente) return;
       if (sesion) establecer(sesion);
       else quedarAnonimo();
     });
-    const cancelar = suscribirSesionPerdida(quedarAnonimo);
     return () => {
       vigente = false;
       cancelar();
