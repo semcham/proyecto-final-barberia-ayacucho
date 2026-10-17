@@ -28,6 +28,14 @@ function enteroEnRango(nombre: string, porDefecto: number, minimo: number, maxim
   return numero;
 }
 
+function pasoDeHorarios(nombre: string, porDefecto: number): number {
+  const numero = enteroEnRango(nombre, porDefecto, 5, 60);
+  if (60 % numero !== 0) {
+    throw new Error(`La variable de entorno ${nombre} debe ser un divisor de 60`);
+  }
+  return numero;
+}
+
 // Los PEM pueden venir en una sola línea con "\n" literales (formato de .env).
 function pem(valor: string): string {
   return valor.replace(/\\n/g, '\n');
@@ -40,6 +48,14 @@ function pem(valor: string): string {
 @Injectable()
 export class Configuracion {
   readonly databaseUrlApp = requerida('DATABASE_URL_APP');
+  /** Rol barberias_publico: lecturas públicas por enlace (ADR-021). */
+  readonly databaseUrlPublico = requerida('DATABASE_URL_PUBLICO');
+  readonly horarios = {
+    /** Paso entre horas de inicio ofrecidas (R08): divisor de 60, de 5 a 60 minutos. */
+    pasoMinutos: pasoDeHorarios('HORARIOS_PASO_MINUTOS', 15),
+    /** Días hacia adelante en los que se puede reservar (R08). */
+    horizonteDias: enteroEnRango('RESERVA_HORIZONTE_DIAS', 30, 1, 90),
+  };
   readonly jwt = {
     clavePrivada: pem(requerida('JWT_PRIVATE_KEY')),
     clavesPublicas: Object.fromEntries(

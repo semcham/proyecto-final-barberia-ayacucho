@@ -74,18 +74,18 @@ No toca webhooks de pago ni proveedores externos.
 
 **Purpose**: rol de base de datos nuevo, configuración y estructura de carpetas.
 
-- [ ] T001 Agregar el rol `barberias_publico` en `tecnologia/plataforma-barberias/db/init/01-roles.sql` (idempotente):
+- [X] T001 Agregar el rol `barberias_publico` en `tecnologia/plataforma-barberias/db/init/01-roles.sql` (idempotente):
   - `CREATE ROLE barberias_publico LOGIN PASSWORD 'barberias_publico_dev' NOSUPERUSER NOBYPASSRLS NOINHERIT NOCREATEDB NOCREATEROLE`.
   - `GRANT CONNECT` sobre la base y `GRANT USAGE ON SCHEMA public`.
   - Comentario: la contraseña es solo para desarrollo, y el rol no tiene `BYPASSRLS` (ADR-021).
-- [ ] T002 [P] Agregar `DATABASE_URL_PUBLICO`, `HORARIOS_PASO_MINUTOS=15` y `RESERVA_HORIZONTE_DIAS=30`:
+- [X] T002 [P] Agregar `DATABASE_URL_PUBLICO`, `HORARIOS_PASO_MINUTOS=15` y `RESERVA_HORIZONTE_DIAS=30`:
   - con comentarios en `tecnologia/plataforma-barberias/.env.example`;
   - `DATABASE_URL_PUBLICO` como variable de entorno del servicio `backend` en `tecnologia/plataforma-barberias/docker-compose.yml` (host `db`).
-- [ ] T003 [P] Ampliar `Configuracion` en `tecnologia/plataforma-barberias/backend/src/shared/config/configuracion.ts` con `databaseUrlPublico`, `horariosPasoMinutos` (5–60, divisor de 60) y `reservaHorizonteDias` (1–90), validados al arrancar, y sus casos en `tecnologia/plataforma-barberias/backend/test/unit/shared/configuracion.spec.ts`
-- [ ] T004 [P] Ampliar el entorno de pruebas en `tecnologia/plataforma-barberias/backend/test/helpers/test-db.ts` y `tecnologia/plataforma-barberias/backend/test/helpers/entorno.ts`:
+- [X] T003 [P] Ampliar `Configuracion` en `tecnologia/plataforma-barberias/backend/src/shared/config/configuracion.ts` con `databaseUrlPublico`, `horariosPasoMinutos` (5–60, divisor de 60) y `reservaHorizonteDias` (1–90), validados al arrancar, y sus casos en `tecnologia/plataforma-barberias/backend/test/unit/shared/configuracion.spec.ts`
+- [X] T004 [P] Ampliar el entorno de pruebas en `tecnologia/plataforma-barberias/backend/test/helpers/test-db.ts` y `tecnologia/plataforma-barberias/backend/test/helpers/entorno.ts`:
   - fijar `DATABASE_URL_PUBLICO` del contenedor;
   - exponer un cuarto pool `publico` (rol `barberias_publico`) para las pruebas de ADR-021.
-- [ ] T005 Crear la estructura de carpetas, con `.gitkeep` donde quede vacía:
+- [X] T005 Crear la estructura de carpetas, con `.gitkeep` donde quede vacía:
   - `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/{catalogo,citas}/{presentation,application,domain,infrastructure}`;
   - `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/catalogo/infrastructure/publico`;
   - `tecnologia/plataforma-barberias/backend/src/modules/acceso-barberias/clientes/{presentation,application,domain,infrastructure}`;
@@ -103,17 +103,17 @@ de permisos, interfaces entre módulos y reglas de arquitectura.
 
 ### Base de datos
 
-- [ ] T006 Crear la migración `tecnologia/plataforma-barberias/backend/migrations/0009_cuenta_cliente.ts` según [data-model.md](data-model.md):
+- [X] T006 Crear la migración `tecnologia/plataforma-barberias/backend/migrations/0009_cuenta_cliente.ts` según [data-model.md](data-model.md):
   - `membership.role_code` admite `CLIENTE`.
   - Tablas `customer_profile` (índice único parcial `customer_profile_cuenta`, índices de búsqueda) y `consent_record` (`CHECK` de `method`/`recorded_by`), ambas con `rlsPorTenant`, `UNIQUE (tenant_id, id)`, FK compuestas y permisos de la sección 2.
   - `CREATE OR REPLACE FUNCTION auth_resolver_cuenta(varchar)` con `LEFT JOIN` a la membresía de personal y al tenant (misma firma, misma salida, `LIMIT 1`, mismo dueño `barberias_auth`, `REVOKE`/`GRANT` repetidos).
   - Función `down` que restaura la versión con `JOIN`.
-- [ ] T007 Crear la migración `tecnologia/plataforma-barberias/backend/migrations/0010_catalogo.ts`:
+- [X] T007 Crear la migración `tecnologia/plataforma-barberias/backend/migrations/0010_catalogo.ts`:
   - **`tenant`:** columnas `address`, `phone`, `description`, `timezone` y `cancel_min_notice_minutes` con sus `CHECK`; `ENABLE` + `FORCE ROW LEVEL SECURITY` con las políticas `tenant_lectura` (SELECT `true`), `tenant_alta` (INSERT `true`) y `tenant_edicion` (UPDATE `id = TENANT_ACTUAL`); `GRANT UPDATE (name, slug, address, phone, description, cancel_min_notice_minutes)` a `barberias_app`.
   - **Tablas nuevas:** `business_hours`, `service` (índice único `(tenant_id, lower(name))`), `barber` (índice único parcial `(tenant_id, user_id)`), `barber_service`, `working_hours` y `time_off` (índice GiST por rango).
   - **En todas las tablas nuevas:** `rlsPorTenant`, `UNIQUE (tenant_id, id)`, FK compuestas, `CHECK` y permisos de `barberias_app` de [data-model.md](data-model.md).
   - Función `down`.
-- [ ] T008 Crear la migración `tecnologia/plataforma-barberias/backend/migrations/0011_citas.ts`:
+- [X] T008 Crear la migración `tecnologia/plataforma-barberias/backend/migrations/0011_citas.ts`:
   - `CREATE EXTENSION IF NOT EXISTS btree_gist`.
   - Tabla `appointment`:
     - columna generada `period tstzrange GENERATED ALWAYS AS (tstzrange(starts_at, ends_at, '[)')) STORED`;
@@ -122,99 +122,99 @@ de permisos, interfaces entre módulos y reglas de arquitectura.
   - Tabla `appointment_status_history`.
   - RLS, FK compuestas y permisos de [data-model.md](data-model.md); `barberias_app` sin `DELETE`.
   - Función `down`.
-- [ ] T009 Crear la migración `tecnologia/plataforma-barberias/backend/migrations/0012_lectura_publica.ts`:
+- [X] T009 Crear la migración `tecnologia/plataforma-barberias/backend/migrations/0012_lectura_publica.ts`:
   - `GRANT SELECT` por columna a `barberias_publico`, con la lista cerrada de ADR-021 (decisión 2; desde la precisión del 2026-10-17 **sin** `tenant`, que resuelve M01): `business_hours`, `service`, `barber` (sin `user_id`), `barber_service`, `working_hours`, `time_off` (sin `reason`) y `appointment` (solo `tenant_id, barber_id, starts_at, ends_at, status`).
   - Función `down` con `REVOKE`.
-- [ ] T010 Ampliar los tipos de Kysely en `tecnologia/plataforma-barberias/backend/src/shared/persistence/db-types.ts`:
+- [X] T010 Ampliar los tipos de Kysely en `tecnologia/plataforma-barberias/backend/src/shared/persistence/db-types.ts`:
   - tablas nuevas y columnas nuevas de `tenant`;
   - `membership.role_code` con `CLIENTE`;
   - `period` solo de lectura.
-- [ ] T011 [P] Ampliar los ayudantes de siembra en `tecnologia/plataforma-barberias/backend/test/helpers/fixtures.ts` con el pool `seed`:
+- [X] T011 [P] Ampliar los ayudantes de siembra en `tecnologia/plataforma-barberias/backend/test/helpers/fixtures.ts` con el pool `seed`:
   - `sembrarHorarioAtencion`, `sembrarServicio`, `sembrarBarbero({usuarioId?, servicios})`, `sembrarDisponibilidad` y `sembrarBloqueo`;
   - `sembrarCliente({tenantId, conCuenta, correo, telefono})`: cuenta, membresía `CLIENTE`, perfil y consentimiento;
   - `sembrarCita({estado, inicio, ...})`.
-- [ ] T012 [P] Ampliar `tecnologia/plataforma-barberias/backend/test/helpers/sesiones.ts`:
+- [X] T012 [P] Ampliar `tecnologia/plataforma-barberias/backend/test/helpers/sesiones.ts`:
   - `sesionCliente(tenantId, cuenta)`, que emite el token de un cliente con su `tid`;
   - `sesionBarberoVinculado(tenantId)`.
-- [ ] T013 Ampliar la prueba de RLS (PR09) en `tecnologia/plataforma-barberias/backend/test/integration/aislamiento/rls.spec.ts`:
+- [X] T013 Ampliar la prueba de RLS (PR09) en `tecnologia/plataforma-barberias/backend/test/integration/aislamiento/rls.spec.ts`:
   - **Tablas nuevas:** con `barberias_app`, sin contexto ven 0 filas y con el contexto de A no ven ni modifican filas de B; insertar con el `tenant_id` de otra barbería falla por `WITH CHECK`; las FK compuestas impiden apuntar a filas de otra barbería.
   - **`tenant`:** `SELECT` libre, pero `UPDATE` de otra barbería afecta 0 filas.
 
 ### M06 núcleo compartido
 
-- [ ] T014 [P] Crear la hora local en `tecnologia/plataforma-barberias/backend/src/shared/tiempo/zona-horaria.ts` (R07):
+- [X] T014 [P] Crear la hora local en `tecnologia/plataforma-barberias/backend/src/shared/tiempo/zona-horaria.ts` (R07):
   - `FechaLocal` (`YYYY-MM-DD`) y `ZonaHoraria` (`inicioDelDia`, `aInstante(fecha, minutos)`, `aLocal(instante)`, `diaSemana(fecha)`), con `Intl.DateTimeFormat` y sin dependencias;
   - exportar desde `tecnologia/plataforma-barberias/backend/src/shared/index.ts`.
-- [ ] T015 [P] Crear `HorarioSemanal` en `tecnologia/plataforma-barberias/backend/src/shared/tiempo/horario-semanal.ts` y exportarlo desde `tecnologia/plataforma-barberias/backend/src/shared/nucleo.ts`, para que lo use el dominio:
+- [X] T015 [P] Crear `HorarioSemanal` en `tecnologia/plataforma-barberias/backend/src/shared/tiempo/horario-semanal.ts` y exportarlo desde `tecnologia/plataforma-barberias/backend/src/shared/nucleo.ts`, para que lo use el dominio:
   - tramos `{diaSemana, inicioMin, finMin}` con `inicio < fin`, sin solapes por día;
   - operaciones `contiene(otro)`, `tramosDe(dia)` e `interseccion(otro, dia)`.
-- [ ] T016 [P] Pruebas unitarias de hora local en `tecnologia/plataforma-barberias/backend/test/unit/shared/zona-horaria.spec.ts` y `tecnologia/plataforma-barberias/backend/test/unit/shared/horario-semanal.spec.ts`:
+- [X] T016 [P] Pruebas unitarias de hora local en `tecnologia/plataforma-barberias/backend/test/unit/shared/zona-horaria.spec.ts` y `tecnologia/plataforma-barberias/backend/test/unit/shared/horario-semanal.spec.ts`:
   - `ZonaHoraria`: conversiones de `America/Lima` (−05:00), cortes de día a medianoche local, fin de mes y de año, día de la semana;
   - `HorarioSemanal`: solapes, tramos inválidos, `contiene` e intersección.
-- [ ] T017 Crear la lectura pública en `tecnologia/plataforma-barberias/backend/src/shared/lectura-publica.ts` (entrada propia de M06, solo para la vía pública, ADR-021):
+- [X] T017 Crear la lectura pública en `tecnologia/plataforma-barberias/backend/src/shared/lectura-publica.ts` (entrada propia de M06, solo para la vía pública, ADR-021):
   - pool Kysely con `DATABASE_URL_PUBLICO`;
   - `LecturaPublica.ejecutar(tenantId, fn(tx))`: **solo** abre `BEGIN READ ONLY`, fija `app.tenant_id` con `set_config(..., true)` y ejecuta `fn`;
   - no lee ninguna tabla por sí misma: la resolución del `slug` la hace M01 con `BarberiasApi.resolverSlugPublico` (principio I, ADR-021 decisión 3).
-- [ ] T018 Prueba de integración de `LecturaPublica` en `tecnologia/plataforma-barberias/backend/test/integration/shared/lectura-publica.spec.ts`:
+- [X] T018 Prueba de integración de `LecturaPublica` en `tecnologia/plataforma-barberias/backend/test/integration/shared/lectura-publica.spec.ts`:
   - una escritura dentro de `fn` falla (solo lectura);
   - con el tenant de A fijado no se ven filas de B;
   - `app.tenant_id` no sobrevive a la transacción ni pasa a la siguiente que usa la conexión.
 
 ### M01: cliente en la identidad e interfaces para M02
 
-- [ ] T019 Ampliar `Rol` y `Permisos` en `tecnologia/plataforma-barberias/backend/src/modules/acceso-barberias/identidad/domain/rol.ts` y `tecnologia/plataforma-barberias/backend/src/modules/acceso-barberias/identidad/domain/permisos.ts` con `CLIENTE` y las operaciones de M01 de [contracts/rbac.md](contracts/rbac.md):
+- [X] T019 Ampliar `Rol` y `Permisos` en `tecnologia/plataforma-barberias/backend/src/modules/acceso-barberias/identidad/domain/rol.ts` y `tecnologia/plataforma-barberias/backend/src/modules/acceso-barberias/identidad/domain/permisos.ts` con `CLIENTE` y las operaciones de M01 de [contracts/rbac.md](contracts/rbac.md):
   - `CAMBIAR_BARBERIA`, `VER_BARBERIA`, `ACTUALIZAR_BARBERIA`, `BUSCAR_CLIENTES`, `REGISTRAR_CLIENTE_PRESENCIAL`;
   - `CLIENTE` sin acceso a las operaciones de usuarios de 001.
-- [ ] T020 Excluir a los clientes de las reglas de personal de 001:
+- [X] T020 Excluir a los clientes de las reglas de personal de 001:
   - **Límite del plan y lista de usuarios:** el conteo y la lista filtran `role_code IN ('PROPIETARIO','BARBERO')` en `tecnologia/plataforma-barberias/backend/src/modules/acceso-barberias/identidad/infrastructure/kysely-usuario-repository.ts`.
   - **Usuarios de 001:** `ActualizarUsuario` y `ObtenerUsuario` responden 404 para una membresía `CLIENTE`.
   - **Pruebas:** en `tecnologia/plataforma-barberias/backend/test/integration/identidad/usuarios.spec.ts`, 3 clientes sembrados no consumen cupo de `max_users` ni aparecen en `GET /usuarios`.
-- [ ] T021 Declarar en `tecnologia/plataforma-barberias/backend/src/modules/acceso-barberias/index.ts` las interfaces públicas para M02 (ADR-020, R05), cada una con su token de inyección:
+- [X] T021 Declarar en `tecnologia/plataforma-barberias/backend/src/modules/acceso-barberias/index.ts` las interfaces públicas para M02 (ADR-020, R05), cada una con su token de inyección:
   - `PersonalApi` (`esPersonalActivo(usuarioId)`);
   - `ClientesApi` (`perfilDeSesion(usuarioId)`, `datosDeContacto(ids)`, `perfilDeBarberia(clienteId)`);
   - `BarberiasApi` (`configuracionAgenda()`, `datosPublicos(tenantId)`, `resolverSlugPublico(slug)`).
 
   Se implementan en las historias que las usan.
 
-- [ ] T022 [P] Implementar `BarberiasApi`:
+- [X] T022 [P] Implementar `BarberiasApi`:
   - `configuracionAgenda()` lee `timezone` y `cancel_min_notice_minutes` del tenant del contexto;
   - `datosPublicos(tenantId)` devuelve nombre, `slug`, dirección, teléfono, descripción y zona;
   - `resolverSlugPublico(slug)` devuelve el `tenantId` si la barbería existe y está `ACTIVA`, y si no, lanza `BarberiaNoDisponible`, el mismo error para un enlace inexistente, cambiado o suspendido (FR-022). Lee la tabla global `tenant` con el pool de la aplicación.
 
   Archivos: `tecnologia/plataforma-barberias/backend/src/modules/acceso-barberias/barberias/application/barberias-api.ts` y el repositorio en `tecnologia/plataforma-barberias/backend/src/modules/acceso-barberias/barberias/infrastructure/kysely-tenant-repository.ts`.
 
-- [ ] T023 Prueba de integración de `BarberiasApi` en `tecnologia/plataforma-barberias/backend/test/integration/barberias/barberias-api.spec.ts`:
+- [X] T023 Prueba de integración de `BarberiasApi` en `tecnologia/plataforma-barberias/backend/test/integration/barberias/barberias-api.spec.ts`:
   - `resolverSlugPublico` da el mismo error con un `slug` inexistente, uno anterior a un cambio y uno suspendido, y el `tenantId` correcto con uno activo;
   - `configuracionAgenda` devuelve los valores del tenant del contexto;
   - `datosPublicos` no expone `status` ni identificadores de cuentas.
 
 ### M03: límite de barberos
 
-- [ ] T024 [P] Agregar `obtenerLimiteBarberos(tenantId)`:
+- [X] T024 [P] Agregar `obtenerLimiteBarberos(tenantId)`:
   - caso de uso en `tecnologia/plataforma-barberias/backend/src/modules/suscripciones-pagos/suscripciones/application/obtener-limite-barberos.ts`;
   - consulta a `plan.max_barbers` con la fila de `subscription` bloqueada (`FOR UPDATE`) en `tecnologia/plataforma-barberias/backend/src/modules/suscripciones-pagos/suscripciones/infrastructure/kysely-suscripcion-repository.ts`;
   - exportar desde `tecnologia/plataforma-barberias/backend/src/modules/suscripciones-pagos/index.ts` (R13).
 
 ### M02: base del módulo
 
-- [ ] T025 [P] Crear `RangoHorario` (`[inicio, fin)`, `seSolapaCon`, `contieneEnteramente`, `duracionMinutos`) en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/catalogo/domain/rango-horario.ts`
-- [ ] T026 [P] Crear los errores de dominio de M02 en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/catalogo/domain/errores.ts`:
+- [X] T025 [P] Crear `RangoHorario` (`[inicio, fin)`, `seSolapaCon`, `contieneEnteramente`, `duracionMinutos`) en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/catalogo/domain/rango-horario.ts`
+- [X] T026 [P] Crear los errores de dominio de M02 en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/catalogo/domain/errores.ts`:
   - `NoEncontrado`, `AccesoDenegado`, `NombreDuplicado`, `ConflictoConCitas` (con la lista de citas afectadas), `FueraDelHorarioDeAtencion` y `LimiteBarberosAlcanzado`;
   - `HorarioNoDisponible`, `CitaSolapadaDelCliente`, `ReservaInvalida`, `IdempotenciaConflicto` y `TransicionInvalida`.
-- [ ] T027 [P] Crear `PermisosCatalogoCitas` en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/catalogo/domain/permisos.ts`:
+- [X] T027 [P] Crear `PermisosCatalogoCitas` en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/catalogo/domain/permisos.ts`:
   - operaciones de M02 de [contracts/rbac.md](contracts/rbac.md) → roles permitidos;
   - marca "solo propios" para BARBERO y CLIENTE.
-- [ ] T028 Crear `AutorizacionCatalogoCitas.exigir(actor, operacion)` en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/catalogo/application/autorizacion.ts`:
+- [X] T028 Crear `AutorizacionCatalogoCitas.exigir(actor, operacion)` en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/catalogo/application/autorizacion.ts`:
   - usa `Actor` de `acceso-barberias/index.ts` y la matriz de T027;
   - si el rol no está permitido, registra `ACCESO_DENEGADO_ROL` con `AuditLog.registrarEnTransaccionPropia` y lanza `AccesoDenegado` antes de tocar cualquier repositorio.
-- [ ] T029 [P] Pruebas unitarias en `tecnologia/plataforma-barberias/backend/test/unit/catalogo/permisos-rango.spec.ts`:
+- [X] T029 [P] Pruebas unitarias en `tecnologia/plataforma-barberias/backend/test/unit/catalogo/permisos-rango.spec.ts`:
   - `RangoHorario`: rangos contiguos no se solapan;
   - `AutorizacionCatalogoCitas`: denegaciones por rol con registro;
   - consistencia de `PermisosCatalogoCitas` y de `Permisos` (M01) con la tabla de [contracts/rbac.md](contracts/rbac.md), leída y parseada en la prueba.
-- [ ] T030 Crear la interfaz pública de M02 en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/index.ts` y el módulo Nest en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/catalogo-citas.module.ts`:
+- [X] T030 Crear la interfaz pública de M02 en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/index.ts` y el módulo Nest en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/catalogo-citas.module.ts`:
   - importar M01, M03 y M06 solo por sus `index.ts`;
   - registrarlo en `tecnologia/plataforma-barberias/backend/src/host/app.module.ts`.
-- [ ] T031 Crear el puerto `CatalogQuery` en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/catalogo/application/ports/catalog-query.ts` y su implementación Kysely, con la transacción del tenant del contexto, en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/catalogo/infrastructure/kysely-catalog-query.ts`. Operaciones de lectura del catálogo para la reserva (FR-030), el cálculo de horarios y las marcas de la agenda:
+- [X] T031 Crear el puerto `CatalogQuery` en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/catalogo/application/ports/catalog-query.ts` y su implementación Kysely, con la transacción del tenant del contexto, en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/catalogo/infrastructure/kysely-catalog-query.ts`. Operaciones de lectura del catálogo para la reserva (FR-030), el cálculo de horarios y las marcas de la agenda:
   - `servicioActivo(servicioId)`: nombre, precio y duración, o `null`;
   - `barberoOfrece(barberoId, servicioId)`: barbero activo con el servicio asignado;
   - `tramosDelDia(barberoId, fecha)`: disponibilidad ∩ horario de atención del día de la semana;
@@ -223,38 +223,38 @@ de permisos, interfaces entre módulos y reglas de arquitectura.
 
   Se exporta a `citas` por la interfaz interna del módulo.
 
-- [ ] T032 Prueba de integración de `CatalogQuery` en `tecnologia/plataforma-barberias/backend/test/integration/catalogo/catalog-query.spec.ts`:
+- [X] T032 Prueba de integración de `CatalogQuery` en `tecnologia/plataforma-barberias/backend/test/integration/catalogo/catalog-query.spec.ts`:
   - con datos sembrados (T011): un servicio inactivo da `null`, un barbero inactivo o sin el servicio da falso, los tramos son la intersección correcta y los bloqueos se filtran por rango;
   - con el tenant de A no devuelve nada de B.
 
 ### Host y arquitectura
 
-- [ ] T033 Ampliar `RolesGuard` y `@Operacion` en `tecnologia/plataforma-barberias/backend/src/host/roles.guard.ts` para aceptar también las operaciones de `PermisosCatalogoCitas`, exportadas por `catalogo-citas/index.ts`, y el rol `CLIENTE`. Las rutas `@Publica()` siguen sin leer el token.
-- [ ] T034 [P] Mapear los códigos nuevos de [contracts/openapi.yaml](contracts/openapi.yaml) a sus estados HTTP en `tecnologia/plataforma-barberias/backend/src/host/error.filter.ts`:
+- [X] T033 Ampliar `RolesGuard` y `@Operacion` en `tecnologia/plataforma-barberias/backend/src/host/roles.guard.ts` para aceptar también las operaciones de `PermisosCatalogoCitas`, exportadas por `catalogo-citas/index.ts`, y el rol `CLIENTE`. Las rutas `@Publica()` siguen sin leer el token.
+- [X] T034 [P] Mapear los códigos nuevos de [contracts/openapi.yaml](contracts/openapi.yaml) a sus estados HTTP en `tecnologia/plataforma-barberias/backend/src/host/error.filter.ts`:
   - `BARBERIA_NO_DISPONIBLE` 404;
   - `CONFLICTO_CON_CITAS` 409, con `detalles` = citas afectadas;
   - `HORARIO_NO_DISPONIBLE` y `CITA_SOLAPADA_DEL_CLIENTE` 409;
   - `RESERVA_INVALIDA`, `IDEMPOTENCIA_CONFLICTO` y `TRANSICION_INVALIDA` 422;
   - `INGRESA_DESDE_TU_BARBERIA`, `UNIRSE_REQUIERE_CONSENTIMIENTO`, `CUENTA_DE_PERSONAL`, `ENLACE_NO_DISPONIBLE`, `NOMBRE_DUPLICADO` y `USUARIO_YA_VINCULADO` 409;
   - `FUERA_DEL_HORARIO_DE_ATENCION` 422.
-- [ ] T035 Ampliar PR14 en `tecnologia/plataforma-barberias/backend/.dependency-cruiser.cjs` con cuatro reglas:
+- [X] T035 Ampliar PR14 en `tecnologia/plataforma-barberias/backend/.dependency-cruiser.cjs` con cuatro reglas:
   - `matriz-m01`: M01 no importa `catalogo-citas`.
   - `matriz-m02`: M02 solo importa `acceso-barberias/index.ts`, `suscripciones-pagos/index.ts` y `shared/{index,nucleo}.ts`.
   - `matriz-m03` ampliada: M03 tampoco importa M02.
   - `lectura-publica-confinada`: `shared/lectura-publica.ts` solo se importa desde `modules/catalogo-citas/catalogo/infrastructure/publico/`. Además, `m06-solo-por-interfaz-publica` admite esa entrada solo para esa carpeta.
-- [ ] T036 [P] Agregar violaciones de ejemplo en `tecnologia/plataforma-barberias/backend/test/architecture/fixture/src/` y comprobar en `tecnologia/plataforma-barberias/backend/test/architecture/reglas.spec.ts` que cada regla nueva las detecta:
+- [X] T036 [P] Agregar violaciones de ejemplo en `tecnologia/plataforma-barberias/backend/test/architecture/fixture/src/` y comprobar en `tecnologia/plataforma-barberias/backend/test/architecture/reglas.spec.ts` que cada regla nueva las detecta:
   - M01 que importa M02;
   - M02 que importa una clase interna de M01;
   - un repositorio de `citas` que importa `shared/lectura-publica.ts`.
 
 ### Frontend base
 
-- [ ] T037 [P] Ampliar el script `gen:api` en `tecnologia/plataforma-barberias/frontend/package.json` para generar también los tipos de `specs/002-catalogo-citas-cliente/contracts/openapi.yaml` en `tecnologia/plataforma-barberias/frontend/src/api/schema-002.d.ts`
-- [ ] T038 Preparar la navegación en `tecnologia/plataforma-barberias/frontend/src/routes.tsx`, `tecnologia/plataforma-barberias/frontend/src/auth/RutaProtegida.tsx` y `tecnologia/plataforma-barberias/frontend/src/components/app/DisenoApp.tsx`:
+- [X] T037 [P] Ampliar el script `gen:api` en `tecnologia/plataforma-barberias/frontend/package.json` para generar también los tipos de `specs/002-catalogo-citas-cliente/contracts/openapi.yaml` en `tecnologia/plataforma-barberias/frontend/src/api/schema-002.d.ts`
+- [X] T038 Preparar la navegación en `tecnologia/plataforma-barberias/frontend/src/routes.tsx`, `tecnologia/plataforma-barberias/frontend/src/auth/RutaProtegida.tsx` y `tecnologia/plataforma-barberias/frontend/src/components/app/DisenoApp.tsx`:
   - rol `CLIENTE` en `RutaProtegida`;
   - esqueleto de rutas nuevas, todas con `React.lazy` (ADR-018);
   - entradas de navegación del panel según el rol: Barbería, Servicios, Barberos, Disponibilidad, Agenda y Clientes.
-- [ ] T039 [P] Crear `tecnologia/plataforma-barberias/frontend/src/hora-barberia.ts`: formatea instantes en la zona de la barbería (`Intl`, nunca la del dispositivo) con la etiqueta "hora de la barbería". Pruebas en `tecnologia/plataforma-barberias/frontend/test/hora-barberia.spec.ts`.
+- [X] T039 [P] Crear `tecnologia/plataforma-barberias/frontend/src/hora-barberia.ts`: formatea instantes en la zona de la barbería (`Intl`, nunca la del dispositivo) con la etiqueta "hora de la barbería". Pruebas en `tecnologia/plataforma-barberias/frontend/test/hora-barberia.spec.ts`.
 
 **Checkpoint**: esquema, roles, permisos y arquitectura listos; pueden empezar las historias.
 
@@ -724,7 +724,7 @@ ve solo las suyas, ordenadas, con su estado (escenarios 1–2 de US6).
 **Purpose**: documentación que el plan dejó para el cambio con código, revisión obligatoria de
 ADR-015, validación de punta a punta y calidad.
 
-- [ ] T124 Revisión obligatoria de ADR-015 por el cambio de `auth_resolver_cuenta` (`LEFT JOIN`, ADR-020):
+- [X] T124 Revisión obligatoria de ADR-015 por el cambio de `auth_resolver_cuenta` (`LEFT JOIN`, ADR-020):
   - qué se revisa: el diff de la migración `0009`; que la firma, la ausencia de tenant y el `LIMIT 1` se mantienen; T080 en verde;
   - registrarla con fecha y revisor en la nota de consecuencias de ADR-015 en `docs/01-analisis-de-sistema/07-decisiones-arquitectonicas.md`.
 - [ ] T125 [P] Actualizar `docs/02-arquitectura-software/api-rest.md`:

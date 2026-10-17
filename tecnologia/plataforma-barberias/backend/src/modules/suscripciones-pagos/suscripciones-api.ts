@@ -4,18 +4,28 @@ import {
   IniciarPruebaGratuita,
   type ResumenSuscripcion,
 } from './suscripciones/application/iniciar-prueba-gratuita';
+import { ObtenerLimiteBarberos } from './suscripciones/application/obtener-limite-barberos';
 import { ObtenerLimiteUsuarios } from './suscripciones/application/obtener-limite-usuarios';
 
 /**
- * Lo que M03 ofrece a otros módulos (matriz de dependencias: M01 → M03). Ambas operaciones participan en
- * la transacción del llamador, que debe tener fijado el mismo tenant.
+ * Lo que M03 ofrece a otros módulos (matriz de dependencias: M01 → M03 y M02 → M03). Todas las
+ * operaciones participan en la transacción del llamador, que debe tener fijado el mismo tenant.
  */
 @Injectable()
 export class SuscripcionesApi {
   constructor(
     private readonly iniciarPrueba: IniciarPruebaGratuita,
     private readonly obtenerLimite: ObtenerLimiteUsuarios,
+    private readonly obtenerLimiteDeBarberos: ObtenerLimiteBarberos,
   ) {}
+
+  /**
+   * Máximo de barberos activos del plan (FR-012 de 002). Deja bloqueada la fila de la suscripción hasta
+   * que termine la transacción del llamador, para que contar y crear (o reactivar) sean atómicos.
+   */
+  obtenerLimiteBarberos(tenantId: TenantId): Promise<number> {
+    return this.obtenerLimiteDeBarberos.ejecutar(tenantId);
+  }
 
   iniciarPruebaGratuita(tenantId: TenantId): Promise<ResumenSuscripcion> {
     return this.iniciarPrueba.ejecutar(tenantId);

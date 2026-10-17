@@ -4,7 +4,9 @@ import type { components } from '../api/schema';
 import { indicadorSesion } from './indicadorSesion';
 
 type SesionResponse = components['schemas']['SesionResponse'];
-export type UsuarioActual = components['schemas']['UsuarioActual'];
+/** Rol de la sesión: el contrato de 001 define el personal; la funcionalidad 002 agrega CLIENTE (ADR-020). */
+export type RolSesion = components['schemas']['UsuarioActual']['rol'] | 'CLIENTE';
+export type UsuarioActual = Omit<components['schemas']['UsuarioActual'], 'rol'> & { rol: RolSesion };
 export type EstadoSesion = 'cargando' | 'anonimo' | 'autenticado';
 
 interface ValorSesion {

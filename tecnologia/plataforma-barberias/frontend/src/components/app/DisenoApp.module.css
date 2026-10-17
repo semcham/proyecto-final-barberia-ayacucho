@@ -56,11 +56,24 @@
   margin: 0;
   padding: 0;
   list-style: none;
+  /* Con muchas secciones (funcionalidad 002) la barra inferior se desliza en lugar de apretar las etiquetas. */
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.navegacion ul::-webkit-scrollbar {
+  display: none;
 }
 
 .navegacion li {
-  flex: 1;
+  flex: 1 0 4.75rem;
   max-width: 8rem;
+}
+
+@media (max-width: 40rem) {
+  .navegacion ul {
+    justify-content: flex-start;
+  }
 }
 
 .enlace {

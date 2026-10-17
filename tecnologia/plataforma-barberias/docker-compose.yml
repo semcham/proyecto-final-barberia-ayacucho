@@ -32,6 +32,7 @@ services:
     environment:
       DATABASE_URL_APP: postgres://barberias_app:barberias_app_dev@db:5432/barberias
       DATABASE_URL_OWNER: postgres://barberias_owner:barberias_owner_dev@db:5432/barberias
+      DATABASE_URL_PUBLICO: postgres://barberias_publico:barberias_publico_dev@db:5432/barberias
     ports:
       - '3000:3000'
     volumes:

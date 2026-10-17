@@ -5,6 +5,12 @@ import type { ColumnType, Generated } from 'kysely';
 
 type Fecha = ColumnType<Date, Date | string | undefined, Date | string>;
 type FechaNula = ColumnType<Date | null, Date | string | null | undefined, Date | string | null>;
+/** Texto opcional: puede omitirse al insertar. */
+type TextoNulo = ColumnType<string | null, string | null | undefined, string | null>;
+/** PostgreSQL devuelve `time` como texto `HH:MM:SS`. */
+type Hora = string;
+/** PostgreSQL devuelve `numeric` como texto para no perder precisión. */
+type Decimal = ColumnType<string, string | number, string | number>;
 
 export interface TenantTable {
   id: string;
@@ -12,6 +18,12 @@ export interface TenantTable {
   slug: string;
   status: 'ACTIVA' | 'SUSPENDIDA';
   created_at: Fecha;
+  // Funcionalidad 002 (migración 0010, RF03).
+  address: TextoNulo;
+  phone: TextoNulo;
+  description: TextoNulo;
+  timezone: Generated<string>;
+  cancel_min_notice_minutes: Generated<number>;
 }
 
 export interface RoleTable {
@@ -33,7 +45,7 @@ export interface MembershipTable {
   id: string;
   tenant_id: string;
   user_id: string;
-  role_code: 'PROPIETARIO' | 'BARBERO';
+  role_code: 'PROPIETARIO' | 'BARBERO' | 'CLIENTE';
   status: 'PENDIENTE' | 'ACTIVA' | 'DESACTIVADA';
   created_at: Fecha;
   updated_at: Fecha;
@@ -118,6 +130,129 @@ export interface LoginAttemptTable {
   attempted_at: Fecha;
 }
 
+// --- Funcionalidad 002: cuenta de cliente (0009), catálogo (0010) y citas (0011) ---
+
+export type OrigenCliente = 'EN_LINEA' | 'PRESENCIAL';
+
+export interface CustomerProfileTable {
+  id: string;
+  tenant_id: string;
+  user_id: string | null;
+  full_name: string;
+  email: TextoNulo;
+  phone: string;
+  origin: OrigenCliente;
+  created_by: TextoNulo;
+  created_at: Fecha;
+  updated_at: Fecha;
+}
+
+export interface ConsentRecordTable {
+  id: string;
+  tenant_id: string;
+  customer_id: string;
+  document: 'POLITICA_DATOS';
+  text_version: string;
+  method: OrigenCliente;
+  recorded_by: TextoNulo;
+  ip: TextoNulo;
+  accepted_at: Fecha;
+}
+
+export interface BusinessHoursTable {
+  id: string;
+  tenant_id: string;
+  weekday: number;
+  start_time: Hora;
+  end_time: Hora;
+}
+
+export interface ServiceTable {
+  id: string;
+  tenant_id: string;
+  name: string;
+  description: TextoNulo;
+  price: Decimal;
+  duration_min: number;
+  active: Generated<boolean>;
+  created_at: Fecha;
+  updated_at: Fecha;
+}
+
+export interface BarberTable {
+  id: string;
+  tenant_id: string;
+  user_id: TextoNulo;
+  display_name: string;
+  active: Generated<boolean>;
+  created_at: Fecha;
+  updated_at: Fecha;
+}
+
+export interface BarberServiceTable {
+  tenant_id: string;
+  barber_id: string;
+  service_id: string;
+}
+
+export interface WorkingHoursTable {
+  id: string;
+  tenant_id: string;
+  barber_id: string;
+  weekday: number;
+  start_time: Hora;
+  end_time: Hora;
+}
+
+export interface TimeOffTable {
+  id: string;
+  tenant_id: string;
+  barber_id: string;
+  starts_at: Fecha;
+  ends_at: Fecha;
+  reason: TextoNulo;
+  created_by: string;
+  created_at: Fecha;
+}
+
+export type EstadoCitaDb = 'PENDIENTE' | 'CONFIRMADA' | 'COMPLETADA' | 'NO_ASISTIO' | 'CANCELADA';
+
+export interface AppointmentTable {
+  id: string;
+  tenant_id: string;
+  barber_id: string;
+  service_id: string;
+  customer_id: string;
+  service_name: string;
+  price: Decimal;
+  duration_min: number;
+  starts_at: Fecha;
+  ends_at: Fecha;
+  /** Columna generada `[starts_at, ends_at)`: solo lectura. */
+  period: ColumnType<string, never, never>;
+  status: EstadoCitaDb;
+  origin: OrigenCliente;
+  late_cancellation: Generated<boolean>;
+  created_by: string;
+  cancelled_by: TextoNulo;
+  cancelled_at: FechaNula;
+  cancel_reason: TextoNulo;
+  idempotency_key: TextoNulo;
+  request_hash: TextoNulo;
+  created_at: Fecha;
+  updated_at: Fecha;
+}
+
+export interface AppointmentStatusHistoryTable {
+  id: string;
+  tenant_id: string;
+  appointment_id: string;
+  from_status: EstadoCitaDb | null;
+  to_status: EstadoCitaDb;
+  changed_by: string;
+  changed_at: Fecha;
+}
+
 export interface Database {
   tenant: TenantTable;
   role: RoleTable;
@@ -130,4 +265,14 @@ export interface Database {
   subscription: SubscriptionTable;
   terms_acceptance: TermsAcceptanceTable;
   login_attempt: LoginAttemptTable;
+  customer_profile: CustomerProfileTable;
+  consent_record: ConsentRecordTable;
+  business_hours: BusinessHoursTable;
+  service: ServiceTable;
+  barber: BarberTable;
+  barber_service: BarberServiceTable;
+  working_hours: WorkingHoursTable;
+  time_off: TimeOffTable;
+  appointment: AppointmentTable;
+  appointment_status_history: AppointmentStatusHistoryTable;
 }

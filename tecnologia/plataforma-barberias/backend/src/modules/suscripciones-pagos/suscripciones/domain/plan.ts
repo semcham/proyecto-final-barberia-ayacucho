@@ -5,6 +5,8 @@ export interface DatosPlan {
   diasPrueba: number | null;
   /** Usuarios del personal permitidos, incluido el propietario. */
   maxUsuarios: number;
+  /** Barberos activos del catálogo permitidos (FR-012 de 002). */
+  maxBarberos: number;
 }
 
 /** Plan comercial (catálogo global). Sus valores son datos editables por la plataforma (R13). */
@@ -26,5 +28,8 @@ export class Plan {
   }
   get maxUsuarios(): number {
     return this.datos.maxUsuarios;
+  }
+  get maxBarberos(): number {
+    return this.datos.maxBarberos;
   }
 }

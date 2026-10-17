@@ -68,18 +68,32 @@ describe('Rol', () => {
     expect(Rol.de('PROPIETARIO').esAsignablePorPropietario()).toBe(false);
   });
 
-  it.each(['ADMINISTRATIVO', 'CLIENTE', 'ADMIN_PLATAFORMA', 'barbero', ''])('rechaza el rol %j', (codigo) => {
+  it.each(['ADMINISTRATIVO', 'ADMIN_PLATAFORMA', 'barbero', 'cliente', ''])('rechaza el rol %j', (codigo) => {
     expect(problemaDe(() => Rol.de(codigo))).toBe('no_permitido');
+  });
+
+  it('CLIENTE es un rol válido (002, ADR-020), pero no es del personal ni asignable por el propietario', () => {
+    const cliente = Rol.de('CLIENTE');
+    expect(cliente.esDelPersonal()).toBe(false);
+    expect(cliente.esAsignablePorPropietario()).toBe(false);
+    expect(Rol.de('PROPIETARIO').esDelPersonal()).toBe(true);
+    expect(Rol.de('BARBERO').esDelPersonal()).toBe(true);
   });
 });
 
 describe('Permisos', () => {
-  it('el propietario puede realizar todas las operaciones protegidas', () => {
-    for (const operacion of OPERACIONES) expect(Permisos.permite('PROPIETARIO', operacion)).toBe(true);
+  it('el propietario puede todas las operaciones protegidas salvo cambiar de barbería', () => {
+    const negadas = OPERACIONES.filter((operacion) => !Permisos.permite('PROPIETARIO', operacion));
+    expect(negadas).toEqual(['CAMBIAR_BARBERIA']);
   });
 
-  it('el barbero solo ve su usuario y cierra su sesión', () => {
+  it('el barbero solo ve su usuario y su barbería y cierra su sesión', () => {
     const permitidas = OPERACIONES.filter((operacion) => Permisos.permite('BARBERO', operacion));
-    expect(permitidas).toEqual(['VER_USUARIO_ACTUAL', 'CERRAR_SESION']);
+    expect(permitidas).toEqual(['VER_USUARIO_ACTUAL', 'CERRAR_SESION', 'VER_BARBERIA']);
+  });
+
+  it('el cliente solo ve su usuario, cierra su sesión y cambia de barbería', () => {
+    const permitidas = OPERACIONES.filter((operacion) => Permisos.permite('CLIENTE', operacion));
+    expect(permitidas).toEqual(['VER_USUARIO_ACTUAL', 'CERRAR_SESION', 'CAMBIAR_BARBERIA']);
   });
 });

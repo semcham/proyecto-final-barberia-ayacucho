@@ -4,6 +4,7 @@ import { v7 as uuidv7 } from 'uuid';
 import {
   type BarberiaSembrada,
   sembrarBarberia,
+  sembrarCliente,
   sembrarSesion,
   sembrarUsuario,
 } from '../../helpers/fixtures';
@@ -73,6 +74,44 @@ describe('ADR-015: autenticación sin tenant y RLS en user_account', () => {
         async (c) => (await c.query('SELECT * FROM auth_resolver_cuenta($1)', ['nadie@prueba.pe'])).rows,
       );
       expect(ninguna).toHaveLength(0);
+    });
+
+    it('auth_resolver_cuenta (0009, ADR-020): un cliente de 3 barberías da 1 fila, sin datos de membresía', async () => {
+      // Barberías propias de esta prueba, para no alterar las cuentas visibles en A y B de la prueba (5).
+      const [c1, c2, c3] = [await sembrarBarberia(), await sembrarBarberia(), await sembrarBarberia()];
+      const cliente = await sembrarCliente({ tenantId: c1.tenantId });
+      await sembrarCliente({ tenantId: c2.tenantId, usuarioId: cliente.usuarioId as string });
+      await sembrarCliente({ tenantId: c3.tenantId, usuarioId: cliente.usuarioId as string });
+      const filas = await comoApp(
+        async (c) => (await c.query('SELECT * FROM auth_resolver_cuenta($1)', [cliente.correo])).rows,
+      );
+      expect(filas).toHaveLength(1);
+      expect(filas[0]).toMatchObject({
+        user_id: cliente.usuarioId,
+        tenant_id: null,
+        role_code: null,
+        membership_status: null,
+        tenant_status: null,
+      });
+      expect(filas[0].password_hash).toMatch(/^\$argon2id\$/);
+    });
+
+    it('auth_resolver_cuenta conserva dueño, SECURITY DEFINER, search_path fijo y permisos tras 0009', async () => {
+      const { rows } = await poolDe('seed').query(
+        `SELECT pg_get_userbyid(p.proowner) AS dueno, p.prosecdef AS definer, p.proconfig AS config,
+                has_function_privilege('barberias_app', p.oid, 'EXECUTE') AS app,
+                has_function_privilege('barberias_publico', p.oid, 'EXECUTE') AS publico
+         FROM pg_proc p WHERE p.proname = 'auth_resolver_cuenta'`,
+      );
+      expect(rows).toEqual([
+        {
+          dueno: 'barberias_auth',
+          definer: true,
+          config: ['search_path=public, pg_temp'],
+          app: true,
+          publico: false,
+        },
+      ]);
     });
 
     it('auth_buscar_sesion: por token vigente, por token anterior (marcado) y 0 filas si no existe', async () => {

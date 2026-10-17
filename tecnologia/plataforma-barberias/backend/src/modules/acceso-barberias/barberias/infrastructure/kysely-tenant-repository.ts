@@ -1,6 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import { KyselyUnitOfWork } from '../../../../shared';
+import type { ConfiguracionAgenda, DatosPublicosBarberia } from '../../api-publica';
 import { TenantRepository } from '../application/ports/tenant-repository';
 import type { Barberia, EstadoBarberia } from '../domain/barberia';
 
@@ -41,5 +42,49 @@ export class KyselyTenantRepository extends TenantRepository {
       .where('id', '=', id)
       .executeTakeFirst();
     return fila?.status ?? null;
+  }
+
+  async idActivaPorSlug(slug: string): Promise<string | null> {
+    const fila = await this.uow
+      .transaccionActual()
+      .selectFrom('tenant')
+      .select('id')
+      .where('slug', '=', slug)
+      .where('status', '=', 'ACTIVA')
+      .executeTakeFirst();
+    return fila?.id ?? null;
+  }
+
+  async datosPublicos(id: string): Promise<DatosPublicosBarberia | null> {
+    // Solo columnas públicas (FR-018): ni el estado ni datos de cuentas salen de aquí.
+    const fila = await this.uow
+      .transaccionActual()
+      .selectFrom('tenant')
+      .select(['name', 'slug', 'address', 'phone', 'description', 'timezone'])
+      .where('id', '=', id)
+      .where('status', '=', 'ACTIVA')
+      .executeTakeFirst();
+    return fila
+      ? {
+          nombre: fila.name,
+          slug: fila.slug,
+          direccion: fila.address,
+          telefono: fila.phone,
+          descripcion: fila.description,
+          zonaHoraria: fila.timezone,
+        }
+      : null;
+  }
+
+  async configuracionAgenda(id: string): Promise<ConfiguracionAgenda | null> {
+    const fila = await this.uow
+      .transaccionActual()
+      .selectFrom('tenant')
+      .select(['timezone', 'cancel_min_notice_minutes'])
+      .where('id', '=', id)
+      .executeTakeFirst();
+    return fila
+      ? { zonaHoraria: fila.timezone, antelacionCancelacionMinutos: fila.cancel_min_notice_minutes }
+      : null;
   }
 }

@@ -2,7 +2,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import { UsuarioRepository } from '../../../src/modules/acceso-barberias/identidad/application/ports/usuario-repository';
 import { KyselyUsuarioRepository } from '../../../src/modules/acceso-barberias/identidad/infrastructure/kysely-usuario-repository';
 import { type AppDePrueba, crearApp } from '../../helpers/app';
-import { filasDe, sembrarUsuario } from '../../helpers/fixtures';
+import { filasDe, sembrarCliente, sembrarUsuario } from '../../helpers/fixtures';
 import { cerrarPools, poolDe } from '../../helpers/test-db';
 import { crearEscenario, type Escenario } from '../../helpers/sesiones';
 
@@ -243,6 +243,32 @@ describe('Usuarios del personal (integración)', () => {
       .send({ estado: 'DESACTIVADA' })
       .expect(200);
     await crearBarbero(e).expect(201);
+  });
+
+  it('los clientes (002, ADR-020) no consumen cupo de max_users ni aparecen en GET /usuarios', async () => {
+    const e = await crearEscenario();
+    const clientes = await Promise.all(
+      [1, 2, 3].map(() => sembrarCliente({ tenantId: e.barberia.tenantId })),
+    );
+    // 3 vigentes del personal + 3 clientes: el plan (5) aún admite 2 altas de personal.
+    await crearBarbero(e).expect(201);
+    await crearBarbero(e).expect(201);
+    await crearBarbero(e).expect(403);
+
+    const lista = await prueba.agente.get('/api/v1/usuarios?tamano=50').set(comoPropietario(e)).expect(200);
+    const ids = (lista.body.datos as { id: string; rol: string }[]).map((usuario) => usuario.id);
+    for (const cliente of clientes) expect(ids).not.toContain(cliente.usuarioId);
+    expect((lista.body.datos as { rol: string }[]).every((usuario) => usuario.rol !== 'CLIENTE')).toBe(true);
+    expect(lista.body.total).toBe(5);
+
+    // Las operaciones de usuarios de 001 no alcanzan a un cliente: 404, como si no existiera.
+    const clienteId = clientes[0].usuarioId as string;
+    await prueba.agente.get(`/api/v1/usuarios/${clienteId}`).set(comoPropietario(e)).expect(404);
+    await prueba.agente
+      .patch(`/api/v1/usuarios/${clienteId}`)
+      .set(comoPropietario(e))
+      .send({ estado: 'DESACTIVADA' })
+      .expect(404);
   });
 
   it('reactivar respeta el límite del plan: 403 con el plan lleno, 200 al liberar un cupo (FR-020)', async () => {

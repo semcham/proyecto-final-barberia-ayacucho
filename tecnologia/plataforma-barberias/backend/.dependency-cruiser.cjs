@@ -57,10 +57,27 @@ module.exports = {
     },
     {
       name: 'm06-solo-por-interfaz-publica',
-      comment: 'Los módulos importan M06 solo desde shared/index.ts o shared/nucleo.ts.',
+      comment:
+        'Los módulos importan M06 solo desde shared/index.ts o shared/nucleo.ts. Única entrada aparte: ' +
+        'shared/lectura-publica.ts, confinada por la regla lectura-publica-confinada (ADR-021).',
       severity: 'error',
       from: { path: '(^|/)src/modules/' },
-      to: { path: '(^|/)src/shared/', pathNot: '(^|/)src/shared/(index|nucleo)\\.ts$' },
+      to: {
+        path: '(^|/)src/shared/',
+        pathNot: ['(^|/)src/shared/(index|nucleo)\\.ts$', '(^|/)src/shared/lectura-publica\\.ts$'],
+      },
+    },
+    {
+      name: 'lectura-publica-confinada',
+      comment:
+        'El pool de barberias_publico (shared/lectura-publica.ts) solo lo usa la vía pública de M02 ' +
+        '(catalogo-citas/catalogo/infrastructure/publico/), ADR-021.',
+      severity: 'error',
+      from: {
+        path: '(^|/)src/',
+        pathNot: '(^|/)src/modules/catalogo-citas/catalogo/infrastructure/publico/',
+      },
+      to: { path: '(^|/)src/shared/lectura-publica\\.ts$' },
     },
     {
       name: 'm06-sin-modulos-de-negocio',
@@ -70,11 +87,34 @@ module.exports = {
       to: { path: '(^|/)src/(modules|host)/' },
     },
     {
+      name: 'matriz-m01',
+      comment: 'Matriz de dependencias: M01 puede llamar a M03 y M06, nunca a M02 (sin ciclos, ADR-020).',
+      severity: 'error',
+      from: { path: '(^|/)src/modules/acceso-barberias/' },
+      to: { path: '(^|/)src/modules/catalogo-citas/' },
+    },
+    {
+      name: 'matriz-m02',
+      comment:
+        'Matriz de dependencias: M02 solo puede llamar a M01 (ADR-020) y M03 por su index.ts, y a M06; ' +
+        'nunca a M04, M05 ni a clases internas de otros módulos.',
+      severity: 'error',
+      from: { path: '(^|/)src/modules/catalogo-citas/' },
+      to: {
+        path: '(^|/)src/modules/',
+        pathNot: [
+          '(^|/)src/modules/catalogo-citas/',
+          '(^|/)src/modules/acceso-barberias/index\\.ts$',
+          '(^|/)src/modules/suscripciones-pagos/index\\.ts$',
+        ],
+      },
+    },
+    {
       name: 'matriz-m03',
-      comment: 'Matriz de dependencias: M03 solo puede llamar a M06 (no a M01).',
+      comment: 'Matriz de dependencias: M03 solo puede llamar a M06 (no a M01 ni a M02).',
       severity: 'error',
       from: { path: '(^|/)src/modules/suscripciones-pagos/' },
-      to: { path: '(^|/)src/modules/acceso-barberias/' },
+      to: { path: '(^|/)src/modules/(acceso-barberias|catalogo-citas)/' },
     },
     {
       name: 'kysely-solo-en-infraestructura',

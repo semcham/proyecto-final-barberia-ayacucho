@@ -18,7 +18,7 @@ export class KyselySuscripcionRepository extends SuscripcionRepository {
     const fila = await this.uow
       .transaccionActual()
       .selectFrom('plan')
-      .select(['id', 'code', 'trial_days', 'max_users'])
+      .select(['id', 'code', 'trial_days', 'max_users', 'max_barbers'])
       .where('code', '=', codigo)
       .executeTakeFirst();
     if (!fila) throw new Error(`No existe el plan ${codigo}`);
@@ -27,6 +27,7 @@ export class KyselySuscripcionRepository extends SuscripcionRepository {
       codigo: fila.code,
       diasPrueba: fila.trial_days,
       maxUsuarios: fila.max_users,
+      maxBarberos: fila.max_barbers,
     });
   }
 
@@ -50,7 +51,7 @@ export class KyselySuscripcionRepository extends SuscripcionRepository {
       .transaccionActual()
       .selectFrom('subscription')
       .innerJoin('plan', 'plan.id', 'subscription.plan_id')
-      .select(['plan.id', 'plan.code', 'plan.trial_days', 'plan.max_users'])
+      .select(['plan.id', 'plan.code', 'plan.trial_days', 'plan.max_users', 'plan.max_barbers'])
       .where('subscription.tenant_id', '=', this.tenantContext.actual().valor);
     // Solo se bloquea la fila de la suscripción (no el catálogo de planes), hasta que termine la transacción.
     if (opciones.bloquear) consulta = consulta.forUpdate('subscription');
@@ -61,6 +62,7 @@ export class KyselySuscripcionRepository extends SuscripcionRepository {
           codigo: fila.code,
           diasPrueba: fila.trial_days,
           maxUsuarios: fila.max_users,
+          maxBarberos: fila.max_barbers,
         })
       : null;
   }

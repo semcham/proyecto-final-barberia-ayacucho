@@ -72,8 +72,8 @@ describe('Autorizacion.exigir', () => {
     },
   );
 
-  it('el PROPIETARIO puede todas las operaciones protegidas sin dejar denegaciones', async () => {
-    for (const operacion of OPERACIONES) {
+  it('el PROPIETARIO puede todas las operaciones protegidas (salvo cambiar de barbería) sin denegaciones', async () => {
+    for (const operacion of OPERACIONES.filter((op) => op !== 'CAMBIAR_BARBERIA')) {
       await expect(autorizacion.exigir(actor('PROPIETARIO'), operacion)).resolves.toBeUndefined();
     }
     expect(auditoria.registros).toHaveLength(0);
@@ -127,9 +127,18 @@ describe('La matriz Permisos coincide con contracts/rbac.md', () => {
     ).toEqual(['Operación', 'PUB', 'PROPIETARIO', 'BARBERO']);
   });
 
-  it('cada operación protegida aparece en la tabla', () => {
+  it('cada operación protegida de 001 aparece en la tabla de 001', () => {
+    // Las operaciones de M01 agregadas por la funcionalidad 002 se comparan con su rbac.md en
+    // test/unit/catalogo/permisos-rango.spec.ts.
+    const DE_002 = [
+      'CAMBIAR_BARBERIA',
+      'VER_BARBERIA',
+      'ACTUALIZAR_BARBERIA',
+      'BUSCAR_CLIENTES',
+      'REGISTRAR_CLIENTE_PRESENCIAL',
+    ];
     const cubiertas = OPERACIONES_POR_FILA.flatMap(([, operaciones]) => operaciones).sort();
-    expect(cubiertas).toEqual([...OPERACIONES].sort());
+    expect(cubiertas).toEqual(OPERACIONES.filter((op) => !DE_002.includes(op)).sort());
   });
 
   it.each(OPERACIONES_POR_FILA)(

@@ -1,6 +1,6 @@
 import { Suspense } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
-import { useSesion } from '../../auth/SesionProvider';
+import { type RolSesion, useSesion } from '../../auth/SesionProvider';
 import { Icono, type NombreIcono } from '../Icono';
 import { Logo } from '../Logo';
 import { ConmutadorTema } from '../ui';
@@ -11,19 +11,23 @@ interface Destino {
   a: string;
   etiqueta: string;
   icono: NombreIcono;
-  /** Solo una ayuda de navegación: el backend exige el rol en cada operación. */
-  soloPropietario?: boolean;
+  /** Roles que ven el enlace; sin valor, todos. Solo una ayuda de navegación: el backend exige el rol. */
+  roles?: RolSesion[];
 }
 
 const DESTINOS: Destino[] = [
   { a: '/app', etiqueta: 'Inicio', icono: 'inicio' },
-  { a: '/app/usuarios', etiqueta: 'Usuarios', icono: 'usuarios', soloPropietario: true },
+  // Funcionalidad 002 (T038).
+  { a: '/app/agenda', etiqueta: 'Agenda', icono: 'calendario', roles: ['PROPIETARIO', 'BARBERO'] },
+  { a: '/app/disponibilidad', etiqueta: 'Disponibilidad', icono: 'reloj', roles: ['PROPIETARIO', 'BARBERO'] },
+  { a: '/app/servicios', etiqueta: 'Servicios', icono: 'tijeras', roles: ['PROPIETARIO'] },
+  { a: '/app/barberos', etiqueta: 'Barberos', icono: 'usuario', roles: ['PROPIETARIO'] },
+  { a: '/app/clientes', etiqueta: 'Clientes', icono: 'celular', roles: ['PROPIETARIO'] },
+  { a: '/app/barberia', etiqueta: 'Barbería', icono: 'tienda', roles: ['PROPIETARIO'] },
+  { a: '/app/usuarios', etiqueta: 'Usuarios', icono: 'usuarios', roles: ['PROPIETARIO'] },
 ];
 
-const PROXIMAMENTE: { etiqueta: string; icono: NombreIcono }[] = [
-  { etiqueta: 'Agenda y citas', icono: 'calendario' },
-  { etiqueta: 'Ingresos', icono: 'dinero' },
-];
+const PROXIMAMENTE: { etiqueta: string; icono: NombreIcono }[] = [{ etiqueta: 'Ingresos', icono: 'dinero' }];
 
 function fechaDeHoy(): string {
   const texto = new Intl.DateTimeFormat('es-PE', { weekday: 'long', day: 'numeric', month: 'long' }).format(
@@ -39,7 +43,7 @@ function fechaDeHoy(): string {
  */
 export function DisenoApp() {
   const { usuario } = useSesion();
-  const destinos = DESTINOS.filter((d) => !d.soloPropietario || usuario?.rol === 'PROPIETARIO');
+  const destinos = DESTINOS.filter((d) => !d.roles || (usuario !== null && d.roles.includes(usuario.rol)));
   const barberia = usuario?.barberia.nombre;
 
   return (

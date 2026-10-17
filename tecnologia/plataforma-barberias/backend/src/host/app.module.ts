@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AccesoBarberiasModule } from '../modules/acceso-barberias';
+import { CatalogoCitasModule } from '../modules/catalogo-citas';
 import { SharedModule } from '../shared';
 import { AuthGuard } from './auth.guard';
 import { ErrorFilter } from './error.filter';
@@ -17,6 +18,7 @@ import { TenantHeaderInterceptor } from './tenant-header.interceptor';
   imports: [
     SharedModule,
     AccesoBarberiasModule,
+    CatalogoCitasModule,
     // Freno general por instancia (R10). El límite estricto del inicio de sesión vive en PostgreSQL (US2).
     ThrottlerModule.forRoot({ throttlers: [{ name: 'general', ttl: 60_000, limit: 300 }] }),
   ],

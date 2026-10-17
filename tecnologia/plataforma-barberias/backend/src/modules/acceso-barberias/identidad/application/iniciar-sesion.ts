@@ -54,7 +54,10 @@ export class IniciarSesion {
     const valida = cuenta?.hashContrasena
       ? await this.hasher.verificar(cuenta.hashContrasena, contrasena)
       : await this.hasher.verificarFicticio(contrasena);
-    if (!cuenta || !valida) {
+    // Una cuenta sin membresía de personal (un cliente, ADR-020) se trata como en 001, cuando la función no
+    // la devolvía: credenciales inválidas y fallo registrado. El ingreso de clientes llega con US3 de 002.
+    const personal = cuenta?.personal ?? null;
+    if (!cuenta || !valida || !personal) {
       await this.uow.ejecutarSinTenant(() =>
         this.intentos.registrarFallo(hashCorreo, ip, this.reloj.ahora()),
       );
@@ -63,16 +66,16 @@ export class IniciarSesion {
     await this.uow.ejecutarSinTenant(() => this.intentos.borrarFallos(hashCorreo, ip));
 
     // 3. Credenciales correctas pero sin acceso: usuario desactivado o barbería suspendida (FR-013).
-    if (cuenta.estadoMembresia !== 'ACTIVA' || cuenta.estadoBarberia !== 'ACTIVA') {
+    if (personal.estadoMembresia !== 'ACTIVA' || personal.estadoBarberia !== 'ACTIVA') {
       throw new AccesoSuspendido();
     }
 
     // 4. Sesión dentro del tenant del usuario, con RLS.
-    return this.uow.ejecutar(TenantId.de(cuenta.tenantId), async () => {
+    return this.uow.ejecutar(TenantId.de(personal.tenantId), async () => {
       await this.sesiones.purgarTerminadasDe(cuenta.usuarioId, this.reloj.ahora());
       const usuario = await this.usuarios.perfil(cuenta.usuarioId);
       if (!usuario) throw new CredencialesInvalidas();
-      const sesion = await this.emitirSesion.ejecutar(cuenta.usuarioId, cuenta.rol);
+      const sesion = await this.emitirSesion.ejecutar(cuenta.usuarioId, personal.rol);
       return { sesion, usuario };
     });
   }

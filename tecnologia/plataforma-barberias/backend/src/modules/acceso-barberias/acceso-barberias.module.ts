@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
 import { SuscripcionesPagosModule } from '../suscripciones-pagos';
+import { BarberiasApi } from './api-publica';
+import { BarberiasApiImpl } from './barberias/application/barberias-api';
 import { TenantRepository } from './barberias/application/ports/tenant-repository';
 import { TermsAcceptanceRepository } from './barberias/application/ports/terms-acceptance-repository';
 import { RegistrarBarberia } from './barberias/application/registrar-barberia';
@@ -66,7 +68,9 @@ import { UsuariosController } from './identidad/presentation/usuarios.controller
     ActualizarUsuario,
     RegenerarActivacion,
     ActivarCuenta,
+    // Interfaces públicas para M02 (ADR-020). PersonalApi y ClientesApi se registran con sus historias.
+    { provide: BarberiasApi, useClass: BarberiasApiImpl },
   ],
-  exports: [ValidarSolicitud],
+  exports: [ValidarSolicitud, BarberiasApi],
 })
 export class AccesoBarberiasModule {}

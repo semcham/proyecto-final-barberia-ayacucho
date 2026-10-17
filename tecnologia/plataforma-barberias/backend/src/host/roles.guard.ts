@@ -2,10 +2,17 @@ import { type CanActivate, type ExecutionContext, Injectable } from '@nestjs/com
 import { Reflector } from '@nestjs/core';
 import {
   AccesoDenegado,
+  type CodigoRol,
   NoAutenticado,
-  type Operacion as CodigoOperacion,
+  OPERACIONES,
+  type Operacion as OperacionM01,
   Permisos,
 } from '../modules/acceso-barberias';
+import {
+  OPERACIONES_CATALOGO_CITAS,
+  type OperacionCatalogoCitas,
+  PermisosCatalogoCitas,
+} from '../modules/catalogo-citas';
 import { AuditLog, TenantId } from '../shared';
 import { CLAVE_OPERACION, type SolicitudConActor } from './solicitud';
 
@@ -13,8 +20,24 @@ import { CLAVE_OPERACION, type SolicitudConActor } from './solicitud';
 export { Operacion } from './solicitud';
 
 /**
- * Primera barrera de autorización en HTTP (T043). Usa la misma matriz `Permisos` que la comprobación de
- * la capa de aplicación (R22); el caso de uso vuelve a exigir el permiso, así que esta barrera no es la única.
+ * Permiso de un rol para una operación de la matriz de M01 o de M02 (T033). Una operación que no está en
+ * ninguna matriz es un error de programación: se rechaza.
+ */
+export function rolPermiteOperacion(rol: CodigoRol, operacion: string): boolean {
+  if ((OPERACIONES as readonly string[]).includes(operacion)) {
+    return Permisos.permite(rol, operacion as OperacionM01);
+  }
+  if ((OPERACIONES_CATALOGO_CITAS as readonly string[]).includes(operacion)) {
+    return PermisosCatalogoCitas.permite(rol, operacion as OperacionCatalogoCitas);
+  }
+  throw new Error(`Operación desconocida en @Operacion: ${operacion}`);
+}
+
+/**
+ * Primera barrera de autorización en HTTP (T043, T033 de 002). Usa las mismas matrices que la
+ * comprobación de la capa de aplicación (R22): `Permisos` de M01 y `PermisosCatalogoCitas` de M02. El
+ * caso de uso vuelve a exigir el permiso (y limita el alcance a sus recursos), así que esta barrera no es
+ * la única. Las rutas `@Publica()` no tienen operación y no leen el token.
  */
 @Injectable()
 export class RolesGuard implements CanActivate {
@@ -24,7 +47,7 @@ export class RolesGuard implements CanActivate {
   ) {}
 
   async canActivate(contexto: ExecutionContext): Promise<boolean> {
-    const operacion = this.reflector.getAllAndOverride<CodigoOperacion | undefined>(CLAVE_OPERACION, [
+    const operacion = this.reflector.getAllAndOverride<string | undefined>(CLAVE_OPERACION, [
       contexto.getHandler(),
       contexto.getClass(),
     ]);
@@ -32,7 +55,7 @@ export class RolesGuard implements CanActivate {
 
     const actor = contexto.switchToHttp().getRequest<SolicitudConActor>().actor;
     if (!actor) throw new NoAutenticado();
-    if (Permisos.permite(actor.rol, operacion)) return true;
+    if (rolPermiteOperacion(actor.rol, operacion)) return true;
 
     await this.auditoria.registrarEnTransaccionPropia(
       {

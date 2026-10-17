@@ -16,6 +16,25 @@ const Activar = lazy(() => import('./pages/Activar'));
 const Inicio = lazy(() => import('./pages/Inicio'));
 const Usuarios = lazy(() => import('./pages/Usuarios'));
 const DisenoApp = lazy(() => import('./components/app/DisenoApp').then((m) => ({ default: m.DisenoApp })));
+// Funcionalidad 002 (T038): esqueleto de rutas. Cada historia reemplaza PaginaPendiente por su pantalla.
+const PaginaPendiente = lazy(() => import('./pages/PaginaPendiente'));
+
+/** Rutas del panel de 002 y los roles que las ven (solo navegación: el backend exige los permisos). */
+const RUTAS_PANEL_002: { ruta: string; titulo: string; roles: ('PROPIETARIO' | 'BARBERO')[] }[] = [
+  { ruta: 'barberia', titulo: 'Barbería', roles: ['PROPIETARIO'] },
+  { ruta: 'servicios', titulo: 'Servicios', roles: ['PROPIETARIO'] },
+  { ruta: 'barberos', titulo: 'Barberos', roles: ['PROPIETARIO'] },
+  { ruta: 'disponibilidad', titulo: 'Disponibilidad', roles: ['PROPIETARIO', 'BARBERO'] },
+  { ruta: 'agenda', titulo: 'Agenda', roles: ['PROPIETARIO', 'BARBERO'] },
+  { ruta: 'clientes', titulo: 'Clientes', roles: ['PROPIETARIO'] },
+];
+
+/** Rutas públicas por el enlace de la barbería (ADR-021) y del cliente. */
+const RUTAS_ENLACE_002: { ruta: string; titulo: string }[] = [
+  { ruta: '/b/:slug', titulo: 'Catálogo de la barbería' },
+  { ruta: '/b/:slug/registro', titulo: 'Crea tu cuenta' },
+  { ruta: '/b/:slug/ingresar', titulo: 'Ingresa a la barbería' },
+];
 
 function Portada() {
   return (
@@ -66,10 +85,29 @@ export function RutasApp() {
           <Route path="/registro" element={<Registro />} />
           <Route path="/ingresar" element={<Ingresar />} />
           <Route path="/activar" element={<Activar />} />
+          {RUTAS_ENLACE_002.map(({ ruta, titulo }) => (
+            <Route key={ruta} path={ruta} element={<PaginaPendiente titulo={titulo} />} />
+          ))}
+          <Route
+            path="/b/:slug/reservar"
+            element={
+              <RutaProtegida roles={['CLIENTE']}>
+                <PaginaPendiente titulo="Reserva tu cita" />
+              </RutaProtegida>
+            }
+          />
+          <Route
+            path="/mis-citas"
+            element={
+              <RutaProtegida roles={['CLIENTE']}>
+                <PaginaPendiente titulo="Mis citas" />
+              </RutaProtegida>
+            }
+          />
           <Route
             path="/app"
             element={
-              <RutaProtegida>
+              <RutaProtegida roles={['PROPIETARIO', 'BARBERO']}>
                 <DisenoApp />
               </RutaProtegida>
             }
@@ -83,6 +121,17 @@ export function RutasApp() {
                 </RutaProtegida>
               }
             />
+            {RUTAS_PANEL_002.map(({ ruta, titulo, roles }) => (
+              <Route
+                key={ruta}
+                path={ruta}
+                element={
+                  <RutaProtegida roles={roles}>
+                    <PaginaPendiente titulo={titulo} />
+                  </RutaProtegida>
+                }
+              />
+            ))}
           </Route>
           <Route path="*" element={<NoEncontrada />} />
         </Routes>

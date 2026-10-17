@@ -234,6 +234,7 @@ describe('PR09 · Filtro explícito por tenant en los repositorios (principio II
         codigo: 'TRIAL',
         diasPrueba: 14,
         maxUsuarios: 5,
+        maxBarberos: 5,
       });
       verificar(
         await sentenciasDe(() =>

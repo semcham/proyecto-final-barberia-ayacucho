@@ -8,8 +8,8 @@ interface CuerpoError {
   detalles: Record<string, unknown>[];
 }
 
-/** Estado HTTP de cada código de error del contrato (contracts/openapi.yaml). */
-const ESTADO_POR_CODIGO: Record<string, number> = {
+/** Estado HTTP de cada código de error del contrato (contracts/openapi.yaml de 001 y 002). */
+export const ESTADO_POR_CODIGO: Record<string, number> = {
   VALIDACION: 400,
   ENLACE_INVALIDO: 400,
   NO_AUTENTICADO: 401,
@@ -21,6 +21,21 @@ const ESTADO_POR_CODIGO: Record<string, number> = {
   CORREO_NO_DISPONIBLE: 409,
   OPERACION_NO_PERMITIDA: 422,
   DEMASIADOS_INTENTOS: 429,
+  // Funcionalidad 002 (specs/002-catalogo-citas-cliente/contracts/openapi.yaml, T034).
+  BARBERIA_NO_DISPONIBLE: 404,
+  CONFLICTO_CON_CITAS: 409,
+  HORARIO_NO_DISPONIBLE: 409,
+  CITA_SOLAPADA_DEL_CLIENTE: 409,
+  INGRESA_DESDE_TU_BARBERIA: 409,
+  UNIRSE_REQUIERE_CONSENTIMIENTO: 409,
+  CUENTA_DE_PERSONAL: 409,
+  ENLACE_NO_DISPONIBLE: 409,
+  NOMBRE_DUPLICADO: 409,
+  USUARIO_YA_VINCULADO: 409,
+  RESERVA_INVALIDA: 422,
+  IDEMPOTENCIA_CONFLICTO: 422,
+  TRANSICION_INVALIDA: 422,
+  FUERA_DEL_HORARIO_DE_ATENCION: 422,
 };
 
 function desdeHttp(estado: number): CuerpoError {

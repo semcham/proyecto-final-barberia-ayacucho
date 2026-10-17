@@ -42,8 +42,21 @@ describe('Reglas de arquitectura (PR14)', () => {
       'm06-solo-por-interfaz-publica',
       'matriz-m03',
       'kysely-solo-en-infraestructura',
+      // Funcionalidad 002 (T035, T036).
+      'matriz-m01',
+      'matriz-m02',
+      'lectura-publica-confinada',
     ])('%s', (regla) => {
       expect(salida).toContain(regla);
+    });
+
+    it('cada violación nueva de 002 se atribuye a su archivo del fixture', () => {
+      const lineas = salida.split(/\r?\n/);
+      const enLinea = (regla: string, archivo: string) =>
+        lineas.some((linea) => linea.includes(regla) && linea.includes(archivo));
+      expect(enLinea('matriz-m01', 'usa-m02.ts')).toBe(true);
+      expect(enLinea('matriz-m02', 'usa-interno-m01.ts')).toBe(true);
+      expect(enLinea('lectura-publica-confinada', 'repositorio-citas.ts')).toBe(true);
     });
   });
 });

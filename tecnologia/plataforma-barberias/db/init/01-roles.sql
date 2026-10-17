@@ -27,6 +27,13 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'barberias_auth') THEN
     CREATE ROLE barberias_auth NOLOGIN NOSUPERUSER NOINHERIT BYPASSRLS NOCREATEDB NOCREATEROLE;
   END IF;
+
+  -- Lecturas públicas por enlace (ADR-021): sin BYPASSRLS, sin propiedad de objetos y solo con SELECT
+  -- por columna sobre las columnas públicas (migración 0012). Contraseña SOLO para desarrollo.
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'barberias_publico') THEN
+    CREATE ROLE barberias_publico LOGIN PASSWORD 'barberias_publico_dev'
+      NOSUPERUSER NOBYPASSRLS NOINHERIT NOCREATEDB NOCREATEROLE;
+  END IF;
 END
 $$;
 
@@ -39,9 +46,11 @@ BEGIN
   EXECUTE format('ALTER DATABASE %I OWNER TO barberias_owner', current_database());
   EXECUTE format('REVOKE ALL ON DATABASE %I FROM PUBLIC', current_database());
   EXECUTE format('GRANT CONNECT ON DATABASE %I TO barberias_app', current_database());
+  EXECUTE format('GRANT CONNECT ON DATABASE %I TO barberias_publico', current_database());
 END
 $$;
 
--- barberias_app no recibe privilegios por defecto: cada migración concede solo lo necesario.
+-- barberias_app y barberias_publico no reciben privilegios por defecto: cada migración concede solo lo necesario.
 REVOKE CREATE ON SCHEMA public FROM PUBLIC;
 GRANT USAGE ON SCHEMA public TO barberias_app;
+GRANT USAGE ON SCHEMA public TO barberias_publico;

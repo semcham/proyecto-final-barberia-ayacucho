@@ -69,7 +69,13 @@ describe('AceptacionTerminos', () => {
 });
 
 describe('Suscripcion.iniciarPrueba', () => {
-  const plan = Plan.reconstruir({ id: 'p1', codigo: 'TRIAL', diasPrueba: 14, maxUsuarios: 5 });
+  const plan = Plan.reconstruir({
+    id: 'p1',
+    codigo: 'TRIAL',
+    diasPrueba: 14,
+    maxUsuarios: 5,
+    maxBarberos: 5,
+  });
   const ahora = new Date('2026-10-15T15:00:00Z');
 
   it('crea una suscripción TRIAL que vence a los días de prueba del plan (FR-003)', () => {
@@ -80,7 +86,13 @@ describe('Suscripcion.iniciarPrueba', () => {
   });
 
   it('no inicia una prueba con un plan sin días de prueba', () => {
-    const sinPrueba = Plan.reconstruir({ id: 'p2', codigo: 'BASICO', diasPrueba: null, maxUsuarios: 5 });
+    const sinPrueba = Plan.reconstruir({
+      id: 'p2',
+      codigo: 'BASICO',
+      diasPrueba: null,
+      maxUsuarios: 5,
+      maxBarberos: 5,
+    });
     expect(() => Suscripcion.iniciarPrueba('s1', 'tenant-a', sinPrueba, ahora)).toThrow();
   });
 });

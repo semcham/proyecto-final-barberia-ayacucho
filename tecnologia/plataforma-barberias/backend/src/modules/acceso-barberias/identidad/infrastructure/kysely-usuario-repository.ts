@@ -3,7 +3,7 @@ import { sql } from 'kysely';
 import { KyselyUnitOfWork, TenantContext } from '../../../../shared';
 import { CorreoNoDisponible } from '../domain/errores';
 import type { EstadoMembresia, Membresia } from '../domain/membresia';
-import type { CodigoRol } from '../domain/rol';
+import { CODIGOS_ROL_PERSONAL, type CodigoRol } from '../domain/rol';
 import { Membresia as MembresiaDominio } from '../domain/membresia';
 import { Rol } from '../domain/rol';
 import {
@@ -99,25 +99,30 @@ export class KyselyUsuarioRepository extends UsuarioRepository {
   }
 
   async resolverCuenta(correoNormalizado: string): Promise<CuentaParaAutenticar | null> {
+    // Desde 0009 la función hace LEFT JOIN: una cuenta sin membresía de personal trae nulos (ADR-020).
     const { rows } = await sql<{
       user_id: string;
       password_hash: string | null;
-      tenant_id: string;
-      role_code: CodigoRol;
-      membership_status: EstadoMembresia;
-      tenant_status: 'ACTIVA' | 'SUSPENDIDA';
+      tenant_id: string | null;
+      role_code: CodigoRol | null;
+      membership_status: EstadoMembresia | null;
+      tenant_status: 'ACTIVA' | 'SUSPENDIDA' | null;
     }>`select * from auth_resolver_cuenta(${correoNormalizado})`.execute(this.uow.transaccionActual());
     const fila = rows[0];
-    return fila
-      ? {
-          usuarioId: fila.user_id,
-          hashContrasena: fila.password_hash,
-          tenantId: fila.tenant_id,
-          rol: fila.role_code,
-          estadoMembresia: fila.membership_status,
-          estadoBarberia: fila.tenant_status,
-        }
-      : null;
+    if (!fila) return null;
+    return {
+      usuarioId: fila.user_id,
+      hashContrasena: fila.password_hash,
+      personal:
+        fila.tenant_id && fila.role_code && fila.membership_status && fila.tenant_status
+          ? {
+              tenantId: fila.tenant_id,
+              rol: fila.role_code,
+              estadoMembresia: fila.membership_status,
+              estadoBarberia: fila.tenant_status,
+            }
+          : null,
+    };
   }
 
   async perfil(usuarioId: string): Promise<PerfilUsuario | null> {
@@ -150,12 +155,17 @@ export class KyselyUsuarioRepository extends UsuarioRepository {
       : null;
   }
 
+  /**
+   * Usuarios del personal de la barbería. Los clientes (funcionalidad 002, ADR-020) también tienen
+   * membresía, pero no aparecen en la lista de usuarios ni se gestionan con estas operaciones.
+   */
   private consultaDetalle() {
     return this.uow
       .transaccionActual()
       .selectFrom('membership')
       .innerJoin('user_account', 'user_account.id', 'membership.user_id')
-      .where('membership.tenant_id', '=', this.tenantContext.actual().valor);
+      .where('membership.tenant_id', '=', this.tenantContext.actual().valor)
+      .where('membership.role_code', 'in', CODIGOS_ROL_PERSONAL);
   }
 
   async listar(filtros: FiltrosUsuarios): Promise<{ datos: UsuarioDetalle[]; total: number }> {
@@ -193,6 +203,8 @@ export class KyselyUsuarioRepository extends UsuarioRepository {
       .select(['id', 'tenant_id', 'user_id', 'role_code', 'status'])
       .where('tenant_id', '=', this.tenantContext.actual().valor)
       .where('user_id', '=', usuarioId)
+      // Solo personal: activar, desactivar o regenerar la activación no aplica a clientes (404).
+      .where('role_code', 'in', CODIGOS_ROL_PERSONAL)
       .executeTakeFirst();
     return fila
       ? MembresiaDominio.reconstruir({
@@ -212,6 +224,8 @@ export class KyselyUsuarioRepository extends UsuarioRepository {
       .select((eb) => eb.fn.countAll<string>().as('total'))
       .where('tenant_id', '=', this.tenantContext.actual().valor)
       .where('status', 'in', ['PENDIENTE', 'ACTIVA'])
+      // Los clientes no consumen el cupo de usuarios del plan (ADR-020).
+      .where('role_code', 'in', CODIGOS_ROL_PERSONAL)
       .executeTakeFirstOrThrow();
     return Number(total);
   }

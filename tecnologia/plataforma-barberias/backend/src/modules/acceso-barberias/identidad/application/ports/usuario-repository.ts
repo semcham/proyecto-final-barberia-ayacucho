@@ -3,14 +3,20 @@ import type { EstadoMembresia, Membresia } from '../../domain/membresia';
 import type { NombrePersona } from '../../domain/nombre-persona';
 import type { CodigoRol } from '../../domain/rol';
 
-/** Resultado de auth_resolver_cuenta (ADR-015): lo necesario para autenticar antes de conocer el tenant. */
+/**
+ * Resultado de auth_resolver_cuenta (ADR-015): lo necesario para autenticar antes de conocer el tenant.
+ * Desde la migración 0009 (ADR-020) la cuenta se devuelve aunque no tenga membresía de personal (un
+ * cliente): entonces `personal` es null.
+ */
 export interface CuentaParaAutenticar {
   usuarioId: string;
   hashContrasena: string | null;
-  tenantId: string;
-  rol: CodigoRol;
-  estadoMembresia: EstadoMembresia;
-  estadoBarberia: 'ACTIVA' | 'SUSPENDIDA';
+  personal: {
+    tenantId: string;
+    rol: CodigoRol;
+    estadoMembresia: EstadoMembresia;
+    estadoBarberia: 'ACTIVA' | 'SUSPENDIDA';
+  } | null;
 }
 
 /** Usuario del personal de una barbería, como lo ve el propietario (esquema Usuario del contrato). */
