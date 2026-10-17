@@ -147,8 +147,8 @@ tecnologia/plataforma-barberias/
 │   │   ├── host/                         # + rutas públicas sin token; @Roles nuevos
 │   │   ├── modules/
 │   │   │   ├── acceso-barberias/         # M01
-│   │   │   │   ├── index.ts              # + ClientesApi, PersonalApi
-│   │   │   │   ├── barberias/            # + ObtenerBarberia, ActualizarBarberia, ReemplazarHorarioAtencion; HorarioSemanal; Slug ampliado
+│   │   │   │   ├── index.ts              # + ClientesApi, PersonalApi, BarberiasApi
+│   │   │   │   ├── barberias/            # + ObtenerBarberia, ActualizarBarberia; Slug ampliado; BarberiasApi
 │   │   │   │   ├── identidad/            # IniciarSesion con enlace y unión; CambiarBarberia; Rol CLIENTE; LimiteUsuarios y ListarUsuarios sin clientes
 │   │   │   │   └── clientes/             # nuevo: RegistrarCliente, UnirseABarberia, RegistrarClientePresencial, BuscarClientes;
 │   │   │   │                             # PerfilCliente, Consentimiento; repositorios Kysely
@@ -227,7 +227,7 @@ sequenceDiagram
 
 | HU         | RF         | Escenario    | ADR                       | Componente                                                                                                              | Prueba                                                             |
 | ---------- | ---------- | ------------ | ------------------------- | ----------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| HU03       | RF03       | EQ-09        | ADR-003                   | M01 `barberias` · `ActualizarBarberia`, `ReemplazarHorarioAtencion`; RLS en `tenant`                                    | Integración, PR09                                                  |
+| HU03       | RF03       | EQ-09        | ADR-003                   | M01 `barberias` · `ActualizarBarberia`; M02 `catalogo` · `ReemplazarHorarioAtencion`; RLS en `tenant`                   | Integración, PR09                                                  |
 | HU06       | RF05       | EQ-18, EQ-09 | ADR-020, ADR-015          | M01 `clientes`, `identidad` · `RegistrarCliente`, `IniciarSesion` con enlace, `CambiarBarberia`; `auth_resolver_cuenta` | Integración, PR09 `cliente-dos-barberias`, `funciones-definer`     |
 | HU07, HU08 | RF07, RF08 | EQ-08        | ADR-020 (M02 → M01)       | M02 `catalogo` · servicios y barberos; M03 `obtenerLimiteBarberos`                                                      | Integración, PR08                                                  |
 | HU09       | RF09       | —            | ADR-009                   | M02 `catalogo` · disponibilidad y bloqueos con confirmación de conflictos                                               | Unitarias `HorarioSemanal`, integración                            |

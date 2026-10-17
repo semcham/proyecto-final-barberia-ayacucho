@@ -181,7 +181,7 @@ paths:
     get:
       tags: [Barbería]
       operationId: obtenerBarberia
-      summary: Datos comerciales, enlace, horario de atención y antelación de cancelación (RF03)
+      summary: Datos comerciales, enlace y antelación de cancelación (RF03, M01). El horario está en /barberia/horario (M02).
       responses:
         '200':
           content:
@@ -215,10 +215,22 @@ paths:
               schema: { $ref: '#/components/schemas/Error' }
 
   /barberia/horario:
+    get:
+      tags: [Barbería]
+      operationId: obtenerHorarioAtencion
+      summary: Horario de atención semanal (M02 catalogo; PROPIETARIO, BARBERO)
+      responses:
+        '200':
+          description: Tramos por día.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HorarioSemanal' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/AccesoDenegado' }
     put:
       tags: [Barbería]
       operationId: reemplazarHorarioAtencion
-      summary: Reemplazar el horario de atención semanal (solo PROPIETARIO)
+      summary: Reemplazar el horario de atención semanal (M02 catalogo; solo PROPIETARIO)
       requestBody:
         required: true
         content:
@@ -818,7 +830,7 @@ components:
         confirmarConflictos: { type: boolean, default: false }
     BarberiaConfig:
       type: object
-      required: [nombre, slug, zonaHoraria, antelacionCancelacionMinutos, horario]
+      required: [nombre, slug, zonaHoraria, antelacionCancelacionMinutos]
       properties:
         nombre: { type: string }
         slug: { type: string }
@@ -827,7 +839,6 @@ components:
         descripcion: { type: [string, 'null'] }
         zonaHoraria: { type: string, examples: [America/Lima] }
         antelacionCancelacionMinutos: { type: integer, minimum: 0, maximum: 4320 }
-        horario: { $ref: '#/components/schemas/HorarioSemanal' }
     ActualizarBarberiaRequest:
       type: object
       additionalProperties: false

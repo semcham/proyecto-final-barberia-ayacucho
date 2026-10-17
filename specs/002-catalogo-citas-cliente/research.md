@@ -91,6 +91,12 @@ ambos **Aceptados** por el responsable el 2026-10-17. Lo que ya decidió la func
   - `ClientesApi.datosDeContacto(ids[])`: devuelve nombre y teléfono para la agenda, en lote.
   - `ClientesApi.registrarPresencial(...)`: alta del cliente presencial (FR-035).
   - `PersonalApi.esPersonalActivo(userId)`: para vincular un barbero.
+  - `BarberiasApi.configuracionAgenda()`: zona horaria y antelación mínima de cancelación de la
+    barbería del contexto; `BarberiasApi.datosPublicos(tenantId)`: nombre, enlace, dirección, teléfono
+    y descripción, para el catálogo público.
+
+  El horario de atención (`business_hours`) vive en M02 `catalogo`, no en M01. Así se pueden detectar
+  las citas en conflicto al reducirlo (FR-005) sin que M01 llame a M02.
 
   M01 no llama a M02. `appointment.customer_id` tiene clave foránea compuesta a `customer_profile`:
   es una restricción de esquema, no un acceso de código a tablas ajenas.
@@ -252,7 +258,8 @@ ambos **Aceptados** por el responsable el 2026-10-17. Lo que ya decidió la func
 ## R15. Datos y enlace de la barbería (RF03)
 
 - **Decisión:** `tenant` gana `address`, `phone`, `description`, `timezone` y
-  `cancel_min_notice_minutes`. El horario de atención va en `business_hours` (con tenant y RLS).
+  `cancel_min_notice_minutes`. El horario de atención va en `business_hours` (con tenant y RLS), del
+  submódulo `catalogo` de M02 (R05).
 - **Protección de `tenant`:** sigue siendo global (la leen la autenticación y la vía pública), pero
   ahora la aplicación puede modificarla. Por eso se activa RLS con `FORCE` y tres políticas:
   - `SELECT USING (true)`.

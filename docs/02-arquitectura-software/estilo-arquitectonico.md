@@ -36,7 +36,7 @@ Un módulo **solo** puede depender de otro a través de su **interfaz pública**
 | M05 Notificaciones          |     |     |     |     | —   | ✓   |
 | M06 Núcleo compartido       |     |     |     |     |     | —   |
 
-¹ Agregado por [ADR-020](../01-analisis-de-sistema/07-decisiones-arquitectonicas.md#adr-020-cuenta-de-cliente-con-membresía-y-sesión-por-barbería) (Aceptado el 2026-10-17, funcionalidad 002). M02 llama a M01 solo por su interfaz pública: `ClientesApi`, que identifica al cliente de la sesión y da nombre y teléfono para la agenda, y `PersonalApi`, que comprueba que un usuario es personal activo para vincularlo a un barbero. M01 no llama a M02.
+¹ Agregado por [ADR-020](../01-analisis-de-sistema/07-decisiones-arquitectonicas.md#adr-020-cuenta-de-cliente-con-membresía-y-sesión-por-barbería) (Aceptado el 2026-10-17, funcionalidad 002). M02 llama a M01 solo por su interfaz pública: `ClientesApi`, que identifica al cliente de la sesión y da nombre y teléfono para la agenda, `PersonalApi`, que comprueba que un usuario es personal activo para vincularlo a un barbero, y `BarberiasApi`, que da la zona horaria, la antelación de cancelación y los datos públicos de la barbería. M01 no llama a M02.
 
 **Reglas.**
 
@@ -59,7 +59,7 @@ _Figura. 3. Dependencias permitidas._
 flowchart LR
     M01["M01 Acceso y barberías"] --> M03["M03 Suscripciones y pagos"]
     M02["M02 Catálogo y citas"] --> M03
-    M02 -- "ClientesApi, PersonalApi (ADR-020)" --> M01
+    M02 -- "ClientesApi, PersonalApi, BarberiasApi (ADR-020)" --> M01
     M04["M04 Asistente IA y reportes"] --> M02
     M04 --> M03
     M02 -. "evento CitaCreada" .-> M05["M05 Notificaciones"]

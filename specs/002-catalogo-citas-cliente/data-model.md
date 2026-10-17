@@ -17,7 +17,7 @@ Mismas convenciones que en 001:
 | Tabla                        | Módulo / submódulo | Alcance | RLS                                                                      | Dominio                   | Vía pública (ADR-021)                              |
 | ---------------------------- | ------------------ | ------- | ------------------------------------------------------------------------ | ------------------------- | -------------------------------------------------- |
 | `tenant` (ampliada)          | M01 / barberias    | Global  | **Sí, nueva**: `SELECT`/`INSERT` libres, `UPDATE` solo del tenant actual | `Barberia`                | Columnas públicas                                  |
-| `business_hours`             | M01 / barberias    | Tenant  | Sí                                                                       | `HorarioAtencion`         | Sí                                                 |
+| `business_hours`             | M02 / catalogo     | Tenant  | Sí                                                                       | `HorarioAtencion`         | Sí                                                 |
 | `membership` (ampliada)      | M01 / identidad    | Tenant  | Sí                                                                       | `Membresia` (+ `CLIENTE`) | No                                                 |
 | `customer_profile`           | M01 / clientes     | Tenant  | Sí                                                                       | `PerfilCliente`           | No                                                 |
 | `consent_record`             | M01 / clientes     | Tenant  | Sí                                                                       | `Consentimiento`          | No                                                 |
@@ -65,6 +65,10 @@ Mismas convenciones que en 001:
 | `weekday`                | smallint | `CHECK BETWEEN 0 AND 6` (0 = domingo) |
 | `start_time`, `end_time` | time     | `CHECK (start_time < end_time)`       |
 
+- **Módulo:** M02 `catalogo` (no M01), porque el horario de atención alimenta el cálculo de horarios
+  y la detección de citas en conflicto (FR-005), que necesita leer las citas, y M01 no puede llamar a
+  M02. Los datos comerciales, el enlace y la antelación siguen en `tenant` (M01); M02 los obtiene con
+  `BarberiasApi` (R05).
 - **Escritura:** se reemplaza la semana completa en una transacción (`DELETE` + `INSERT`). El dominio
   valida que los tramos de un mismo día no se solapen.
 - **Índice:** `(tenant_id, weekday)`.

@@ -21,7 +21,7 @@ operaciones ✓\* exigen un barbero vinculado a su usuario) y CLIENTE (rol nuevo
 | `POST /clientes/registro`                                    | ✓   | ✓ ²         | ✓ ²     | ✓ ²     |
 | `POST /auth/login` (con o sin `barberia`)                    | ✓   | ✓           | ✓       | ✓       |
 | `POST /auth/barberia`                                        | 401 | — ³         | — ³     | ✓       |
-| `GET /barberia`                                              | 401 | ✓           | ✓       | —       |
+| `GET /barberia`, `GET /barberia/horario`                     | 401 | ✓           | ✓       | —       |
 | `PATCH /barberia`, `PUT /barberia/horario`                   | 401 | ✓           | —       | —       |
 | `GET /servicios`, `GET /barberos`                            | 401 | ✓           | ✓       | —       |
 | `POST /servicios`, `PATCH /servicios/{id}`                   | 401 | ✓           | —       | —       |
