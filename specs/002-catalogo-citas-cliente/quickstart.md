@@ -102,13 +102,13 @@ SET ROLE barberias_publico; SELECT customer_id FROM appointment LIMIT 1; RESET R
 
 ## 5. Criterios de éxito y dónde se miden
 
-| SC             | Medición                                                                                           |
-| -------------- | -------------------------------------------------------------------------------------------------- |
-| SC-001         | PR16                                                                                               |
-| SC-002, SC-003 | PR09 (incluida la vía pública)                                                                     |
-| SC-004, SC-005 | Prueba de carga de la funcionalidad 006 (EQ-01, EQ-02); en 002, solo la prueba de humo del cálculo |
-| SC-006         | Integración de registro y unión: un `consent_record` por barbería                                  |
-| SC-007         | Unitarias de `Cita` e integración de cambio de estado con historial                                |
-| SC-008         | PR08                                                                                               |
-| SC-009         | Integración de cancelación                                                                         |
-| SC-010, SC-011 | Recorrido manual cronometrado desde un celular (secciones 3.1 a 3.3)                               |
+| SC             | Medición                                                                                                                                                                                                                             |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| SC-001         | PR16                                                                                                                                                                                                                                 |
+| SC-002, SC-003 | PR09 (incluida la vía pública)                                                                                                                                                                                                       |
+| SC-004, SC-005 | Prueba de carga de la funcionalidad 006 (EQ-01, EQ-02). En 002 hay una prueba de humo del cálculo y una medición preliminar: `npm run medir:horarios`, con 50 consultas simultáneas y meta p95 ≤ 800 ms, que solo sirve de evidencia |
+| SC-006         | Integración de registro y unión: un `consent_record` por barbería                                                                                                                                                                    |
+| SC-007         | Unitarias de `Cita` e integración de cambio de estado con historial                                                                                                                                                                  |
+| SC-008         | PR08                                                                                                                                                                                                                                 |
+| SC-009         | Integración de cancelación                                                                                                                                                                                                           |
+| SC-010, SC-011 | Recorrido manual cronometrado desde un celular (secciones 3.1 a 3.3)                                                                                                                                                                 |

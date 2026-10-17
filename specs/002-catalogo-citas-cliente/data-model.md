@@ -16,7 +16,7 @@ Mismas convenciones que en 001:
 
 | Tabla                        | Módulo / submódulo | Alcance | RLS                                                                      | Dominio                   | Vía pública (ADR-021)                              |
 | ---------------------------- | ------------------ | ------- | ------------------------------------------------------------------------ | ------------------------- | -------------------------------------------------- |
-| `tenant` (ampliada)          | M01 / barberias    | Global  | **Sí, nueva**: `SELECT`/`INSERT` libres, `UPDATE` solo del tenant actual | `Barberia`                | Columnas públicas                                  |
+| `tenant` (ampliada)          | M01 / barberias    | Global  | **Sí, nueva**: `SELECT`/`INSERT` libres, `UPDATE` solo del tenant actual | `Barberia`                | No: la resuelve M01 (`BarberiasApi`)               |
 | `business_hours`             | M02 / catalogo     | Tenant  | Sí                                                                       | `HorarioAtencion`         | Sí                                                 |
 | `membership` (ampliada)      | M01 / identidad    | Tenant  | Sí                                                                       | `Membresia` (+ `CLIENTE`) | No                                                 |
 | `customer_profile`           | M01 / clientes     | Tenant  | Sí                                                                       | `PerfilCliente`           | No                                                 |
@@ -53,8 +53,9 @@ Mismas convenciones que en 001:
 - **Permisos:**
   - `GRANT UPDATE (name, slug, address, phone, description, cancel_min_notice_minutes)` a
     `barberias_app`. `status` sigue sin `UPDATE` (RF02, funcionalidad 003).
-  - `GRANT SELECT (id, slug, name, address, phone, description, timezone, status)` a
-    `barberias_publico`.
+  - `barberias_publico` **no** recibe permisos sobre `tenant`. El `slug` lo resuelve M01
+    (`BarberiasApi.resolverSlugPublico`) con el pool de la aplicación, y los datos públicos de la
+    barbería los da `BarberiasApi.datosPublicos` (ADR-021, precisión del 2026-10-17).
 
 ### `business_hours` (HorarioAtencion, RF03)
 
@@ -322,7 +323,7 @@ La reprogramación (RF13) llega en la funcionalidad 004.
 | `RegistrarCliente`                   | `tenant` por `slug` (activa) → `set_config` → `user_account` (sin `RETURNING`), `membership` (`CLIENTE`), `customer_profile`, `consent_record`, `audit_log`, `auth_session`                                              | Una               |
 | `IniciarSesion` con enlace           | `login_attempt` → `auth_resolver_cuenta` → verificar contraseña → `tenant` por `slug` → `set_config` → `membership` del usuario (RLS) → [unión: `membership`, `customer_profile`, `consent_record`] → `auth_session`     | Una tras resolver |
 | `CambiarBarberia`                    | `tenant` por `slug` → `set_config` (destino) → `membership` del `sub` (o unión) → `auth_session` nueva → otra transacción con el tenant del token: cerrar la sesión actual                                               | Dos               |
-| `ConsultarHorarios` (pública)        | Pool público: `BEGIN READ ONLY` → `tenant` por `slug` → `set_config` → `business_hours`, `barber`, `barber_service`, `working_hours`, `service` → `time_off` y `appointment` del día                                     | Lectura           |
+| `ConsultarHorarios` (pública)        | M01 `resolverSlugPublico` → pool público: `BEGIN READ ONLY` → `set_config` → `business_hours`, `barber`, `barber_service`, `working_hours`, `service` → `time_off` y `appointment` del día                               | Lectura           |
 | `ReservarCita`                       | `set_config` → M01 `perfilDeSesion` → idempotencia → `service`, `barber`, `barber_service`, `working_hours`, `business_hours`, `time_off` → `INSERT appointment` (exclusión) + `appointment_status_history`, `audit_log` | Una               |
 | `CancelarCita` / `CambiarEstadoCita` | `set_config` → `appointment … FOR UPDATE` → `UPDATE` + historial + auditoría                                                                                                                                             | Una               |
 | `ConsultarAgenda`                    | `set_config` → `appointment` del día (+ barbero) → `time_off`, `working_hours`, `business_hours` (marcas) → M01 `datosDeContacto` en lote                                                                                | Lectura           |

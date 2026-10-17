@@ -59,7 +59,7 @@ navegadores móviles y de escritorio actuales.
 
 **Performance Goals**:
 
-- Horarios libres p95 ≤ 1 s con 50 consultas simultáneas (SC-004, EQ-01).
+- Horarios libres p95 ≤ 800 ms con 50 consultas simultáneas (SC-004, EQ-01).
 - Reserva p95 ≤ 1,5 s a 20 por segundo (SC-005, EQ-02). Ambas se miden en 006; en 002, el cálculo de
   un día con 5 barberos y 60 citas tarda menos de 200 ms en la integración.
 - Catálogo público con 1 solicitud y horarios con 1 solicitud por fecha.
@@ -78,7 +78,7 @@ navegadores móviles y de escritorio actuales.
 
 - Decenas de barberías, hasta unos 10 barberos y unas 100 citas diarias por barbería.
 - 8 tablas nuevas, 4 migraciones y unas 25 operaciones REST.
-- Unas 9 pantallas nuevas (catálogo público, registro, ingreso con enlace, reserva, mis citas,
+- 11 pantallas nuevas (catálogo público, registro, ingreso con enlace, reserva, mis citas,
   barbería, servicios, barberos, disponibilidad, agenda, clientes).
 - 6 días de implementación (plan de entrega, días 1–6).
 
@@ -205,7 +205,8 @@ sequenceDiagram
     participant M1 as ClientesApi (M01)
     participant DB as PostgreSQL (barberias_app, RLS)
     W->>P: GET /publico/{slug}/horarios?servicio&fecha
-    P->>DBP: BEGIN READ ONLY; tenant por slug; set_config; tramos, bloqueos y citas del día (columnas públicas)
+    P->>P: BarberiasApi.resolverSlugPublico(slug) → tenantId (M01)
+    P->>DBP: BEGIN READ ONLY; set_config(tenantId); tramos, bloqueos y citas del día (columnas públicas)
     P-->>W: horas libres + calculadoEn + zonaHoraria
     W->>C: POST /citas (token con tid; Idempotency-Key)
     C->>R: comando + actor (tenant del token)

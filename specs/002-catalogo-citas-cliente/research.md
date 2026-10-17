@@ -55,7 +55,8 @@ ambos **Aceptados** por el responsable el 2026-10-17. Lo que ya decidió la func
 
 - **Decisión:** rol `barberias_publico` (`LOGIN NOBYPASSRLS`) con `SELECT` solo sobre las columnas
   públicas de la lista cerrada de ADR-021, pool propio (`DATABASE_URL_PUBLICO`), transacción
-  `READ ONLY` que resuelve el `slug` a un tenant `ACTIVA` y fija `app.tenant_id`. RLS filtra las filas
+  `READ ONLY` que fija `app.tenant_id` con el tenant que M01 resolvió desde el `slug`
+  (`BarberiasApi.resolverSlugPublico`; M06 no lee tablas de M01, hallazgo C1). RLS filtra las filas
   con las mismas políticas `tenant_isolation`.
 - **Rutas:** `GET /publico/{slug}` (barbería, horario de atención, servicios y barberos activos) y
   `GET /publico/{slug}/horarios?servicio=&fecha=&barbero=` (horarios libres). Solo `GET`.
@@ -89,11 +90,14 @@ ambos **Aceptados** por el responsable el 2026-10-17. Lo que ya decidió la func
   - `ClientesApi.perfilDeSesion(userId)`: devuelve el perfil del cliente de la sesión, para reservar y
     para el historial.
   - `ClientesApi.datosDeContacto(ids[])`: devuelve nombre y teléfono para la agenda, en lote.
-  - `ClientesApi.registrarPresencial(...)`: alta del cliente presencial (FR-035).
+  - `ClientesApi.perfilDeBarberia(clienteId)`: valida que el cliente de una cita presencial sea de la
+    barbería. El alta del cliente presencial la expone M01 en su propio controlador (`POST /clientes`),
+    no por `ClientesApi`, porque M02 no la necesita.
   - `PersonalApi.esPersonalActivo(userId)`: para vincular un barbero.
   - `BarberiasApi.configuracionAgenda()`: zona horaria y antelación mínima de cancelación de la
-    barbería del contexto; `BarberiasApi.datosPublicos(tenantId)`: nombre, enlace, dirección, teléfono
-    y descripción, para el catálogo público.
+    barbería del contexto. `BarberiasApi.datosPublicos(tenantId)`: nombre, enlace, dirección, teléfono
+    y descripción, para el catálogo público. `BarberiasApi.resolverSlugPublico(slug)`: tenant de una
+    barbería activa, para la vía pública (ADR-021, decisión 3).
 
   El horario de atención (`business_hours`) vive en M02 `catalogo`, no en M01. Así se pueden detectar
   las citas en conflicto al reducirlo (FR-005) sin que M01 llame a M02.

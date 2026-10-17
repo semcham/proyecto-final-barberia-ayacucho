@@ -142,7 +142,7 @@ El cliente revisa las citas que tuvo y tiene en la barbería en la que está, co
 **Zonas horarias**
 
 - Todas las horas de la barbería (horario de atención, disponibilidad, bloqueos, citas y agenda) se expresan en la hora local de la barbería, y cada fecha se corta a medianoche local. Un cliente cuyo dispositivo está en otra zona horaria ve las horas en la hora de la barbería, indicada como tal, y reserva exactamente la hora que vio.
-- Una cita que termina después de la medianoche local (por ejemplo, de 23:30 a 00:15) pertenece al día en que empieza y ocupa también la franja del día siguiente.
+- Como el horario de atención y la disponibilidad se definen en tramos dentro de un mismo día, ninguna cita puede cruzar la medianoche local. Si en el futuro se admitieran tramos nocturnos, la ocupación ya se calcula por instantes y no por días, así que la regla de no duplicar seguiría valiendo.
 - El momento de cálculo de los horarios libres y la regla de antelación de la cancelación se evalúan con la hora actual del servidor, no con el reloj del dispositivo del cliente.
 
 **Bloqueos y cambios de horario que chocan con citas ya reservadas**
@@ -214,7 +214,7 @@ El cliente revisa las citas que tuvo y tiene en la barbería en la que está, co
 **Catálogo público y horarios libres (RF10, RF11)**
 
 - **FR-018**: Cualquier persona sin sesión MUST poder consultar, mediante el enlace público de una barbería activa, el nombre comercial, la dirección, el teléfono y el horario de atención de la barbería, los servicios activos (nombre, precio, duración y descripción) y los barberos activos (nombre visible y servicios que ofrecen).
-- **FR-019**: La consulta por enlace público MUST ser de solo lectura y MUST limitarse a los datos de FR-018 y a los horarios libres. MUST NOT devolver datos personales de clientes, correos, teléfonos ni identificadores de cuenta del personal, motivos de bloqueos ni la identidad de quien ocupa una hora. La barbería identificada por el enlace MUST NOT usarse en ninguna operación con sesión (constitución 1.2.0, principio III; ADR-021).
+- **FR-019**: La consulta por enlace público MUST ser de solo lectura y MUST limitarse a los datos de FR-018 y a los horarios libres. MUST NOT devolver datos personales de clientes, correos, teléfonos ni identificadores de cuenta del personal, motivos de bloqueos ni la identidad de quien ocupa una hora. La barbería identificada por el enlace MUST NOT usarse en ninguna operación **de negocio** con sesión; con sesión, el enlace solo se admite para la selección de membresía (FR-025, FR-026) (constitución 1.2.0, principio III; ADR-020, ADR-021).
 - **FR-020**: El sistema MUST calcular los horarios libres para un servicio y una fecha, con un barbero concreto o con cualquier barbero que ofrezca el servicio. Una hora de inicio es libre solo si el servicio completo cabe dentro de la disponibilidad del barbero y del horario de atención, no se solapa con bloqueos ni con citas activas, es posterior al momento actual y está dentro del horizonte de reserva.
 - **FR-021**: La respuesta de horarios libres MUST indicar el momento en que se calculó y que las horas están en la hora local de la barbería. Mostrar una hora como libre MUST NOT reservarla.
 - **FR-022**: Un enlace inexistente, el enlace anterior a un cambio y el de una barbería suspendida por la plataforma MUST recibir la misma respuesta de "barbería no disponible".
@@ -291,7 +291,7 @@ El cliente revisa las citas que tuvo y tiene en la barbería en la que está, co
 - **SC-001**: En 200 solicitudes simultáneas de reserva del mismo barbero y la misma hora, con varias instancias del sistema, queda exactamente 1 cita activa y 0 duplicados, y las otras 199 reciben "horario no disponible" (EQ-16).
 - **SC-002**: 0 datos de otra barbería visibles o modificables en la suite de pruebas de fuga que recorre todas las operaciones nuevas, incluido un cliente con membresía en dos barberías (EQ-09).
 - **SC-003**: 0 datos personales de clientes y 0 datos de contacto o de cuenta del personal en el 100 % de las respuestas de la vía pública por enlace, y el 100 % de los intentos de escritura por esa vía se rechazan.
-- **SC-004**: Con 50 personas consultando a la vez los horarios libres de la misma barbería, el 95 % los ve en menos de 1 segundo (EQ-01).
+- **SC-004**: Con 50 personas consultando a la vez los horarios libres de la misma barbería, el 95 % los ve en 800 ms o menos, sin errores del sistema (EQ-01).
 - **SC-005**: Con 20 reservas por segundo sobre horas distintas durante 5 minutos, el 95 % se confirma o se rechaza con motivo en menos de 1,5 segundos y menos del 1 % termina en error técnico (EQ-02).
 - **SC-006**: El 100 % de los clientes registrados tiene su consentimiento con fecha, hora y versión del texto en cada barbería a la que se unió (EQ-18).
 - **SC-007**: El 100 % de las transiciones de estado no válidas se rechazan y el 100 % de los cambios válidos quedan registrados con autor y fecha.
@@ -318,4 +318,5 @@ El cliente revisa las citas que tuvo y tiene en la barbería en la que está, co
 - **Abuso de reservas** (un cliente que reserva muchas horas): se limita en esta funcionalidad solo con la regla de no solapar sus propias citas y el límite general de solicitudes; un tope de citas activas por cliente queda como mejora por validar.
 - **Líneas de corte** (plan de entrega, sección 3.2): si hay atraso, la agenda se entrega como lista por fecha sin vista de calendario, los bloqueos solo por fecha y hora sin repetición, y el historial sin filtros ni paginación avanzada. Nunca se recortan la garantía de no duplicar citas con su prueba de 200 solicitudes, la vía pública limitada a datos públicos ni la sesión por barbería.
 - Las medidas numéricas (tiempos, cargas) provienen de los escenarios EQ del proyecto y son propuestas por validar.
+- **SC-004 y SC-005 se miden en la funcionalidad 006** (escalado demostrable), con la prueba de carga de EQ-01 y EQ-02. En 002 solo queda una medición corta como evidencia preliminar: 50 consultas simultáneas de horarios libres contra una instancia. No cuenta como cumplimiento de esos criterios.
 - La plataforma es solo web responsive; clientes y barberías la usan desde el navegador del celular o de la computadora.
