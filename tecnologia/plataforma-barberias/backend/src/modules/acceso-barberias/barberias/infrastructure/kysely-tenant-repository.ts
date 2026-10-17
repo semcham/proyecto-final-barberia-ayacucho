@@ -80,11 +80,15 @@ export class KyselyTenantRepository extends TenantRepository {
     const fila = await this.uow
       .transaccionActual()
       .selectFrom('tenant')
-      .select(['timezone', 'cancel_min_notice_minutes'])
+      .select(['name', 'timezone', 'cancel_min_notice_minutes'])
       .where('id', '=', id)
       .executeTakeFirst();
     return fila
-      ? { zonaHoraria: fila.timezone, antelacionCancelacionMinutos: fila.cancel_min_notice_minutes }
+      ? {
+          nombre: fila.name,
+          zonaHoraria: fila.timezone,
+          antelacionCancelacionMinutos: fila.cancel_min_notice_minutes,
+        }
       : null;
   }
 }

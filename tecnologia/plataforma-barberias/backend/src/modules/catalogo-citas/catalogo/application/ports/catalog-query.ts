@@ -26,12 +26,14 @@ export interface Intervalo {
 export abstract class CatalogQuery {
   /** Servicio ACTIVO de la barbería, o null (inexistente, de otra barbería o inactivo). */
   abstract servicioActivo(servicioId: string): Promise<ServicioVigente | null>;
-  /** Verdadero si el barbero está activo y tiene asignado el servicio. */
-  abstract barberoOfrece(barberoId: string, servicioId: string): Promise<boolean>;
+  /** El barbero, si está activo y tiene asignado el servicio; si no, null. */
+  abstract barberoOfrece(barberoId: string, servicioId: string): Promise<BarberoDelServicio | null>;
   /** Disponibilidad del barbero ∩ horario de atención de la barbería, para el día de la semana de la fecha. */
   abstract tramosDelDia(barberoId: string, fecha: FechaLocal): Promise<Tramo[]>;
   /** Bloqueos del barbero que se solapan con [desde, hasta). */
   abstract bloqueosEnRango(barberoId: string, desde: Date, hasta: Date): Promise<Intervalo[]>;
+  /** Un barbero de la barbería, activo o no (para mostrar citas ya reservadas), o null. */
+  abstract barbero(barberoId: string): Promise<BarberoDelServicio | null>;
   /** Barberos activos que ofrecen el servicio, por nombre. */
   abstract barberosQueOfrecen(servicioId: string): Promise<BarberoDelServicio[]>;
 }

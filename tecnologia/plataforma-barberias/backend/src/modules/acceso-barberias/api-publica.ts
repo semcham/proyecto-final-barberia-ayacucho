@@ -26,6 +26,8 @@ export abstract class ClientesApi {
 }
 
 export interface ConfiguracionAgenda {
+  /** Nombre comercial: lo muestran la confirmación de la cita y la agenda. */
+  nombre: string;
   zonaHoraria: string;
   antelacionCancelacionMinutos: number;
 }

@@ -60,7 +60,11 @@ describe('BarberiasApi', () => {
       barberia.tenantId,
     ]);
     const configuracion = await uow.ejecutar(TenantId.de(barberia.tenantId), () => api.configuracionAgenda());
-    expect(configuracion).toEqual({ zonaHoraria: 'America/Lima', antelacionCancelacionMinutos: 45 });
+    expect(configuracion).toEqual({
+      nombre: expect.any(String),
+      zonaHoraria: 'America/Lima',
+      antelacionCancelacionMinutos: 45,
+    });
   });
 
   it('configuracionAgenda sin contexto de tenant es un error de programación', async () => {

@@ -3,6 +3,13 @@ import { ErrorDeAplicacion } from '../../../../shared/nucleo';
 // T026 · Errores esperados de M02. El host los traduce a HTTP según su `codigo` (contracts/openapi.yaml
 // de 002). Los usan los submódulos catalogo y citas.
 
+export class DatoInvalido extends ErrorDeAplicacion {
+  readonly codigo = 'VALIDACION';
+  constructor(campo: string, problema: string) {
+    super('Revisa los datos enviados.', [{ campo, problema }]);
+  }
+}
+
 export class NoEncontrado extends ErrorDeAplicacion {
   readonly codigo = 'NO_ENCONTRADO';
   constructor() {

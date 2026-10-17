@@ -1,7 +1,10 @@
 import { Module } from '@nestjs/common';
 import { SuscripcionesPagosModule } from '../suscripciones-pagos';
-import { BarberiasApi } from './api-publica';
+import { BarberiasApi, ClientesApi } from './api-publica';
 import { BarberiasApiImpl } from './barberias/application/barberias-api';
+import { ClientesApiImpl } from './clientes/application/clientes-api';
+import { PerfilClienteRepository } from './clientes/application/ports/perfil-cliente-repository';
+import { KyselyPerfilClienteRepository } from './clientes/infrastructure/kysely-perfil-cliente-repository';
 import { TenantRepository } from './barberias/application/ports/tenant-repository';
 import { TermsAcceptanceRepository } from './barberias/application/ports/terms-acceptance-repository';
 import { RegistrarBarberia } from './barberias/application/registrar-barberia';
@@ -68,9 +71,11 @@ import { UsuariosController } from './identidad/presentation/usuarios.controller
     ActualizarUsuario,
     RegenerarActivacion,
     ActivarCuenta,
-    // Interfaces públicas para M02 (ADR-020). PersonalApi y ClientesApi se registran con sus historias.
+    { provide: PerfilClienteRepository, useClass: KyselyPerfilClienteRepository },
+    // Interfaces públicas para M02 (ADR-020). PersonalApi se registra con US1.
     { provide: BarberiasApi, useClass: BarberiasApiImpl },
+    { provide: ClientesApi, useClass: ClientesApiImpl },
   ],
-  exports: [ValidarSolicitud, BarberiasApi],
+  exports: [ValidarSolicitud, BarberiasApi, ClientesApi],
 })
 export class AccesoBarberiasModule {}

@@ -110,10 +110,13 @@ describe('CatalogQuery', () => {
   });
 
   it('barberoOfrece: activo y con el servicio asignado', async () => {
-    await expect(enA(() => consulta.barberoOfrece(ids.luis, ids.corte))).resolves.toBe(true);
-    await expect(enA(() => consulta.barberoOfrece(ids.luis, ids.barba))).resolves.toBe(false);
-    await expect(enA(() => consulta.barberoOfrece(ids.retirado, ids.corte))).resolves.toBe(false);
-    await expect(enA(() => consulta.barberoOfrece(ids.barberoB, ids.servicioB))).resolves.toBe(false);
+    await expect(enA(() => consulta.barberoOfrece(ids.luis, ids.corte))).resolves.toEqual({
+      barberoId: ids.luis,
+      nombre: 'Luis',
+    });
+    await expect(enA(() => consulta.barberoOfrece(ids.luis, ids.barba))).resolves.toBeNull();
+    await expect(enA(() => consulta.barberoOfrece(ids.retirado, ids.corte))).resolves.toBeNull();
+    await expect(enA(() => consulta.barberoOfrece(ids.barberoB, ids.servicioB))).resolves.toBeNull();
   });
 
   it('tramosDelDia: intersección de la disponibilidad con el horario de atención', async () => {

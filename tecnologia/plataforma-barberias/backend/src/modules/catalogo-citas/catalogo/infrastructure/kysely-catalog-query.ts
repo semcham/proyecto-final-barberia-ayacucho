@@ -60,7 +60,7 @@ export class KyselyCatalogQuery extends CatalogQuery {
       : null;
   }
 
-  async barberoOfrece(barberoId: string, servicioId: string): Promise<boolean> {
+  async barberoOfrece(barberoId: string, servicioId: string): Promise<BarberoDelServicio | null> {
     const fila = await this.uow
       .transaccionActual()
       .selectFrom('barber')
@@ -69,13 +69,13 @@ export class KyselyCatalogQuery extends CatalogQuery {
           .onRef('barber_service.tenant_id', '=', 'barber.tenant_id')
           .onRef('barber_service.barber_id', '=', 'barber.id'),
       )
-      .select('barber.id')
+      .select(['barber.id', 'barber.display_name'])
       .where('barber.tenant_id', '=', this.tenantId)
       .where('barber.id', '=', barberoId)
       .where('barber.active', '=', true)
       .where('barber_service.service_id', '=', servicioId)
       .executeTakeFirst();
-    return fila !== undefined;
+    return fila ? { barberoId: fila.id, nombre: fila.display_name } : null;
   }
 
   async tramosDelDia(barberoId: string, fecha: FechaLocal): Promise<Tramo[]> {
@@ -112,6 +112,17 @@ export class KyselyCatalogQuery extends CatalogQuery {
       .orderBy('starts_at')
       .execute();
     return filas.map((fila) => ({ inicio: fila.starts_at, fin: fila.ends_at }));
+  }
+
+  async barbero(barberoId: string): Promise<BarberoDelServicio | null> {
+    const fila = await this.uow
+      .transaccionActual()
+      .selectFrom('barber')
+      .select(['id', 'display_name'])
+      .where('tenant_id', '=', this.tenantId)
+      .where('id', '=', barberoId)
+      .executeTakeFirst();
+    return fila ? { barberoId: fila.id, nombre: fila.display_name } : null;
   }
 
   async barberosQueOfrecen(servicioId: string): Promise<BarberoDelServicio[]> {
