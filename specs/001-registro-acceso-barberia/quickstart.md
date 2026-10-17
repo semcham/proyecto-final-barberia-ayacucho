@@ -19,9 +19,16 @@ Todas las rutas son relativas a `tecnologia/plataforma-barberias/`.
 ```powershell
 cd tecnologia/plataforma-barberias
 Copy-Item .env.example .env      # completar claves JWT de desarrollo (ver comentarios del archivo)
-docker compose up -d
-docker compose exec backend npm run migrate     # aplica migraciones como barberias_owner
+docker compose up -d                            # el backend aplica las migraciones pendientes al arrancar
 ```
+
+El contenedor `backend` ejecuta `npm run migrate` (como `barberias_owner`) antes de iniciar el servidor:
+si una migración falla, no arranca y el error queda en `docker compose logs backend`. Las migraciones solo
+se aplican al arrancar: **si llega una migración nueva con el backend ya corriendo** (por ejemplo, al bajar
+cambios del repositorio), hay que ejecutar `docker compose restart backend` o aplicarla a mano con
+`docker compose exec backend npm run migrate`; si no, el backend falla con errores como "column … does not
+exist". En producción las migraciones son un paso separado del despliegue (ver
+[despliegue y escalabilidad](../../docs/02-arquitectura-software/despliegue-y-escalabilidad.md)).
 
 Resumen de ejecución también en el [README de la aplicación](../../tecnologia/plataforma-barberias/README.md).
 

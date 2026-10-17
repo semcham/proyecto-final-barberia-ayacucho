@@ -1,5 +1,6 @@
 # Entorno de desarrollo local (R20). Sin Redis: esta funcionalidad no tiene lecturas que cachear.
-# Uso: copiar .env.example a .env, luego `docker compose up -d` y `docker compose exec backend npm run migrate`.
+# Uso: copiar .env.example a .env y `docker compose up -d`. El backend aplica las migraciones pendientes
+# al arrancar (como barberias_owner); también se pueden aplicar a mano con `docker compose exec backend npm run migrate`.
 services:
   db:
     image: postgres:16
@@ -23,7 +24,10 @@ services:
   backend:
     image: node:22
     working_dir: /app
-    command: sh -c "npm ci && npm run start:dev"
+    # Aplica las migraciones pendientes antes de arrancar: si una falla, el contenedor se detiene y el
+    # error queda en `docker compose logs backend` (en lugar de fallar después en cada solicitud).
+    # Solo para desarrollo: en producción las migraciones son un paso separado (despliegue-y-escalabilidad.md).
+    command: sh -c "npm ci && npm run migrate && npm run start:dev"
     env_file: .env
     environment:
       DATABASE_URL_APP: postgres://barberias_app:barberias_app_dev@db:5432/barberias

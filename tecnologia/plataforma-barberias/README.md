@@ -23,11 +23,15 @@ Requisitos: Docker Desktop con Compose v2 y los puertos 5433, 3000 y 5173 libres
 ```powershell
 cd tecnologia/plataforma-barberias
 Copy-Item .env.example .env      # completar las claves JWT de desarrollo (ver comentarios del archivo)
-docker compose up -d
-docker compose exec backend npm run migrate
+docker compose up -d             # el backend aplica las migraciones pendientes al arrancar
 ```
 
 - Aplicación web: <http://localhost:5173> · API: <http://localhost:3000/api/v1/salud>.
+- **Migraciones:** el contenedor `backend` ejecuta `npm run migrate` antes de iniciar el servidor; si una
+  falla, no arranca y el error queda en `docker compose logs backend`. Solo se aplican al arrancar: **si
+  llega una migración nueva con el backend ya corriendo** (por ejemplo, al bajar cambios), ejecuta
+  `docker compose restart backend` o `docker compose exec backend npm run migrate`. Si no, el backend falla
+  con errores como "column … does not exist".
 - La base se publica en `localhost:5433` (`DB_PUERTO` en `.env`); dentro de Compose es `db:5432`.
 - `VITE_SONDEO` (por defecto `true`) hace que Vite revise los archivos periódicamente: en Windows y macOS
   el volumen montado no avisa los cambios. En Linux se puede poner `VITE_SONDEO=false` en `.env` para

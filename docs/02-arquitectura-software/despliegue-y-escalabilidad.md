@@ -90,6 +90,7 @@ Varias instancias del mismo monolito **siguen siendo una arquitectura monolític
 - **Conexiones a PostgreSQL:** pool por instancia; límite total controlado. Si crecen las instancias, usar un agrupador de conexiones.
 - **Redis:** cliente con tiempos límite cortos y circuit breaker.
 - **Configuración y secretos:** variables de entorno o AWS Secrets Manager; nunca en el repositorio (EQ-11).
+- **Migraciones de base de datos:** en producción se ejecutan como un **paso separado del despliegue, antes** de registrar las instancias nuevas, con el rol `barberias_owner` y una sola vez por versión; **no** al arrancar cada réplica. Con varias instancias, migrar al arrancar haría que todas intentaran aplicar las mismas migraciones a la vez, mezclaría los permisos de dueño con los de la aplicación (que se conecta como `barberias_app`, sin privilegios de esquema) y haría que un fallo de migración tumbara instancias en serie. Las migraciones deben ser compatibles con la versión anterior en ejecución (agregar columnas antes de usarlas, borrar después) para que el despliegue sin corte siga funcionando. En el entorno de desarrollo, en cambio, el contenedor `backend` de Docker Compose aplica las pendientes al arrancar, por comodidad (una sola instancia).
 - **Monitoreo y registro:** logs estructurados con identificador de correlación enviados a Amazon CloudWatch; métricas de latencia, errores, circuit breakers y conexiones (incluidas las del ALB); alertas (EQ-21).
 
 ### 4.1 Aplicación web (archivos estáticos)
