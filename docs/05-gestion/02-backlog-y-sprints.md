@@ -94,8 +94,8 @@ Si hay atraso, se recorta **profundidad o acabado** dentro de cada funcionalidad
 
 | ADR | Tema | Funcionalidad |
 | --- | --- | --- |
-| ADR-020 | Cuenta de cliente con membresía por barbería y token por barbería | 002 |
-| ADR-021 | Lecturas públicas por enlace (excepción del principio III, constitución 1.1.0) | 002 |
+| ADR-020 | Cuenta de cliente con membresía por barbería y token por barbería (selección de membresía por enlace, constitución 1.2.0). **Aceptado el 2026-10-17** | 002 |
+| ADR-021 | Lecturas públicas por enlace (excepción del principio III, constitución 1.1.0). **Aceptado el 2026-10-17** | 002 |
 | ADR-029 | Redis para la caché del catálogo y el límite general de solicitudes, con claves por tenant (ampliación del principio VIII, constitución 1.1.0) | 006 |
 | ADR-030 | Balanceo local con Nginx como representación de ADR-006 | 006 |
 | ADR-022 | Pagos: pasarela en sandbox o simulada tras `PaymentGateway`, cambiable por configuración, y transferencia con comprobante | 003 |

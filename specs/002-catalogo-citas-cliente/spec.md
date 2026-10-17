@@ -21,7 +21,7 @@ Decisiones provisionales tomadas con la opción recomendada, porque el responsab
 
 **Reutiliza de la funcionalidad 001** (no se repite aquí): registro de la barbería y prueba gratuita, inicio y cierre de sesión con renovación y período de gracia, límite de intentos, usuarios del personal (propietario y barbero), aislamiento por barbería en varias barreras, auditoría y validación de entradas. Lo que esta funcionalidad agrega a esas piezas se indica en cada requisito.
 
-## User Scenarios & Testing *(mandatory)*
+## User Scenarios & Testing _(mandatory)_
 
 ### User Story 1 - El propietario prepara su barbería para recibir reservas (Priority: P1)
 
@@ -178,7 +178,7 @@ El cliente revisa las citas que tuvo y tiene en la barbería en la que está, co
 - El enlace público se cambia: el enlace anterior deja de funcionar y responde "barbería no disponible".
 - Las entradas con scripts o longitudes excesivas en nombres, descripciones, motivos de bloqueo o datos del cliente se rechazan con mensaje controlado y no se ejecutan.
 
-## Requirements *(mandatory)*
+## Requirements _(mandatory)_
 
 ### Functional Requirements
 
@@ -214,7 +214,7 @@ El cliente revisa las citas que tuvo y tiene en la barbería en la que está, co
 **Catálogo público y horarios libres (RF10, RF11)**
 
 - **FR-018**: Cualquier persona sin sesión MUST poder consultar, mediante el enlace público de una barbería activa, el nombre comercial, la dirección, el teléfono y el horario de atención de la barbería, los servicios activos (nombre, precio, duración y descripción) y los barberos activos (nombre visible y servicios que ofrecen).
-- **FR-019**: La consulta por enlace público MUST ser de solo lectura y MUST limitarse a los datos de FR-018 y a los horarios libres. MUST NOT devolver datos personales de clientes, correos, teléfonos ni identificadores de cuenta del personal, motivos de bloqueos ni la identidad de quien ocupa una hora. La barbería identificada por el enlace MUST NOT usarse en ninguna operación con sesión (constitución 1.1.0, principio III; ADR-021).
+- **FR-019**: La consulta por enlace público MUST ser de solo lectura y MUST limitarse a los datos de FR-018 y a los horarios libres. MUST NOT devolver datos personales de clientes, correos, teléfonos ni identificadores de cuenta del personal, motivos de bloqueos ni la identidad de quien ocupa una hora. La barbería identificada por el enlace MUST NOT usarse en ninguna operación con sesión (constitución 1.2.0, principio III; ADR-021).
 - **FR-020**: El sistema MUST calcular los horarios libres para un servicio y una fecha, con un barbero concreto o con cualquier barbero que ofrezca el servicio. Una hora de inicio es libre solo si el servicio completo cabe dentro de la disponibilidad del barbero y del horario de atención, no se solapa con bloqueos ni con citas activas, es posterior al momento actual y está dentro del horizonte de reserva.
 - **FR-021**: La respuesta de horarios libres MUST indicar el momento en que se calculó y que las horas están en la hora local de la barbería. Mostrar una hora como libre MUST NOT reservarla.
 - **FR-022**: Un enlace inexistente, el enlace anterior a un cambio y el de una barbería suspendida por la plataforma MUST recibir la misma respuesta de "barbería no disponible".
@@ -270,7 +270,7 @@ El cliente revisa las citas que tuvo y tiene en la barbería en la que está, co
 - **FR-050**: El sistema MUST registrar en la auditoría, con quién, qué, cuándo, desde dónde y sobre qué barbería: el registro de clientes y su consentimiento, la unión de un cliente a una barbería, los cambios del enlace público, la desactivación de servicios y barberos, los bloqueos confirmados con conflicto, las cancelaciones, los cambios de estado de las citas y los accesos denegados por rol.
 - **FR-051**: El sistema MUST validar todas las entradas nuevas (formato, longitud, caracteres, rangos de fechas, horas y montos) y rechazar las inválidas con un mensaje controlado, sin ejecutar su contenido.
 
-### Key Entities *(include if feature involves data)*
+### Key Entities _(include if feature involves data)_
 
 - **Barbería** (de 001, ampliada): datos comerciales (dirección, teléfono, descripción), enlace público único, horario de atención semanal, antelación mínima de cancelación.
 - **Horario de atención**: tramos de apertura y cierre por día de la semana de la barbería.
@@ -284,7 +284,7 @@ El cliente revisa las citas que tuvo y tiene en la barbería en la que está, co
 - **Cita**: barbería, barbero, cliente, servicio con el nombre, precio y duración del momento de la reserva, inicio y fin, estado (nace confirmada), marca de cancelación tardía, marca de conflicto, quién la creó y quién la canceló.
 - **Historial de estados de la cita**: cada cambio, con quién, cuándo, estado anterior y nuevo.
 
-## Success Criteria *(mandatory)*
+## Success Criteria _(mandatory)_
 
 ### Measurable Outcomes
 

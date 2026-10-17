@@ -1,6 +1,39 @@
 <!--
 Sync Impact Report
 ==================
+Version change: 1.1.0 → 1.2.0
+Bump rationale: MINOR. Se amplía materialmente la guía del principio III con una segunda
+excepción acotada, sin eliminar ni redefinir nada: todo lo que cumplía la versión 1.1.0
+(incluida la funcionalidad 001) sigue cumpliendo. Enmienda aprobada por el responsable el
+2026-10-17 al aprobar el plan de la funcionalidad 002.
+
+Modified principles:
+  - III. Aislamiento por barbería (NO NEGOCIABLE) — se añade la excepción acotada "selección de
+    membresía por enlace": el registro de cliente, el inicio de sesión desde el enlace, la unión a
+    otra barbería y el cambio de barbería pueden usar el `slug` antes de tener la sesión de esa
+    barbería, solo tras comprobar la identidad o al crear la cuenta, solo para escribir filas de la
+    propia persona, y nunca en operaciones de negocio con sesión. Origen:
+    specs/002-catalogo-citas-cliente/research.md R04 y Complexity Tracking del plan de 002.
+Added principles: ninguno
+Added sections: ninguna
+Removed sections: ninguna
+
+Templates requiring updates:
+  ✅ .specify/templates/plan-template.md — puerta III de la Constitution Check (versión 1.2.0)
+  ✅ .specify/templates/spec-template.md — revisado; sin cambios necesarios
+  ✅ .specify/templates/tasks-template.md — revisado; sin cambios necesarios
+  ✅ .claude/skills/speckit-*/SKILL.md — revisados; sin referencias al principio III
+  ✅ docs/01-analisis-de-sistema/07-decisiones-arquitectonicas.md — ADR-020 y ADR-021 Aceptados
+  ✅ docs/02-arquitectura-software/multi-tenancy-y-datos.md — control 1 con las dos excepciones
+  ✅ docs/trazabilidad.md — fila de 002 sin la decisión pendiente
+  ✅ specs/002-catalogo-citas-cliente/plan.md y research.md — puerta III en verde y R04 resuelta
+  ✅ specs/001-registro-acceso-barberia/plan.md — sin cambios: no usa ninguna excepción
+
+Follow-up TODOs: ninguno. ADR-020 (selección de membresía por enlace) y ADR-021 (lecturas
+públicas por enlace) están Aceptados desde el 2026-10-17. ADR-029 (Redis) sigue pendiente para la
+funcionalidad 006, como registró la versión 1.1.0.
+
+--- Historial: informe de la versión 1.1.0 ---
 Version change: 1.0.1 → 1.1.0
 Bump rationale: MINOR. Se amplía materialmente la guía de dos principios con excepciones acotadas,
 sin eliminar ni redefinir de forma incompatible ninguno: todo lo que cumplía la versión 1.0.1
@@ -97,10 +130,21 @@ intercambiables.
   autenticadas y MUST resolverse con un mecanismo acotado y probado que no otorgue al rol de la
   aplicación la capacidad de omitir RLS. Toda operación autenticada MUST seguir tomando el tenant
   solo del token. La decisión se registra en ADR-021.
+- **Excepción acotada: selección de membresía por enlace.** Antes de que exista la sesión de una
+  barbería, el registro de cliente, el inicio de sesión desde el enlace de la barbería, la unión
+  de un cliente a otra barbería y el cambio de barbería del cliente (RF05) MAY identificar la
+  barbería por su enlace público (`slug`), solo para decidir en qué barbería se crea o se elige la
+  membresía de cliente. Esa vía MUST usarse solo después de comprobar la identidad (contraseña o
+  sesión vigente) o al crear la cuenta nueva, MUST escribir únicamente filas de la propia persona
+  (cuenta, membresía, perfil de cliente, consentimiento y sesión) y MUST NOT leer ni modificar
+  otros datos de negocio. Una vez emitida la sesión, el tenant MUST salir solo del token; ninguna
+  operación de negocio con sesión MUST aceptar el `slug`. La decisión se registra en ADR-020.
 
 **Razón:** ADR-003 y ADR-010; `tenant_id` por sí solo no basta. Una fuga entre barberías (R01)
-es el riesgo más grave del sistema. La excepción existe porque RF10 exige mostrar el catálogo sin
-iniciar sesión; se limita a lo que la barbería publica y no puede escribir.
+es el riesgo más grave del sistema. La primera excepción existe porque RF10 exige mostrar el
+catálogo sin iniciar sesión; se limita a lo que la barbería publica y no puede escribir. La segunda
+existe porque el cliente es quien indica en qué barbería quiere reservar, y eso ocurre antes de
+tener la sesión de esa barbería; se limita a crear o elegir su propia membresía.
 
 ### IV. Citas sin duplicados garantizadas por la base de datos
 
@@ -275,4 +319,4 @@ implementación. La excepción existe solo porque la plataforma de CI impone la 
   alternativa más simple descartada, y registrarse como ADR.
 - La guía de ejecución del proyecto está en `README.md` y en `docs/`.
 
-**Version**: 1.1.0 | **Ratified**: 2026-10-15 | **Last Amended**: 2026-10-17
+**Version**: 1.2.0 | **Ratified**: 2026-10-15 | **Last Amended**: 2026-10-17

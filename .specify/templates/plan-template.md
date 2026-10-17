@@ -40,7 +40,7 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-Gates from `.specify/memory/constitution.md` (v1.0.0). Mark each ✅ / ❌ (justify ❌ in
+Gates from `.specify/memory/constitution.md` (v1.2.0). Mark each ✅ / ❌ (justify ❌ in
 Complexity Tracking and record an ADR):
 
 - [ ] **I. Six modules**: work fits in M01–M06 (no new module); cross-module calls only via
@@ -49,8 +49,11 @@ Complexity Tracking and record an ADR):
   infrastructure per submodule; domain imports no framework/DB/Redis/provider SDK
 - [ ] **III. Tenant isolation**: `tenant_id` from the signed token only (never from client
   input); RLS on every business table; repositories filter by tenant; cache keys/events include
-  tenant. Only exception: public read-only lookups by barbershop slug (catalog, free slots),
-  public columns only, no writes, no RLS bypass for the app role (ADR-021)
+  tenant. Only two exceptions: (1) public read-only lookups by barbershop slug (catalog, free
+  slots), public columns only, no writes, no RLS bypass for the app role (ADR-021); (2) membership
+  selection by slug before the session exists (client sign-up, login from the barbershop link,
+  joining or switching barbershop), only after verifying identity or creating the account, writing
+  only the person's own rows, never in business operations with a session (ADR-020)
 - [ ] **IV. No duplicate appointments**: PostgreSQL exclusion constraint + transaction;
   conflict mapped to "horario no disponible"
 - [ ] **V. Payments**: subscriptions only; `PaymentGateway` port; no card data stored;

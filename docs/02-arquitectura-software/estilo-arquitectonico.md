@@ -30,11 +30,13 @@ Un módulo **solo** puede depender de otro a través de su **interfaz pública**
 | Desde \ Hacia               | M01 | M02 | M03 | M04 | M05 | M06 |
 | --------------------------- | --- | --- | --- | --- | --- | --- |
 | M01 Acceso y barberías      | —   |     | ✓   |     |     | ✓   |
-| M02 Catálogo y citas        |     | —   | ✓   |     |     | ✓   |
+| M02 Catálogo y citas        | ✓ ¹ | —   | ✓   |     |     | ✓   |
 | M03 Suscripciones y pagos   |     |     | —   |     |     | ✓   |
 | M04 Asistente IA y reportes |     | ✓   | ✓   | —   |     | ✓   |
 | M05 Notificaciones          |     |     |     |     | —   | ✓   |
 | M06 Núcleo compartido       |     |     |     |     |     | —   |
+
+¹ Agregado por [ADR-020](../01-analisis-de-sistema/07-decisiones-arquitectonicas.md#adr-020-cuenta-de-cliente-con-membresía-y-sesión-por-barbería) (Aceptado el 2026-10-17, funcionalidad 002). M02 llama a M01 solo por su interfaz pública: `ClientesApi`, que identifica al cliente de la sesión y da nombre y teléfono para la agenda, y `PersonalApi`, que comprueba que un usuario es personal activo para vincularlo a un barbero. M01 no llama a M02.
 
 **Reglas.**
 
@@ -42,7 +44,7 @@ Un módulo **solo** puede depender de otro a través de su **interfaz pública**
 2. No hay ciclos (se comprueba con la matriz: el grafo es acíclico).
 3. M06 no depende de ningún módulo de negocio.
 4. La comunicación **asíncrona dentro del proceso** se hace con eventos del bus de M06: el submódulo `pagos` publica `PagoConfirmado` y `suscripciones` lo escucha (ambos dentro de M03); M02 publica `CitaCreada` y M05 lo escucha. Quien publica no conoce a quien escucha.
-5. El **identificador del tenant** (`TenantId`) es un valor compartido del núcleo (M06); por eso M02 y M03 no dependen de M01.
+5. El **identificador del tenant** (`TenantId`) es un valor compartido del núcleo (M06); por eso M03 no depende de M01. M02 depende de M01 solo para los datos del cliente y del personal (nota ¹), no para el tenant.
 6. La **raíz de composición** (el host de la aplicación) es el único lugar autorizado para ensamblar módulos y aplicar el middleware de tenant, que consulta a M01 (estado del tenant) y M03 (política de suscripción).
 7. Entre submódulos del **mismo** módulo se permite llamar a su interfaz interna; hacia otro módulo, solo a su interfaz pública (`index`).
 
@@ -57,6 +59,7 @@ _Figura. 3. Dependencias permitidas._
 flowchart LR
     M01["M01 Acceso y barberías"] --> M03["M03 Suscripciones y pagos"]
     M02["M02 Catálogo y citas"] --> M03
+    M02 -- "ClientesApi, PersonalApi (ADR-020)" --> M01
     M04["M04 Asistente IA y reportes"] --> M02
     M04 --> M03
     M02 -. "evento CitaCreada" .-> M05["M05 Notificaciones"]

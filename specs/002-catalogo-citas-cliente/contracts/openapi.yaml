@@ -1,0 +1,1064 @@
+openapi: 3.1.0
+info:
+  title: Plataforma de Barberías — Catálogo, citas y cuenta de cliente (funcionalidad 002)
+  version: 0.2.0
+  description: |
+    Contrato de la funcionalidad 002 (M02 Catálogo y citas; M01 datos de la barbería y cuenta de
+    cliente). Amplía el contrato de 001 (`specs/001-registro-acceso-barberia/contracts/openapi.yaml`):
+    los componentes `Error`, `Validacion`, `NoAutenticado`, `AccesoDenegado`, `NoEncontrado`,
+    `DemasiadosIntentos`, `RefreshCookie` y `SesionResponse` son los mismos. Al implementar, ambos se
+    unen en un solo archivo, del que se generan los tipos del frontend.
+
+    Reglas transversales:
+    - Las operaciones con sesión toman la barbería SOLO del token. Ninguna acepta `tenant_id`,
+      `tenantId`, `barberiaId` ni el `slug` para leer o escribir datos de negocio.
+    - El `slug` (campo `barberia` o ruta `/publico/{slug}`) solo aparece en:
+      (a) lecturas públicas `GET /publico/...` (ADR-021);
+      (b) el selector previo a la sesión: `POST /clientes/registro`, `POST /auth/login` y
+          `POST /auth/barberia` (ADR-020).
+    - Instantes en ISO 8601 con desplazamiento (`2026-10-20T10:00:00-05:00`); fechas de consulta
+      `YYYY-MM-DD` en hora local de la barbería; cada respuesta de horarios o agenda incluye
+      `zonaHoraria`.
+    - Un recurso de otra barbería responde 404 `NO_ENCONTRADO`.
+servers:
+  - url: /api/v1
+tags:
+  - name: Público
+  - name: Clientes
+  - name: Autenticación
+  - name: Barbería
+  - name: Servicios
+  - name: Barberos
+  - name: Disponibilidad
+  - name: Citas
+  - name: Agenda
+
+paths:
+  /publico/{slug}:
+    parameters:
+      - $ref: '#/components/parameters/Slug'
+    get:
+      tags: [Público]
+      operationId: obtenerCatalogoPublico
+      summary: Catálogo público de una barbería activa (RF10). Solo lectura, columnas públicas.
+      security: []
+      responses:
+        '200':
+          description: Barbería, horario de atención, servicios y barberos activos.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CatalogoPublico' }
+        '404': { $ref: '#/components/responses/BarberiaNoDisponible' }
+        '429': { $ref: '#/components/responses/DemasiadosIntentos' }
+
+  /publico/{slug}/horarios:
+    parameters:
+      - $ref: '#/components/parameters/Slug'
+    get:
+      tags: [Público]
+      operationId: consultarHorariosPublicos
+      summary: Horarios libres por servicio, fecha y barbero opcional (RF11)
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/ServicioQuery'
+        - $ref: '#/components/parameters/FechaQuery'
+        - $ref: '#/components/parameters/BarberoQueryOpcional'
+      responses:
+        '200':
+          description: Horas de inicio libres. Mostrar una hora no la reserva.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HorariosLibres' }
+        '400': { $ref: '#/components/responses/Validacion' }
+        '404': { $ref: '#/components/responses/BarberiaNoDisponible' }
+        '429': { $ref: '#/components/responses/DemasiadosIntentos' }
+
+  /clientes/registro:
+    post:
+      tags: [Clientes]
+      operationId: registrarCliente
+      summary: Registro de cliente con consentimiento desde el enlace de una barbería (RF05)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegistroClienteRequest' }
+      responses:
+        '201':
+          description: Cuenta, membresía CLIENTE, perfil y consentimiento creados; sesión en esa barbería.
+          headers:
+            Set-Cookie: { $ref: '#/components/headers/RefreshCookie' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SesionResponse' }
+        '400': { $ref: '#/components/responses/Validacion' }
+        '404': { $ref: '#/components/responses/BarberiaNoDisponible' }
+        '409':
+          description: '`CORREO_NO_DISPONIBLE` — el correo ya tiene cuenta; se invita a iniciar sesión. No revela barberías.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '429': { $ref: '#/components/responses/DemasiadosIntentos' }
+
+  /auth/login:
+    post:
+      tags: [Autenticación]
+      operationId: iniciarSesion
+      summary: Iniciar sesión (amplía 001 con el enlace opcional de la barbería y la unión)
+      description: |
+        Sin `barberia`: igual que en 001 para el personal; una cuenta de cliente recibe 409
+        `INGRESA_DESDE_TU_BARBERIA` (solo tras verificar la contraseña).
+        Con `barberia`: sesión en esa barbería si la cuenta tiene membresía ACTIVA. Si no la tiene y
+        es de cliente: 409 `UNIRSE_REQUIERE_CONSENTIMIENTO`, o se une si llega `aceptaPoliticaDatos`.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+      responses:
+        '200':
+          description: Sesión iniciada en la barbería elegida.
+          headers:
+            Set-Cookie: { $ref: '#/components/headers/RefreshCookie' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SesionResponse' }
+        '400': { $ref: '#/components/responses/Validacion' }
+        '401':
+          description: '`CREDENCIALES_INVALIDAS` (como en 001).'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '403':
+          description: '`ACCESO_SUSPENDIDO` (como en 001).'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '404': { $ref: '#/components/responses/BarberiaNoDisponible' }
+        '409':
+          description: |
+            `INGRESA_DESDE_TU_BARBERIA`, `UNIRSE_REQUIERE_CONSENTIMIENTO` o `CUENTA_DE_PERSONAL`
+            (una cuenta del personal no puede unirse como cliente).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '429': { $ref: '#/components/responses/DemasiadosIntentos' }
+
+  /auth/barberia:
+    post:
+      tags: [Autenticación]
+      operationId: cambiarBarberia
+      summary: Cambiar la sesión del cliente a otra barbería (ADR-020)
+      description: |
+        Con sesión vigente. Comprueba con RLS la membresía CLIENTE ACTIVA del mismo usuario en el
+        destino (o la crea si llega `aceptaPoliticaDatos`), emite una sesión nueva en el destino,
+        cierra la actual y reemplaza la cookie `rt`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CambiarBarberiaRequest' }
+      responses:
+        '200':
+          description: Sesión en la barbería destino.
+          headers:
+            Set-Cookie: { $ref: '#/components/headers/RefreshCookie' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SesionResponse' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/AccesoDenegado' }
+        '404': { $ref: '#/components/responses/BarberiaNoDisponible' }
+        '409':
+          description: '`UNIRSE_REQUIERE_CONSENTIMIENTO`.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /barberia:
+    get:
+      tags: [Barbería]
+      operationId: obtenerBarberia
+      summary: Datos comerciales, enlace, horario de atención y antelación de cancelación (RF03)
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BarberiaConfig' }
+          description: Configuración de la barbería del token.
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/AccesoDenegado' }
+    patch:
+      tags: [Barbería]
+      operationId: actualizarBarberia
+      summary: Editar datos comerciales, enlace y antelación mínima de cancelación (solo PROPIETARIO)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ActualizarBarberiaRequest' }
+      responses:
+        '200':
+          description: Actualizada. Si cambió el enlace, el anterior deja de funcionar.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BarberiaConfig' }
+        '400': { $ref: '#/components/responses/Validacion' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/AccesoDenegado' }
+        '409':
+          description: '`ENLACE_NO_DISPONIBLE` — el enlace ya lo usa otra barbería o es una palabra reservada.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /barberia/horario:
+    put:
+      tags: [Barbería]
+      operationId: reemplazarHorarioAtencion
+      summary: Reemplazar el horario de atención semanal (solo PROPIETARIO)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/HorarioSemanalRequest' }
+      responses:
+        '200':
+          description: Horario guardado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HorarioSemanal' }
+        '400': { $ref: '#/components/responses/Validacion' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/AccesoDenegado' }
+        '409': { $ref: '#/components/responses/ConflictoConCitas' }
+
+  /servicios:
+    get:
+      tags: [Servicios]
+      operationId: listarServicios
+      summary: Servicios de la barbería, activos e inactivos (PROPIETARIO, BARBERO)
+      responses:
+        '200':
+          description: Lista.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Servicio' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/AccesoDenegado' }
+    post:
+      tags: [Servicios]
+      operationId: crearServicio
+      summary: Crear servicio (RF07, solo PROPIETARIO)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ServicioRequest' }
+      responses:
+        '201':
+          description: Creado y activo.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Servicio' }
+        '400': { $ref: '#/components/responses/Validacion' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/AccesoDenegado' }
+        '409':
+          description: '`NOMBRE_DUPLICADO` — ya existe un servicio con ese nombre en la barbería.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /servicios/{id}:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    patch:
+      tags: [Servicios]
+      operationId: actualizarServicio
+      summary: Editar, activar o desactivar un servicio (solo PROPIETARIO)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ActualizarServicioRequest' }
+      responses:
+        '200':
+          description: Actualizado. Las citas existentes conservan su copia del servicio.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Servicio' }
+        '400': { $ref: '#/components/responses/Validacion' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/AccesoDenegado' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '409': { $ref: '#/components/responses/ConflictoConCitas' }
+
+  /barberos:
+    get:
+      tags: [Barberos]
+      operationId: listarBarberos
+      summary: Barberos de la barbería con sus servicios (PROPIETARIO, BARBERO)
+      responses:
+        '200':
+          description: Lista.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Barbero' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/AccesoDenegado' }
+    post:
+      tags: [Barberos]
+      operationId: crearBarbero
+      summary: Crear barbero con servicios y vínculo opcional a un usuario (RF08, solo PROPIETARIO)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BarberoRequest' }
+      responses:
+        '201':
+          description: Creado y activo.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Barbero' }
+        '400': { $ref: '#/components/responses/Validacion' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403':
+          description: '`ACCESO_DENEGADO` o `SUSCRIPCION_NO_PERMITE` (límite de barberos del plan).'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '409':
+          description: '`USUARIO_YA_VINCULADO` — el usuario ya está vinculado a otro barbero.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /barberos/{id}:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    patch:
+      tags: [Barberos]
+      operationId: actualizarBarbero
+      summary: Editar nombre, servicios, vínculo o estado (solo PROPIETARIO)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ActualizarBarberoRequest' }
+      responses:
+        '200':
+          description: Actualizado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Barbero' }
+        '400': { $ref: '#/components/responses/Validacion' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403':
+          description: '`ACCESO_DENEGADO` o `SUSCRIPCION_NO_PERMITE` (al reactivar sobre el límite).'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '409': { $ref: '#/components/responses/ConflictoConCitas' }
+
+  /barberos/{id}/disponibilidad:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    get:
+      tags: [Disponibilidad]
+      operationId: obtenerDisponibilidad
+      summary: Disponibilidad semanal del barbero (PROPIETARIO; BARBERO solo la propia)
+      responses:
+        '200':
+          description: Tramos por día.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HorarioSemanal' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/AccesoDenegado' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+    put:
+      tags: [Disponibilidad]
+      operationId: reemplazarDisponibilidad
+      summary: Reemplazar la disponibilidad semanal (RF09; PROPIETARIO; BARBERO solo la propia)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/HorarioSemanalRequest' }
+      responses:
+        '200':
+          description: Guardada.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HorarioSemanal' }
+        '400': { $ref: '#/components/responses/Validacion' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/AccesoDenegado' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '409': { $ref: '#/components/responses/ConflictoConCitas' }
+        '422':
+          description: '`FUERA_DEL_HORARIO_DE_ATENCION` — un tramo queda fuera del horario de la barbería.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /barberos/{id}/bloqueos:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    get:
+      tags: [Disponibilidad]
+      operationId: listarBloqueos
+      summary: Bloqueos futuros del barbero (PROPIETARIO; BARBERO solo los propios)
+      responses:
+        '200':
+          description: Lista.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Bloqueo' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/AccesoDenegado' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+    post:
+      tags: [Disponibilidad]
+      operationId: crearBloqueo
+      summary: Crear bloqueo; si choca con citas activas exige confirmarConflictos (RF09, FR-016)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BloqueoRequest' }
+      responses:
+        '201':
+          description: Bloqueo creado. Las citas en conflicto siguen activas y se marcan en la agenda.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Bloqueo' }
+        '400': { $ref: '#/components/responses/Validacion' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/AccesoDenegado' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '409': { $ref: '#/components/responses/ConflictoConCitas' }
+
+  /barberos/{id}/bloqueos/{bloqueoId}:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+      - { name: bloqueoId, in: path, required: true, schema: { type: string, format: uuid } }
+    delete:
+      tags: [Disponibilidad]
+      operationId: eliminarBloqueo
+      summary: Eliminar un bloqueo (PROPIETARIO; BARBERO solo los propios)
+      responses:
+        '204': { description: Eliminado. }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/AccesoDenegado' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+
+  /horarios:
+    get:
+      tags: [Citas]
+      operationId: consultarHorarios
+      summary: Horarios libres con sesión (CLIENTE, PROPIETARIO); mismo cálculo que la vía pública
+      parameters:
+        - $ref: '#/components/parameters/ServicioQuery'
+        - $ref: '#/components/parameters/FechaQuery'
+        - $ref: '#/components/parameters/BarberoQueryOpcional'
+      responses:
+        '200':
+          description: Horas libres.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HorariosLibres' }
+        '400': { $ref: '#/components/responses/Validacion' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/AccesoDenegado' }
+
+  /citas:
+    post:
+      tags: [Citas]
+      operationId: reservarCita
+      summary: Reservar sin duplicados (RF12). CLIENTE para sí; PROPIETARIO presencial con clienteId.
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema: { type: string, format: uuid }
+          description: Generada al abrir la confirmación y reutilizada en cada reintento (R09).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReservarCitaRequest' }
+      responses:
+        '201':
+          description: Cita creada en estado CONFIRMADA.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Cita' }
+        '200':
+          description: Reintento con la misma Idempotency-Key y el mismo contenido; devuelve la cita ya creada.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Cita' }
+        '400': { $ref: '#/components/responses/Validacion' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/AccesoDenegado' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '409':
+          description: |
+            `HORARIO_NO_DISPONIBLE` (restricción de exclusión del barbero) o
+            `CITA_SOLAPADA_DEL_CLIENTE` (el cliente ya tiene una cita activa que se solapa).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422':
+          description: |
+            `RESERVA_INVALIDA` (hora pasada, fuera de disponibilidad o del horizonte, dentro de un
+            bloqueo, servicio o barbero inactivo, barbero que no ofrece el servicio) o
+            `IDEMPOTENCIA_CONFLICTO` (misma clave con otro contenido).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /citas/{id}/cancelar:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    post:
+      tags: [Citas]
+      operationId: cancelarCita
+      summary: Cancelar (RF14). CLIENTE las propias hasta el inicio; PROPIETARIO cualquiera.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CancelarCitaRequest' }
+      responses:
+        '200':
+          description: Cancelada; el horario queda libre. `cancelacionTardia` indica si fue tardía.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Cita' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/AccesoDenegado' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '422':
+          description: '`TRANSICION_INVALIDA` — ya no está activa o su inicio ya pasó (cliente).'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /citas/{id}/estado:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    post:
+      tags: [Citas]
+      operationId: cambiarEstadoCita
+      summary: Transición válida (RF15). BARBERO solo sus citas; PROPIETARIO cualquiera.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CambiarEstadoRequest' }
+      responses:
+        '200':
+          description: Estado cambiado y registrado en el historial.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Cita' }
+        '400': { $ref: '#/components/responses/Validacion' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/AccesoDenegado' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '422':
+          description: '`TRANSICION_INVALIDA`.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /agenda:
+    get:
+      tags: [Agenda]
+      operationId: consultarAgenda
+      summary: Agenda del día (RF16). PROPIETARIO toda la barbería (filtro barbero); BARBERO la suya.
+      parameters:
+        - $ref: '#/components/parameters/FechaQuery'
+        - $ref: '#/components/parameters/BarberoQueryOpcional'
+      responses:
+        '200':
+          description: Citas del día local ordenadas por inicio, con marcas calculadas.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Agenda' }
+        '400': { $ref: '#/components/responses/Validacion' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/AccesoDenegado' }
+
+  /clientes:
+    get:
+      tags: [Clientes]
+      operationId: buscarClientes
+      summary: Buscar clientes de la barbería por nombre o teléfono (solo PROPIETARIO)
+      parameters:
+        - { name: buscar, in: query, required: true, schema: { type: string, minLength: 2, maxLength: 60 } }
+      responses:
+        '200':
+          description: Hasta 20 coincidencias.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/ClienteResumen' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/AccesoDenegado' }
+    post:
+      tags: [Clientes]
+      operationId: registrarClientePresencial
+      summary: Registrar cliente presencial sin cuenta con consentimiento verbal anotado (FR-035, solo PROPIETARIO)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ClientePresencialRequest' }
+      responses:
+        '201':
+          description: Perfil creado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ClienteResumen' }
+        '400': { $ref: '#/components/responses/Validacion' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/AccesoDenegado' }
+
+  /clientes/yo/citas:
+    get:
+      tags: [Clientes]
+      operationId: historialCliente
+      summary: Historial del cliente en la barbería de su sesión (RF17)
+      parameters:
+        - { name: pagina, in: query, schema: { type: integer, minimum: 1, default: 1 } }
+        - { name: tamano, in: query, schema: { type: integer, minimum: 1, maximum: 50, default: 20 } }
+      responses:
+        '200':
+          description: Citas propias por fecha descendente.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PaginaCitas' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/AccesoDenegado' }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: 'Como en 001; `rol` admite ahora `CLIENTE`. Un token tiene un solo `tid`.'
+  parameters:
+    Slug:
+      name: slug
+      in: path
+      required: true
+      schema: { type: string, pattern: '^[a-z0-9]+(-[a-z0-9]+)*$', maxLength: 140 }
+    Id:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    ServicioQuery:
+      name: servicio
+      in: query
+      required: true
+      schema: { type: string, format: uuid }
+    FechaQuery:
+      name: fecha
+      in: query
+      required: true
+      schema: { type: string, format: date }
+      description: Fecha local de la barbería (YYYY-MM-DD).
+    BarberoQueryOpcional:
+      name: barbero
+      in: query
+      required: false
+      schema: { type: string, format: uuid }
+  headers:
+    RefreshCookie:
+      description: Igual que en 001 (`rt`, HttpOnly; Secure; SameSite=Strict; Path=/api/v1/auth).
+      schema: { type: string }
+  responses:
+    BarberiaNoDisponible:
+      description: '`BARBERIA_NO_DISPONIBLE` — el enlace no existe, cambió o la barbería está suspendida (misma respuesta).'
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    ConflictoConCitas:
+      description: |
+        `CONFLICTO_CON_CITAS` — el cambio deja citas activas en conflicto. No se guardó nada.
+        Repetir con `confirmarConflictos: true` para guardar sin tocar las citas.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorConflicto' }
+    Validacion:
+      description: '`VALIDACION` (como en 001).'
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    NoAutenticado:
+      description: '`NO_AUTENTICADO` (como en 001).'
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    AccesoDenegado:
+      description: '`ACCESO_DENEGADO` (como en 001). Se audita.'
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    NoEncontrado:
+      description: '`NO_ENCONTRADO` (como en 001).'
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    DemasiadosIntentos:
+      description: '`DEMASIADOS_INTENTOS` (como en 001).'
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+  schemas:
+    Error:
+      type: object
+      required: [codigo, mensaje, detalles]
+      description: |
+        Mismo esquema que 001. Códigos nuevos: BARBERIA_NO_DISPONIBLE, INGRESA_DESDE_TU_BARBERIA,
+        UNIRSE_REQUIERE_CONSENTIMIENTO, CUENTA_DE_PERSONAL, ENLACE_NO_DISPONIBLE, NOMBRE_DUPLICADO,
+        USUARIO_YA_VINCULADO, CONFLICTO_CON_CITAS, FUERA_DEL_HORARIO_DE_ATENCION,
+        HORARIO_NO_DISPONIBLE, CITA_SOLAPADA_DEL_CLIENTE, RESERVA_INVALIDA, IDEMPOTENCIA_CONFLICTO,
+        TRANSICION_INVALIDA.
+      properties:
+        codigo: { type: string }
+        mensaje: { type: string }
+        detalles: { type: array, items: {} }
+    ErrorConflicto:
+      allOf:
+        - $ref: '#/components/schemas/Error'
+        - type: object
+          properties:
+            detalles:
+              type: array
+              items: { $ref: '#/components/schemas/CitaAfectada' }
+    CitaAfectada:
+      type: object
+      required: [id, inicio, barberoId, servicio]
+      description: Sin datos del cliente.
+      properties:
+        id: { type: string, format: uuid }
+        inicio: { type: string, format: date-time }
+        barberoId: { type: string, format: uuid }
+        servicio: { type: string }
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      required: [correo, contrasena]
+      properties:
+        correo: { type: string, format: email, maxLength: 254 }
+        contrasena: { type: string, minLength: 1, maxLength: 128, writeOnly: true }
+        barberia: { type: string, maxLength: 140, description: Slug de la página desde la que ingresa. }
+        aceptaPoliticaDatos: { type: boolean, description: Solo para unirse a una barbería nueva. }
+        versionPoliticaDatos: { type: string, maxLength: 32 }
+    CambiarBarberiaRequest:
+      type: object
+      additionalProperties: false
+      required: [barberia]
+      properties:
+        barberia: { type: string, maxLength: 140 }
+        aceptaPoliticaDatos: { type: boolean }
+        versionPoliticaDatos: { type: string, maxLength: 32 }
+    RegistroClienteRequest:
+      type: object
+      additionalProperties: false
+      required: [barberia, nombre, correo, telefono, contrasena, aceptaPoliticaDatos, versionPoliticaDatos]
+      properties:
+        barberia: { type: string, maxLength: 140 }
+        nombre: { type: string, minLength: 2, maxLength: 120 }
+        correo: { type: string, format: email, maxLength: 254 }
+        telefono: { type: string, pattern: '^\+?[0-9 ]{6,20}$' }
+        contrasena: { type: string, minLength: 10, maxLength: 128, writeOnly: true }
+        aceptaPoliticaDatos: { type: boolean, const: true }
+        versionPoliticaDatos: { type: string, maxLength: 32 }
+    SesionResponse:
+      description: Igual que en 001; `usuario.rol` puede ser `CLIENTE` y `usuario.barberia` incluye `slug`.
+      type: object
+    TramoHorario:
+      type: object
+      additionalProperties: false
+      required: [diaSemana, inicio, fin]
+      properties:
+        diaSemana: { type: integer, minimum: 0, maximum: 6, description: 0 = domingo }
+        inicio: { type: string, pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$' }
+        fin: { type: string, pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$' }
+    HorarioSemanal:
+      type: object
+      required: [tramos]
+      properties:
+        tramos: { type: array, items: { $ref: '#/components/schemas/TramoHorario' } }
+    HorarioSemanalRequest:
+      type: object
+      additionalProperties: false
+      required: [tramos]
+      properties:
+        tramos: { type: array, maxItems: 28, items: { $ref: '#/components/schemas/TramoHorario' } }
+        confirmarConflictos: { type: boolean, default: false }
+    BarberiaConfig:
+      type: object
+      required: [nombre, slug, zonaHoraria, antelacionCancelacionMinutos, horario]
+      properties:
+        nombre: { type: string }
+        slug: { type: string }
+        direccion: { type: [string, 'null'] }
+        telefono: { type: [string, 'null'] }
+        descripcion: { type: [string, 'null'] }
+        zonaHoraria: { type: string, examples: [America/Lima] }
+        antelacionCancelacionMinutos: { type: integer, minimum: 0, maximum: 4320 }
+        horario: { $ref: '#/components/schemas/HorarioSemanal' }
+    ActualizarBarberiaRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        nombre: { type: string, minLength: 2, maxLength: 120 }
+        slug: { type: string, minLength: 3, maxLength: 60, pattern: '^[a-z0-9]+(-[a-z0-9]+)*$' }
+        direccion: { type: [string, 'null'], maxLength: 200 }
+        telefono: { type: [string, 'null'], pattern: '^\+?[0-9 ]{6,20}$' }
+        descripcion: { type: [string, 'null'], maxLength: 500 }
+        antelacionCancelacionMinutos: { type: integer, minimum: 0, maximum: 4320 }
+    Servicio:
+      type: object
+      required: [id, nombre, precio, duracionMinutos, activo]
+      properties:
+        id: { type: string, format: uuid }
+        nombre: { type: string }
+        descripcion: { type: [string, 'null'] }
+        precio: { type: string, pattern: '^[0-9]{1,5}\.[0-9]{2}$', description: Soles, como texto decimal. }
+        duracionMinutos: { type: integer }
+        activo: { type: boolean }
+    ServicioRequest:
+      type: object
+      additionalProperties: false
+      required: [nombre, precio, duracionMinutos]
+      properties:
+        nombre: { type: string, minLength: 2, maxLength: 80 }
+        descripcion: { type: [string, 'null'], maxLength: 300 }
+        precio: { type: string, pattern: '^[0-9]{1,5}(\.[0-9]{1,2})?$' }
+        duracionMinutos: { type: integer, minimum: 5, maximum: 480, multipleOf: 5 }
+    ActualizarServicioRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        nombre: { type: string, minLength: 2, maxLength: 80 }
+        descripcion: { type: [string, 'null'], maxLength: 300 }
+        precio: { type: string, pattern: '^[0-9]{1,5}(\.[0-9]{1,2})?$' }
+        duracionMinutos: { type: integer, minimum: 5, maximum: 480, multipleOf: 5 }
+        activo: { type: boolean }
+        confirmarConflictos: { type: boolean, default: false }
+    Barbero:
+      type: object
+      required: [id, nombre, activo, servicioIds]
+      properties:
+        id: { type: string, format: uuid }
+        nombre: { type: string }
+        activo: { type: boolean }
+        servicioIds: { type: array, items: { type: string, format: uuid } }
+        usuarioId: { type: [string, 'null'], format: uuid }
+    BarberoRequest:
+      type: object
+      additionalProperties: false
+      required: [nombre, servicioIds]
+      properties:
+        nombre: { type: string, minLength: 2, maxLength: 80 }
+        servicioIds: { type: array, maxItems: 50, items: { type: string, format: uuid } }
+        usuarioId: { type: [string, 'null'], format: uuid }
+    ActualizarBarberoRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        nombre: { type: string, minLength: 2, maxLength: 80 }
+        servicioIds: { type: array, maxItems: 50, items: { type: string, format: uuid } }
+        usuarioId: { type: [string, 'null'], format: uuid }
+        activo: { type: boolean }
+        confirmarConflictos: { type: boolean, default: false }
+    Bloqueo:
+      type: object
+      required: [id, barberoId, inicio, fin]
+      properties:
+        id: { type: string, format: uuid }
+        barberoId: { type: string, format: uuid }
+        inicio: { type: string, format: date-time }
+        fin: { type: string, format: date-time }
+        motivo: { type: [string, 'null'] }
+    BloqueoRequest:
+      type: object
+      additionalProperties: false
+      required: [inicio, fin]
+      properties:
+        inicio: { type: string, format: date-time }
+        fin: { type: string, format: date-time }
+        motivo: { type: [string, 'null'], maxLength: 200 }
+        confirmarConflictos: { type: boolean, default: false }
+    CatalogoPublico:
+      type: object
+      additionalProperties: false
+      description: Solo columnas públicas (ADR-021). Ningún dato de clientes ni de cuentas del personal.
+      required: [barberia, horario, servicios, barberos]
+      properties:
+        barberia:
+          type: object
+          additionalProperties: false
+          required: [nombre, slug, zonaHoraria]
+          properties:
+            nombre: { type: string }
+            slug: { type: string }
+            direccion: { type: [string, 'null'] }
+            telefono: { type: [string, 'null'] }
+            descripcion: { type: [string, 'null'] }
+            zonaHoraria: { type: string }
+        horario: { $ref: '#/components/schemas/HorarioSemanal' }
+        servicios:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [id, nombre, precio, duracionMinutos]
+            properties:
+              id: { type: string, format: uuid }
+              nombre: { type: string }
+              descripcion: { type: [string, 'null'] }
+              precio: { type: string }
+              duracionMinutos: { type: integer }
+        barberos:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [id, nombre, servicioIds]
+            properties:
+              id: { type: string, format: uuid }
+              nombre: { type: string }
+              servicioIds: { type: array, items: { type: string, format: uuid } }
+    HorariosLibres:
+      type: object
+      additionalProperties: false
+      required: [fecha, zonaHoraria, calculadoEn, servicioId, horas]
+      properties:
+        fecha: { type: string, format: date }
+        zonaHoraria: { type: string }
+        calculadoEn: { type: string, format: date-time }
+        servicioId: { type: string, format: uuid }
+        horas:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [inicio, barberoIds]
+            properties:
+              inicio: { type: string, format: date-time }
+              barberoIds: { type: array, items: { type: string, format: uuid } }
+    ReservarCitaRequest:
+      type: object
+      additionalProperties: false
+      required: [servicioId, barberoId, inicio]
+      properties:
+        servicioId: { type: string, format: uuid }
+        barberoId: { type: string, format: uuid }
+        inicio: { type: string, format: date-time }
+        clienteId:
+          type: string
+          format: uuid
+          description: Solo PROPIETARIO (cita presencial). Un CLIENTE que lo envía recibe 400.
+    CancelarCitaRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        motivo: { type: string, maxLength: 200 }
+    CambiarEstadoRequest:
+      type: object
+      additionalProperties: false
+      required: [estado]
+      properties:
+        estado: { type: string, enum: [CONFIRMADA, COMPLETADA, NO_ASISTIO] }
+    EstadoCita:
+      type: string
+      enum: [PENDIENTE, CONFIRMADA, COMPLETADA, NO_ASISTIO, CANCELADA]
+    Cita:
+      type: object
+      required: [id, barberia, servicio, barbero, inicio, fin, precio, estado, cancelacionTardia, origen]
+      properties:
+        id: { type: string, format: uuid }
+        barberia: { type: string, description: Nombre comercial. }
+        servicio: { type: string, description: Nombre copiado al reservar. }
+        barbero: { type: string, description: Nombre visible. }
+        inicio: { type: string, format: date-time }
+        fin: { type: string, format: date-time }
+        precio: { type: string }
+        estado: { $ref: '#/components/schemas/EstadoCita' }
+        cancelacionTardia: { type: boolean }
+        origen: { type: string, enum: [EN_LINEA, PRESENCIAL] }
+    CitaAgenda:
+      allOf:
+        - $ref: '#/components/schemas/Cita'
+        - type: object
+          required: [barberoId, cliente, enConflicto]
+          properties:
+            barberoId: { type: string, format: uuid }
+            cliente:
+              type: object
+              required: [nombre, telefono]
+              properties:
+                nombre: { type: string }
+                telefono: { type: string }
+            enConflicto: { type: boolean, description: Calculada al leer (bloqueo o horario reducido). }
+    Agenda:
+      type: object
+      required: [fecha, zonaHoraria, citas]
+      properties:
+        fecha: { type: string, format: date }
+        zonaHoraria: { type: string }
+        citas: { type: array, items: { $ref: '#/components/schemas/CitaAgenda' } }
+    PaginaCitas:
+      type: object
+      required: [total, pagina, tamano, elementos]
+      properties:
+        total: { type: integer }
+        pagina: { type: integer }
+        tamano: { type: integer }
+        elementos: { type: array, items: { $ref: '#/components/schemas/Cita' } }
+    ClienteResumen:
+      type: object
+      required: [id, nombre, telefono, origen]
+      properties:
+        id: { type: string, format: uuid }
+        nombre: { type: string }
+        telefono: { type: string }
+        origen: { type: string, enum: [EN_LINEA, PRESENCIAL] }
+    ClientePresencialRequest:
+      type: object
+      additionalProperties: false
+      required: [nombre, telefono, consentimientoVerbal, versionPoliticaDatos]
+      properties:
+        nombre: { type: string, minLength: 2, maxLength: 120 }
+        telefono: { type: string, pattern: '^\+?[0-9 ]{6,20}$' }
+        correo: { type: [string, 'null'], format: email, maxLength: 254 }
+        consentimientoVerbal: { type: boolean, const: true }
+        versionPoliticaDatos: { type: string, maxLength: 32 }
+
+security:
+  - bearerAuth: []
