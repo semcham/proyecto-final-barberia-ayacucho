@@ -49,7 +49,8 @@ Complexity Tracking and record an ADR):
   infrastructure per submodule; domain imports no framework/DB/Redis/provider SDK
 - [ ] **III. Tenant isolation**: `tenant_id` from the signed token only (never from client
   input); RLS on every business table; repositories filter by tenant; cache keys/events include
-  tenant
+  tenant. Only exception: public read-only lookups by barbershop slug (catalog, free slots),
+  public columns only, no writes, no RLS bypass for the app role (ADR-021)
 - [ ] **IV. No duplicate appointments**: PostgreSQL exclusion constraint + transaction;
   conflict mapped to "horario no disponible"
 - [ ] **V. Payments**: subscriptions only; `PaymentGateway` port; no card data stored;
@@ -58,8 +59,9 @@ Complexity Tracking and record an ADR):
   no direct DB/repository access
 - [ ] **VII. Notifications**: `NotificationChannel` port driven by events; WhatsApp consent
   recorded; async; failure never blocks the operation; email fallback
-- [ ] **VIII. Redis**: cache only (TTL + invalidation); never source of truth; system works
-  if Redis is down
+- [ ] **VIII. Redis**: cache (TTL + invalidation) and non-critical counters only (general
+  rate limit, loss-tolerant); security or cost counters (login attempts, AI quota) and security
+  state stay in PostgreSQL; never source of truth; system works if Redis is down
 - [ ] **IX. Web only**: responsive web UI over REST/HTTPS; no native mobile app
 - [ ] **X. Mandatory tests**: tests planned for every story, including tenant-isolation
   (PR09), booking concurrency (PR16) and architecture (PR14) where touched

@@ -6,6 +6,8 @@ Decisión: [ADR-005](../01-analisis-de-sistema/07-decisiones-arquitectonicas.md#
 
 Redis es una **caché selectiva**. **Nunca** es la fuente de verdad de reservas, pagos ni suscripciones. PostgreSQL decide la disponibilidad definitiva en el momento de reservar.
 
+Desde la constitución 1.1.0 (principio VIII), Redis también puede guardar **contadores no críticos**: los del límite general de solicitudes, tolerantes a pérdida. Los contadores de seguridad o de costo (intentos de inicio de sesión, cuota de IA) y todo estado de seguridad (sesiones, revocación) se quedan en PostgreSQL. Sin Redis, el límite general se aplica por instancia. Decisión detallada: ADR-029 (por escribir con la funcionalidad 006).
+
 ## 2. Qué se cachea y qué no
 
 | Dato                                                   | ¿Se cachea?                          | Clave (con tenant)                      | TTL propuesto       | Invalidación                           |
@@ -17,8 +19,9 @@ Redis es una **caché selectiva**. **Nunca** es la fuente de verdad de reservas,
 | Rango de horarios libres calculado (solo para mostrar) | Opcional                             | `t:{tenantId}:slots:{barberId}:{fecha}` | ≤ 30 s              | Al crear/cancelar/reprogramar cita     |
 | **Disponibilidad definitiva**                          | **No**                               | —                                       | —                   | Se verifica en PostgreSQL              |
 | Citas, pagos, suscripciones (estado)                   | **No**                               | —                                       | —                   | PostgreSQL es la fuente                |
-| Tokens revocados (lista de bloqueo)                    | Sí (con respaldo en BD si se decide) | `revoked:{jti}`                         | Hasta su expiración | Al cerrar sesión                       |
-| Contadores de límite de solicitudes                    | Sí                                   | `rl:{ip}:{ruta}`                        | 1 min               | Expiración                             |
+| Tokens revocados / sesiones cerradas                   | **No**                               | —                                       | —                   | Estado de seguridad: se verifica en PostgreSQL en cada solicitud (funcionalidad 001, R09) |
+| Contadores del límite general de solicitudes (no críticos) | Sí                               | `rl:{ip}:{ruta}`; `rl:t:{tenantId}:u:{userId}:{ruta}` si es por usuario | 1 min | Expiración |
+| Intentos de inicio de sesión y cuota de IA             | **No**                               | —                                       | —                   | Contadores de seguridad y de costo: en PostgreSQL |
 
 Todas las claves de datos de negocio **incluyen el tenant** para evitar mezclas.
 

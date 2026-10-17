@@ -218,7 +218,7 @@ Si el sistema crece, un submódulo puede promoverse a módulo (o extraerse como 
 | Capas                       | Presentación, aplicación, dominio e infraestructura                                  |
 | Aislamiento entre barberías | `tenant_id` firmado en el token + Row-Level Security                                 |
 | Reservas sin duplicados     | Restricción de exclusión en PostgreSQL (`EXCLUDE USING gist`)                        |
-| Caché                       | Redis solo como caché selectiva, nunca como fuente de verdad                         |
+| Caché                       | Redis como caché selectiva y para contadores no críticos (límite general de solicitudes); nunca fuente de verdad. Contadores de seguridad y de costo en PostgreSQL |
 | Pagos                       | Puerto `PaymentGateway`, webhook firmado e idempotente, conciliación                 |
 | IA                          | Puerto `AIProvider`, herramientas cerradas por rol, sin SQL libre                    |
 | Notificaciones              | Puerto `NotificationChannel` (correo y WhatsApp), asíncrono, con respaldo por correo |

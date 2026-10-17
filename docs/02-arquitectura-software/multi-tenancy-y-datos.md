@@ -23,7 +23,7 @@ Decisiones: [ADR-003](../01-analisis-de-sistema/07-decisiones-arquitectonicas.md
 
 | #   | Control                                  | Descripción                                                                            |
 | --- | ---------------------------------------- | -------------------------------------------------------------------------------------- |
-| 1   | `tenant_id` del **token firmado**        | Nunca se acepta de la URL, del cuerpo ni de cabeceras del cliente                      |
+| 1   | `tenant_id` del **token firmado**        | Nunca se acepta de la URL, del cuerpo ni de cabeceras del cliente. Única excepción (constitución 1.1.0, principio III): lecturas públicas sin sesión del catálogo y los horarios libres por el enlace (`slug`) de la barbería, de solo lectura y solo con columnas públicas (ADR-021, por escribir con la funcionalidad 002) |
 | 2   | Contexto de tenant por solicitud         | Middleware construye `TenantContext`; los casos de uso lo reciben                      |
 | 3   | Filtro en repositorios                   | Toda consulta lleva `tenant_id`; no hay repositorio sin contexto                       |
 | 4   | **Row-Level Security** en PostgreSQL     | La base rechaza filas de otro tenant aunque el código falle                            |

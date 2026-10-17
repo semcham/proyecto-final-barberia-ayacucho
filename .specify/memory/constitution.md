@@ -1,31 +1,44 @@
 <!--
 Sync Impact Report
 ==================
-Version change: 1.0.0 → 1.0.1
-Bump rationale: PATCH. Aclaración acotada del principio XII: los flujos de CI pueden vivir en
-.github/workflows/ porque GitHub Actions solo los lee desde esa ruta. No cambia el sentido del
-principio (el código de la aplicación sigue en tecnologia/plataforma-barberias/) ni afecta la
-arquitectura, por lo que no requiere ADR.
+Version change: 1.0.1 → 1.1.0
+Bump rationale: MINOR. Se amplía materialmente la guía de dos principios con excepciones acotadas,
+sin eliminar ni redefinir de forma incompatible ninguno: todo lo que cumplía la versión 1.0.1
+(incluida la funcionalidad 001) sigue cumpliendo. Enmienda aprobada por el responsable el
+2026-10-17, junto con la hoja de ruta de las funcionalidades 002 a 006.
 
 Modified principles:
-  - XII. Ubicación del código — se añade la excepción de .github/workflows/ (solo definiciones de
-    CI; ejecutan comandos dentro de tecnologia/plataforma-barberias/ y no contienen lógica de la
-    aplicación)
+  - III. Aislamiento por barbería (NO NEGOCIABLE) — se añade la excepción acotada de lecturas
+    públicas por enlace (slug) para el catálogo y los horarios libres (RF10, RF11): solo lectura,
+    solo columnas públicas, sin datos personales de clientes ni de contacto o cuenta del personal,
+    sin escrituras y sin dar al rol de la aplicación la capacidad de omitir RLS. Las operaciones
+    autenticadas siguen tomando el tenant solo del token.
+  - VIII. Redis solo como caché — Redis puede guardar contadores no críticos (límite general de
+    solicitudes, tolerantes a pérdida, con tenant en la clave cuando corresponde). Los contadores de
+    seguridad o costo (intentos de inicio de sesión, cuota de IA) y todo estado de seguridad quedan
+    en PostgreSQL. Sin Redis, el límite general se aplica por instancia.
 Added principles: ninguno
 Added sections: ninguna
 Removed sections: ninguna
 
 Templates requiring updates:
-  ✅ .specify/templates/plan-template.md — puerta XII y comentario de estructura con la excepción
-  ✅ .specify/templates/tasks-template.md — convención de rutas con la excepción
+  ✅ .specify/templates/plan-template.md — puertas III y VIII de la Constitution Check
   ✅ .specify/templates/spec-template.md — revisado; sin cambios necesarios
-  ✅ .claude/skills/speckit-*/SKILL.md — revisados; sin referencias al principio XII
-  ✅ specs/001-registro-acceso-barberia/plan.md y tasks.md — puerta XII y tarea T009 alineadas
-  ✅ README.md y docs/02-arquitectura-software/estilo-arquitectonico.md — los avisos de la
-     versión 1.0.0 ya estaban resueltos (usan tecnologia/plataforma-barberias/ y docs/05-gestion/
-     existe); sin contradicción con la excepción
+  ✅ .specify/templates/tasks-template.md — revisado; sin cambios necesarios
+  ✅ .claude/skills/speckit-*/SKILL.md — revisados; sin referencias a los principios III ni VIII
+  ✅ README.md — fila "Caché" de la vista rápida
+  ✅ docs/02-arquitectura-software/estrategia-de-cache.md — principio, contadores no críticos y
+     lista de revocación (que pasa a PostgreSQL, como ya hace la funcionalidad 001)
+  ✅ docs/02-arquitectura-software/multi-tenancy-y-datos.md — control 1 con la excepción
+  ✅ specs/001-registro-acceso-barberia/plan.md — sin cambios: su Constitution Check sigue
+     cumpliendo (001 no usa lecturas públicas por enlace ni Redis)
 
-Follow-up TODOs: ninguno.
+Follow-up TODOs:
+  - ADR-021 (lecturas públicas por enlace) se escribirá al especificar la funcionalidad 002, y
+    ADR-029 (Redis para límites compartidos), al especificar la 006. La gobernanza pide registrar
+    el ADR con la enmienda si afecta la arquitectura; el responsable decidió diferirlos a esas
+    especificaciones, y ninguna de las dos excepciones puede usarse antes de que exista su ADR.
+  - ADR-005 (Redis como caché selectiva) se actualizará con ADR-029.
 -->
 
 # Constitución de la Plataforma SaaS de Barberías de Ayacucho
@@ -75,9 +88,19 @@ intercambiables.
 - Los repositorios MUST filtrar además por tenant (defensa en profundidad).
 - Toda clave de caché, evento, registro de auditoría y trabajo en segundo plano MUST incluir el
   tenant.
+- **Excepción acotada: lecturas públicas por enlace.** Las consultas sin sesión del catálogo
+  público y de los horarios libres de una barbería (RF10, RF11) MAY identificar la barbería por
+  su enlace público (`slug`) en la ruta. Esa vía MUST ser de solo lectura y MUST exponer solo
+  columnas públicas: MUST NOT devolver datos personales de clientes ni datos de contacto o de
+  cuenta del personal (el nombre visible con el que la barbería presenta a cada barbero se
+  considera dato público de la barbería). MUST NOT escribir, MUST NOT usarse en operaciones
+  autenticadas y MUST resolverse con un mecanismo acotado y probado que no otorgue al rol de la
+  aplicación la capacidad de omitir RLS. Toda operación autenticada MUST seguir tomando el tenant
+  solo del token. La decisión se registra en ADR-021.
 
 **Razón:** ADR-003 y ADR-010; `tenant_id` por sí solo no basta. Una fuga entre barberías (R01)
-es el riesgo más grave del sistema.
+es el riesgo más grave del sistema. La excepción existe porque RF10 exige mostrar el catálogo sin
+iniciar sesión; se limita a lo que la barbería publica y no puede escribir.
 
 ### IV. Citas sin duplicados garantizadas por la base de datos
 
@@ -136,12 +159,20 @@ uso autorizados.
 ### VIII. Redis solo como caché
 
 - Redis MUST usarse únicamente como caché selectiva de datos de lectura frecuente y tolerantes
-  a retraso, con TTL e invalidación tras confirmar la escritura.
+  a retraso, con TTL e invalidación tras confirmar la escritura, y para **contadores no
+  críticos**: los del límite general de solicitudes, tolerantes a pérdida (si se pierden, el
+  límite se reinicia sin afectar la seguridad ni los costos). Sus claves MUST incluir el tenant
+  cuando el límite sea por barbería o por usuario.
+- Los contadores de seguridad o de costo (intentos de inicio de sesión, cuota de IA) MUST
+  guardarse en PostgreSQL, igual que todo estado de seguridad (sesiones y revocación).
 - Redis MUST NOT ser fuente de verdad de reservas, pagos, suscripciones ni usuarios, y MUST NOT
   decidir disponibilidad.
-- Si Redis no está disponible, el sistema MUST seguir funcionando leyendo de PostgreSQL.
+- Si Redis no está disponible, el sistema MUST seguir funcionando: lee de PostgreSQL y aplica el
+  límite general de solicitudes por instancia.
 
-**Razón:** ADR-005; PostgreSQL es la fuente de verdad (ADR-004).
+**Razón:** ADR-005; PostgreSQL es la fuente de verdad (ADR-004). Con varias instancias, el límite
+general de solicitudes necesita un contador compartido; perderlo no compromete nada crítico. La
+decisión se registra en ADR-029.
 
 ### IX. Solo web responsive
 
@@ -244,4 +275,4 @@ implementación. La excepción existe solo porque la plataforma de CI impone la 
   alternativa más simple descartada, y registrarse como ADR.
 - La guía de ejecución del proyecto está en `README.md` y en `docs/`.
 
-**Version**: 1.0.1 | **Ratified**: 2026-10-15 | **Last Amended**: 2026-10-15
+**Version**: 1.1.0 | **Ratified**: 2026-10-15 | **Last Amended**: 2026-10-17
