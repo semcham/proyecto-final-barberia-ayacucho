@@ -1,30 +1,29 @@
-# Product Backlog y plan de seis sprints
+# Product Backlog y plan de entrega
 
 > **Alcance del curso.** Las guías indican que el primer sprint del proyecto final es la **documentación completa** (análisis, arquitectura y diseño) y que no se exige desarrollar funcionalidades nuevas. Por eso el plan distingue:
 >
 > - **Entregable de documentación del curso:** Sprints 1 y 2.
-> - **Implementación por funcionalidades (SDD con Spec Kit):** la funcionalidad 001 está implementada; los antiguos Sprints 3 a 6 pasan a ser las funcionalidades **002 a 006** (hoja de ruta aprobada el 2026-10-17, sección 3).
+> - **Implementación por funcionalidades (SDD con Spec Kit):** la funcionalidad 001 está implementada. El **alcance de la entrega es completo: los 34 requisitos (RF01–RF34)**, repartidos en las funcionalidades 002 a 007 según el plan de la sección 3 (31 días a partir del lunes 19 de octubre de 2026). Los antiguos Sprints 3 a 6 quedan reemplazados por ese plan.
 >
-> Fechas reales y responsables: **pendientes de asignación**.
+> Responsable: _por asignar_. Entrega: mediados de noviembre (el día 31 del plan es el miércoles 18 de noviembre; fecha exacta **por confirmar**).
 
 ## 1. Product Backlog
 
-Prioridades actualizadas el 2026-10-17: RF27 y RF28 pasan de _Could_ a _Must_; RF26 pasa de _Could_ a _Should_; RF02 se implementa en la funcionalidad 003 (versión mínima). Ver [requisitos funcionales](../01-analisis-de-sistema/03-requisitos-funcionales.md#resumen-por-prioridad).
+**Todos los RF01–RF34 están en el alcance obligatorio de la entrega.** La prioridad MoSCoW solo ordena el trabajo y define qué se recorta primero dentro de cada funcionalidad (líneas de corte, sección 3.2); **nunca saca un RF de la entrega**. Prioridades vigentes desde el 2026-10-17: ver [requisitos funcionales](../01-analisis-de-sistema/03-requisitos-funcionales.md#resumen-por-prioridad).
 
-| Prioridad  | HU                           | RF                     | Módulo                  | Funcionalidad |
-| ---------- | ---------------------------- | ---------------------- | ----------------------- | ------------- |
-| 1 (Must)   | HU02, HU05                   | RF01, RF04, RF18       | M01, M03                | **001** (implementada) |
-| 2 (Must)   | HU03, HU04, HU06             | RF03, RF05, RF06       | M01                     | RF06: **001** (implementada); RF03 y RF05 (cuenta de cliente): 002 |
-| 3 (Must)   | HU07, HU08, HU09, HU10       | RF07–RF10              | M02                     | 002 |
-| 4 (Must)   | HU11, HU13, HU14, HU15       | RF11, RF12, RF14–RF16  | M02                     | 002 |
-| 5 (Must)   | HU01, HU17, HU19             | RF02, RF19, RF21, RF22 | M01, M03                | 003 (RF02 en versión mínima: aprobar transferencias) |
-| 6 (Must)   | HU22, HU23                   | RF27, RF28             | M04                     | 005 |
-| 7 (Should) | HU12, HU16                   | RF13, RF17             | M02                     | 002 |
-| 8 (Should) | HU18, HU20, HU21             | RF20, RF23–RF26        | M03                     | 003 |
-| 9 (Should) | HU25, HU28                   | RF30, RF33, RF34       | M05, M02                | 004 (solo correo; WhatsApp futuro) |
-| 10 (Should) | HU24                        | RF29                   | M04                     | 005 |
-| 11 (Should) | HU26                        | RF31                   | M06                     | Parcial: la auditoría ya existe (001); los indicadores de la plataforma, **sin funcionalidad asignada** |
-| 12 (Should) | HU27                        | RF32                   | M01                     | **Sin funcionalidad asignada** (derechos sobre datos personales): pendiente de planificar |
+| Prioridad   | HU                     | RF                     | Módulo        | Funcionalidad |
+| ----------- | ---------------------- | ---------------------- | ------------- | ------------- |
+| 1 (Must)    | HU02, HU05             | RF01, RF04, RF18       | M01, M03      | **001** (implementada) |
+| 2 (Must)    | HU03, HU04, HU06       | RF03, RF05, RF06       | M01           | RF06: **001** (implementada); RF03 y RF05 (cuenta de cliente): **002** |
+| 3 (Must)    | HU07, HU08, HU09, HU10 | RF07–RF10              | M02           | **002** |
+| 4 (Must)    | HU11, HU13, HU14, HU15 | RF11, RF12, RF14–RF16  | M02           | **002** |
+| 5 (Must)    | HU01, HU17, HU19       | RF02, RF19–RF22        | M01, M03      | **003** (RF02: administrador de la plataforma en versión mínima; RF22: vencimiento automático de la prueba) |
+| 6 (Must)    | HU22                   | RF27                   | M04           | **005** |
+| 7 (Should)  | HU16                   | RF17                   | M02           | **002** |
+| 8 (Should)  | HU18, HU20, HU21       | RF23–RF26              | M03           | **003** (pasarela en sandbox o simulada tras `PaymentGateway`) |
+| 9 (Should)  | HU12, HU25, HU28       | RF13, RF30, RF33, RF34 | M02, M05      | **004** (correo real; WhatsApp tras `NotificationChannel`) |
+| 10 (Should) | HU23, HU24             | RF28, RF29             | M04           | **005** |
+| 11 (Should) | HU26, HU27             | RF31, RF32             | M06, M01      | **007** |
 
 La funcionalidad **006** no agrega RF: demuestra atributos de calidad (EQ-01 a EQ-05: rendimiento, escalado y resiliencia).
 
@@ -56,81 +55,72 @@ La funcionalidad **006** no agrega RF: demuestra atributos de calidad (EQ-01 a E
 | Riesgos                  | Sobreingeniería (R13); inconsistencias entre diagramas                                                                                                                                                                                                                                            |
 | Evidencias de validación | Revisión cruzada; checklist de coherencia; revisión de la entrega                                                                                                                                                                                                                                 |
 
-## 3. Funcionalidades 002 a 006 (antes Sprints 3 a 6)
+## 3. Plan de entrega (31 días, alcance completo)
 
-Hoja de ruta aprobada el 2026-10-17. Cada funcionalidad sigue el flujo de Spec Kit (especificación → plan → tareas → implementación → `/speckit-analyze`) y registra sus ADR **antes de implementar** (constitución, principio XI). La identidad, el registro de barberías y el aislamiento del antiguo Sprint 3 ya los entregó la funcionalidad [001](../../specs/001-registro-acceso-barberia/spec.md). Las estimaciones son de una persona y están **por validar**, tomando 001 como referencia.
+Plan aprobado el 2026-10-17. Cubre los **34 RF** con las funcionalidades 002 a 007 (001 ya está implementada). Los días son **naturales** (incluyen fines de semana) y se cuentan desde el lunes 19 de octubre de 2026 (día 1). Cada funcionalidad sigue el flujo de Spec Kit (especificación → plan → tareas → implementación → `/speckit-analyze`) y escribe sus ADR **antes de implementar** (constitución, principio XI). Reemplaza las estimaciones anteriores.
 
-| Funcionalidad | Depende de | ADR por escribir | Constitución | Esfuerzo |
-| --- | --- | --- | --- | --- |
-| 002 Catálogo, citas y cuenta de cliente | 001 | ADR-020, ADR-021 | Usa la excepción del principio III (versión 1.1.0) | XL · 3–4 semanas |
-| 003 Suscripciones y pagos | 001, 002 | ADR-022, ADR-023, ADR-024 (al empezar) | — | L · 2–3 semanas |
-| 004 Notificaciones por correo | 002, ADR-024 | ADR-025, ADR-026 | — | M · 1–2 semanas |
-| 005 Asistente de IA y reportes | 002, 003 | ADR-027, ADR-028 | — | L · 2–3 semanas |
-| 006 Escalado demostrable en Docker Compose | 002, 003, 004 | ADR-029, ADR-030 | Usa la ampliación del principio VIII (versión 1.1.0) | M · 1–2 semanas |
+| Días | Fechas | Funcionalidad | RF | Alcance demostrable | ADR (se escriben al empezar) |
+| --- | --- | --- | --- | --- | --- |
+| 1–6 | lun 19 – sáb 24 oct | **002** Catálogo, citas y cuenta de cliente (M02, M01) | RF03, RF05, RF07–RF12, RF14–RF17 | Servicios, barberos y disponibilidad con bloqueos; datos y horarios de la barbería; catálogo y horarios libres públicos por enlace; cuenta de cliente con consentimiento (una membresía `CLIENTE` por barbería y un token por barbería); reservar sin duplicados, cancelar, estados de la cita, agenda e historial | ADR-020, ADR-021 |
+| 7–9 | dom 25 – mar 27 oct | **006** Escalado demostrable en Docker Compose | — (EQ-01 a EQ-05) | Nginx con 2 réplicas del backend; Redis para la caché del catálogo y para el límite general de solicitudes, con claves por tenant; demo de caída de una réplica y de Redis; prueba de carga básica | ADR-029, ADR-030 |
+| 10–15 | mié 28 oct – lun 2 nov | **003** Suscripciones y pagos (M03, M01) | RF02 (mínimo), RF19–RF26 | Estado y plan; contratar o cambiar de plan; restricciones por plan; **vencimiento automático de la prueba** (tarea programada sin duplicados entre réplicas); Yape con pasarela en sandbox o simulada tras `PaymentGateway`; webhook firmado e idempotente; historial y conciliación; transferencia con comprobante aprobada por el administrador de la plataforma | ADR-022, ADR-023, ADR-024 |
+| 16–19 | mar 3 – vie 6 nov | **004** Notificaciones y reprogramación (M05, M02) | RF13, RF30, RF33, RF34 | Reprogramar con las reglas de una reserva nueva; correo de confirmación, cancelación y reprogramación; recordatorio del día con enlaces de un solo uso para confirmar, reprogramar o cancelar; canal elegido por el cliente: **correo como canal real** y **WhatsApp detrás de `NotificationChannel`**, con consentimiento y respaldo por correo | ADR-025, ADR-026 |
+| 20–25 | sáb 7 – jue 12 nov | **005** Asistente de IA y reportes (M04) | RF27, RF28, RF29 | Asistente del cliente (servicios y horarios) y del propietario (resúmenes y consultas autorizadas); reportes por período; cuotas por usuario y por barbería; proveedor simulado en CI; OpenRouter solo en desarrollo | ADR-027, ADR-028 |
+| 26–28 | vie 13 – dom 15 nov | **007** Indicadores y datos personales (M06, M01) | RF31, RF32 | Indicadores agregados de uso para el administrador de la plataforma (sin datos personales de clientes); solicitudes de acceso, rectificación y eliminación con estado y seguimiento | — (usa el diseño de retención y anonimización de [multi-tenancy y datos](../02-arquitectura-software/multi-tenancy-y-datos.md)) |
+| 29–31 | lun 16 – mié 18 nov | **Colchón** | — | Pruebas de regresión, documentación final (trazabilidad con resultados medidos) y ensayo de la exposición | — |
 
-Total estimado: entre 9 y 14 semanas.
+### 3.1 Acuerdos de alcance
 
-### Funcionalidad 002: Catálogo, citas y cuenta de cliente (M02, M01)
+- **Pagos (RF23–RF26):** Yape con una pasarela peruana en **sandbox, o simulada**, detrás de `PaymentGateway`. Pasar a credenciales reales debe requerir **solo configuración** (variables de entorno y selección del adaptador), sin cambiar código. La compatibilidad real con Yape sigue **por verificar** con el proveedor (R15).
+- **Notificaciones (RF30, RF33, RF34):** el **correo** es el canal real (Mailpit en desarrollo). **WhatsApp** existe como canal detrás de `NotificationChannel` (adaptador simulado), con consentimiento registrado y respaldo por correo; su conexión a un proveedor real queda para cuando se contrate (ADR-013).
+- **Despliegue en AWS:** **documentado, no ejecutado** ([despliegue y escalabilidad](../02-arquitectura-software/despliegue-y-escalabilidad.md)). La escalabilidad se demuestra en Docker Compose (006).
+- **Asistente de IA:** OpenRouter solo en desarrollo, con la clave únicamente en el backend y sin datos personales reales; en CI, proveedor simulado (ADR-027).
 
-| Campo                    | Contenido |
-| ------------------------ | --------- |
-| Objetivo                 | Que el cliente encuentre la barbería, vea servicios y horarios libres y reserve sin duplicados |
-| Historias                | HU03, HU06–HU16 |
-| Alcance mínimo           | Servicios, barberos y disponibilidad semanal con bloqueos (RF07–RF09); datos y horarios de la barbería (RF03); catálogo y horarios libres públicos por enlace (RF10, RF11); cuenta de cliente con consentimiento (RF05); reservar, cancelar, historial (RF12, RF14, RF17); estados de la cita (RF15); agenda (RF16); reprogramar (RF13) si cabe |
-| Cuenta de cliente        | **Decidida:** una cuenta por correo, con una membresía `CLIENTE` por cada barbería en la que reserva y un token por barbería (`tid`); cambiar de barbería emite otro token tras comprobar la membresía. El tenant siempre sale del token |
-| Criterios de aceptación  | 200 solicitudes simultáneas → 1 cita (EQ-16); 0 fugas entre barberías, incluidas las lecturas públicas por enlace (EQ-09); el catálogo público no devuelve datos personales |
-| Riesgos                  | Reservas duplicadas (R02); que la lectura pública abra datos privados; zonas horarias; datos personales del cliente |
-| ADR por escribir         | ADR-020 Cuenta de cliente con membresía por barbería y token por barbería; ADR-021 Lecturas públicas por enlace (excepción del principio III) |
-| Evidencias de validación | PR16 (obligatoria), PR09 ampliada, PR08, PR15 |
+### 3.2 Líneas de corte
 
-### Funcionalidad 003: Suscripciones y pagos (M03, M01)
+Si hay atraso, se recorta **profundidad o acabado** dentro de cada funcionalidad, en este orden, **sin sacar nunca un RF de la entrega**. Nunca se recortan las pruebas obligatorias de la constitución (PR09 aislamiento, PR14 arquitectura, PR16 concurrencia de reservas, idempotencia del webhook y fallos de proveedor con simuladores) ni los ADR previos a implementar.
 
-| Campo                    | Contenido |
-| ------------------------ | --------- |
-| Objetivo                 | Cerrar el modelo comercial: planes, restricciones por plan y cobro de la suscripción |
-| Historias                | HU01, HU17–HU21 |
-| Alcance mínimo           | Estado y plan (RF19); contratar o cambiar de plan (RF20); restricciones por plan y estado (RF21); vencimiento automático de la prueba (RF22); **Yape mediante una pasarela peruana en sandbox** (RF23–RF25, proveedor **por verificar**); conciliación mínima (RF26); **transferencia con comprobante** aprobada por el **administrador de la plataforma** en versión mínima (RF02) |
-| Criterios de aceptación  | Webhook repetido → 1 efecto (EQ-17); firma inválida rechazada; ningún dato de tarjeta (principio V); el vencimiento de la prueba no se ejecuta dos veces |
-| Riesgos                  | La pasarela no confirma Yape o no da sandbox (R15); pagos duplicados (R07); comprobantes con datos personales y bancarios; URL pública para el webhook en desarrollo |
-| ADR por escribir         | **ADR-024 Tareas programadas sin duplicados entre instancias, al empezar la funcionalidad** (lo usan 003, 004 y 006); ADR-022 Pasarela de pagos y transferencia con comprobante; ADR-023 Almacenamiento de archivos (comprobantes) |
-| Evidencias de validación | PR06, PR17, PR20, PR25 |
+| Funcionalidad | Qué se recorta primero (en orden) | Lo que no se recorta |
+| --- | --- | --- |
+| 002 | 1) Agenda como lista por fecha, sin vista de calendario. 2) Bloqueos solo por fecha y hora, sin bloqueos recurrentes. 3) Historial sin filtros ni paginación avanzada. 4) Acabado visual de las pantallas nuevas | Restricción de exclusión y PR16; lecturas públicas solo con columnas públicas; token por barbería |
+| 006 | 1) Prueba de carga reducida a un escenario corto, con resultados en tabla. 2) Demos de caída guiadas por comandos documentados, sin automatizar | Claves de Redis con tenant; funcionamiento sin Redis; límite general compartido entre réplicas |
+| 003 | 1) Pasarela simulada en lugar de sandbox, si el sandbox no está disponible al día 11. 2) Pantalla del administrador reducida a lista con aprobar o rechazar. 3) Conciliación como tarea sin pantalla. 4) Cambio de plan sin prorrateo | Webhook firmado e idempotente; tarea de vencimiento sin duplicados; ningún dato de tarjeta |
+| 004 | 1) Plantillas de correo en texto simple. 2) Reprogramar desde el enlace reutiliza la pantalla de disponibilidad de 002. 3) Sin panel de envíos | Salida transaccional (sin eventos perdidos); recordatorios sin duplicados; WhatsApp solo con consentimiento |
+| 005 | 1) Reportes en tablas, sin gráficos. 2) Asistente del propietario con pocas herramientas (resumen de citas, servicios más pedidos). 3) PR19 con un conjunto adversarial mínimo | Respuestas solo con datos de las herramientas; cuotas en PostgreSQL; tenant desde el token; proveedor simulado en CI |
+| 007 | 1) Pocos indicadores (barberías activas, citas por mes, usuarios). 2) Solicitudes de datos atendidas a mano por el administrador, con estado y registro, sin exportación automática | Indicadores sin datos personales de clientes; seguimiento con estado de cada solicitud |
+| Colchón | Si se consume, se prioriza: 1) pruebas en verde, 2) trazabilidad y documentación, 3) ensayo | — |
 
-### Funcionalidad 004: Notificaciones por correo (M05)
+### 3.3 ADR por escribir
 
-| Campo                    | Contenido |
-| ------------------------ | --------- |
-| Objetivo                 | Que el cliente sepa la fecha y hora de su cita y pueda confirmarla o cancelarla |
-| Historias                | HU25, HU28 |
-| Alcance mínimo           | Correo al reservar, cancelar y reprogramar, y recordatorio del día con enlaces de un solo uso para confirmar o cancelar (RF30, RF34 parcial); canal elegido, por ahora solo correo (RF33 parcial); envío por correo del enlace de activación del barbero; buzón de prueba (Mailpit) en Docker Compose |
-| Criterios de aceptación  | 100 % de citas con aviso; 0 recordatorios duplicados; los mensajes llevan solo los datos mínimos (principio VII) |
-| Riesgos                  | Eventos perdidos (se resuelve con salida transaccional); correos duplicados; correo marcado como spam en producción |
-| ADR por escribir         | ADR-025 Bus de eventos con salida transaccional (*outbox*); ADR-026 Proveedor de correo (Mailpit en desarrollo; producción por verificar) |
-| Evidencias de validación | PR27, PR28 |
+| ADR | Tema | Funcionalidad |
+| --- | --- | --- |
+| ADR-020 | Cuenta de cliente con membresía por barbería y token por barbería | 002 |
+| ADR-021 | Lecturas públicas por enlace (excepción del principio III, constitución 1.1.0) | 002 |
+| ADR-029 | Redis para la caché del catálogo y el límite general de solicitudes, con claves por tenant (ampliación del principio VIII, constitución 1.1.0) | 006 |
+| ADR-030 | Balanceo local con Nginx como representación de ADR-006 | 006 |
+| ADR-022 | Pagos: pasarela en sandbox o simulada tras `PaymentGateway`, cambiable por configuración, y transferencia con comprobante | 003 |
+| ADR-023 | Almacenamiento de archivos (comprobantes) | 003 |
+| ADR-024 | Tareas programadas sin duplicados entre instancias (vencimiento de la prueba; también recordatorios de 004) | 003 |
+| ADR-025 | Bus de eventos con salida transaccional (*outbox*) | 004 |
+| ADR-026 | Proveedor de correo (Mailpit en desarrollo; producción por verificar) y WhatsApp tras `NotificationChannel` | 004 |
+| ADR-027 | Proveedor de IA (OpenRouter solo en desarrollo; producción por decidir; política de datos) | 005 |
+| ADR-028 | Contrato del asistente: respuestas con datos de las herramientas, cuotas por usuario y por barbería, defensa ante inyección | 005 |
 
-### Funcionalidad 005: Asistente de IA y reportes (M04)
+### 3.4 Riesgos del plan
 
-| Campo                    | Contenido |
-| ------------------------ | --------- |
-| Objetivo                 | Asistente útil y seguro para el cliente y el propietario, y reportes por período |
-| Historias                | HU22, HU23 (Must), HU24 |
-| Alcance mínimo           | Cliente: servicios y horarios con datos de las herramientas y paso a la reserva confirmada (RF27); propietario: resúmenes de citas y servicios (RF28); reportes por período (RF29); degradación al flujo manual; proveedor simulado en CI |
-| Decisiones pendientes    | 1) Tenant del cliente desde su token por barbería (ADR-020). 2) Cuotas por usuario y por barbería, en PostgreSQL. 3) Respuestas solo con datos de las herramientas, y "no lo sé" si no hay dato. 4) Proveedor con la clave solo en el backend (OpenRouter en desarrollo) y sin datos personales reales en desarrollo. 5) Inyección de instrucciones directa e indirecta, límite de longitud y casos de PR19. Además: qué se guarda de cada conversación y por cuánto tiempo, y si el barbero tiene acceso |
-| Criterios de aceptación  | 0 fugas y 0 secretos en los prompts en las pruebas adversariales (EQ-19); la IA no inventa horarios; degradación ante fallo del proveedor (EQ-06) |
-| Riesgos                  | Inyección o respuestas incorrectas (R10); costo (R11); proveedor caído (R09); datos personales enviados a terceros fuera del país |
-| ADR por escribir         | ADR-027 Proveedor de IA (OpenRouter en desarrollo; producción por decidir; política de datos); ADR-028 Contrato del asistente: respuestas fundamentadas, cuotas y defensa ante inyección |
-| Evidencias de validación | PR06, PR19, PR20 |
+| Riesgo | Mitigación |
+| --- | --- |
+| **El calendario es muy ajustado**: la estimación anterior para 002–006 completas era de 9 a 14 semanas de una persona, y este plan cubre 002–007 en 31 días naturales, con fines de semana incluidos | Líneas de corte por funcionalidad (sección 3.2); colchón final de 3 días; revisar el avance al cerrar cada funcionalidad y aplicar los recortes a tiempo, sin esperar al colchón |
+| 002 en 6 días: es la funcionalidad más grande y la base de 004, 005 y 006 | Arrancar por la restricción de exclusión y PR16; aplicar sus recortes desde el día 5 si va atrasada |
+| La pasarela no confirma Yape o no entrega sandbox (R15) | Simulador tras `PaymentGateway`, cambiable a credenciales reales solo por configuración (ADR-022) |
+| Tareas programadas duplicadas con 2 réplicas (vencimiento de la prueba, recordatorios) | ADR-024 antes de 003; las tareas se prueban con las 2 réplicas de 006 |
+| Eventos perdidos entre la reserva y el aviso | Salida transaccional (ADR-025) |
+| Caché o límites de solicitudes mezclados entre barberías (R01) | Claves con tenant y prueba en PR09 |
+| Inyección de instrucciones o respuestas inventadas del asistente (R10) y costo de IA (R11) | Herramientas cerradas, respuestas con datos de las herramientas, cuotas en PostgreSQL, PR19 (ADR-028) |
+| Datos personales enviados a OpenRouter en desarrollo | Solo datos de prueba; clave solo en el backend (ADR-027) |
+| RF32 (datos personales) toca la Ley N.° 29733 | Seguimiento con estado y registro; la eliminación respeta las obligaciones de conservación; plazo interno por validar |
+| Espacio en disco de las imágenes de Docker (Nginx, Redis, k6, Mailpit) | Imágenes pequeñas; limpiar contenedores e imágenes al terminar las demos |
 
-### Funcionalidad 006: Escalado demostrable en Docker Compose (y cierre de calidad)
-
-| Campo                    | Contenido |
-| ------------------------ | --------- |
-| Objetivo                 | Demostrar que el monolito escala y tolera fallos, y cerrar la verificación de calidad |
-| Historias                | Transversal |
-| Alcance mínimo           | Dos réplicas del backend detrás de Nginx; Redis con claves por tenant para la caché del catálogo y la disponibilidad pública y para el límite general de solicitudes compartido; apagar una réplica (EQ-04) y apagar Redis (EQ-05) sin perder servicio; prueba de carga básica con k6 en contenedor (EQ-01 a EQ-03) |
-| Criterios de aceptación  | Las metas de EQ se miden y se informan (cumplidas o no); la documentación final coincide con lo construido |
-| Riesgos                  | Caché con datos de otra barbería por una clave mal armada (R01); datos viejos en caché; tareas programadas duplicadas entre réplicas; espacio en disco de las imágenes de Docker |
-| ADR por escribir         | ADR-029 Redis para caché por tenant y límites compartidos (ampliación del principio VIII); ADR-030 Balanceo local con Nginx como representación de ADR-006 |
-| Evidencias de validación | PR01–PR05; PR09 ampliada con las claves de caché; informe de pruebas y trazabilidad con resultados medidos |
 ## 4. Qué se informa y qué no
 
 Hasta ejecutar las pruebas, los umbrales de los escenarios son **metas propuestas**. Ningún documento debe presentar un resultado de prueba que no se haya medido.
