@@ -373,8 +373,10 @@ export async function sembrarCita(opciones: {
 /** Filas de una tabla con tenant_id, leídas sin RLS, para comparar antes y después de una operación. */
 export async function filasDe(tabla: string, tenantId: string): Promise<Record<string, unknown>[]> {
   if (!/^[a-z_]+$/.test(tabla)) throw new Error(`Nombre de tabla no válido: ${tabla}`);
-  const { rows } = await poolDe('seed').query(`SELECT * FROM ${tabla} WHERE tenant_id = $1 ORDER BY id`, [
-    tenantId,
-  ]);
+  // Orden por la fila completa: sirve también para tablas sin columna id (p. ej. barber_service).
+  const { rows } = await poolDe('seed').query(
+    `SELECT * FROM ${tabla} AS t WHERE tenant_id = $1 ORDER BY t::text`,
+    [tenantId],
+  );
   return rows;
 }

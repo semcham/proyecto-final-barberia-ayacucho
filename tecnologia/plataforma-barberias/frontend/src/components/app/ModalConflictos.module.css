@@ -1,0 +1,11 @@
+.citas {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-1);
+  margin-top: var(--espacio-3);
+  font-size: var(--texto-sm);
+}
+
+.cita::before {
+  content: '• ';
+}

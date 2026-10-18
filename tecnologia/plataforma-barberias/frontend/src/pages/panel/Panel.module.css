@@ -1,0 +1,122 @@
+/* Pantallas del panel para preparar la barbería (US1 de 002). Móvil primero: todo apilado; desde 64rem,
+   formulario y lista lado a lado. */
+
+.distribucion {
+  display: grid;
+  gap: var(--espacio-6);
+  align-items: start;
+}
+
+@media (min-width: 64rem) {
+  .distribucion {
+    grid-template-columns: minmax(0, 22rem) minmax(0, 1fr);
+  }
+}
+
+.formulario {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-4);
+}
+
+.fila {
+  display: grid;
+  gap: var(--espacio-4);
+}
+
+@media (min-width: 36rem) {
+  .fila {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--espacio-3);
+}
+
+.enlace {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--espacio-3);
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.enlace code {
+  padding: var(--espacio-1) var(--espacio-2);
+  border-radius: var(--radio-sm);
+  background: var(--color-superficie-hundida);
+}
+
+.aviso {
+  margin: 0;
+  color: var(--color-texto-suave);
+  font-size: var(--texto-sm);
+}
+
+.errores {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-2);
+}
+
+.lista {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.elemento {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--espacio-3);
+  padding: var(--espacio-3) var(--espacio-4);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio);
+  background: var(--color-superficie);
+}
+
+.elementoTextos {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-1);
+  min-width: 0;
+}
+
+.elementoNombre {
+  font-weight: 600;
+}
+
+.elementoDetalle {
+  color: var(--color-texto-suave);
+  font-size: var(--texto-sm);
+}
+
+.casillas {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-2);
+  margin: 0;
+  padding: 0;
+  border: none;
+  min-width: 0;
+}
+
+.casillas legend {
+  margin-bottom: var(--espacio-2);
+  font-weight: 500;
+}
+
+.secciones {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-6);
+}

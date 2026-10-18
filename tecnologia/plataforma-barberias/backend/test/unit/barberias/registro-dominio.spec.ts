@@ -1,4 +1,5 @@
 import { AceptacionTerminos } from '../../../src/modules/acceso-barberias/barberias/domain/aceptacion-terminos';
+import { EnlaceNoDisponible } from '../../../src/modules/acceso-barberias/barberias/domain/errores';
 import { NombreBarberia } from '../../../src/modules/acceso-barberias/barberias/domain/nombre-barberia';
 import { Slug } from '../../../src/modules/acceso-barberias/barberias/domain/slug';
 import { ValorInvalido } from '../../../src/modules/acceso-barberias/identidad/domain/errores';
@@ -56,6 +57,38 @@ describe('Slug', () => {
     expect(base.conSufijo('a1b2').valor).toBe('barberia-huamanga-a1b2');
     const largo = Slug.desdeNombre('x'.repeat(200));
     expect(largo.conSufijo('a1b2').valor.length).toBeLessThanOrEqual(140);
+  });
+
+  // T041 · Enlace elegido por el propietario (FR-003, research R15): reglas más estrictas que el generado.
+  describe('paraEdicion', () => {
+    it.each(['abc', 'barberia-huamanga', 'corte-2026', 'a'.repeat(60)])('acepta %j', (valor) => {
+      expect(Slug.paraEdicion(valor).valor).toBe(valor);
+    });
+
+    it.each([
+      ['ab', 'longitud'],
+      ['a'.repeat(61), 'longitud'],
+      ['Barberia', 'formato'],
+      ['-huamanga', 'formato'],
+      ['huamanga-', 'formato'],
+      ['huamanga--sur', 'formato'],
+      ['huamanga sur', 'formato'],
+      ['peluquería', 'formato'],
+    ])('rechaza %j (%s) con 400', (valor, problema) => {
+      expect(() => Slug.paraEdicion(valor)).toThrow(ValorInvalido);
+      try {
+        Slug.paraEdicion(valor);
+      } catch (error) {
+        expect((error as ValorInvalido).detalles).toEqual([{ campo: 'slug', problema }]);
+      }
+    });
+
+    it.each(['api', 'publico', 'admin', 'ingresar', 'registro', 'app'])(
+      'una palabra reservada (%j) da ENLACE_NO_DISPONIBLE',
+      (valor) => {
+        expect(() => Slug.paraEdicion(valor)).toThrow(EnlaceNoDisponible);
+      },
+    );
   });
 });
 

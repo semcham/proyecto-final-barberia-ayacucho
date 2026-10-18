@@ -5,6 +5,7 @@ import {
   fechaIsoDeBarberia,
   horaConEtiqueta,
   horaDeBarberia,
+  isoEnZona,
 } from '../src/hora-barberia';
 
 // T039 · Las horas se muestran en la zona de la barbería, nunca en la del dispositivo.
@@ -20,6 +21,11 @@ describe('hora de la barbería', () => {
     // 03:30 UTC del 21 son las 22:30 del martes 20 en Lima.
     expect(fechaDeBarberia('2026-10-21T03:30:00Z', 'America/Lima')).toMatch(/martes.*20.*octubre/i);
     expect(fechaIsoDeBarberia('2026-10-21T03:30:00Z', 'America/Lima')).toBe('2026-10-20');
+  });
+
+  it('convierte una fecha y hora de la barbería en un instante con su desplazamiento', () => {
+    expect(isoEnZona('2026-10-20', '10:00', 'America/Lima')).toBe('2026-10-20T10:00:00-05:00');
+    expect(isoEnZona('2026-07-01', '10:00', 'Europe/Madrid')).toBe('2026-07-01T10:00:00+02:00');
   });
 
   it('no depende de la zona del dispositivo: la misma hora con otra zona da otro resultado', () => {

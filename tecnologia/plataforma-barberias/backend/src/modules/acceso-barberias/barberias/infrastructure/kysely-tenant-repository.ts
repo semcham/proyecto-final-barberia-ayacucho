@@ -2,15 +2,70 @@ import { randomBytes } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import { KyselyUnitOfWork } from '../../../../shared';
 import type { ConfiguracionAgenda, DatosPublicosBarberia } from '../../api-publica';
-import { TenantRepository } from '../application/ports/tenant-repository';
+import {
+  type CambiosBarberia,
+  type ConfiguracionBarberia,
+  TenantRepository,
+} from '../application/ports/tenant-repository';
 import type { Barberia, EstadoBarberia } from '../domain/barberia';
+import { EnlaceNoDisponible } from '../domain/errores';
 
 const INTENTOS_DE_SLUG = 5;
+const VIOLACION_DE_UNICIDAD = '23505';
 
 @Injectable()
 export class KyselyTenantRepository extends TenantRepository {
   constructor(private readonly uow: KyselyUnitOfWork) {
     super();
+  }
+
+  async configuracion(id: string): Promise<ConfiguracionBarberia | null> {
+    const fila = await this.uow
+      .transaccionActual()
+      .selectFrom('tenant')
+      .select(['name', 'slug', 'address', 'phone', 'description', 'timezone', 'cancel_min_notice_minutes'])
+      .where('id', '=', id)
+      .executeTakeFirst();
+    return fila
+      ? {
+          nombre: fila.name,
+          slug: fila.slug,
+          direccion: fila.address,
+          telefono: fila.phone,
+          descripcion: fila.description,
+          zonaHoraria: fila.timezone,
+          antelacionCancelacionMinutos: fila.cancel_min_notice_minutes,
+        }
+      : null;
+  }
+
+  async actualizar(id: string, cambios: CambiosBarberia): Promise<void> {
+    const valores = {
+      ...(cambios.nombre !== undefined && { name: cambios.nombre }),
+      ...(cambios.slug !== undefined && { slug: cambios.slug }),
+      ...(cambios.direccion !== undefined && { address: cambios.direccion }),
+      ...(cambios.telefono !== undefined && { phone: cambios.telefono }),
+      ...(cambios.descripcion !== undefined && { description: cambios.descripcion }),
+      ...(cambios.antelacionCancelacionMinutos !== undefined && {
+        cancel_min_notice_minutes: cambios.antelacionCancelacionMinutos,
+      }),
+    };
+    if (Object.keys(valores).length === 0) return;
+    try {
+      // La política tenant_edicion ya impide tocar otra barbería; el filtro por id lo hace explícito.
+      const resultado = await this.uow
+        .transaccionActual()
+        .updateTable('tenant')
+        .set(valores)
+        .where('id', '=', id)
+        .executeTakeFirst();
+      if (Number(resultado.numUpdatedRows) !== 1) throw new Error('La barbería del contexto no existe');
+    } catch (error) {
+      const pg = error as { code?: string; constraint?: string };
+      if (pg.code === VIOLACION_DE_UNICIDAD && pg.constraint === 'tenant_slug_key')
+        throw new EnlaceNoDisponible();
+      throw error;
+    }
   }
 
   async insertar(barberia: Barberia): Promise<void> {

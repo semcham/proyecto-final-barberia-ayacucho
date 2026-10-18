@@ -10,3 +10,11 @@ export class BarberiaNoDisponible extends ErrorDeAplicacion {
     super('Esta barbería no está disponible.');
   }
 }
+
+/** El enlace elegido ya lo usa otra barbería o es una palabra reservada (R15 de 002). */
+export class EnlaceNoDisponible extends ErrorDeAplicacion {
+  readonly codigo = 'ENLACE_NO_DISPONIBLE';
+  constructor() {
+    super('Ese enlace no está disponible. Elige otro.');
+  }
+}

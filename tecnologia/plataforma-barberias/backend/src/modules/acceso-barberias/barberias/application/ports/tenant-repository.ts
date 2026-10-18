@@ -1,8 +1,28 @@
 import type { ConfiguracionAgenda, DatosPublicosBarberia } from '../../../api-publica';
 import type { Barberia, EstadoBarberia } from '../../domain/barberia';
 
+/** Configuración editable de la barbería (esquema BarberiaConfig del contrato de 002). */
+export interface ConfiguracionBarberia {
+  nombre: string;
+  slug: string;
+  direccion: string | null;
+  telefono: string | null;
+  descripcion: string | null;
+  zonaHoraria: string;
+  antelacionCancelacionMinutos: number;
+}
+
+export type CambiosBarberia = Partial<Omit<ConfiguracionBarberia, 'zonaHoraria'>>;
+
 /** Barberías (tabla global `tenant`). */
 export abstract class TenantRepository {
+  /** Configuración de una barbería, o null. */
+  abstract configuracion(id: string): Promise<ConfiguracionBarberia | null>;
+  /**
+   * Actualiza la barbería del contexto (política `tenant_edicion`: solo la del tenant de la transacción).
+   * Lanza `EnlaceNoDisponible` si el enlace ya lo usa otra barbería.
+   */
+  abstract actualizar(id: string, cambios: CambiosBarberia): Promise<void>;
   /**
    * Inserta la barbería. Si su slug ya está ocupado, prueba con sufijos aleatorios y actualiza la
    * barbería con el slug que quedó guardado.

@@ -8,4 +8,13 @@ export const clavesConsulta = {
    */
   horarios: (slug: string, servicioId?: string, fecha?: string, barberoId?: string) =>
     ['horarios', slug, ...[servicioId, fecha, barberoId].filter((parte) => parte !== undefined)] as const,
+  // Panel de la barbería (US1 de 002).
+  barberia: ['barberia'] as const,
+  horarioAtencion: ['barberia', 'horario'] as const,
+  servicios: ['servicios'] as const,
+  barberos: ['barberos'] as const,
+  disponibilidad: (barberoId: string) => ['disponibilidad', barberoId] as const,
+  bloqueos: (barberoId: string) => ['bloqueos', barberoId] as const,
+  /** Personal activo que se puede vincular a un barbero (bajo 'usuarios': se invalida con esa pantalla). */
+  personal: ['usuarios', 'personal'] as const,
 };

@@ -2,6 +2,43 @@ import { Module } from '@nestjs/common';
 import { AccesoBarberiasModule } from '../acceso-barberias';
 import { SuscripcionesPagosModule } from '../suscripciones-pagos';
 import { AutorizacionCatalogoCitas } from './catalogo/application/autorizacion';
+import {
+  ActualizarBarbero,
+  CrearBarbero,
+  ListarBarberos,
+  ReglasBarbero,
+} from './catalogo/application/barberos';
+import {
+  ContextoBloqueos,
+  CrearBloqueo,
+  EliminarBloqueo,
+  ListarBloqueos,
+} from './catalogo/application/bloqueos';
+import {
+  ObtenerDisponibilidad,
+  ObtenerHorarioAtencion,
+  ReemplazarDisponibilidad,
+  ReemplazarHorarioAtencion,
+} from './catalogo/application/horarios';
+import {
+  BarberoRepository,
+  BloqueoRepository,
+  CitasActivasQuery,
+  HorarioRepository,
+  ServicioRepository,
+} from './catalogo/application/ports/catalogo-repositorios';
+import { ActualizarServicio, CrearServicio, ListarServicios } from './catalogo/application/servicios';
+import {
+  KyselyBarberoRepository,
+  KyselyBloqueoRepository,
+  KyselyCitasActivasQuery,
+  KyselyHorarioRepository,
+  KyselyServicioRepository,
+} from './catalogo/infrastructure/kysely-catalogo-repositorios';
+import { BarberosController } from './catalogo/presentation/barberos.controller';
+import { DisponibilidadController } from './catalogo/presentation/disponibilidad.controller';
+import { HorarioAtencionController } from './catalogo/presentation/horario-atencion.controller';
+import { ServiciosController } from './catalogo/presentation/servicios.controller';
 import { ConsultarHorarios } from './catalogo/application/consultar-horarios';
 import { CatalogQuery } from './catalogo/application/ports/catalog-query';
 import { FuenteDisponibilidad } from './catalogo/application/ports/fuente-disponibilidad';
@@ -21,9 +58,38 @@ import { CitasController } from './citas/presentation/citas.controller';
  */
 @Module({
   imports: [AccesoBarberiasModule, SuscripcionesPagosModule],
-  controllers: [CitasController, PublicoController, HorariosController],
+  controllers: [
+    CitasController,
+    PublicoController,
+    HorariosController,
+    ServiciosController,
+    BarberosController,
+    DisponibilidadController,
+    HorarioAtencionController,
+  ],
   providers: [
     AutorizacionCatalogoCitas,
+    // Configuración del catálogo (US1): puertos → adaptadores y casos de uso.
+    { provide: ServicioRepository, useClass: KyselyServicioRepository },
+    { provide: BarberoRepository, useClass: KyselyBarberoRepository },
+    { provide: HorarioRepository, useClass: KyselyHorarioRepository },
+    { provide: BloqueoRepository, useClass: KyselyBloqueoRepository },
+    { provide: CitasActivasQuery, useClass: KyselyCitasActivasQuery },
+    ListarServicios,
+    CrearServicio,
+    ActualizarServicio,
+    ReglasBarbero,
+    ListarBarberos,
+    CrearBarbero,
+    ActualizarBarbero,
+    ObtenerHorarioAtencion,
+    ReemplazarHorarioAtencion,
+    ObtenerDisponibilidad,
+    ReemplazarDisponibilidad,
+    ContextoBloqueos,
+    ListarBloqueos,
+    CrearBloqueo,
+    EliminarBloqueo,
     { provide: CatalogQuery, useClass: KyselyCatalogQuery },
     // Horarios libres (US2): la fuente inyectada es la autenticada; la pública la crea el repositorio de la
     // vía pública por cada barbería del enlace (ADR-021).

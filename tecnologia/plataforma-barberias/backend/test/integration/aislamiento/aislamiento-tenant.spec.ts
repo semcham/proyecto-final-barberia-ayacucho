@@ -4,13 +4,23 @@ import { type AppDePrueba, crearApp } from '../../helpers/app';
 import {
   type BarberiaSembrada,
   filasDe,
+  SEMANA_LABORAL,
   sembrarBarberia,
+  sembrarBarbero,
+  sembrarBloqueo,
+  sembrarDisponibilidad,
+  sembrarHorarioAtencion,
+  sembrarServicio,
   sembrarSesion,
   sembrarSuscripcion,
   sembrarUsuario,
 } from '../../helpers/fixtures';
 import { cerrarPools, poolDe } from '../../helpers/test-db';
-import { ENDPOINTS_PROTEGIDOS, type EndpointProtegido } from './endpoints-protegidos';
+import {
+  ENDPOINTS_PROTEGIDOS,
+  type EndpointProtegido,
+  OPERACIONES_CON_IDS_DE_B,
+} from './endpoints-protegidos';
 
 const DIA_MS = 24 * 60 * 60 * 1000;
 
@@ -25,7 +35,29 @@ const TABLAS_DE_B = [
   'terms_acceptance',
   'subscription',
   'audit_log',
+  // Funcionalidad 002 · US1 (catálogo).
+  'business_hours',
+  'service',
+  'barber',
+  'barber_service',
+  'working_hours',
+  'time_off',
 ];
+
+/** Servicio, barbero con disponibilidad y un bloqueo futuro de una barbería (US1 de 002). */
+async function sembrarCatalogo(tenantId: string) {
+  await sembrarHorarioAtencion(tenantId);
+  const { servicioId } = await sembrarServicio({ tenantId, nombre: 'Corte' });
+  const { barberoId } = await sembrarBarbero({ tenantId, servicios: [servicioId] });
+  await sembrarDisponibilidad(tenantId, barberoId, SEMANA_LABORAL);
+  const bloqueoId = await sembrarBloqueo({
+    tenantId,
+    barberoId,
+    inicio: new Date('2030-01-09T15:00:00Z'),
+    fin: new Date('2030-01-09T16:00:00Z'),
+  });
+  return { servicioId, barberoId, bloqueoId };
+}
 
 type Vector = 'cuerpo' | 'consulta' | 'encabezado';
 
@@ -37,6 +69,8 @@ describe('PR09 · Aislamiento entre barberías por HTTP', () => {
   let pendienteDeA: string;
   let barberoDeB: string;
   let pendienteDeB: string;
+  let catalogoA: Awaited<ReturnType<typeof sembrarCatalogo>>;
+  let catalogoB: Awaited<ReturnType<typeof sembrarCatalogo>>;
 
   async function tokenDeA(): Promise<string> {
     const { sesionId } = await sembrarSesion({ tenantId: a.tenantId, usuarioId: a.propietarioId });
@@ -56,7 +90,11 @@ describe('PR09 · Aislamiento entre barberías por HTTP', () => {
   }
 
   async function atacar(endpoint: EndpointProtegido, vector: Vector, campo: string, token: string) {
-    const ruta = endpoint.ruta.replace('{idUsuarioPropio}', pendienteDeA);
+    const ruta = endpoint.ruta
+      .replace('{idUsuarioPropio}', pendienteDeA)
+      .replace('{idServicioPropio}', catalogoA.servicioId)
+      .replace('{idBarberoPropio}', catalogoA.barberoId)
+      .replace('{idBloqueoPropio}', catalogoA.bloqueoId);
     const rutaConConsulta = vector === 'consulta' ? `${ruta}?${campo}=${b.tenantId}` : ruta;
     let solicitud = prueba.agente[endpoint.metodo](rutaConConsulta).set('Authorization', `Bearer ${token}`);
     if (vector === 'encabezado') solicitud = solicitud.set('X-Tenant-Id', b.tenantId);
@@ -87,6 +125,8 @@ describe('PR09 · Aislamiento entre barberías por HTTP', () => {
     pendienteDeB = (
       await sembrarUsuario({ tenantId: b.tenantId, rol: 'BARBERO', estado: 'PENDIENTE', contrasena: null })
     ).usuarioId;
+    catalogoA = await sembrarCatalogo(a.tenantId);
+    catalogoB = await sembrarCatalogo(b.tenantId);
   });
 
   afterAll(async () => {
@@ -201,6 +241,64 @@ describe('PR09 · Aislamiento entre barberías por HTTP', () => {
       expect(ids).not.toContain(barberoDeB);
       expect(ids).not.toContain(pendienteDeB);
       expect(respuesta.body.total).toBe(ids.length);
+    });
+  });
+
+  describe('con el token de A y los identificadores de B (US1 de 002)', () => {
+    const rutaDe = (endpoint: EndpointProtegido) =>
+      endpoint.ruta
+        .replace('{servicioB}', catalogoB.servicioId)
+        .replace('{barberoB}', catalogoB.barberoId)
+        .replace('{bloqueoB}', catalogoB.bloqueoId)
+        .replace('{barberoA}', catalogoA.barberoId);
+
+    it.each(
+      OPERACIONES_CON_IDS_DE_B.map((endpoint) => [
+        `${endpoint.metodo.toUpperCase()} ${endpoint.ruta}`,
+        endpoint,
+      ]),
+    )('%s → 404, sin cambios en B', async (_nombre, endpoint) => {
+      const antesB = await datosDeB();
+      let solicitud = prueba.agente[endpoint.metodo](rutaDe(endpoint)).set(
+        'Authorization',
+        `Bearer ${await tokenDeA()}`,
+      );
+      if (endpoint.cuerpo) solicitud = solicitud.send(endpoint.cuerpo);
+      const respuesta = await solicitud;
+      expect(respuesta.status).toBe(404);
+      expect(respuesta.body.codigo).toBe('NO_ENCONTRADO');
+      expect(await datosDeB()).toEqual(antesB);
+    });
+
+    it('POST /barberos con un servicio o un usuario de B no crea nada (400 y 404)', async () => {
+      const token = await tokenDeA();
+      const antesA = await filasDe('barber', a.tenantId);
+      const antesB = await datosDeB();
+      await prueba.agente
+        .post('/api/v1/barberos')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ nombre: 'Intruso', servicioIds: [catalogoB.servicioId] })
+        .expect(400);
+      await prueba.agente
+        .post('/api/v1/barberos')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ nombre: 'Intruso', servicioIds: [], usuarioId: barberoDeB })
+        .expect(404);
+      expect(await filasDe('barber', a.tenantId)).toEqual(antesA);
+      expect(await datosDeB()).toEqual(antesB);
+    });
+
+    it('GET /servicios, /barberos y /barberia/horario de A no muestran nada de B', async () => {
+      const token = { Authorization: `Bearer ${await tokenDeA()}` };
+      const servicios = await prueba.agente.get('/api/v1/servicios').set(token).expect(200);
+      expect(servicios.body.map((s: { id: string }) => s.id)).toEqual([catalogoA.servicioId]);
+      const barberos = await prueba.agente.get('/api/v1/barberos').set(token).expect(200);
+      expect(barberos.body.map((x: { id: string }) => x.id)).toEqual([catalogoA.barberoId]);
+      const bloqueos = await prueba.agente
+        .get(`/api/v1/barberos/${catalogoA.barberoId}/bloqueos`)
+        .set(token)
+        .expect(200);
+      expect(bloqueos.body.map((x: { id: string }) => x.id)).toEqual([catalogoA.bloqueoId]);
     });
   });
 

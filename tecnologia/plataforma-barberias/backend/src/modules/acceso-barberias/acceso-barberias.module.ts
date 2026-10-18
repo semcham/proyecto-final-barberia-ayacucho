@@ -1,7 +1,11 @@
 import { Module } from '@nestjs/common';
 import { SuscripcionesPagosModule } from '../suscripciones-pagos';
-import { BarberiasApi, ClientesApi } from './api-publica';
+import { BarberiasApi, ClientesApi, PersonalApi } from './api-publica';
+import { ActualizarBarberia } from './barberias/application/actualizar-barberia';
 import { BarberiasApiImpl } from './barberias/application/barberias-api';
+import { ObtenerBarberia } from './barberias/application/obtener-barberia';
+import { BarberiaController } from './barberias/presentation/barberia.controller';
+import { PersonalApiImpl } from './identidad/application/personal-api';
 import { ClientesApiImpl } from './clientes/application/clientes-api';
 import { ConsentimientoRepository } from './clientes/application/ports/consentimiento-repository';
 import { PerfilClienteRepository } from './clientes/application/ports/perfil-cliente-repository';
@@ -50,7 +54,13 @@ import { UsuariosController } from './identidad/presentation/usuarios.controller
 @Module({
   // M01 → M03 está permitido por la matriz de dependencias; solo se usa su interfaz pública.
   imports: [SuscripcionesPagosModule],
-  controllers: [BarberiasController, AuthController, UsuariosController, ClientesController],
+  controllers: [
+    BarberiasController,
+    BarberiaController,
+    AuthController,
+    UsuariosController,
+    ClientesController,
+  ],
   providers: [
     // Puertos → adaptadores
     { provide: PasswordHasher, useClass: Argon2PasswordHasher },
@@ -83,10 +93,14 @@ import { UsuariosController } from './identidad/presentation/usuarios.controller
     UnirseABarberia,
     RegistrarCliente,
     CambiarBarberia,
-    // Interfaces públicas para M02 (ADR-020). PersonalApi se registra con US1.
+    // Configuración de la barbería (US1 de 002).
+    ObtenerBarberia,
+    ActualizarBarberia,
+    // Interfaces públicas para M02 (ADR-020).
     { provide: BarberiasApi, useClass: BarberiasApiImpl },
     { provide: ClientesApi, useClass: ClientesApiImpl },
+    { provide: PersonalApi, useClass: PersonalApiImpl },
   ],
-  exports: [ValidarSolicitud, BarberiasApi, ClientesApi],
+  exports: [ValidarSolicitud, BarberiasApi, ClientesApi, PersonalApi],
 })
 export class AccesoBarberiasModule {}

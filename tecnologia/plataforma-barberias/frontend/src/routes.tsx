@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react';
+import { type ComponentType, lazy, Suspense } from 'react';
 import { Link, Route, Routes } from 'react-router-dom';
 import { PantallaCarga } from './auth/PantallaCarga';
 import { RutaProtegida } from './auth/RutaProtegida';
@@ -19,18 +19,35 @@ const DisenoApp = lazy(() => import('./components/app/DisenoApp').then((m) => ({
 // Funcionalidad 002 (T038): esqueleto de rutas. Cada historia reemplaza PaginaPendiente por su pantalla.
 const PaginaPendiente = lazy(() => import('./pages/PaginaPendiente'));
 const CatalogoPublico = lazy(() => import('./pages/publico/CatalogoPublico'));
+const Barberia = lazy(() => import('./pages/panel/Barberia'));
+const Servicios = lazy(() => import('./pages/panel/Servicios'));
+const Barberos = lazy(() => import('./pages/panel/Barberos'));
+const Disponibilidad = lazy(() => import('./pages/panel/Disponibilidad'));
 const RegistroCliente = lazy(() => import('./pages/publico/RegistroCliente'));
 const IngresarBarberia = lazy(() => import('./pages/publico/IngresarBarberia'));
 const ReservarProtegida = lazy(() =>
   import('./pages/publico/Reservar').then((m) => ({ default: m.ReservarProtegida })),
 );
 
-/** Rutas del panel de 002 y los roles que las ven (solo navegación: el backend exige los permisos). */
-const RUTAS_PANEL_002: { ruta: string; titulo: string; roles: ('PROPIETARIO' | 'BARBERO')[] }[] = [
-  { ruta: 'barberia', titulo: 'Barbería', roles: ['PROPIETARIO'] },
-  { ruta: 'servicios', titulo: 'Servicios', roles: ['PROPIETARIO'] },
-  { ruta: 'barberos', titulo: 'Barberos', roles: ['PROPIETARIO'] },
-  { ruta: 'disponibilidad', titulo: 'Disponibilidad', roles: ['PROPIETARIO', 'BARBERO'] },
+/**
+ * Rutas del panel de 002 y los roles que las ven (solo navegación: el backend exige los permisos). Las que
+ * aún no tienen `pantalla` muestran PaginaPendiente hasta que llegue su historia.
+ */
+const RUTAS_PANEL_002: {
+  ruta: string;
+  titulo: string;
+  roles: ('PROPIETARIO' | 'BARBERO')[];
+  pantalla?: ComponentType;
+}[] = [
+  { ruta: 'barberia', titulo: 'Barbería', roles: ['PROPIETARIO'], pantalla: Barberia },
+  { ruta: 'servicios', titulo: 'Servicios', roles: ['PROPIETARIO'], pantalla: Servicios },
+  { ruta: 'barberos', titulo: 'Barberos', roles: ['PROPIETARIO'], pantalla: Barberos },
+  {
+    ruta: 'disponibilidad',
+    titulo: 'Disponibilidad',
+    roles: ['PROPIETARIO', 'BARBERO'],
+    pantalla: Disponibilidad,
+  },
   { ruta: 'agenda', titulo: 'Agenda', roles: ['PROPIETARIO', 'BARBERO'] },
   { ruta: 'clientes', titulo: 'Clientes', roles: ['PROPIETARIO'] },
 ];
@@ -114,13 +131,13 @@ export function RutasApp() {
                 </RutaProtegida>
               }
             />
-            {RUTAS_PANEL_002.map(({ ruta, titulo, roles }) => (
+            {RUTAS_PANEL_002.map(({ ruta, titulo, roles, pantalla: Pantalla }) => (
               <Route
                 key={ruta}
                 path={ruta}
                 element={
                   <RutaProtegida roles={roles}>
-                    <PaginaPendiente titulo={titulo} />
+                    {Pantalla ? <Pantalla /> : <PaginaPendiente titulo={titulo} />}
                   </RutaProtegida>
                 }
               />

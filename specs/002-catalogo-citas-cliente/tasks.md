@@ -274,40 +274,40 @@ barbería y los datos inválidos se rechazan (escenarios 1–8 de US1; quickstar
 
 > **NOTE: escribir estas pruebas PRIMERO y comprobar que FALLAN antes de implementar**
 
-- [ ] T040 [P] [US1] Pruebas unitarias en `tecnologia/plataforma-barberias/backend/test/unit/catalogo/catalogo-dominio.spec.ts`:
+- [X] T040 [P] [US1] Pruebas unitarias en `tecnologia/plataforma-barberias/backend/test/unit/catalogo/catalogo-dominio.spec.ts`:
   - `Servicio`: nombre 2–80; precio 0–99 999,99; duración 5–480, múltiplo de 5; `desactivar`.
   - `Barbero`: `asignar`, `quitar`, `ofrece`, `desactivar`, `reactivar`.
   - `Bloqueo`: `inicio < fin`, máximo 30 días.
   - `LimiteBarberos`.
-- [ ] T041 [P] [US1] Pruebas unitarias de `Slug` ampliado (3–60, formato, palabras reservadas) en `tecnologia/plataforma-barberias/backend/test/unit/barberias/registro-dominio.spec.ts`
-- [ ] T042 [P] [US1] Prueba de contrato contra [contracts/openapi.yaml](contracts/openapi.yaml) de `GET`/`PATCH /barberia`, `GET`/`PUT /barberia/horario`, `/servicios`, `/servicios/{id}`, `/barberos`, `/barberos/{id}`, `/barberos/{id}/disponibilidad` y `/barberos/{id}/bloqueos`, en `tecnologia/plataforma-barberias/backend/test/contract/catalogo.contract.spec.ts`
-- [ ] T043 [P] [US1] Integración de datos y horario de la barbería en `tecnologia/plataforma-barberias/backend/test/integration/catalogo/barberia.spec.ts`:
+- [X] T041 [P] [US1] Pruebas unitarias de `Slug` ampliado (3–60, formato, palabras reservadas) en `tecnologia/plataforma-barberias/backend/test/unit/barberias/registro-dominio.spec.ts`
+- [X] T042 [P] [US1] Prueba de contrato contra [contracts/openapi.yaml](contracts/openapi.yaml) de `GET`/`PATCH /barberia`, `GET`/`PUT /barberia/horario`, `/servicios`, `/servicios/{id}`, `/barberos`, `/barberos/{id}`, `/barberos/{id}/disponibilidad` y `/barberos/{id}/bloqueos`, en `tecnologia/plataforma-barberias/backend/test/contract/catalogo.contract.spec.ts`
+- [X] T043 [P] [US1] Integración de datos y horario de la barbería en `tecnologia/plataforma-barberias/backend/test/integration/catalogo/barberia.spec.ts`:
   - el horario con cierre ≤ apertura o con solapes → 400 indicando el día;
   - reducir el horario con citas activas fuera → 409 `CONFLICTO_CON_CITAS` sin guardar; con `confirmarConflictos` guarda y las citas siguen `CONFIRMADA`;
   - cambiar el `slug` → el anterior responde `BARBERIA_NO_DISPONIBLE`, se registra `ENLACE_CAMBIADO`, y un `slug` ocupado o reservado da 409;
   - la antelación fuera de 0–4320 → 400.
-- [ ] T044 [P] [US1] Integración de servicios en `tecnologia/plataforma-barberias/backend/test/integration/catalogo/servicios.spec.ts`:
+- [X] T044 [P] [US1] Integración de servicios en `tecnologia/plataforma-barberias/backend/test/integration/catalogo/servicios.spec.ts`:
   - nombre duplicado (sin distinguir mayúsculas) → 409;
   - precio negativo o duración 0 → 400;
   - desactivar con citas futuras → 409 con la cantidad, y con confirmación se desactiva, las citas se mantienen y se registra `SERVICIO_DESACTIVADO`;
   - editar el precio no cambia `appointment.price` de las citas existentes;
   - no existe operación para eliminar.
-- [ ] T045 [P] [US1] Integración de barberos en `tecnologia/plataforma-barberias/backend/test/integration/catalogo/barberos.spec.ts`:
+- [X] T045 [P] [US1] Integración de barberos en `tecnologia/plataforma-barberias/backend/test/integration/catalogo/barberos.spec.ts`:
   - vincular un usuario `BARBERO` o al propietario funciona;
   - un usuario de otra barbería o un cliente → 404;
   - el mismo usuario en dos barberos → 409 `USUARIO_YA_VINCULADO`;
   - el límite `max_barbers` → 403 `SUSCRIPCION_NO_PERMITE`, también con 10 creaciones simultáneas (nunca supera el límite);
   - desactivar con citas futuras sigue la confirmación en dos pasos y conserva el historial;
   - desactivar al usuario vinculado (operación de 001) no desactiva al barbero: sigue en el catálogo hasta que el propietario lo desactive.
-- [ ] T046 [P] [US1] Integración de disponibilidad y bloqueos en `tecnologia/plataforma-barberias/backend/test/integration/catalogo/disponibilidad.spec.ts`:
+- [X] T046 [P] [US1] Integración de disponibilidad y bloqueos en `tecnologia/plataforma-barberias/backend/test/integration/catalogo/disponibilidad.spec.ts`:
   - un tramo fuera del horario de atención → 422;
   - el barbero vinculado edita la suya; editar la de otro → 403;
   - el propietario edita cualquiera;
   - un bloqueo sin citas se crea;
   - un bloqueo con citas activas → 409 con la lista sin datos del cliente; con confirmación se crea, las citas no cambian y se registra `BLOQUEO_CON_CONFLICTO`;
   - eliminar un bloqueo funciona.
-- [ ] T047 [P] [US1] Agregar a la lista de operaciones protegidas de PR09, en `tecnologia/plataforma-barberias/backend/test/integration/aislamiento/endpoints-protegidos.ts`, cada operación de US1 con identificadores de la barbería B y el token de A (→ 404, sin cambios en B)
-- [ ] T048 [P] [US1] Pruebas de las pantallas en `tecnologia/plataforma-barberias/frontend/test/pages/panel-catalogo.spec.tsx`:
+- [X] T047 [P] [US1] Agregar a la lista de operaciones protegidas de PR09, en `tecnologia/plataforma-barberias/backend/test/integration/aislamiento/endpoints-protegidos.ts`, cada operación de US1 con identificadores de la barbería B y el token de A (→ 404, sin cambios en B)
+- [X] T048 [P] [US1] Pruebas de las pantallas en `tecnologia/plataforma-barberias/frontend/test/pages/panel-catalogo.spec.tsx`:
   - Barbería: validación del horario y aviso al cambiar el enlace.
   - Servicios: alta y desactivación con modal de conflicto.
   - Barberos: vínculo y límite del plan.
@@ -315,53 +315,53 @@ barbería y los datos inválidos se rechazan (escenarios 1–8 de US1; quickstar
 
 ### Implementation for User Story 1
 
-- [ ] T049 [P] [US1] Ampliar `Slug` con la validación para edición (3–60 caracteres, palabras reservadas) en `tecnologia/plataforma-barberias/backend/src/modules/acceso-barberias/barberias/domain/slug.ts`
-- [ ] T050 [US1] Crear los casos de uso `ObtenerBarberia` y `ActualizarBarberia` (nombre, enlace, dirección, teléfono, descripción, antelación) en `tecnologia/plataforma-barberias/backend/src/modules/acceso-barberias/barberias/application/obtener-barberia.ts` y `tecnologia/plataforma-barberias/backend/src/modules/acceso-barberias/barberias/application/actualizar-barberia.ts`:
+- [X] T049 [P] [US1] Ampliar `Slug` con la validación para edición (3–60 caracteres, palabras reservadas) en `tecnologia/plataforma-barberias/backend/src/modules/acceso-barberias/barberias/domain/slug.ts`
+- [X] T050 [US1] Crear los casos de uso `ObtenerBarberia` y `ActualizarBarberia` (nombre, enlace, dirección, teléfono, descripción, antelación) en `tecnologia/plataforma-barberias/backend/src/modules/acceso-barberias/barberias/application/obtener-barberia.ts` y `tecnologia/plataforma-barberias/backend/src/modules/acceso-barberias/barberias/application/actualizar-barberia.ts`:
   - `UPDATE` filtrado por el tenant del contexto, sobre la política `tenant_edicion`;
   - violación de unicidad del `slug` → `ENLACE_NO_DISPONIBLE`;
   - auditoría de `ENLACE_CAMBIADO`;
   - repositorio en `kysely-tenant-repository.ts`.
-- [ ] T051 [US1] Crear los DTO y el controlador `GET`/`PATCH /barberia` en `tecnologia/plataforma-barberias/backend/src/modules/acceso-barberias/barberias/presentation/barberia.controller.ts` y `tecnologia/plataforma-barberias/backend/src/modules/acceso-barberias/barberias/presentation/barberia.dto.ts`:
+- [X] T051 [US1] Crear los DTO y el controlador `GET`/`PATCH /barberia` en `tecnologia/plataforma-barberias/backend/src/modules/acceso-barberias/barberias/presentation/barberia.controller.ts` y `tecnologia/plataforma-barberias/backend/src/modules/acceso-barberias/barberias/presentation/barberia.dto.ts`:
   - `@Operacion` `VER_BARBERIA` / `ACTUALIZAR_BARBERIA`;
   - registrarlos en `tecnologia/plataforma-barberias/backend/src/modules/acceso-barberias/acceso-barberias.module.ts`.
-- [ ] T052 [P] [US1] Implementar `PersonalApi.esPersonalActivo(usuarioId)` en `tecnologia/plataforma-barberias/backend/src/modules/acceso-barberias/identidad/application/personal-api.ts`: membresía `PROPIETARIO` o `BARBERO` `ACTIVA` en el tenant del contexto, leída con RLS.
-- [ ] T053 [P] [US1] Crear las entidades del catálogo en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/catalogo/domain/`:
+- [X] T052 [P] [US1] Implementar `PersonalApi.esPersonalActivo(usuarioId)` en `tecnologia/plataforma-barberias/backend/src/modules/acceso-barberias/identidad/application/personal-api.ts`: membresía `PROPIETARIO` o `BARBERO` `ACTIVA` en el tenant del contexto, leída con RLS.
+- [X] T053 [P] [US1] Crear las entidades del catálogo en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/catalogo/domain/`:
   - `servicio.ts`, `barbero.ts`, `bloqueo.ts`;
   - `limite-barberos.ts` (`puedeAgregar(activos, max)`).
-- [ ] T054 [US1] Crear los puertos y repositorios Kysely del catálogo:
+- [X] T054 [US1] Crear los puertos y repositorios Kysely del catálogo:
   - **Puertos**, en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/catalogo/application/ports/`: `ServicioRepository`, `BarberoRepository` (con servicios asignados), `HorarioRepository` (atención y disponibilidad, reemplazo de semana completa), `BloqueoRepository` y `CitasActivasQuery` (citas activas de un barbero o servicio en un rango, o fuera de un horario semanal; lee `appointment` del mismo módulo).
   - **Implementaciones**, en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/catalogo/infrastructure/`.
   - **Reglas:** todas filtran por el tenant del contexto; la violación del índice de nombre se traduce a `NombreDuplicado`.
-- [ ] T055 [US1] Crear los casos de uso de servicios en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/catalogo/application/servicios.ts`:
+- [X] T055 [US1] Crear los casos de uso de servicios en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/catalogo/application/servicios.ts`:
   - `ListarServicios`, `CrearServicio` y `ActualizarServicio`;
   - la desactivación con citas futuras sigue la confirmación en dos pasos (R11) y registra `SERVICIO_DESACTIVADO`.
-- [ ] T056 [US1] Crear los casos de uso de barberos en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/catalogo/application/barberos.ts`:
+- [X] T056 [US1] Crear los casos de uso de barberos en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/catalogo/application/barberos.ts`:
   - `ListarBarberos`, `CrearBarbero` y `ActualizarBarbero`;
   - el vínculo se valida con `PersonalApi`;
   - el límite se comprueba con `obtenerLimiteBarberos` de M03 dentro de la transacción;
   - la desactivación con citas futuras sigue la confirmación en dos pasos y registra `BARBERO_DESACTIVADO`;
   - los servicios asignados deben ser de la barbería.
-- [ ] T057 [US1] Crear los casos de uso de horarios en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/catalogo/application/horarios.ts`:
+- [X] T057 [US1] Crear los casos de uso de horarios en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/catalogo/application/horarios.ts`:
   - `ObtenerHorarioAtencion` y `ReemplazarHorarioAtencion` (conflictos con citas fuera del nuevo horario → R11; `CAMBIO_CON_CONFLICTO`);
   - `ObtenerDisponibilidad` y `ReemplazarDisponibilidad` (dentro del horario de atención con `HorarioSemanal.contiene`; el barbero solo la del barbero vinculado a su usuario; conflictos → R11).
-- [ ] T058 [US1] Crear los casos de uso de bloqueos en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/catalogo/application/bloqueos.ts`:
+- [X] T058 [US1] Crear los casos de uso de bloqueos en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/catalogo/application/bloqueos.ts`:
   - `ListarBloqueos`, `CrearBloqueo` y `EliminarBloqueo`;
   - el barbero vinculado solo opera los suyos;
   - las citas activas solapadas → `ConflictoConCitas` (lista sin datos del cliente) salvo `confirmarConflictos`; con confirmación registra `BLOQUEO_CON_CONFLICTO`.
-- [ ] T059 [US1] Crear los DTO y los controladores en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/catalogo/presentation/`:
+- [X] T059 [US1] Crear los DTO y los controladores en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/catalogo/presentation/`:
   - `servicios.controller.ts`, `barberos.controller.ts`, `disponibilidad.controller.ts` (disponibilidad y bloqueos) y `horario-atencion.controller.ts` (`/barberia/horario`);
   - `@Operacion` según [contracts/rbac.md](contracts/rbac.md);
   - registrarlos en `catalogo-citas.module.ts`.
-- [ ] T060 [P] [US1] Crear la pantalla `tecnologia/plataforma-barberias/frontend/src/pages/panel/Barberia.tsx`:
+- [X] T060 [P] [US1] Crear la pantalla `tecnologia/plataforma-barberias/frontend/src/pages/panel/Barberia.tsx`:
   - datos, enlace público con botón de copiar y aviso de que el anterior deja de funcionar, antelación;
   - editor del horario semanal (componente `EditorSemana` en `tecnologia/plataforma-barberias/frontend/src/components/app/EditorSemana.tsx`, reutilizado en Disponibilidad);
   - el 409 `CONFLICTO_CON_CITAS` abre `ModalConfirmacion` con las citas afectadas.
-- [ ] T061 [P] [US1] Crear las pantallas `tecnologia/plataforma-barberias/frontend/src/pages/panel/Servicios.tsx` y `tecnologia/plataforma-barberias/frontend/src/pages/panel/Barberos.tsx`:
+- [X] T061 [P] [US1] Crear las pantallas `tecnologia/plataforma-barberias/frontend/src/pages/panel/Servicios.tsx` y `tecnologia/plataforma-barberias/frontend/src/pages/panel/Barberos.tsx`:
   - listas con alta y edición;
   - desactivación con confirmación de conflictos;
   - vínculo de barbero con un usuario del personal (lista de `GET /usuarios`);
   - mensaje de límite del plan.
-- [ ] T062 [P] [US1] Crear la pantalla `tecnologia/plataforma-barberias/frontend/src/pages/panel/Disponibilidad.tsx`:
+- [X] T062 [P] [US1] Crear la pantalla `tecnologia/plataforma-barberias/frontend/src/pages/panel/Disponibilidad.tsx`:
   - selector de barbero (el barbero ve solo el suyo);
   - semana con `EditorSemana`;
   - bloqueos por fecha y hora (sin repetición, segunda línea de corte) con confirmación de conflictos.
