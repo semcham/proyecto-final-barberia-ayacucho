@@ -60,6 +60,8 @@ describe('POST /citas (cliente)', () => {
       precio: '20.00',
       estado: 'CONFIRMADA',
       cancelacionTardia: false,
+      // Antelación por defecto de 120 min: desde las 07:00 una cancelación del cliente sería tardía.
+      cancelacionTardiaDesde: horaLima(fecha, '07:00'),
       origen: 'EN_LINEA',
     });
     const { rows } = await poolDe('seed').query(

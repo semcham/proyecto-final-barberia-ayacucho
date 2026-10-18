@@ -106,7 +106,7 @@ export class ConsultarAgenda {
           }) !== null;
         const contacto = contactos.get(cita.clienteId);
         return {
-          ...aVista(cita, agenda.nombre, nombres.get(cita.barberoId) ?? '', zona),
+          ...aVista(cita, agenda, nombres.get(cita.barberoId) ?? ''),
           barberoId: cita.barberoId,
           cliente: { nombre: contacto?.nombre ?? '', telefono: contacto?.telefono ?? '' },
           enConflicto,

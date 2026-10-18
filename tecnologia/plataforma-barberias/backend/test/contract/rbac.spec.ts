@@ -91,6 +91,23 @@ const PROTEGIDAS: Operacion[] = [
     },
   },
   {
+    // US5 (T114): el barbero no cancela (nota 6 y 7: el propietario cualquiera, nunca tardía).
+    nombre: 'POST /citas/{id}/cancelar',
+    esperado: { PUB: 401, PROPIETARIO: 200, BARBERO: 403 },
+    ejecutar: async (p, e, t) => {
+      const { barberoId, servicioId } = await barberoVinculado(e);
+      const { clienteId } = await sembrarCliente({ tenantId: e.barberia.tenantId, conCuenta: false });
+      const citaId = await sembrarCita({
+        tenantId: e.barberia.tenantId,
+        barberoId,
+        servicioId,
+        clienteId,
+        inicio: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      });
+      return p.agente.post(`/api/v1/citas/${citaId}/cancelar`).set(conToken(t));
+    },
+  },
+  {
     nombre: 'GET /clientes',
     esperado: { PUB: 401, PROPIETARIO: 200, BARBERO: 403 },
     ejecutar: (p, _e, t) => p.agente.get('/api/v1/clientes?buscar=ana').set(conToken(t)),

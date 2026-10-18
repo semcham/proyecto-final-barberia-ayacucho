@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import { v7 as uuidv7 } from 'uuid';
-import { type Actor, BarberiasApi, ClientesApi } from '../../../acceso-barberias';
+import { type Actor, BarberiasApi, ClientesApi, type ConfiguracionAgenda } from '../../../acceso-barberias';
 import { AuditLog, Clock, Configuracion, TenantId, UnitOfWork, ZonaHoraria } from '../../../../shared';
 import { AutorizacionCatalogoCitas } from '../../catalogo/application/autorizacion';
 import { CatalogQuery } from '../../catalogo/application/ports/catalog-query';
@@ -40,6 +40,8 @@ export interface CitaVista {
   precio: string;
   estado: EstadoCita;
   cancelacionTardia: boolean;
+  /** Desde este instante, una cancelación del cliente es tardía (FR-038). */
+  cancelacionTardiaDesde: string;
   origen: 'EN_LINEA' | 'PRESENCIAL';
 }
 
@@ -171,7 +173,7 @@ export class ReservarCita {
       recurso: `cita:${cita.id}`,
       resultado: 'PERMITIDO',
     });
-    return { cita: aVista(cita, agenda.nombre, barbero.nombre, zona), creada: true };
+    return { cita: aVista(cita, agenda, barbero.nombre), creada: true };
   }
 
   /**
@@ -201,7 +203,7 @@ export class ReservarCita {
     const agenda = await this.barberias.configuracionAgenda();
     const barbero = await this.catalogo.barbero(previa.cita.barberoId);
     return {
-      cita: aVista(previa.cita, agenda.nombre, barbero?.nombre ?? '', new ZonaHoraria(agenda.zonaHoraria)),
+      cita: aVista(previa.cita, agenda, barbero?.nombre ?? ''),
       creada: false,
     };
   }
@@ -218,12 +220,16 @@ function hashDe(comando: ComandoReservarCita, inicio: Date): string {
   return createHash('sha256').update(normalizado).digest('hex');
 }
 
-/** Cita como la devuelve la API, con los nombres de la barbería y del barbero y la hora local. */
-export function aVista(cita: Cita, barberia: string, barbero: string, zona: ZonaHoraria): CitaVista {
+/**
+ * Cita como la devuelve la API: nombre de la barbería y del barbero, horas locales y el instante desde el
+ * cual cancelarla sería tardío para el cliente (inicio − antelación de la barbería).
+ */
+export function aVista(cita: Cita, agenda: ConfiguracionAgenda, barbero: string): CitaVista {
   const servicio = cita.servicio;
+  const zona = new ZonaHoraria(agenda.zonaHoraria);
   return {
     id: cita.id,
-    barberia,
+    barberia: agenda.nombre,
     servicio: servicio.nombre,
     barbero,
     inicio: zona.formatoIso(cita.rango.inicio),
@@ -231,6 +237,7 @@ export function aVista(cita: Cita, barberia: string, barbero: string, zona: Zona
     precio: servicio.precio,
     estado: cita.estado,
     cancelacionTardia: cita.cancelacionTardia,
+    cancelacionTardiaDesde: zona.formatoIso(cita.cancelacionTardiaDesde(agenda.antelacionCancelacionMinutos)),
     origen: cita.origen,
   };
 }

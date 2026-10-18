@@ -658,6 +658,13 @@ export interface components {
       precio: string;
       estado: components['schemas']['EstadoCita'];
       cancelacionTardia: boolean;
+      /**
+       * Format: date-time
+       * @description Desde este instante (inicio − antelación mínima de la barbería), una cancelación del cliente
+       *     queda marcada como tardía (FR-038). Permite avisarle antes de confirmar sin exponer la
+       *     configuración de la barbería por la vía pública (FR-019).
+       */
+      cancelacionTardiaDesde?: string;
       /** @enum {string} */
       origen: 'EN_LINEA' | 'PRESENCIAL';
     };

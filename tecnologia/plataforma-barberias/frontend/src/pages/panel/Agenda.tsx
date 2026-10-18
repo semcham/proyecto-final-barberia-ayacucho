@@ -4,6 +4,7 @@ import { clavesConsulta } from '../../api/claves';
 import { ApiError, llamarApi } from '../../api/client';
 import type { components } from '../../api/schema-002';
 import { useSesion } from '../../auth/SesionProvider';
+import { ConfirmarCancelacion } from '../../components/app/ConfirmarCancelacion';
 import { EncabezadoPagina } from '../../components/app/EncabezadoPagina';
 import {
   Alerta,
@@ -90,6 +91,23 @@ export default function Agenda() {
     },
   });
 
+  // Cancelación del propietario (RF14): cualquier cita activa, nunca tardía para el cliente.
+  const [porCancelar, setPorCancelar] = useState<CitaAgenda | null>(null);
+  const cancelar = useMutation({
+    mutationFn: (cita: CitaAgenda) => llamarApi(`/citas/${cita.id}/cancelar`, { metodo: 'POST' }),
+    onSuccess: () => {
+      setPorCancelar(null);
+      avisar({ tono: 'exito', titulo: 'Cita cancelada', descripcion: 'El horario quedó libre.' });
+      void consultas.invalidateQueries({ queryKey: ['agenda'] });
+      void consultas.invalidateQueries({ queryKey: ['horarios-panel'] });
+    },
+    onError: (error) => {
+      setPorCancelar(null);
+      avisar({ tono: 'error', titulo: 'No se pudo cancelar la cita', descripcion: mensajeDeError(error) });
+      void consultas.invalidateQueries({ queryKey: ['agenda'] });
+    },
+  });
+
   return (
     <>
       <EncabezadoPagina
@@ -143,6 +161,16 @@ export default function Agenda() {
           )}
         </div>
 
+        {porCancelar && (
+          <ConfirmarCancelacion
+            cita={porCancelar}
+            zona={zona}
+            comoCliente={false}
+            cargando={cancelar.isPending}
+            onConfirmar={() => cancelar.mutate(porCancelar)}
+            onCerrar={() => setPorCancelar(null)}
+          />
+        )}
         <section aria-label="Citas del día">
           {agenda.isPending ? (
             <Cargando />
@@ -200,6 +228,16 @@ export default function Agenda() {
                             No asistió
                           </Boton>
                         </>
+                      )}
+                      {esPropietario && (cita.estado === 'CONFIRMADA' || cita.estado === 'PENDIENTE') && (
+                        <Boton
+                          type="button"
+                          variante="fantasma"
+                          tamano="sm"
+                          onClick={() => setPorCancelar(cita)}
+                        >
+                          Cancelar
+                        </Boton>
                       )}
                     </div>
                   </li>

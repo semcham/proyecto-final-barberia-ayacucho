@@ -1,4 +1,4 @@
-import { IsIn, IsISO8601, IsOptional, IsUUID } from 'class-validator';
+import { IsIn, IsISO8601, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
 
 // Cuerpo de POST /citas (contracts/openapi.yaml de 002, ReservarCitaRequest). Cualquier campo no
 // declarado, como tenantId o barberia, se rechaza con 400 (forbidNonWhitelisted). Las reglas de la
@@ -25,4 +25,12 @@ export class ReservarCitaDto {
 export class CambiarEstadoDto {
   @IsIn(['CONFIRMADA', 'COMPLETADA', 'NO_ASISTIO'])
   estado!: 'CONFIRMADA' | 'COMPLETADA' | 'NO_ASISTIO';
+}
+
+/** Cuerpo opcional de POST /citas/{id}/cancelar (CancelarCitaRequest): el motivo, si se quiere dejar. */
+export class CancelarCitaDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  motivo?: string;
 }

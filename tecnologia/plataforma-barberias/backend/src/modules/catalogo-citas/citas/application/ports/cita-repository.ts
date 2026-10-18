@@ -52,7 +52,10 @@ export abstract class CitaRepository {
    * estado simultáneos se atienden uno después del otro (R10).
    */
   abstract buscarParaActualizar(id: string): Promise<Cita | null>;
-  /** Guarda el estado nuevo y agrega la fila del historial (inmutable) con su autor. */
+  /**
+   * Guarda el estado nuevo (y, si se canceló, quién, cuándo, el motivo y la marca de tardía) y agrega la
+   * fila del historial (inmutable) con su autor.
+   */
   abstract actualizarEstado(cita: Cita, anterior: EstadoCita, autorId: string): Promise<void>;
   /** Citas (en cualquier estado) que empiezan en [desde, hasta), opcionalmente de un barbero, por inicio. */
   abstract delRango(desde: Date, hasta: Date, barberoId?: string): Promise<Cita[]>;

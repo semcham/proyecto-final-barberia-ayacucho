@@ -153,6 +153,25 @@ describe('PR09 · Cliente con membresía en dos barberías', () => {
     expect([...barberos].sort()).toEqual([a.barberoId, a.otroBarberoId].sort());
   });
 
+  it('POST /citas/{id}/cancelar con el token de A sobre su propia cita de B → 404 y la cita de B sigue activa', async () => {
+    const { body: enB } = await prueba.agente
+      .post('/api/v1/citas')
+      .set({ Authorization: `Bearer ${tokenB}`, 'Idempotency-Key': nuevaClave() })
+      .send({ servicioId: b.servicioId, barberoId: b.barberoId, inicio: horaLima(fecha, '15:00') })
+      .expect(201);
+    await prueba.agente
+      .post(`/api/v1/citas/${enB.id}/cancelar`)
+      .set({ Authorization: `Bearer ${tokenA}` })
+      .expect(404);
+    const { rows } = await poolDe('seed').query('SELECT status FROM appointment WHERE id = $1', [enB.id]);
+    expect(rows[0].status).toBe('CONFIRMADA');
+    // Con el token de B sí puede cancelarla.
+    await prueba.agente
+      .post(`/api/v1/citas/${enB.id}/cancelar`)
+      .set({ Authorization: `Bearer ${tokenB}` })
+      .expect(200);
+  });
+
   // GET /clientes/yo/citas (US6, T122) aún no existe: este caso de T079 se activa con esa ruta.
   it.todo('GET /clientes/yo/citas con el token de A devuelve solo citas de A');
 });

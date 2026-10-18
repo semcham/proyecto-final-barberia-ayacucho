@@ -49,6 +49,8 @@ export const ENDPOINTS_PROTEGIDOS: EndpointProtegido[] = [
   // Funcionalidad 002 · US4 (T102): agenda, estados de la cita y clientes presenciales.
   { metodo: 'get', ruta: '/api/v1/agenda?fecha=2030-01-09' },
   { metodo: 'post', ruta: '/api/v1/citas/{idCitaPropia}/estado', cuerpo: { estado: 'COMPLETADA' } },
+  // US5 (T114).
+  { metodo: 'post', ruta: '/api/v1/citas/{idCitaPropia}/cancelar', cuerpo: { motivo: 'Ataque' } },
   { metodo: 'get', ruta: '/api/v1/clientes?buscar=cliente' },
   {
     metodo: 'post',
@@ -90,4 +92,7 @@ export const OPERACIONES_CON_IDS_DE_B: EndpointProtegido[] = [
   // US4 (T102): cambiar el estado de una cita de B.
   { metodo: 'post', ruta: '/api/v1/citas/{citaB}/estado', cuerpo: { estado: 'COMPLETADA' } },
   { metodo: 'post', ruta: '/api/v1/citas/{citaB}/estado', cuerpo: { estado: 'NO_ASISTIO' } },
+  // US5 (T114): cancelar una cita de B.
+  { metodo: 'post', ruta: '/api/v1/citas/{citaB}/cancelar', cuerpo: { motivo: 'Ataque' } },
+  { metodo: 'post', ruta: '/api/v1/citas/{citaB}/cancelar' },
 ];

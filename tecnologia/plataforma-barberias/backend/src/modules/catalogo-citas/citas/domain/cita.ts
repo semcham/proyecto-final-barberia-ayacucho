@@ -1,4 +1,4 @@
-import { ReservaInvalida, TransicionInvalida } from '../../catalogo/domain/errores';
+import { DatoInvalido, ReservaInvalida, TransicionInvalida } from '../../catalogo/domain/errores';
 import { RangoHorario } from '../../catalogo/domain/rango-horario';
 import { type EstadoCita, ocupaHorario } from './estado-cita';
 
@@ -23,7 +23,24 @@ export interface DatosCita {
   origen: OrigenCita;
   cancelacionTardia: boolean;
   creadoPor: string;
+  /** Quién canceló, cuándo y por qué (FR-039); null mientras no esté cancelada. */
+  cancelacion?: Cancelacion | null;
 }
+
+export interface Cancelacion {
+  por: string;
+  en: Date;
+  motivo: string | null;
+}
+
+/** Quién cancela: el cliente (sus citas, hasta el inicio) o el propietario (cualquiera, nunca tardía). */
+export interface QuienCancela {
+  rol: 'CLIENTE' | 'PROPIETARIO';
+  usuarioId: string;
+}
+
+const MINUTO_MS = 60 * 1000;
+const MOTIVO_MAXIMO = 200;
 
 /**
  * T091 · Cita (RF12; FR-008, FR-035a). Que no haya dos citas activas del mismo barbero que se solapen NO
@@ -31,7 +48,11 @@ export interface DatosCita {
  *
  * T104 · Transiciones de la barbería (RF15; FR-041, FR-042; R10): `aprobar` (PENDIENTE → CONFIRMADA),
  * `completar` y `marcarNoAsistio` (CONFIRMADA → COMPLETADA o NO_ASISTIO, desde la hora de inicio).
- * COMPLETADA, NO_ASISTIO y CANCELADA son finales. La cancelación (RF14) llega con US5.
+ * COMPLETADA, NO_ASISTIO y CANCELADA son finales.
+ *
+ * T116 · Cancelación (RF14; FR-036 a FR-039): `cancelar` desde PENDIENTE o CONFIRMADA. El cliente, hasta
+ * la hora de inicio; es tardía si `inicio − ahora < antelación` de la barbería. El propietario cancela
+ * cualquier cita activa y nunca genera una cancelación tardía.
  */
 export class Cita {
   private constructor(private datos: DatosCita) {}
@@ -93,8 +114,30 @@ export class Cita {
     return this.datos.creadoPor;
   }
 
+  get cancelacion(): Cancelacion | null {
+    return this.datos.cancelacion ?? null;
+  }
+
   ocupaHorario(): boolean {
     return ocupaHorario(this.datos.estado);
+  }
+
+  /** Instante desde el cual una cancelación del cliente sería tardía: inicio − antelación. */
+  cancelacionTardiaDesde(antelacionMinutos: number): Date {
+    return new Date(this.datos.rango.inicio.getTime() - antelacionMinutos * MINUTO_MS);
+  }
+
+  cancelar(quien: QuienCancela, ahora: Date, antelacionMinutos: number, motivo?: string | null): void {
+    const esCliente = quien.rol === 'CLIENTE';
+    const limpio = motivo?.trim() ?? '';
+    if ([...limpio].length > MOTIVO_MAXIMO) throw new DatoInvalido('motivo', 'longitud');
+    this.transicion('CANCELADA', this.ocupaHorario() && !(esCliente && this.empezo(ahora)));
+    this.datos = {
+      ...this.datos,
+      cancelacionTardia:
+        esCliente && ahora.getTime() > this.cancelacionTardiaDesde(antelacionMinutos).getTime(),
+      cancelacion: { por: quien.usuarioId, en: ahora, motivo: limpio || null },
+    };
   }
 
   /** PENDIENTE → CONFIRMADA. */

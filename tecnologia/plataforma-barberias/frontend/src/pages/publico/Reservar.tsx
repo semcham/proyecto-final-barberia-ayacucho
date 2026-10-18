@@ -7,6 +7,7 @@ import type { components } from '../../api/schema-002';
 import { PantallaCarga } from '../../auth/PantallaCarga';
 import { RutaProtegida } from '../../auth/RutaProtegida';
 import { useSesion } from '../../auth/SesionProvider';
+import { ConfirmarCancelacion } from '../../components/app/ConfirmarCancelacion';
 import { MarcoAcceso } from '../../components/MarcoAcceso';
 import { Alerta } from '../../components/ui/Alerta';
 import { Boton, clasesBoton } from '../../components/ui/Boton';
@@ -154,27 +155,7 @@ function ConfirmarReserva({ slug, seleccion }: { slug: string; seleccion: Solici
   }
 
   if (reserva.data) {
-    const cita = reserva.data;
-    return (
-      <Tarjeta titulo="Tu cita está confirmada" icono="check" destacada>
-        <DatosCita
-          filas={[
-            ['Barbería', cita.barberia],
-            ['Servicio', cita.servicio],
-            ['Barbero', cita.barbero],
-            ['Fecha', fechaDeBarberia(cita.inicio, zona)],
-            ['Hora', horaConEtiqueta(cita.inicio, zona)],
-            ['Termina', horaDeBarberia(cita.fin, zona)],
-            ['Precio', `S/ ${cita.precio}`],
-          ]}
-        />
-        <div className={estilos.acciones}>
-          <Link to="/mis-citas" className={clasesBoton({ bloque: true })}>
-            Ver mis citas
-          </Link>
-        </div>
-      </Tarjeta>
-    );
+    return <CitaReservada cita={reserva.data} zona={zona} />;
   }
 
   return (
@@ -203,6 +184,70 @@ function ConfirmarReserva({ slug, seleccion }: { slug: string; seleccion: Solici
         </Boton>
         {volver}
       </div>
+    </Tarjeta>
+  );
+}
+
+/** Cita recién reservada, con la opción de cancelarla (RF14) avisando si sería tardía (FR-038). */
+function CitaReservada({ cita: reservada, zona }: { cita: Cita; zona: string }) {
+  const [cita, setCita] = useState(reservada);
+  const [confirmando, setConfirmando] = useState(false);
+  const cancelar = useMutation({
+    mutationFn: () => llamarApi<Cita>(`/citas/${cita.id}/cancelar`, { metodo: 'POST' }),
+    onSuccess: (cancelada) => {
+      setConfirmando(false);
+      setCita(cancelada);
+    },
+    onError: () => setConfirmando(false),
+  });
+  const cancelada = cita.estado === 'CANCELADA';
+
+  return (
+    <Tarjeta
+      titulo={cancelada ? 'Tu cita fue cancelada' : 'Tu cita está confirmada'}
+      icono={cancelada ? 'cerrar' : 'check'}
+      destacada={!cancelada}
+    >
+      <DatosCita
+        filas={[
+          ['Barbería', cita.barberia],
+          ['Servicio', cita.servicio],
+          ['Barbero', cita.barbero],
+          ['Fecha', fechaDeBarberia(cita.inicio, zona)],
+          ['Hora', horaConEtiqueta(cita.inicio, zona)],
+          ['Termina', horaDeBarberia(cita.fin, zona)],
+          ['Precio', `S/ ${cita.precio}`],
+          ...(cancelada
+            ? [
+                ['Estado', cita.cancelacionTardia ? 'Cancelada (cancelación tardía)' : 'Cancelada'] as [
+                  string,
+                  string,
+                ],
+              ]
+            : []),
+        ]}
+      />
+      {cancelar.isError && <Alerta>{mensajeDeError(cancelar.error)}</Alerta>}
+      <div className={estilos.acciones}>
+        <Link to="/mis-citas" className={clasesBoton({ bloque: true })}>
+          Ver mis citas
+        </Link>
+        {!cancelada && (
+          <Boton type="button" variante="secundario" bloque onClick={() => setConfirmando(true)}>
+            Cancelar cita
+          </Boton>
+        )}
+      </div>
+      {confirmando && (
+        <ConfirmarCancelacion
+          cita={cita}
+          zona={zona}
+          comoCliente
+          cargando={cancelar.isPending}
+          onConfirmar={() => cancelar.mutate()}
+          onCerrar={() => setConfirmando(false)}
+        />
+      )}
     </Tarjeta>
   );
 }

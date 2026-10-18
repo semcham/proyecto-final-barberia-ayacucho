@@ -652,27 +652,27 @@ quickstart §3.7).
 
 ### Tests for User Story 5 (MANDATORY - constitution Principle X) ⚠️
 
-- [ ] T112 [P] [US5] Pruebas unitarias de `Cita.cancelar(actor, ahora, antelacion)` en `tecnologia/plataforma-barberias/backend/test/unit/citas/cancelar.spec.ts`:
+- [X] T112 [P] [US5] Pruebas unitarias de `Cita.cancelar(actor, ahora, antelacion)` en `tecnologia/plataforma-barberias/backend/test/unit/citas/cancelar.spec.ts`:
   - el cliente cancela hasta el inicio, y después recibe `TransicionInvalida`;
   - es tardía si `inicio − ahora < antelación` (límite exacto incluido);
   - el propietario nunca genera una cancelación tardía;
   - no se cancela dos veces.
-- [ ] T113 [P] [US5] Integración en `tecnologia/plataforma-barberias/backend/test/integration/citas/cancelar.spec.ts`:
+- [X] T113 [P] [US5] Integración en `tecnologia/plataforma-barberias/backend/test/integration/citas/cancelar.spec.ts`:
   - la hora vuelve a estar libre en la consulta siguiente y se puede reservar de nuevo;
   - `late_cancellation` según la antelación de la barbería;
   - se registran `cancelled_by`, `cancelled_at` y el motivo;
   - la cita de otro cliente de la misma barbería → 404;
   - el barbero → 403;
   - se registran `CITA_CANCELADA` e historial.
-- [ ] T114 [P] [US5] Prueba de contrato de `POST /citas/{id}/cancelar` en `tecnologia/plataforma-barberias/backend/test/contract/citas.contract.spec.ts`, y agregar la operación a `endpoints-protegidos.ts` y `rbac.spec.ts`
-- [ ] T115 [P] [US5] Prueba de cancelación en la interfaz en `tecnologia/plataforma-barberias/frontend/test/pages/cancelar.spec.tsx`:
+- [X] T114 [P] [US5] Prueba de contrato de `POST /citas/{id}/cancelar` en `tecnologia/plataforma-barberias/backend/test/contract/citas.contract.spec.ts`, y agregar la operación a `endpoints-protegidos.ts` y `rbac.spec.ts`
+- [X] T115 [P] [US5] Prueba de cancelación en la interfaz en `tecnologia/plataforma-barberias/frontend/test/pages/cancelar.spec.tsx`:
   - la confirmación avisa si será tardía según la antelación;
   - tras cancelar, la cita aparece cancelada.
 
 ### Implementation for User Story 5
 
-- [ ] T116 [US5] Ampliar `Cita` con `cancelar(actor, ahora, antelacionMinutos)` en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/citas/domain/cita.ts`
-- [ ] T117 [US5] Crear `CancelarCita` en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/citas/application/cancelar-cita.ts`:
+- [X] T116 [US5] Ampliar `Cita` con `cancelar(actor, ahora, antelacionMinutos)` en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/citas/domain/cita.ts`
+- [X] T117 [US5] Crear `CancelarCita` en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/citas/application/cancelar-cita.ts`:
   - fila con `FOR UPDATE`;
   - el cliente solo sus citas (si no, 404);
   - antelación desde `BarberiasApi.configuracionAgenda`;
@@ -680,7 +680,7 @@ quickstart §3.7).
 
   Ruta `POST /citas/:id/cancelar` en `citas.controller.ts`.
 
-- [ ] T118 [US5] Agregar la acción de cancelar:
+- [X] T118 [US5] Agregar la acción de cancelar:
   - en la confirmación de `tecnologia/plataforma-barberias/frontend/src/pages/publico/Reservar.tsx`;
   - en `tecnologia/plataforma-barberias/frontend/src/pages/panel/Agenda.tsx` (propietario);
   - con un componente compartido `ConfirmarCancelacion` en `tecnologia/plataforma-barberias/frontend/src/components/app/ConfirmarCancelacion.tsx` que avisa si será tardía.

@@ -102,9 +102,21 @@ export class CitaRepositoryPostgres extends CitaRepository {
     const tenantId = this.tenantContext.actual().valor;
     const trx = this.uow.transaccionActual();
     const ahora = new Date();
+    const cancelacion = cita.cancelacion;
     await trx
       .updateTable('appointment')
-      .set({ status: cita.estado, updated_at: ahora })
+      .set({
+        status: cita.estado,
+        updated_at: ahora,
+        // Al cancelar: quién, cuándo, el motivo y la marca de tardía (FR-038, FR-039).
+        ...(cita.estado === 'CANCELADA' &&
+          cancelacion && {
+            late_cancellation: cita.cancelacionTardia,
+            cancelled_by: cancelacion.por,
+            cancelled_at: cancelacion.en,
+            cancel_reason: cancelacion.motivo,
+          }),
+      })
       .where('tenant_id', '=', tenantId)
       .where('id', '=', cita.id)
       .execute();

@@ -7,7 +7,8 @@ import {
   horaLima,
   nuevaClave,
 } from '../helpers/reservas';
-import { sesionCliente } from '../helpers/sesiones';
+import { sembrarUsuario } from '../helpers/fixtures';
+import { sesionCliente, tokenPara } from '../helpers/sesiones';
 import { cerrarPools } from '../helpers/test-db';
 
 // T081 · Contrato (specs/002-catalogo-citas-cliente/contracts/openapi.yaml) de POST /citas.
@@ -56,5 +57,44 @@ describe('Contrato 002: POST /citas', () => {
 
     const sinClave = await reservar(cuerpo, null).expect(400);
     expect(erroresDeContrato002('/citas', 'post', 400, sinClave.body)).toEqual([]);
+  });
+
+  // T114 · POST /citas/{id}/cancelar (RF14).
+  it('POST /citas/{id}/cancelar: 200 con Cita (y cancelacionTardiaDesde), 401, 403, 404 y 422', async () => {
+    const ruta = (id: string) => `/api/v1/citas/${id}/cancelar`;
+    const cuerpo = { servicioId: e.servicioId, barberoId: e.barberoId, inicio: horaLima(fecha, '12:00') };
+    const reserva = await reservar(cuerpo).expect(201);
+    expect(reserva.body.cancelacionTardiaDesde).toBe(horaLima(fecha, '10:00'));
+
+    const ok = await prueba.agente
+      .post(ruta(reserva.body.id))
+      .set({ Authorization: `Bearer ${token}` })
+      .send({ motivo: 'No podré ir' })
+      .expect(200);
+    expect(erroresDeContrato002('/citas/{id}/cancelar', 'post', 200, ok.body)).toEqual([]);
+    expect(ok.body).toMatchObject({ estado: 'CANCELADA', cancelacionTardia: false });
+
+    const otraVez = await prueba.agente
+      .post(ruta(reserva.body.id))
+      .set({ Authorization: `Bearer ${token}` })
+      .expect(422);
+    expect(erroresDeContrato002('/citas/{id}/cancelar', 'post', 422, otraVez.body)).toEqual([]);
+
+    const noHay = await prueba.agente
+      .post(ruta('0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b'))
+      .set({ Authorization: `Bearer ${token}` })
+      .expect(404);
+    expect(erroresDeContrato002('/citas/{id}/cancelar', 'post', 404, noHay.body)).toEqual([]);
+
+    const sinSesion = await prueba.agente.post(ruta(reserva.body.id)).expect(401);
+    expect(erroresDeContrato002('/citas/{id}/cancelar', 'post', 401, sinSesion.body)).toEqual([]);
+
+    const barbero = await sembrarUsuario({ tenantId: e.barberia.tenantId, rol: 'BARBERO', estado: 'ACTIVA' });
+    const tokenBarbero = await tokenPara(e.barberia.tenantId, barbero.usuarioId, 'BARBERO');
+    const prohibido = await prueba.agente
+      .post(ruta(reserva.body.id))
+      .set({ Authorization: `Bearer ${tokenBarbero}` })
+      .expect(403);
+    expect(erroresDeContrato002('/citas/{id}/cancelar', 'post', 403, prohibido.body)).toEqual([]);
   });
 });

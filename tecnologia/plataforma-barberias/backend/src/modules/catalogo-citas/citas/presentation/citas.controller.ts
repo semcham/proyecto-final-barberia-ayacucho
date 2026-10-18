@@ -5,8 +5,9 @@ import { ActorActual } from '../../../../shared';
 import { DatoInvalido } from '../../catalogo/domain/errores';
 import { OperacionM02 } from '../../catalogo/presentation/operacion.decorator';
 import { CambiarEstadoCita } from '../application/cambiar-estado-cita';
+import { CancelarCita } from '../application/cancelar-cita';
 import { type CitaVista, ReservarCita } from '../application/reservar-cita';
-import { CambiarEstadoDto, ReservarCitaDto } from './citas.dto';
+import { CambiarEstadoDto, CancelarCitaDto, ReservarCitaDto } from './citas.dto';
 
 /**
  * Citas (RF12). T094: POST /citas con Idempotency-Key obligatoria (R09). El tenant sale del token; el
@@ -17,7 +18,20 @@ export class CitasController {
   constructor(
     private readonly reservarCita: ReservarCita,
     private readonly cambiarEstadoCita: CambiarEstadoCita,
+    private readonly cancelarCita: CancelarCita,
   ) {}
+
+  /** T117 · POST /citas/:id/cancelar · El cliente las suyas hasta el inicio; el propietario cualquiera. */
+  @Post(':id/cancelar')
+  @HttpCode(200)
+  @OperacionM02('CANCELAR_CITA')
+  cancelar(
+    @ActorActual() actor: Actor,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: CancelarCitaDto,
+  ): Promise<CitaVista> {
+    return this.cancelarCita.ejecutar(actor, id, dto?.motivo);
+  }
 
   /** T109 · POST /citas/:id/estado · Transición de la barbería (RF15): aprobar, completar o no asistió. */
   @Post(':id/estado')

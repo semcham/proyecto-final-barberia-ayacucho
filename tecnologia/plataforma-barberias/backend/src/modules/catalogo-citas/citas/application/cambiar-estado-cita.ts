@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { type Actor, BarberiasApi } from '../../../acceso-barberias';
-import { AuditLog, Clock, TenantId, UnitOfWork, ZonaHoraria } from '../../../../shared';
+import { AuditLog, Clock, TenantId, UnitOfWork } from '../../../../shared';
 import { AutorizacionCatalogoCitas } from '../../catalogo/application/autorizacion';
 import { BarberoRepository } from '../../catalogo/application/ports/catalogo-repositorios';
 import { CatalogQuery } from '../../catalogo/application/ports/catalog-query';
@@ -52,7 +52,7 @@ export class CambiarEstadoCita {
 
       const agenda = await this.barberias.configuracionAgenda();
       const barbero = await this.catalogo.barbero(cita.barberoId);
-      return aVista(cita, agenda.nombre, barbero?.nombre ?? '', new ZonaHoraria(agenda.zonaHoraria));
+      return aVista(cita, agenda, barbero?.nombre ?? '');
     });
   }
 }

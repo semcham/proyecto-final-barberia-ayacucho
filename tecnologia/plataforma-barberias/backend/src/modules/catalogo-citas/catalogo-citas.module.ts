@@ -48,6 +48,7 @@ import { CatalogoPublicoRepository } from './catalogo/infrastructure/publico/cat
 import { HorariosController } from './catalogo/presentation/horarios.controller';
 import { PublicoController } from './catalogo/presentation/publico.controller';
 import { CambiarEstadoCita } from './citas/application/cambiar-estado-cita';
+import { CancelarCita } from './citas/application/cancelar-cita';
 import { ConsultarAgenda } from './citas/application/consultar-agenda';
 import { CitaRepository } from './citas/application/ports/cita-repository';
 import { ReservarCita } from './citas/application/reservar-cita';
@@ -105,6 +106,8 @@ import { CitasController } from './citas/presentation/citas.controller';
     // Agenda y estados (US4).
     CambiarEstadoCita,
     ConsultarAgenda,
+    // Cancelación (US5).
+    CancelarCita,
   ],
   exports: [CatalogQuery],
 })
