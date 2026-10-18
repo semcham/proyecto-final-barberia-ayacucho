@@ -584,58 +584,58 @@ barbero solo la suya. Se marcan completada y no asistió y se rechazan las trans
 
 ### Tests for User Story 4 (MANDATORY - constitution Principle X) ⚠️
 
-- [ ] T098 [P] [US4] Pruebas unitarias en `tecnologia/plataforma-barberias/backend/test/unit/citas/transiciones.spec.ts`:
+- [X] T098 [P] [US4] Pruebas unitarias en `tecnologia/plataforma-barberias/backend/test/unit/citas/transiciones.spec.ts`:
   - **Transiciones de `Cita`** (FR-041, FR-042):
     - `completar` y `marcarNoAsistio` solo desde `CONFIRMADA` y con `ahora ≥ inicio`;
     - `aprobar` solo desde `PENDIENTE`;
     - los estados finales no cambian;
     - cualquier otra transición lanza `TransicionInvalida`.
   - **`MarcaConflicto`:** cita dentro de un bloqueo, fuera de la disponibilidad, fuera del horario de atención o sin conflicto.
-- [ ] T099 [P] [US4] Integración de agenda y estados en `tecnologia/plataforma-barberias/backend/test/integration/citas/agenda-estados.spec.ts`:
+- [X] T099 [P] [US4] Integración de agenda y estados en `tecnologia/plataforma-barberias/backend/test/integration/citas/agenda-estados.spec.ts`:
   - **Agenda del propietario:** ve todas las citas del día local ordenadas, con nombre y teléfono del cliente (también presencial), `enConflicto` y `cancelacionTardia`, con filtro por barbero.
   - **Agenda del barbero vinculado:** ve solo las suyas; con otro `barbero` → 403; un barbero sin vínculo → 403.
   - **Cambio de estado:** queda en `appointment_status_history` con autor y se audita `CITA_ESTADO_CAMBIADO`.
   - **Concurrencia:** dos cambios simultáneos se serializan (uno gana y el otro recibe `TRANSICION_INVALIDA`).
   - **Marcas:** una cita futura no puede marcarse como completada; una cita en conflicto después de borrar el bloqueo deja de aparecer en conflicto.
   - **Carrera entre reserva y bloqueo** (caso límite de la especificación): tras la advertencia de un bloqueo sin conflictos entra una reserva en esa franja y luego se confirma el bloqueo. La agenda muestra esa cita activa y "en conflicto"; ninguna cita se pierde sin aviso.
-- [ ] T100 [P] [US4] Integración de cliente presencial y cita presencial en `tecnologia/plataforma-barberias/backend/test/integration/clientes/presencial.spec.ts`:
+- [X] T100 [P] [US4] Integración de cliente presencial y cita presencial en `tecnologia/plataforma-barberias/backend/test/integration/clientes/presencial.spec.ts`:
   - `POST /clientes` sin `consentimientoVerbal` → 400; con él crea el perfil `PRESENCIAL` y `consent_record` `PRESENCIAL` con `recorded_by` y se audita `CLIENTE_PRESENCIAL_REGISTRADO`;
   - `GET /clientes?buscar=` encuentra por nombre o teléfono solo en la barbería;
   - `POST /citas` del propietario con `clienteId` aplica las mismas reglas y la cita queda con `origin = PRESENCIAL`;
   - un `clienteId` de otra barbería → 404.
-- [ ] T101 [P] [US4] Prueba de contrato de `GET /agenda`, `POST /citas/{id}/estado`, `GET /clientes` y `POST /clientes` en `tecnologia/plataforma-barberias/backend/test/contract/agenda.contract.spec.ts`
-- [ ] T102 [P] [US4] Agregar las operaciones de US4 a `tecnologia/plataforma-barberias/backend/test/integration/aislamiento/endpoints-protegidos.ts` (PR09) y sus celdas a la prueba parametrizada `tecnologia/plataforma-barberias/backend/test/contract/rbac.spec.ts` (PR08)
-- [ ] T103 [P] [US4] Pruebas de las pantallas en `tecnologia/plataforma-barberias/frontend/test/pages/agenda.spec.tsx`:
+- [X] T101 [P] [US4] Prueba de contrato de `GET /agenda`, `POST /citas/{id}/estado`, `GET /clientes` y `POST /clientes` en `tecnologia/plataforma-barberias/backend/test/contract/agenda.contract.spec.ts`
+- [X] T102 [P] [US4] Agregar las operaciones de US4 a `tecnologia/plataforma-barberias/backend/test/integration/aislamiento/endpoints-protegidos.ts` (PR09) y sus celdas a la prueba parametrizada `tecnologia/plataforma-barberias/backend/test/contract/rbac.spec.ts` (PR08)
+- [X] T103 [P] [US4] Pruebas de las pantallas en `tecnologia/plataforma-barberias/frontend/test/pages/agenda.spec.tsx`:
   - la agenda como lista por fecha (primera línea de corte), con filtro y marcas;
   - acciones de estado solo cuando la hora llegó;
   - en Clientes, la búsqueda y el alta presencial con casilla de consentimiento obligatoria.
 
 ### Implementation for User Story 4
 
-- [ ] T104 [US4] Ampliar `Cita` con `completar(ahora)`, `marcarNoAsistio(ahora)` y `aprobar()` y crear `MarcaConflicto` en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/citas/domain/cita.ts` y `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/citas/domain/marca-conflicto.ts`
-- [ ] T105 [US4] Crear `CambiarEstadoCita` en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/citas/application/cambiar-estado-cita.ts`:
+- [X] T104 [US4] Ampliar `Cita` con `completar(ahora)`, `marcarNoAsistio(ahora)` y `aprobar()` y crear `MarcaConflicto` en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/citas/domain/cita.ts` y `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/citas/domain/marca-conflicto.ts`
+- [X] T105 [US4] Crear `CambiarEstadoCita` en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/citas/application/cambiar-estado-cita.ts`:
   - bloquea la fila con `FOR UPDATE` vía `CitaRepository.buscarParaActualizar`;
   - el barbero solo opera citas de su barbero vinculado y si no, 404;
   - registra historial y auditoría.
-- [ ] T106 [US4] Implementar `ClientesApi.datosDeContacto(ids)` (en lote, una consulta) y `perfilDeBarberia(clienteId)` en `tecnologia/plataforma-barberias/backend/src/modules/acceso-barberias/clientes/application/clientes-api.ts`
-- [ ] T107 [US4] Crear `ConsultarAgenda` en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/citas/application/consultar-agenda.ts`:
+- [X] T106 [US4] Implementar `ClientesApi.datosDeContacto(ids)` (en lote, una consulta) y `perfilDeBarberia(clienteId)` en `tecnologia/plataforma-barberias/backend/src/modules/acceso-barberias/clientes/application/clientes-api.ts`
+- [X] T107 [US4] Crear `ConsultarAgenda` en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/citas/application/consultar-agenda.ts`:
   - día local con `ZonaHoraria` y `BarberiasApi.configuracionAgenda`;
   - citas del día, bloqueos y tramos para calcular `MarcaConflicto`;
   - datos de contacto con `ClientesApi.datosDeContacto`;
   - el barbero queda limitado al suyo.
-- [ ] T108 [US4] Crear `RegistrarClientePresencial` y `BuscarClientes` (hasta 20 resultados, sin acceso a otras barberías) en `tecnologia/plataforma-barberias/backend/src/modules/acceso-barberias/clientes/application/registrar-cliente-presencial.ts` y `tecnologia/plataforma-barberias/backend/src/modules/acceso-barberias/clientes/application/buscar-clientes.ts`; agregar `GET /clientes` y `POST /clientes` a `clientes.controller.ts`
-- [ ] T109 [US4] Ampliar `ReservarCita` para la cita presencial:
+- [X] T108 [US4] Crear `RegistrarClientePresencial` y `BuscarClientes` (hasta 20 resultados, sin acceso a otras barberías) en `tecnologia/plataforma-barberias/backend/src/modules/acceso-barberias/clientes/application/registrar-cliente-presencial.ts` y `tecnologia/plataforma-barberias/backend/src/modules/acceso-barberias/clientes/application/buscar-clientes.ts`; agregar `GET /clientes` y `POST /clientes` a `clientes.controller.ts`
+- [X] T109 [US4] Ampliar `ReservarCita` para la cita presencial:
   - el propietario envía `clienteId`, validado con `ClientesApi.perfilDeBarberia`;
   - la cita queda con `origin = PRESENCIAL`.
 
   Crear `AgendaController` (`GET /agenda`) y `POST /citas/:id/estado` en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/citas/presentation/agenda.controller.ts` y `citas.controller.ts`.
 
-- [ ] T110 [P] [US4] Crear la pantalla `tecnologia/plataforma-barberias/frontend/src/pages/panel/Agenda.tsx`:
+- [X] T110 [P] [US4] Crear la pantalla `tecnologia/plataforma-barberias/frontend/src/pages/panel/Agenda.tsx`:
   - lista por fecha con filtro de barbero;
   - `EtiquetaEstado` y marcas "en conflicto" y "cancelación tardía";
   - acciones de completar y no asistió;
   - botón "cita presencial" que abre la búsqueda o el alta de cliente y los horarios del día.
-- [ ] T111 [P] [US4] Crear la pantalla `tecnologia/plataforma-barberias/frontend/src/pages/panel/Clientes.tsx`: búsqueda y alta presencial con la casilla "la persona aceptó verbalmente el tratamiento de sus datos" y el texto de la política.
+- [X] T111 [P] [US4] Crear la pantalla `tecnologia/plataforma-barberias/frontend/src/pages/panel/Clientes.tsx`: búsqueda y alta presencial con la casilla "la persona aceptó verbalmente el tratamiento de sus datos" y el texto de la política.
 
 **Checkpoint**: agenda y estados funcionando y probados (quickstart §3.6).
 

@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import { type AppDePrueba, crearApp } from '../helpers/app';
-import { filasDe } from '../helpers/fixtures';
+import { filasDe, sembrarBarbero, sembrarCita, sembrarCliente, sembrarServicio } from '../helpers/fixtures';
 import { cerrarPools } from '../helpers/test-db';
 import { crearEscenario, type Escenario } from '../helpers/sesiones';
 
@@ -64,7 +64,60 @@ const PROTEGIDAS: Operacion[] = [
     ejecutar: (p, e, t) =>
       p.agente.post(`/api/v1/usuarios/${e.barberoPendiente.id}/activacion`).set(conToken(t)),
   },
+  // Funcionalidad 002 · US4 (T102, contracts/rbac.md de 002). El barbero del escenario se vincula a un
+  // barbero del catálogo: su alcance es PROPIOS (nota 8 y 9).
+  {
+    nombre: 'GET /agenda',
+    esperado: { PUB: 401, PROPIETARIO: 200, BARBERO: 200 },
+    ejecutar: async (p, e, t) => {
+      await barberoVinculado(e);
+      return p.agente.get('/api/v1/agenda?fecha=2026-10-20').set(conToken(t));
+    },
+  },
+  {
+    nombre: 'POST /citas/{id}/estado',
+    esperado: { PUB: 401, PROPIETARIO: 200, BARBERO: 200 },
+    ejecutar: async (p, e, t) => {
+      const { barberoId, servicioId } = await barberoVinculado(e);
+      const { clienteId } = await sembrarCliente({ tenantId: e.barberia.tenantId, conCuenta: false });
+      const citaId = await sembrarCita({
+        tenantId: e.barberia.tenantId,
+        barberoId,
+        servicioId,
+        clienteId,
+        inicio: new Date(Date.now() - 2 * 60 * 60 * 1000),
+      });
+      return p.agente.post(`/api/v1/citas/${citaId}/estado`).set(conToken(t)).send({ estado: 'COMPLETADA' });
+    },
+  },
+  {
+    nombre: 'GET /clientes',
+    esperado: { PUB: 401, PROPIETARIO: 200, BARBERO: 403 },
+    ejecutar: (p, _e, t) => p.agente.get('/api/v1/clientes?buscar=ana').set(conToken(t)),
+  },
+  {
+    nombre: 'POST /clientes',
+    esperado: { PUB: 401, PROPIETARIO: 201, BARBERO: 403 },
+    ejecutar: (p, _e, t) =>
+      p.agente.post('/api/v1/clientes').set(conToken(t)).send({
+        nombre: 'Cliente Presencial',
+        telefono: '966111222',
+        consentimientoVerbal: true,
+        versionPoliticaDatos: '2026-10',
+      }),
+  },
 ];
+
+/** Servicio y barbero del catálogo vinculado al barbero activo del escenario (US4 de 002). */
+async function barberoVinculado(e: Escenario) {
+  const { servicioId } = await sembrarServicio({ tenantId: e.barberia.tenantId });
+  const { barberoId } = await sembrarBarbero({
+    tenantId: e.barberia.tenantId,
+    usuarioId: e.barberoActivo.id,
+    servicios: [servicioId],
+  });
+  return { barberoId, servicioId };
+}
 
 // Operaciones públicas: funcionan sin sesión y un token de cualquier rol no las bloquea.
 const PUBLICAS: Operacion[] = [

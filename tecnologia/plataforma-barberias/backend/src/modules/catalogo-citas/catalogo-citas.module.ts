@@ -47,9 +47,12 @@ import { FuenteDisponibilidadKysely } from './catalogo/infrastructure/kysely-fue
 import { CatalogoPublicoRepository } from './catalogo/infrastructure/publico/catalogo-publico.repository';
 import { HorariosController } from './catalogo/presentation/horarios.controller';
 import { PublicoController } from './catalogo/presentation/publico.controller';
+import { CambiarEstadoCita } from './citas/application/cambiar-estado-cita';
+import { ConsultarAgenda } from './citas/application/consultar-agenda';
 import { CitaRepository } from './citas/application/ports/cita-repository';
 import { ReservarCita } from './citas/application/reservar-cita';
 import { CitaRepositoryPostgres } from './citas/infrastructure/cita-repository-postgres';
+import { AgendaController } from './citas/presentation/agenda.controller';
 import { CitasController } from './citas/presentation/citas.controller';
 
 /**
@@ -66,6 +69,7 @@ import { CitasController } from './citas/presentation/citas.controller';
     BarberosController,
     DisponibilidadController,
     HorarioAtencionController,
+    AgendaController,
   ],
   providers: [
     AutorizacionCatalogoCitas,
@@ -98,6 +102,9 @@ import { CitasController } from './citas/presentation/citas.controller';
     ConsultarHorarios,
     { provide: CitaRepository, useClass: CitaRepositoryPostgres },
     ReservarCita,
+    // Agenda y estados (US4).
+    CambiarEstadoCita,
+    ConsultarAgenda,
   ],
   exports: [CatalogQuery],
 })

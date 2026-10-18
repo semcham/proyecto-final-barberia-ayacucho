@@ -1,4 +1,4 @@
-import { ReservaInvalida } from '../../catalogo/domain/errores';
+import { ReservaInvalida, TransicionInvalida } from '../../catalogo/domain/errores';
 import { RangoHorario } from '../../catalogo/domain/rango-horario';
 import { type EstadoCita, ocupaHorario } from './estado-cita';
 
@@ -27,11 +27,14 @@ export interface DatosCita {
 
 /**
  * T091 · Cita (RF12; FR-008, FR-035a). Que no haya dos citas activas del mismo barbero que se solapen NO
- * lo decide esta entidad: lo garantiza la restricción de exclusión de PostgreSQL (principio IV). Las
- * transiciones de estado (RF14, RF15) se agregan con US4 y US5.
+ * lo decide esta entidad: lo garantiza la restricción de exclusión de PostgreSQL (principio IV).
+ *
+ * T104 · Transiciones de la barbería (RF15; FR-041, FR-042; R10): `aprobar` (PENDIENTE → CONFIRMADA),
+ * `completar` y `marcarNoAsistio` (CONFIRMADA → COMPLETADA o NO_ASISTIO, desde la hora de inicio).
+ * COMPLETADA, NO_ASISTIO y CANCELADA son finales. La cancelación (RF14) llega con US5.
  */
 export class Cita {
-  private constructor(private readonly datos: DatosCita) {}
+  private constructor(private datos: DatosCita) {}
 
   static reservar(entrada: {
     id: string;
@@ -92,5 +95,36 @@ export class Cita {
 
   ocupaHorario(): boolean {
     return ocupaHorario(this.datos.estado);
+  }
+
+  /** PENDIENTE → CONFIRMADA. */
+  aprobar(): void {
+    this.transicion('CONFIRMADA', this.datos.estado === 'PENDIENTE');
+  }
+
+  /** CONFIRMADA → COMPLETADA, solo desde la hora de inicio (no se completa una cita futura). */
+  completar(ahora: Date): void {
+    this.transicion('COMPLETADA', this.datos.estado === 'CONFIRMADA' && this.empezo(ahora));
+  }
+
+  /** CONFIRMADA → NO_ASISTIO, solo desde la hora de inicio. */
+  marcarNoAsistio(ahora: Date): void {
+    this.transicion('NO_ASISTIO', this.datos.estado === 'CONFIRMADA' && this.empezo(ahora));
+  }
+
+  /** Aplica la transición de la barbería hacia `destino` (POST /citas/{id}/estado). */
+  cambiarA(destino: 'CONFIRMADA' | 'COMPLETADA' | 'NO_ASISTIO', ahora: Date): void {
+    if (destino === 'CONFIRMADA') this.aprobar();
+    else if (destino === 'COMPLETADA') this.completar(ahora);
+    else this.marcarNoAsistio(ahora);
+  }
+
+  private empezo(ahora: Date): boolean {
+    return ahora.getTime() >= this.datos.rango.inicio.getTime();
+  }
+
+  private transicion(destino: EstadoCita, permitida: boolean): void {
+    if (!permitida) throw new TransicionInvalida(this.datos.estado, destino);
+    this.datos = { ...this.datos, estado: destino };
   }
 }

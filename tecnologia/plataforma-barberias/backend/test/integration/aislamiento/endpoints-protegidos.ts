@@ -46,6 +46,20 @@ export const ENDPOINTS_PROTEGIDOS: EndpointProtegido[] = [
   { metodo: 'get', ruta: '/api/v1/barberos/{idBarberoPropio}/bloqueos' },
   { metodo: 'post', ruta: '/api/v1/barberos/{idBarberoPropio}/bloqueos', cuerpo: BLOQUEO_VALIDO },
   { metodo: 'delete', ruta: '/api/v1/barberos/{idBarberoPropio}/bloqueos/{idBloqueoPropio}' },
+  // Funcionalidad 002 · US4 (T102): agenda, estados de la cita y clientes presenciales.
+  { metodo: 'get', ruta: '/api/v1/agenda?fecha=2030-01-09' },
+  { metodo: 'post', ruta: '/api/v1/citas/{idCitaPropia}/estado', cuerpo: { estado: 'COMPLETADA' } },
+  { metodo: 'get', ruta: '/api/v1/clientes?buscar=cliente' },
+  {
+    metodo: 'post',
+    ruta: '/api/v1/clientes',
+    cuerpo: {
+      nombre: 'Cliente Atacante',
+      telefono: '966000111',
+      consentimientoVerbal: true,
+      versionPoliticaDatos: '2026-10',
+    },
+  },
 ];
 
 /**
@@ -73,4 +87,7 @@ export const OPERACIONES_CON_IDS_DE_B: EndpointProtegido[] = [
   { metodo: 'delete', ruta: '/api/v1/barberos/{barberoB}/bloqueos/{bloqueoB}' },
   // Barbero propio con el bloqueo de B: tampoco existe para A.
   { metodo: 'delete', ruta: '/api/v1/barberos/{barberoA}/bloqueos/{bloqueoB}' },
+  // US4 (T102): cambiar el estado de una cita de B.
+  { metodo: 'post', ruta: '/api/v1/citas/{citaB}/estado', cuerpo: { estado: 'COMPLETADA' } },
+  { metodo: 'post', ruta: '/api/v1/citas/{citaB}/estado', cuerpo: { estado: 'NO_ASISTIO' } },
 ];

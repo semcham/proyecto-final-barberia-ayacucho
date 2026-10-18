@@ -1,7 +1,11 @@
 import { Injectable } from '@nestjs/common';
+import { sql } from 'kysely';
 import { KyselyUnitOfWork, TenantContext } from '../../../../shared';
 import type { PerfilClienteResumen } from '../../api-publica';
-import { PerfilClienteRepository } from '../application/ports/perfil-cliente-repository';
+import {
+  type ClienteEncontrado,
+  PerfilClienteRepository,
+} from '../application/ports/perfil-cliente-repository';
 import type { PerfilCliente } from '../domain/perfil-cliente';
 
 const COLUMNAS = ['id', 'full_name', 'phone'] as const;
@@ -57,6 +61,29 @@ export class KyselyPerfilClienteRepository extends PerfilClienteRepository {
   async porId(clienteId: string): Promise<PerfilClienteResumen | null> {
     const fila = await this.consulta().where('id', '=', clienteId).executeTakeFirst();
     return fila ? aResumen(fila) : null;
+  }
+
+  async buscar(texto: string, limite: number): Promise<ClienteEncontrado[]> {
+    // Los comodines de LIKE que escriba la persona se buscan literalmente.
+    const literal = (valor: string) => valor.replace(/[\\%_]/g, (c) => `\\${c}`);
+    const nombre = `%${literal(texto.trim().toLowerCase())}%`;
+    const digitos = texto.replace(/\D/g, '');
+    const filas = await this.uow
+      .transaccionActual()
+      .selectFrom('customer_profile')
+      .select(['id', 'full_name', 'phone', 'origin'])
+      .where('tenant_id', '=', this.tenantContext.actual().valor)
+      .where((eb) =>
+        eb.or([
+          eb(sql<string>`lower(full_name)`, 'like', nombre),
+          ...(digitos.length >= 3 ? [eb(sql<string>`replace(phone, ' ', '')`, 'like', `%${digitos}%`)] : []),
+        ]),
+      )
+      .orderBy('full_name')
+      .orderBy('id')
+      .limit(limite)
+      .execute();
+    return filas.map((f) => ({ id: f.id, nombre: f.full_name, telefono: f.phone, origen: f.origin }));
   }
 
   async varios(clienteIds: readonly string[]): Promise<PerfilClienteResumen[]> {

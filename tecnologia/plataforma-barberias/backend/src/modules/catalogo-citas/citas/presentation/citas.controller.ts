@@ -1,11 +1,12 @@
-import { Body, Controller, Headers, Post, Res } from '@nestjs/common';
+import { Body, Controller, Headers, HttpCode, Param, ParseUUIDPipe, Post, Res } from '@nestjs/common';
 import type { Response } from 'express';
 import type { Actor } from '../../../acceso-barberias';
 import { ActorActual } from '../../../../shared';
 import { DatoInvalido } from '../../catalogo/domain/errores';
 import { OperacionM02 } from '../../catalogo/presentation/operacion.decorator';
+import { CambiarEstadoCita } from '../application/cambiar-estado-cita';
 import { type CitaVista, ReservarCita } from '../application/reservar-cita';
-import { ReservarCitaDto } from './citas.dto';
+import { CambiarEstadoDto, ReservarCitaDto } from './citas.dto';
 
 /**
  * Citas (RF12). T094: POST /citas con Idempotency-Key obligatoria (R09). El tenant sale del token; el
@@ -13,7 +14,22 @@ import { ReservarCitaDto } from './citas.dto';
  */
 @Controller('citas')
 export class CitasController {
-  constructor(private readonly reservarCita: ReservarCita) {}
+  constructor(
+    private readonly reservarCita: ReservarCita,
+    private readonly cambiarEstadoCita: CambiarEstadoCita,
+  ) {}
+
+  /** T109 · POST /citas/:id/estado · Transición de la barbería (RF15): aprobar, completar o no asistió. */
+  @Post(':id/estado')
+  @HttpCode(200)
+  @OperacionM02('CAMBIAR_ESTADO_CITA')
+  cambiarEstado(
+    @ActorActual() actor: Actor,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: CambiarEstadoDto,
+  ): Promise<CitaVista> {
+    return this.cambiarEstadoCita.ejecutar(actor, id, dto.estado);
+  }
 
   @Post()
   @OperacionM02('RESERVAR_CITA')

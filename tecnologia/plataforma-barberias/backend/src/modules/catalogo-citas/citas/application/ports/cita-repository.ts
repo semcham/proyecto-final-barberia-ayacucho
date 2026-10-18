@@ -1,4 +1,5 @@
 import type { Cita } from '../../domain/cita';
+import type { EstadoCita } from '../../domain/estado-cita';
 
 /** Datos de idempotencia de una reserva (research R09): se guardan en la propia fila de la cita. */
 export interface Idempotencia {
@@ -46,4 +47,13 @@ export abstract class CitaRepository {
   abstract guardar(cita: Cita, idempotencia: Idempotencia | null): Promise<void>;
   /** Cita reservada por `autorId` con esa clave de idempotencia, o null. */
   abstract buscarPorIdempotencia(autorId: string, clave: string): Promise<CitaConIdempotencia | null>;
+  /**
+   * La cita con su fila bloqueada (`FOR UPDATE`) hasta el fin de la transacción, o null: dos cambios de
+   * estado simultáneos se atienden uno después del otro (R10).
+   */
+  abstract buscarParaActualizar(id: string): Promise<Cita | null>;
+  /** Guarda el estado nuevo y agrega la fila del historial (inmutable) con su autor. */
+  abstract actualizarEstado(cita: Cita, anterior: EstadoCita, autorId: string): Promise<void>;
+  /** Citas (en cualquier estado) que empiezan en [desde, hasta), opcionalmente de un barbero, por inicio. */
+  abstract delRango(desde: Date, hasta: Date, barberoId?: string): Promise<Cita[]>;
 }

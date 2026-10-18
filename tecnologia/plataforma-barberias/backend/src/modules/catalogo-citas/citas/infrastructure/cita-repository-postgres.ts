@@ -12,6 +12,7 @@ import {
   type Idempotencia,
 } from '../application/ports/cita-repository';
 import { Cita } from '../domain/cita';
+import type { EstadoCita } from '../domain/estado-cita';
 
 const VIOLACION_DE_EXCLUSION = '23P01';
 const VIOLACION_DE_UNICIDAD = '23505';
@@ -84,7 +85,53 @@ export class CitaRepositoryPostgres extends CitaRepository {
   }
 
   async buscarPorIdempotencia(autorId: string, clave: string): Promise<CitaConIdempotencia | null> {
-    const fila = await this.uow
+    const fila = await this.consulta()
+      .select('request_hash')
+      .where('created_by', '=', autorId)
+      .where('idempotency_key', '=', clave)
+      .executeTakeFirst();
+    return fila ? { hashSolicitud: fila.request_hash, cita: aCita(fila) } : null;
+  }
+
+  async buscarParaActualizar(id: string): Promise<Cita | null> {
+    const fila = await this.consulta().where('id', '=', id).forUpdate().executeTakeFirst();
+    return fila ? aCita(fila) : null;
+  }
+
+  async actualizarEstado(cita: Cita, anterior: EstadoCita, autorId: string): Promise<void> {
+    const tenantId = this.tenantContext.actual().valor;
+    const trx = this.uow.transaccionActual();
+    const ahora = new Date();
+    await trx
+      .updateTable('appointment')
+      .set({ status: cita.estado, updated_at: ahora })
+      .where('tenant_id', '=', tenantId)
+      .where('id', '=', cita.id)
+      .execute();
+    await trx
+      .insertInto('appointment_status_history')
+      .values({
+        id: uuidv7(),
+        tenant_id: tenantId,
+        appointment_id: cita.id,
+        from_status: anterior,
+        to_status: cita.estado,
+        changed_by: autorId,
+        changed_at: ahora,
+      })
+      .execute();
+  }
+
+  async delRango(desde: Date, hasta: Date, barberoId?: string): Promise<Cita[]> {
+    let consulta = this.consulta().where('starts_at', '>=', desde).where('starts_at', '<', hasta);
+    if (barberoId) consulta = consulta.where('barber_id', '=', barberoId);
+    const filas = await consulta.orderBy('starts_at').orderBy('id').execute();
+    return filas.map(aCita);
+  }
+
+  /** Columnas de la cita, filtradas por el tenant del contexto. */
+  private consulta() {
+    return this.uow
       .transaccionActual()
       .selectFrom('appointment')
       .select([
@@ -101,33 +148,42 @@ export class CitaRepositoryPostgres extends CitaRepository {
         'origin',
         'late_cancellation',
         'created_by',
-        'request_hash',
       ])
-      .where('tenant_id', '=', this.tenantContext.actual().valor)
-      .where('created_by', '=', autorId)
-      .where('idempotency_key', '=', clave)
-      .executeTakeFirst();
-    if (!fila) return null;
-    return {
-      hashSolicitud: fila.request_hash,
-      cita: Cita.reconstruir({
-        id: fila.id,
-        barberoId: fila.barber_id,
-        clienteId: fila.customer_id,
-        servicio: {
-          servicioId: fila.service_id,
-          nombre: fila.service_name,
-          precio: fila.price,
-          duracionMin: fila.duration_min,
-        },
-        rango: RangoHorario.crear(fila.starts_at, fila.ends_at),
-        estado: fila.status,
-        origen: fila.origin,
-        cancelacionTardia: fila.late_cancellation,
-        creadoPor: fila.created_by,
-      }),
-    };
+      .where('tenant_id', '=', this.tenantContext.actual().valor);
   }
+}
+
+function aCita(fila: {
+  id: string;
+  barber_id: string;
+  customer_id: string;
+  service_id: string;
+  service_name: string;
+  price: string;
+  duration_min: number;
+  starts_at: Date;
+  ends_at: Date;
+  status: EstadoCita;
+  origin: 'EN_LINEA' | 'PRESENCIAL';
+  late_cancellation: boolean;
+  created_by: string;
+}): Cita {
+  return Cita.reconstruir({
+    id: fila.id,
+    barberoId: fila.barber_id,
+    clienteId: fila.customer_id,
+    servicio: {
+      servicioId: fila.service_id,
+      nombre: fila.service_name,
+      precio: fila.price,
+      duracionMin: fila.duration_min,
+    },
+    rango: RangoHorario.crear(fila.starts_at, fila.ends_at),
+    estado: fila.status,
+    origen: fila.origin,
+    cancelacionTardia: fila.late_cancellation,
+    creadoPor: fila.created_by,
+  });
 }
 
 /** Traduce los errores de PostgreSQL por el nombre de la restricción (R06). */

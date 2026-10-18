@@ -14,4 +14,16 @@ export abstract class PerfilClienteRepository {
   abstract porId(clienteId: string): Promise<PerfilClienteResumen | null>;
   /** Varios perfiles de la barbería del contexto en una consulta; ignora ids de otras barberías. */
   abstract varios(clienteIds: readonly string[]): Promise<PerfilClienteResumen[]>;
+  /**
+   * Clientes de la barbería del contexto cuyo nombre contiene `texto` (sin distinguir mayúsculas) o cuyo
+   * teléfono contiene sus dígitos, por nombre, como máximo `limite`.
+   */
+  abstract buscar(texto: string, limite: number): Promise<ClienteEncontrado[]>;
+}
+
+export interface ClienteEncontrado {
+  id: string;
+  nombre: string;
+  telefono: string;
+  origen: 'EN_LINEA' | 'PRESENCIAL';
 }

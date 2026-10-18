@@ -23,6 +23,8 @@ const Barberia = lazy(() => import('./pages/panel/Barberia'));
 const Servicios = lazy(() => import('./pages/panel/Servicios'));
 const Barberos = lazy(() => import('./pages/panel/Barberos'));
 const Disponibilidad = lazy(() => import('./pages/panel/Disponibilidad'));
+const Agenda = lazy(() => import('./pages/panel/Agenda'));
+const Clientes = lazy(() => import('./pages/panel/Clientes'));
 const RegistroCliente = lazy(() => import('./pages/publico/RegistroCliente'));
 const IngresarBarberia = lazy(() => import('./pages/publico/IngresarBarberia'));
 const ReservarProtegida = lazy(() =>
@@ -48,8 +50,8 @@ const RUTAS_PANEL_002: {
     roles: ['PROPIETARIO', 'BARBERO'],
     pantalla: Disponibilidad,
   },
-  { ruta: 'agenda', titulo: 'Agenda', roles: ['PROPIETARIO', 'BARBERO'] },
-  { ruta: 'clientes', titulo: 'Clientes', roles: ['PROPIETARIO'] },
+  { ruta: 'agenda', titulo: 'Agenda', roles: ['PROPIETARIO', 'BARBERO'], pantalla: Agenda },
+  { ruta: 'clientes', titulo: 'Clientes', roles: ['PROPIETARIO'], pantalla: Clientes },
 ];
 
 function Portada() {

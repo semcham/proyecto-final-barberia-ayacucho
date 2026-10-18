@@ -218,7 +218,8 @@ function hashDe(comando: ComandoReservarCita, inicio: Date): string {
   return createHash('sha256').update(normalizado).digest('hex');
 }
 
-function aVista(cita: Cita, barberia: string, barbero: string, zona: ZonaHoraria): CitaVista {
+/** Cita como la devuelve la API, con los nombres de la barbería y del barbero y la hora local. */
+export function aVista(cita: Cita, barberia: string, barbero: string, zona: ZonaHoraria): CitaVista {
   const servicio = cita.servicio;
   return {
     id: cita.id,

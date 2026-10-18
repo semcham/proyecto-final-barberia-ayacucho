@@ -8,6 +8,8 @@ import {
   sembrarBarberia,
   sembrarBarbero,
   sembrarBloqueo,
+  sembrarCita,
+  sembrarCliente,
   sembrarDisponibilidad,
   sembrarHorarioAtencion,
   sembrarServicio,
@@ -42,9 +44,17 @@ const TABLAS_DE_B = [
   'barber_service',
   'working_hours',
   'time_off',
+  // Funcionalidad 002 · US4 (clientes y citas).
+  'customer_profile',
+  'consent_record',
+  'appointment',
+  'appointment_status_history',
 ];
 
-/** Servicio, barbero con disponibilidad y un bloqueo futuro de una barbería (US1 de 002). */
+/**
+ * Servicio, barbero con disponibilidad, un bloqueo futuro, un cliente presencial y una cita pasada de una
+ * barbería (US1 y US4 de 002).
+ */
 async function sembrarCatalogo(tenantId: string) {
   await sembrarHorarioAtencion(tenantId);
   const { servicioId } = await sembrarServicio({ tenantId, nombre: 'Corte' });
@@ -56,7 +66,15 @@ async function sembrarCatalogo(tenantId: string) {
     inicio: new Date('2030-01-09T15:00:00Z'),
     fin: new Date('2030-01-09T16:00:00Z'),
   });
-  return { servicioId, barberoId, bloqueoId };
+  const { clienteId } = await sembrarCliente({ tenantId, conCuenta: false, nombre: 'Cliente Sembrado' });
+  const citaId = await sembrarCita({
+    tenantId,
+    barberoId,
+    servicioId,
+    clienteId,
+    inicio: new Date(Date.now() - DIA_MS),
+  });
+  return { servicioId, barberoId, bloqueoId, clienteId, citaId };
 }
 
 type Vector = 'cuerpo' | 'consulta' | 'encabezado';
@@ -94,8 +112,10 @@ describe('PR09 · Aislamiento entre barberías por HTTP', () => {
       .replace('{idUsuarioPropio}', pendienteDeA)
       .replace('{idServicioPropio}', catalogoA.servicioId)
       .replace('{idBarberoPropio}', catalogoA.barberoId)
-      .replace('{idBloqueoPropio}', catalogoA.bloqueoId);
-    const rutaConConsulta = vector === 'consulta' ? `${ruta}?${campo}=${b.tenantId}` : ruta;
+      .replace('{idBloqueoPropio}', catalogoA.bloqueoId)
+      .replace('{idCitaPropia}', catalogoA.citaId);
+    const separador = ruta.includes('?') ? '&' : '?';
+    const rutaConConsulta = vector === 'consulta' ? `${ruta}${separador}${campo}=${b.tenantId}` : ruta;
     let solicitud = prueba.agente[endpoint.metodo](rutaConConsulta).set('Authorization', `Bearer ${token}`);
     if (vector === 'encabezado') solicitud = solicitud.set('X-Tenant-Id', b.tenantId);
     if (endpoint.cuerpo !== undefined || vector === 'cuerpo') {
@@ -250,7 +270,8 @@ describe('PR09 · Aislamiento entre barberías por HTTP', () => {
         .replace('{servicioB}', catalogoB.servicioId)
         .replace('{barberoB}', catalogoB.barberoId)
         .replace('{bloqueoB}', catalogoB.bloqueoId)
-        .replace('{barberoA}', catalogoA.barberoId);
+        .replace('{barberoA}', catalogoA.barberoId)
+        .replace('{citaB}', catalogoB.citaId);
 
     it.each(
       OPERACIONES_CON_IDS_DE_B.map((endpoint) => [
@@ -285,6 +306,37 @@ describe('PR09 · Aislamiento entre barberías por HTTP', () => {
         .send({ nombre: 'Intruso', servicioIds: [], usuarioId: barberoDeB })
         .expect(404);
       expect(await filasDe('barber', a.tenantId)).toEqual(antesA);
+      expect(await datosDeB()).toEqual(antesB);
+    });
+
+    it('US4: la agenda de A con el barbero de B no muestra nada de B; GET /clientes de A no encuentra clientes de B', async () => {
+      const token = { Authorization: `Bearer ${await tokenDeA()}` };
+      const fechaB = new Date(Date.now() - DIA_MS).toISOString().slice(0, 10);
+      for (const consulta of [`fecha=${fechaB}&barbero=${catalogoB.barberoId}`, `fecha=${fechaB}`]) {
+        const { body } = await prueba.agente.get(`/api/v1/agenda?${consulta}`).set(token).expect(200);
+        const ids = body.citas.map((c: { id: string }) => c.id);
+        expect(ids).not.toContain(catalogoB.citaId);
+        expect(JSON.stringify(body)).not.toContain(catalogoB.clienteId);
+      }
+      const clientes = await prueba.agente.get('/api/v1/clientes?buscar=sembrado').set(token).expect(200);
+      expect(clientes.body.map((c: { id: string }) => c.id)).toEqual([catalogoA.clienteId]);
+    });
+
+    it('US4: una cita presencial de A con un cliente de B → 404 y no se crea nada', async () => {
+      const antesA = await filasDe('appointment', a.tenantId);
+      const antesB = await datosDeB();
+      const { body } = await prueba.agente
+        .post('/api/v1/citas')
+        .set({ Authorization: `Bearer ${await tokenDeA()}`, 'Idempotency-Key': crypto.randomUUID() })
+        .send({
+          servicioId: catalogoA.servicioId,
+          barberoId: catalogoA.barberoId,
+          inicio: '2030-01-08T10:00:00-05:00',
+          clienteId: catalogoB.clienteId,
+        })
+        .expect(404);
+      expect(body.codigo).toBe('NO_ENCONTRADO');
+      expect(await filasDe('appointment', a.tenantId)).toEqual(antesA);
       expect(await datosDeB()).toEqual(antesB);
     });
 

@@ -6,7 +6,9 @@ import { BarberiasApiImpl } from './barberias/application/barberias-api';
 import { ObtenerBarberia } from './barberias/application/obtener-barberia';
 import { BarberiaController } from './barberias/presentation/barberia.controller';
 import { PersonalApiImpl } from './identidad/application/personal-api';
+import { BuscarClientes } from './clientes/application/buscar-clientes';
 import { ClientesApiImpl } from './clientes/application/clientes-api';
+import { RegistrarClientePresencial } from './clientes/application/registrar-cliente-presencial';
 import { ConsentimientoRepository } from './clientes/application/ports/consentimiento-repository';
 import { PerfilClienteRepository } from './clientes/application/ports/perfil-cliente-repository';
 import { RegistrarCliente } from './clientes/application/registrar-cliente';
@@ -96,6 +98,9 @@ import { UsuariosController } from './identidad/presentation/usuarios.controller
     // Configuración de la barbería (US1 de 002).
     ObtenerBarberia,
     ActualizarBarberia,
+    // Clientes presenciales (US4 de 002).
+    BuscarClientes,
+    RegistrarClientePresencial,
     // Interfaces públicas para M02 (ADR-020).
     { provide: BarberiasApi, useClass: BarberiasApiImpl },
     { provide: ClientesApi, useClass: ClientesApiImpl },
