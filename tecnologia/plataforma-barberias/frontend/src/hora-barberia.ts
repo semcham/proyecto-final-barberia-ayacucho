@@ -41,6 +41,12 @@ export function fechaIsoDeBarberia(instante: string | Date, zona: string): strin
   return `${parte('year')}-${parte('month')}-${parte('day')}`;
 }
 
+/** Suma días a una fecha "YYYY-MM-DD" (calendario puro, sin zonas). */
+export function sumarDiasIso(fecha: string, dias: number): string {
+  const [anio, mes, dia] = fecha.split('-').map(Number);
+  return new Date(Date.UTC(anio, mes - 1, dia + dias)).toISOString().slice(0, 10);
+}
+
 /** "10:00 (hora de la barbería)": para mostrar junto a horarios y citas. */
 export function horaConEtiqueta(instante: string | Date, zona: string): string {
   return `${horaDeBarberia(instante, zona)} (${ETIQUETA_HORA_BARBERIA})`;

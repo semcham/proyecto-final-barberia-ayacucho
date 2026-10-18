@@ -132,8 +132,27 @@ describe('PR09 · Cliente con membresía en dos barberías', () => {
     expect(vistosDesdeA).toEqual([{ id: enA.clienteId }]);
   });
 
-  // GET /horarios (US2, T073) y GET /clientes/yo/citas (US6, T122) aún no existen: estos casos de T079
-  // se activan cuando se implementen esas rutas.
-  it.todo('GET /horarios con el slug de B y el token de A opera solo sobre A');
+  it('GET /horarios con el token de A: el slug o la barbería de B en la consulta → 400; sin ellos, solo opera sobre A', async () => {
+    const horarios = (consulta: string, token = tokenA) =>
+      prueba.agente.get(`/api/v1/horarios?${consulta}`).set({ Authorization: `Bearer ${token}` });
+
+    for (const campo of ['slug', 'barberia', 'tenantId']) {
+      const valor = campo === 'tenantId' ? b.barberia.tenantId : b.barberia.slug;
+      await horarios(`servicio=${a.servicioId}&fecha=${fecha}&${campo}=${valor}`).expect(400);
+    }
+    // El servicio y el barbero de B no existen en A: sin horarios, aunque en B estén libres.
+    const conDatosDeB = await horarios(
+      `servicio=${b.servicioId}&fecha=${fecha}&barbero=${b.barberoId}`,
+    ).expect(200);
+    expect(conDatosDeB.body.horas).toEqual([]);
+    const enB = await horarios(`servicio=${b.servicioId}&fecha=${fecha}`, tokenB).expect(200);
+    expect(enB.body.horas.length).toBeGreaterThan(0);
+    // Con los datos de A, solo barberos de A.
+    const enA = await horarios(`servicio=${a.servicioId}&fecha=${fecha}`).expect(200);
+    const barberos = new Set(enA.body.horas.flatMap((h: { barberoIds: string[] }) => h.barberoIds));
+    expect([...barberos].sort()).toEqual([a.barberoId, a.otroBarberoId].sort());
+  });
+
+  // GET /clientes/yo/citas (US6, T122) aún no existe: este caso de T079 se activa con esa ruta.
   it.todo('GET /clientes/yo/citas con el token de A devuelve solo citas de A');
 });

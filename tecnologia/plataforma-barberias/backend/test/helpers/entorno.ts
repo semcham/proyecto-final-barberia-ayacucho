@@ -24,3 +24,4 @@ process.env.PRIVACY_POLICY_VERSION = '2026-10';
 // Las pruebas registran muchas barberías desde la misma IP; el límite real (10 por minuto) no aplica aquí.
 process.env.REGISTRO_LIMITE_POR_MINUTO = '1000';
 process.env.ACTIVACION_LIMITE_POR_MINUTO = '1000';
+process.env.PUBLICO_LIMITE_POR_MINUTO = '10000';

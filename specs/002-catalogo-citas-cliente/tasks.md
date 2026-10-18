@@ -381,7 +381,7 @@ Ninguna respuesta contiene datos privados (escenarios 1–6 de US2; quickstart �
 
 ### Tests for User Story 2 (MANDATORY - constitution Principle X) ⚠️
 
-- [ ] T063 [P] [US2] Pruebas unitarias de `CalculadoraHorarios` (R08) en `tecnologia/plataforma-barberias/backend/test/unit/catalogo/calculadora-horarios.spec.ts`:
+- [X] T063 [P] [US2] Pruebas unitarias de `CalculadoraHorarios` (R08) en `tecnologia/plataforma-barberias/backend/test/unit/catalogo/calculadora-horarios.spec.ts`:
   - intersección de disponibilidad y atención;
   - resta de bloqueos y citas activas (las canceladas no restan);
   - el servicio debe caber entero;
@@ -391,23 +391,23 @@ Ninguna respuesta contiene datos privados (escenarios 1–6 de US2; quickstart �
   - "cualquier barbero" lista los barberos libres por hora;
   - barbero inactivo o sin el servicio → excluido;
   - día cerrado → vacío.
-- [ ] T064 [P] [US2] Pruebas de ADR-021 (PR09) en `tecnologia/plataforma-barberias/backend/test/integration/aislamiento/lectura-publica.spec.ts`:
+- [X] T064 [P] [US2] Pruebas de ADR-021 (PR09) en `tecnologia/plataforma-barberias/backend/test/integration/aislamiento/lectura-publica.spec.ts`:
   1. Los permisos de `barberias_publico` en `information_schema.column_privileges` y `table_privileges` coinciden **exactamente** con la lista cerrada de ADR-021, que ya no incluye `tenant` (sin `INSERT`, `UPDATE` ni `DELETE`). `LecturaPublica` no lee ninguna tabla: el `slug` lo resuelve `BarberiasApi.resolverSlugPublico` (M01).
   2. `rolbypassrls = false`, no es dueño de nada y no puede ejecutar `auth_resolver_cuenta`, `auth_buscar_sesion` ni `auth_buscar_activacion`.
   3. Con el pool `publico`, `SELECT customer_id FROM appointment`, `SELECT reason FROM time_off` y `SELECT user_id FROM barber` fallan por permisos.
   4. Con el tenant de A fijado no aparece ninguna fila de B; sin tenant, ninguna.
   5. Una escritura en la transacción pública falla.
   6. HTTP: con datos canario sembrados en A y B (correos y teléfonos únicos de clientes y del personal, motivos de bloqueo), ninguna respuesta de `/publico/*` los contiene; un `slug` inexistente y uno suspendido dan respuestas idénticas; `POST`, `PUT`, `PATCH` y `DELETE` sobre `/publico/*` se rechazan; un token de B enviado a `/publico/{slug-de-A}` no cambia la respuesta.
-- [ ] T065 [P] [US2] Prueba de contrato de `GET /publico/{slug}`, `GET /publico/{slug}/horarios` y `GET /horarios` en `tecnologia/plataforma-barberias/backend/test/contract/publico.contract.spec.ts`:
+- [X] T065 [P] [US2] Prueba de contrato de `GET /publico/{slug}`, `GET /publico/{slug}/horarios` y `GET /horarios` en `tecnologia/plataforma-barberias/backend/test/contract/publico.contract.spec.ts`:
   - `additionalProperties: false` en las respuestas públicas;
   - 404 `BARBERIA_NO_DISPONIBLE`;
   - 400 con fecha mal formada o `servicio` ausente.
-- [ ] T066 [P] [US2] Integración de horarios en `tecnologia/plataforma-barberias/backend/test/integration/catalogo/horarios.spec.ts`:
+- [X] T066 [P] [US2] Integración de horarios en `tecnologia/plataforma-barberias/backend/test/integration/catalogo/horarios.spec.ts`:
   - un bloqueo nuevo y una cita nueva desaparecen de los horarios en la consulta siguiente (FR-017);
   - la respuesta trae `calculadoEn` y `zonaHoraria`;
   - `GET /horarios` con el token de un cliente da el mismo resultado que la vía pública;
   - humo de rendimiento: un día con 5 barberos y 60 citas se calcula en menos de 200 ms.
-- [ ] T067 [P] [US2] Prueba de la pantalla pública en `tecnologia/plataforma-barberias/frontend/test/pages/catalogo-publico.spec.tsx`:
+- [X] T067 [P] [US2] Prueba de la pantalla pública en `tecnologia/plataforma-barberias/frontend/test/pages/catalogo-publico.spec.tsx`:
   - muestra servicios y barberos;
   - al elegir servicio y fecha pide horarios y los muestra con "hora de la barbería";
   - un 404 muestra "barbería no disponible";
@@ -415,27 +415,27 @@ Ninguna respuesta contiene datos privados (escenarios 1–6 de US2; quickstart �
 
 ### Implementation for User Story 2
 
-- [ ] T068 [P] [US2] Crear `CalculadoraHorarios` (función pura de R08; recibe tramos, ocupación en minutos locales, paso, "ahora" y horizonte) en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/catalogo/domain/calculadora-horarios.ts`
-- [ ] T069 [US2] Crear el puerto `FuenteDisponibilidad` (catálogo del día y ocupación del día local por barbero) en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/catalogo/application/ports/fuente-disponibilidad.ts` y el caso de uso `ConsultarHorarios`:
+- [X] T068 [P] [US2] Crear `CalculadoraHorarios` (función pura de R08; recibe tramos, ocupación en minutos locales, paso, "ahora" y horizonte) en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/catalogo/domain/calculadora-horarios.ts`
+- [X] T069 [US2] Crear el puerto `FuenteDisponibilidad` (catálogo del día y ocupación del día local por barbero) en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/catalogo/application/ports/fuente-disponibilidad.ts` y el caso de uso `ConsultarHorarios`:
   - convierte la fecha local con `ZonaHoraria`;
   - aplica la configuración de paso y horizonte;
   - devuelve horas, `calculadoEn` y `zonaHoraria`.
 
   Archivo: `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/catalogo/application/consultar-horarios.ts`.
 
-- [ ] T070 [US2] Crear el repositorio de la vía pública (ADR-021) en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/catalogo/infrastructure/publico/catalogo-publico.repository.ts` (`CatalogoPublicoRepository`, que también implementa `FuenteDisponibilidad`):
+- [X] T070 [US2] Crear el repositorio de la vía pública (ADR-021) en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/catalogo/infrastructure/publico/catalogo-publico.repository.ts` (`CatalogoPublicoRepository`, que también implementa `FuenteDisponibilidad`):
   - recibe el `tenantId` que el controlador obtiene con `BarberiasApi.resolverSlugPublico(slug)` y usa `LecturaPublica.ejecutar(tenantId, ...)`;
   - selecciona solo columnas públicas en: horario de atención, servicios y barberos activos con sus servicios, disponibilidad, bloqueos (sin motivo) y citas activas del día (sin cliente);
   - devuelve DTO cerrados.
-- [ ] T071 [US2] Crear la fuente autenticada `FuenteDisponibilidadKysely`, con la transacción del tenant del token y apoyada en `CatalogQuery` (fase 2), en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/catalogo/infrastructure/kysely-fuente-disponibilidad.ts`
-- [ ] T072 [US2] Crear `PublicoController` en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/catalogo/presentation/publico.controller.ts`:
+- [X] T071 [US2] Crear la fuente autenticada `FuenteDisponibilidadKysely`, con la transacción del tenant del token y apoyada en `CatalogQuery` (fase 2), en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/catalogo/infrastructure/kysely-fuente-disponibilidad.ts`
+- [X] T072 [US2] Crear `PublicoController` en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/catalogo/presentation/publico.controller.ts`:
   - rutas `GET /publico/:slug` y `GET /publico/:slug/horarios`, solo `GET` y con `@Publica()`;
   - resuelve el `slug` con `BarberiasApi.resolverSlugPublico` (404 `BARBERIA_NO_DISPONIBLE`) y pasa el `tenantId` al repositorio público;
   - no lee `Authorization`;
   - datos de la barbería vía `BarberiasApi.datosPublicos`;
   - límite de solicitudes por IP (429).
-- [ ] T073 [US2] Crear `GET /horarios` (CLIENTE, PROPIETARIO; fuente autenticada) en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/catalogo/presentation/horarios.controller.ts` y registrar ambos controladores en `catalogo-citas.module.ts`
-- [ ] T074 [US2] Crear la pantalla `tecnologia/plataforma-barberias/frontend/src/pages/publico/CatalogoPublico.tsx` y su ruta `/b/:slug` en `tecnologia/plataforma-barberias/frontend/src/routes.tsx`:
+- [X] T073 [US2] Crear `GET /horarios` (CLIENTE, PROPIETARIO; fuente autenticada) en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/catalogo/presentation/horarios.controller.ts` y registrar ambos controladores en `catalogo-citas.module.ts`
+- [X] T074 [US2] Crear la pantalla `tecnologia/plataforma-barberias/frontend/src/pages/publico/CatalogoPublico.tsx` y su ruta `/b/:slug` en `tecnologia/plataforma-barberias/frontend/src/routes.tsx`:
   - una solicitud para el catálogo y una por fecha;
   - selector de servicio, barbero ("cualquiera" por defecto) y fecha dentro del horizonte;
   - horas en botones;

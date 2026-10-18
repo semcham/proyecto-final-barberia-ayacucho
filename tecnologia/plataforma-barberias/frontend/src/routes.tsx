@@ -18,6 +18,7 @@ const Usuarios = lazy(() => import('./pages/Usuarios'));
 const DisenoApp = lazy(() => import('./components/app/DisenoApp').then((m) => ({ default: m.DisenoApp })));
 // Funcionalidad 002 (T038): esqueleto de rutas. Cada historia reemplaza PaginaPendiente por su pantalla.
 const PaginaPendiente = lazy(() => import('./pages/PaginaPendiente'));
+const CatalogoPublico = lazy(() => import('./pages/publico/CatalogoPublico'));
 const RegistroCliente = lazy(() => import('./pages/publico/RegistroCliente'));
 const IngresarBarberia = lazy(() => import('./pages/publico/IngresarBarberia'));
 const ReservarProtegida = lazy(() =>
@@ -32,11 +33,6 @@ const RUTAS_PANEL_002: { ruta: string; titulo: string; roles: ('PROPIETARIO' | '
   { ruta: 'disponibilidad', titulo: 'Disponibilidad', roles: ['PROPIETARIO', 'BARBERO'] },
   { ruta: 'agenda', titulo: 'Agenda', roles: ['PROPIETARIO', 'BARBERO'] },
   { ruta: 'clientes', titulo: 'Clientes', roles: ['PROPIETARIO'] },
-];
-
-/** Rutas públicas por el enlace de la barbería (ADR-021) y del cliente. */
-const RUTAS_ENLACE_002: { ruta: string; titulo: string }[] = [
-  { ruta: '/b/:slug', titulo: 'Catálogo de la barbería' },
 ];
 
 function Portada() {
@@ -88,9 +84,8 @@ export function RutasApp() {
           <Route path="/registro" element={<Registro />} />
           <Route path="/ingresar" element={<Ingresar />} />
           <Route path="/activar" element={<Activar />} />
-          {RUTAS_ENLACE_002.map(({ ruta, titulo }) => (
-            <Route key={ruta} path={ruta} element={<PaginaPendiente titulo={titulo} />} />
-          ))}
+          {/* Vía pública por el enlace de la barbería (ADR-021) y cuenta de cliente. */}
+          <Route path="/b/:slug" element={<CatalogoPublico />} />
           <Route path="/b/:slug/registro" element={<RegistroCliente />} />
           <Route path="/b/:slug/ingresar" element={<IngresarBarberia />} />
           <Route path="/b/:slug/reservar" element={<ReservarProtegida />} />
