@@ -59,6 +59,31 @@ describe('Contrato 002: POST /citas', () => {
     expect(erroresDeContrato002('/citas', 'post', 400, sinClave.body)).toEqual([]);
   });
 
+  // T120 · GET /clientes/yo/citas (RF17).
+  it('GET /clientes/yo/citas: 200 con PaginaCitas, 401 y 403', async () => {
+    await reservar({
+      servicioId: e.servicioId,
+      barberoId: e.barberoId,
+      inicio: horaLima(fecha, '15:00'),
+    }).expect(201);
+    const ok = await prueba.agente
+      .get('/api/v1/clientes/yo/citas?pagina=1&tamano=10')
+      .set({ Authorization: `Bearer ${token}` })
+      .expect(200);
+    expect(erroresDeContrato002('/clientes/yo/citas', 'get', 200, ok.body)).toEqual([]);
+    expect(ok.body.elementos.length).toBeGreaterThan(0);
+
+    const sinSesion = await prueba.agente.get('/api/v1/clientes/yo/citas').expect(401);
+    expect(erroresDeContrato002('/clientes/yo/citas', 'get', 401, sinSesion.body)).toEqual([]);
+
+    const propietario = await tokenPara(e.barberia.tenantId, e.barberia.propietarioId, 'PROPIETARIO');
+    const prohibido = await prueba.agente
+      .get('/api/v1/clientes/yo/citas')
+      .set({ Authorization: `Bearer ${propietario}` })
+      .expect(403);
+    expect(erroresDeContrato002('/clientes/yo/citas', 'get', 403, prohibido.body)).toEqual([]);
+  });
+
   // T114 · POST /citas/{id}/cancelar (RF14).
   it('POST /citas/{id}/cancelar: 200 con Cita (y cancelacionTardiaDesde), 401, 403, 404 y 422', async () => {
     const ruta = (id: string) => `/api/v1/citas/${id}/cancelar`;

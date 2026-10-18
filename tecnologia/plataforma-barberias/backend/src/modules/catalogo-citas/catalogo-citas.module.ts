@@ -49,12 +49,14 @@ import { HorariosController } from './catalogo/presentation/horarios.controller'
 import { PublicoController } from './catalogo/presentation/publico.controller';
 import { CambiarEstadoCita } from './citas/application/cambiar-estado-cita';
 import { CancelarCita } from './citas/application/cancelar-cita';
+import { ConsultarHistorial } from './citas/application/consultar-historial';
 import { ConsultarAgenda } from './citas/application/consultar-agenda';
 import { CitaRepository } from './citas/application/ports/cita-repository';
 import { ReservarCita } from './citas/application/reservar-cita';
 import { CitaRepositoryPostgres } from './citas/infrastructure/cita-repository-postgres';
 import { AgendaController } from './citas/presentation/agenda.controller';
 import { CitasController } from './citas/presentation/citas.controller';
+import { HistorialController } from './citas/presentation/historial.controller';
 
 /**
  * M02 Catálogo y citas (submódulos catalogo y citas). Matriz de dependencias: M02 → M01 (ADR-020), M03 y
@@ -71,6 +73,7 @@ import { CitasController } from './citas/presentation/citas.controller';
     DisponibilidadController,
     HorarioAtencionController,
     AgendaController,
+    HistorialController,
   ],
   providers: [
     AutorizacionCatalogoCitas,
@@ -108,6 +111,8 @@ import { CitasController } from './citas/presentation/citas.controller';
     ConsultarAgenda,
     // Cancelación (US5).
     CancelarCita,
+    // Historial del cliente (US6).
+    ConsultarHistorial,
   ],
   exports: [CatalogQuery],
 })

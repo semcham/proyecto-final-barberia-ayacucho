@@ -8,6 +8,8 @@ export interface EndpointProtegido {
   ruta: string;
   /** Cuerpo válido para la operación; los ataques le agregan campos de tenant. */
   cuerpo?: Record<string, unknown>;
+  /** Operación solo de clientes: el ataque usa el token de un cliente de A en vez del del propietario. */
+  comoCliente?: boolean;
 }
 
 const BLOQUEO_VALIDO = { inicio: '2030-01-08T10:00:00-05:00', fin: '2030-01-08T11:00:00-05:00' };
@@ -52,6 +54,9 @@ export const ENDPOINTS_PROTEGIDOS: EndpointProtegido[] = [
   // US5 (T114).
   { metodo: 'post', ruta: '/api/v1/citas/{idCitaPropia}/cancelar', cuerpo: { motivo: 'Ataque' } },
   { metodo: 'get', ruta: '/api/v1/clientes?buscar=cliente' },
+  // US6 (T120): historial del cliente, con el token de un cliente de A.
+  { metodo: 'get', ruta: '/api/v1/clientes/yo/citas', comoCliente: true },
+  { metodo: 'get', ruta: '/api/v1/clientes/yo/citas?pagina=1&tamano=5', comoCliente: true },
   {
     metodo: 'post',
     ruta: '/api/v1/clientes',

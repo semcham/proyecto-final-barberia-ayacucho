@@ -483,7 +483,7 @@ idempotencia (R09).
   - **Personal como cliente:** una cuenta del personal no puede unirse → 409 `CUENTA_DE_PERSONAL`.
   - **Cambio de barbería** (`POST /auth/barberia`): con membresía, emite un token con el `tid` destino, cierra la sesión anterior y reemplaza la cookie; sin membresía ni aceptación → 409; el personal → 403.
   - **Auditoría:** se registran `CLIENTE_REGISTRADO`, `CLIENTE_UNIDO` y `BARBERIA_CAMBIADA`.
-- [ ] T079 [P] [US3] PR09 en `tecnologia/plataforma-barberias/backend/test/integration/aislamiento/cliente-dos-barberias.spec.ts`:
+- [X] T079 [P] [US3] PR09 en `tecnologia/plataforma-barberias/backend/test/integration/aislamiento/cliente-dos-barberias.spec.ts`:
   - un cliente con membresía en A y B no ve con el token de A citas, perfil ni horarios de B;
   - un `slug` o `barberia` de B enviado en `POST /citas`, `GET /horarios` o `GET /clientes/yo/citas` con el token de A → 400 o ignorado, operando solo sobre A;
   - el perfil de A no es visible desde la sesión de B.
@@ -698,19 +698,19 @@ ve solo las suyas, ordenadas, con su estado (escenarios 1–2 de US6).
 
 ### Tests for User Story 6 (MANDATORY - constitution Principle X) ⚠️
 
-- [ ] T119 [P] [US6] Integración en `tecnologia/plataforma-barberias/backend/test/integration/citas/historial.spec.ts`:
+- [X] T119 [P] [US6] Integración en `tecnologia/plataforma-barberias/backend/test/integration/citas/historial.spec.ts`:
   - solo las citas propias y de la barbería de la sesión;
   - orden por inicio descendente;
   - paginación simple (`pagina`, `tamano`, `total`);
   - un cliente con membresía en A y B ve con el token de A solo las de A (PR09);
   - el propietario o el barbero → 403.
-- [ ] T120 [P] [US6] Prueba de contrato de `GET /clientes/yo/citas` en `tecnologia/plataforma-barberias/backend/test/contract/citas.contract.spec.ts` y agregar la operación a `endpoints-protegidos.ts` y `rbac.spec.ts`
-- [ ] T121 [P] [US6] Prueba de la pantalla en `tecnologia/plataforma-barberias/frontend/test/pages/mis-citas.spec.tsx`: lista con estados, cancelar solo en citas activas futuras, y vacío con `EstadoVacio`.
+- [X] T120 [P] [US6] Prueba de contrato de `GET /clientes/yo/citas` en `tecnologia/plataforma-barberias/backend/test/contract/citas.contract.spec.ts` y agregar la operación a `endpoints-protegidos.ts` y `rbac.spec.ts`
+- [X] T121 [P] [US6] Prueba de la pantalla en `tecnologia/plataforma-barberias/frontend/test/pages/mis-citas.spec.tsx`: lista con estados, cancelar solo en citas activas futuras, y vacío con `EstadoVacio`.
 
 ### Implementation for User Story 6
 
-- [ ] T122 [US6] Crear `ConsultarHistorial` (perfil vía `ClientesApi.perfilDeSesion`; consulta por `appointment_cliente`) en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/citas/application/consultar-historial.ts` y `HistorialController` (`GET /clientes/yo/citas`) en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/citas/presentation/historial.controller.ts`
-- [ ] T123 [US6] Crear la pantalla `tecnologia/plataforma-barberias/frontend/src/pages/cliente/MisCitas.tsx` (ruta `/mis-citas`, rol `CLIENTE`):
+- [X] T122 [US6] Crear `ConsultarHistorial` (perfil vía `ClientesApi.perfilDeSesion`; consulta por `appointment_cliente`) en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/citas/application/consultar-historial.ts` y `HistorialController` (`GET /clientes/yo/citas`) en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/citas/presentation/historial.controller.ts`
+- [X] T123 [US6] Crear la pantalla `tecnologia/plataforma-barberias/frontend/src/pages/cliente/MisCitas.tsx` (ruta `/mis-citas`, rol `CLIENTE`):
   - historial paginado sin filtros (tercera línea de corte);
   - cancelar con `ConfirmarCancelacion`;
   - nombre de la barbería de la sesión.

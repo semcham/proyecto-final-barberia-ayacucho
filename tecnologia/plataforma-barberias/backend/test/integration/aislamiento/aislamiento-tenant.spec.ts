@@ -89,6 +89,7 @@ describe('PR09 · Aislamiento entre barberías por HTTP', () => {
   let pendienteDeB: string;
   let catalogoA: Awaited<ReturnType<typeof sembrarCatalogo>>;
   let catalogoB: Awaited<ReturnType<typeof sembrarCatalogo>>;
+  let clienteDeA: string;
 
   async function tokenDeA(): Promise<string> {
     const { sesionId } = await sembrarSesion({ tenantId: a.tenantId, usuarioId: a.propietarioId });
@@ -96,6 +97,18 @@ describe('PR09 · Aislamiento entre barberías por HTTP', () => {
       sub: a.propietarioId,
       tid: a.tenantId,
       rol: 'PROPIETARIO',
+      sid: sesionId,
+    });
+    return token;
+  }
+
+  /** Token de un cliente con cuenta en A, para las operaciones solo de clientes (US6 de 002). */
+  async function tokenDeClienteA(): Promise<string> {
+    const { sesionId } = await sembrarSesion({ tenantId: a.tenantId, usuarioId: clienteDeA });
+    const { token } = await firmador.firmar({
+      sub: clienteDeA,
+      tid: a.tenantId,
+      rol: 'CLIENTE',
       sid: sesionId,
     });
     return token;
@@ -147,6 +160,8 @@ describe('PR09 · Aislamiento entre barberías por HTTP', () => {
     ).usuarioId;
     catalogoA = await sembrarCatalogo(a.tenantId);
     catalogoB = await sembrarCatalogo(b.tenantId);
+    clienteDeA = (await sembrarCliente({ tenantId: a.tenantId, nombre: 'Cliente con Cuenta' }))
+      .usuarioId as string;
   });
 
   afterAll(async () => {
@@ -168,7 +183,8 @@ describe('PR09 · Aislamiento entre barberías por HTTP', () => {
       caso,
     ]),
   )('%s → 400, auditado en A, sin cambios en B', async (_nombre, { endpoint, vector, campo }) => {
-    const token = await tokenDeA();
+    const token = endpoint.comoCliente ? await tokenDeClienteA() : await tokenDeA();
+    const actor = endpoint.comoCliente ? clienteDeA : a.propietarioId;
     const antesB = await datosDeB();
     const auditoriaAntesA = (await filasDe('audit_log', a.tenantId)).length;
 
@@ -185,7 +201,7 @@ describe('PR09 · Aislamiento entre barberías por HTTP', () => {
       expect.arrayContaining([
         expect.objectContaining({
           action: 'ACCESO_TENANT_AJENO',
-          actor_id: a.propietarioId,
+          actor_id: actor,
           result: 'DENEGADO',
         }),
       ]),

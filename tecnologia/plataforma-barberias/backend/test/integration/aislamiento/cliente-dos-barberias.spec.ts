@@ -172,6 +172,40 @@ describe('PR09 · Cliente con membresía en dos barberías', () => {
       .expect(200);
   });
 
-  // GET /clientes/yo/citas (US6, T122) aún no existe: este caso de T079 se activa con esa ruta.
-  it.todo('GET /clientes/yo/citas con el token de A devuelve solo citas de A');
+  it('GET /clientes/yo/citas con el token de A devuelve solo citas de A; con el de B, solo las de B', async () => {
+    const enA = await prueba.agente
+      .post('/api/v1/citas')
+      .set({ Authorization: `Bearer ${tokenA}`, 'Idempotency-Key': nuevaClave() })
+      .send({ servicioId: a.servicioId, barberoId: a.barberoId, inicio: horaLima(fecha, '16:00') })
+      .expect(201);
+    const enB = await prueba.agente
+      .post('/api/v1/citas')
+      .set({ Authorization: `Bearer ${tokenB}`, 'Idempotency-Key': nuevaClave() })
+      .send({ servicioId: b.servicioId, barberoId: b.barberoId, inicio: horaLima(fecha, '17:00') })
+      .expect(201);
+
+    const historialA = await prueba.agente
+      .get('/api/v1/clientes/yo/citas?tamano=50')
+      .set({ Authorization: `Bearer ${tokenA}` })
+      .expect(200);
+    const idsA = historialA.body.elementos.map((c: { id: string }) => c.id);
+    expect(idsA).toContain(enA.body.id);
+    expect(idsA).not.toContain(enB.body.id);
+    expect(
+      historialA.body.elementos.every((c: { barberia: string }) => c.barberia === enA.body.barberia),
+    ).toBe(true);
+    // El slug o el tenant de B en la consulta no cambian la barbería: 400.
+    await prueba.agente
+      .get(`/api/v1/clientes/yo/citas?barberia=${b.barberia.slug}`)
+      .set({ Authorization: `Bearer ${tokenA}` })
+      .expect(400);
+
+    const historialB = await prueba.agente
+      .get('/api/v1/clientes/yo/citas?tamano=50')
+      .set({ Authorization: `Bearer ${tokenB}` })
+      .expect(200);
+    const idsB = historialB.body.elementos.map((c: { id: string }) => c.id);
+    expect(idsB).toContain(enB.body.id);
+    expect(idsB).not.toContain(enA.body.id);
+  });
 });

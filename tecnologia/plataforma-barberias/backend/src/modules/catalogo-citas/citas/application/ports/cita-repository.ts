@@ -59,4 +59,13 @@ export abstract class CitaRepository {
   abstract actualizarEstado(cita: Cita, anterior: EstadoCita, autorId: string): Promise<void>;
   /** Citas (en cualquier estado) que empiezan en [desde, hasta), opcionalmente de un barbero, por inicio. */
   abstract delRango(desde: Date, hasta: Date, barberoId?: string): Promise<Cita[]>;
+  /**
+   * Una página de las citas de un cliente (en cualquier estado), por inicio descendente (índice
+   * `appointment_cliente`), con el total de todas las páginas.
+   */
+  abstract delCliente(
+    clienteId: string,
+    pagina: number,
+    tamano: number,
+  ): Promise<{ total: number; citas: Cita[] }>;
 }

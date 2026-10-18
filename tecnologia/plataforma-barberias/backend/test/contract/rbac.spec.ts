@@ -108,6 +108,12 @@ const PROTEGIDAS: Operacion[] = [
     },
   },
   {
+    // US6 (T120): el historial es solo del cliente; el personal recibe 403.
+    nombre: 'GET /clientes/yo/citas',
+    esperado: { PUB: 401, PROPIETARIO: 403, BARBERO: 403 },
+    ejecutar: (p, _e, t) => p.agente.get('/api/v1/clientes/yo/citas').set(conToken(t)),
+  },
+  {
     nombre: 'GET /clientes',
     esperado: { PUB: 401, PROPIETARIO: 200, BARBERO: 403 },
     ejecutar: (p, _e, t) => p.agente.get('/api/v1/clientes?buscar=ana').set(conToken(t)),
@@ -212,9 +218,10 @@ describe('PR08 · Matriz rol × operación (contracts/rbac.md)', () => {
       (fila) => fila.action === 'ACCESO_DENEGADO_ROL',
     );
     if (operacion.esperado[rol] === 403) {
-      // Cada 403 deja exactamente un registro con el barbero como actor.
+      // Cada 403 deja exactamente un registro con quien lo intentó como actor.
       expect(denegaciones).toHaveLength(auditoriaAntes + 1);
-      expect(denegaciones.at(-1)).toMatchObject({ actor_id: escenario.barberoActivo.id, result: 'DENEGADO' });
+      const actor = rol === 'PROPIETARIO' ? escenario.barberia.propietarioId : escenario.barberoActivo.id;
+      expect(denegaciones.at(-1)).toMatchObject({ actor_id: actor, result: 'DENEGADO' });
     } else {
       expect(denegaciones).toHaveLength(auditoriaAntes);
     }

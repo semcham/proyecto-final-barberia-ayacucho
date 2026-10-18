@@ -24,6 +24,7 @@ const Servicios = lazy(() => import('./pages/panel/Servicios'));
 const Barberos = lazy(() => import('./pages/panel/Barberos'));
 const Disponibilidad = lazy(() => import('./pages/panel/Disponibilidad'));
 const Agenda = lazy(() => import('./pages/panel/Agenda'));
+const MisCitas = lazy(() => import('./pages/cliente/MisCitas'));
 const Clientes = lazy(() => import('./pages/panel/Clientes'));
 const RegistroCliente = lazy(() => import('./pages/publico/RegistroCliente'));
 const IngresarBarberia = lazy(() => import('./pages/publico/IngresarBarberia'));
@@ -112,7 +113,7 @@ export function RutasApp() {
             path="/mis-citas"
             element={
               <RutaProtegida roles={['CLIENTE']}>
-                <PaginaPendiente titulo="Mis citas" />
+                <MisCitas />
               </RutaProtegida>
             }
           />

@@ -141,6 +141,28 @@ export class CitaRepositoryPostgres extends CitaRepository {
     return filas.map(aCita);
   }
 
+  async delCliente(
+    clienteId: string,
+    pagina: number,
+    tamano: number,
+  ): Promise<{ total: number; citas: Cita[] }> {
+    const { total } = await this.uow
+      .transaccionActual()
+      .selectFrom('appointment')
+      .select((eb) => eb.fn.countAll<string>().as('total'))
+      .where('tenant_id', '=', this.tenantContext.actual().valor)
+      .where('customer_id', '=', clienteId)
+      .executeTakeFirstOrThrow();
+    const filas = await this.consulta()
+      .where('customer_id', '=', clienteId)
+      .orderBy('starts_at', 'desc')
+      .orderBy('id', 'desc')
+      .limit(tamano)
+      .offset((pagina - 1) * tamano)
+      .execute();
+    return { total: Number(total), citas: filas.map(aCita) };
+  }
+
   /** Columnas de la cita, filtradas por el tenant del contexto. */
   private consulta() {
     return this.uow
