@@ -13,7 +13,8 @@
     "format": "prettier --write .",
     "test": "jest --config jest.config.ts",
     "test:int": "jest --config jest.int.config.ts --runInBand",
-    "test:arch": "depcruise src migrations --config .dependency-cruiser.cjs && jest --config jest.arch.config.ts"
+    "test:arch": "depcruise src migrations --config .dependency-cruiser.cjs && jest --config jest.arch.config.ts",
+    "medir:horarios": "tsx scripts/medir-horarios.ts"
   },
   "dependencies": {
     "@nestjs/common": "11.2.7",

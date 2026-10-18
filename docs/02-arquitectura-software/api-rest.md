@@ -26,35 +26,38 @@ Roles: **ADM** administrador de la plataforma · **PRO** propietario · **BAR** 
 
 ### M01 Acceso y barberías
 
-| Método y ruta                         | Propósito                                                    | RF         | Roles |
-| ------------------------------------- | ------------------------------------------------------------ | ---------- | ----- |
-| `POST /auth/login`                    | Iniciar sesión y recibir token                               | RF04       | PUB   |
-| `POST /auth/logout`                   | Cerrar sesión                                                | RF04       | Todos |
-| `POST /barberias`                     | Registrar barbería y crear tenant (inicia prueba gratuita)   | RF01, RF18 | PUB   |
-| `POST /clientes/registro`             | Registrar cliente con consentimiento y canal de notificación | RF05, RF33 | PUB   |
-| `GET/POST/PATCH /usuarios`            | Gestionar usuarios y roles de la barbería                    | RF06       | PRO   |
-| `GET/PATCH /barberias/actual`         | Ver y editar datos comerciales y horarios                    | RF03       | PRO   |
-| `PATCH /admin/barberias/{id}/estado`  | Activar, suspender o reactivar                               | RF02       | ADM   |
-| `PATCH /clientes/yo/notificaciones`   | Cambiar canal (correo o WhatsApp)                            | RF33       | CLI   |
-| `POST /clientes/yo/solicitudes-datos` | Pedir acceso, rectificación o eliminación                    | RF32       | CLI   |
+| Método y ruta                         | Propósito                                                                                          | RF         | Roles             |
+| ------------------------------------- | -------------------------------------------------------------------------------------------------- | ---------- | ----------------- |
+| `POST /auth/login`                    | Iniciar sesión; con `barberia` (enlace) el cliente entra a esa barbería o se une con su aceptación | RF04, RF05 | PUB               |
+| `POST /auth/barberia`                 | Cambiar la sesión del cliente a otra barbería (ADR-020)                                            | RF05       | CLI               |
+| `POST /auth/logout`                   | Cerrar sesión                                                                                      | RF04       | Todos             |
+| `POST /barberias`                     | Registrar barbería y crear tenant (inicia prueba gratuita)                                         | RF01, RF18 | PUB               |
+| `POST /clientes/registro`             | Registrar cliente con consentimiento desde el enlace de la barbería                                | RF05       | PUB               |
+| `GET/POST /clientes`                  | Buscar clientes y registrar el cliente presencial (consentimiento verbal)                          | RF05       | PRO               |
+| `GET/POST/PATCH /usuarios`            | Gestionar usuarios y roles de la barbería                                                          | RF06       | PRO               |
+| `GET/PATCH /barberia`                 | Ver y editar datos comerciales, enlace y antelación de cancelación                                 | RF03       | PRO (BAR lectura) |
+| `PATCH /admin/barberias/{id}/estado`  | Activar, suspender o reactivar                                                                     | RF02       | ADM               |
+| `PATCH /clientes/yo/notificaciones`   | Cambiar canal (correo o WhatsApp)                                                                  | RF33       | CLI               |
+| `POST /clientes/yo/solicitudes-datos` | Pedir acceso, rectificación o eliminación                                                          | RF32       | CLI               |
 
 ### M02 Catálogo y citas
 
-| Método y ruta                                   | Propósito                                                           | RF   | Roles       |
-| ----------------------------------------------- | ------------------------------------------------------------------- | ---- | ----------- |
-| `GET /publico/{slug}/catalogo`                  | Catálogo público de servicios y barberos                            | RF10 | PUB         |
-| `GET/POST/PATCH /servicios`                     | Gestionar servicios                                                 | RF07 | PRO         |
-| `GET/POST/PATCH /barberos`                      | Gestionar barberos y servicios asignados                            | RF08 | PRO         |
-| `PUT /barberos/{id}/horarios`                   | Disponibilidad semanal                                              | RF09 | PRO, BAR    |
-| `POST /barberos/{id}/bloqueos`                  | Bloquear horarios                                                   | RF09 | PRO, BAR    |
-| `GET /disponibilidad?servicio=&barbero=&fecha=` | Horarios libres                                                     | RF11 | CLI, PRO    |
-| `POST /citas`                                   | Reservar (sin duplicados)                                           | RF12 | CLI, PRO    |
-| `PATCH /citas/{id}/reprogramar`                 | Reprogramar                                                         | RF13 | CLI, PRO    |
-| `PATCH /citas/{id}/cancelar`                    | Cancelar liberando horario                                          | RF14 | CLI, PRO    |
-| `PATCH /citas/{id}/estado`                      | Transición válida de estado                                         | RF15 | BAR, PRO    |
-| `GET /citas?barbero=&fecha=`                    | Agenda                                                              | RF16 | BAR, PRO    |
-| `GET /clientes/yo/citas`                        | Historial del cliente                                               | RF17 | CLI         |
-| `POST /recordatorios/{token}/responder`         | Confirmar, reprogramar o cancelar con enlace firmado de un solo uso | RF34 | PUB (token) |
+| Método y ruta                                              | Propósito                                                                   | RF   | Roles                 |
+| ---------------------------------------------------------- | --------------------------------------------------------------------------- | ---- | --------------------- |
+| `GET /publico/{slug}`                                      | Catálogo público: barbería, horario, servicios y barberos activos (ADR-021) | RF10 | PUB                   |
+| `GET /publico/{slug}/horarios?servicio=&fecha=&barbero=`   | Horarios libres por el enlace, sin sesión (ADR-021)                         | RF11 | PUB                   |
+| `GET/PUT /barberia/horario`                                | Horario de atención semanal (M02)                                           | RF03 | PRO (BAR lectura)     |
+| `GET/POST /servicios`, `PATCH /servicios/{id}`             | Gestionar servicios (se desactivan, no se eliminan)                         | RF07 | PRO (BAR lectura)     |
+| `GET/POST /barberos`, `PATCH /barberos/{id}`               | Gestionar barberos, servicios asignados y vínculo con un usuario            | RF08 | PRO (BAR lectura)     |
+| `GET/PUT /barberos/{id}/disponibilidad`                    | Disponibilidad semanal                                                      | RF09 | PRO, BAR (la suya)    |
+| `GET/POST /barberos/{id}/bloqueos`, `DELETE …/{bloqueoId}` | Bloqueos (con confirmación si chocan con citas)                             | RF09 | PRO, BAR (los suyos)  |
+| `GET /horarios?servicio=&fecha=&barbero=`                  | Horarios libres con sesión (mismo cálculo que la vía pública)               | RF11 | CLI, PRO              |
+| `POST /citas`                                              | Reservar sin duplicados (`Idempotency-Key` obligatoria)                     | RF12 | CLI, PRO (presencial) |
+| `POST /citas/{id}/cancelar`                                | Cancelar liberando el horario; tardía según la antelación                   | RF14 | CLI (las suyas), PRO  |
+| `POST /citas/{id}/estado`                                  | Transición válida: aprobar, completar o no asistió                          | RF15 | BAR (las suyas), PRO  |
+| `GET /agenda?fecha=&barbero=`                              | Agenda del día con marcas de conflicto y cancelación tardía                 | RF16 | BAR (la suya), PRO    |
+| `GET /clientes/yo/citas?pagina=&tamano=`                   | Historial del cliente en la barbería de su sesión                           | RF17 | CLI                   |
+| `POST /recordatorios/{token}/responder`                    | Confirmar, reprogramar o cancelar con enlace firmado de un solo uso         | RF34 | PUB (token)           |
 
 ### M03 Suscripciones y pagos
 
@@ -82,5 +85,9 @@ Las notificaciones (M05) no exponen endpoints propios: se disparan por eventos y
 ## 3. Reglas de contrato
 
 - Una operación rechazada por plan o estado de suscripción responde `403` con código `SUSCRIPCION_NO_PERMITE`.
-- Una reserva en conflicto responde `409` con código `HORARIO_NO_DISPONIBLE` (lo garantiza la restricción de exclusión en PostgreSQL).
+- Una reserva en conflicto responde `409` con código `HORARIO_NO_DISPONIBLE` (lo garantiza la restricción de exclusión en PostgreSQL); si el cliente ya tiene otra cita activa que se solapa, `409` `CITA_SOLAPADA_DEL_CLIENTE`.
+- **`Idempotency-Key` en `POST /citas` (R09 de 002):** obligatoria, en formato UUID. La interfaz la genera al abrir la confirmación y la reutiliza en cada reintento. Un reintento con la misma clave y el mismo contenido devuelve `200` con la cita ya creada; la misma clave con otro contenido responde `422` `IDEMPOTENCIA_CONFLICTO`. La clave es por autor.
+- Los cambios del catálogo que chocan con citas activas (bloqueo, horario o disponibilidad reducidos, servicio o barbero desactivado) responden `409` `CONFLICTO_CON_CITAS` con la lista de citas afectadas, sin datos del cliente, y no guardan nada; se repiten con `confirmarConflictos: true` (R11 de 002).
+- La vía pública (`/publico/*`) solo admite `GET`, no lee el token y responde `404` `BARBERIA_NO_DISPONIBLE` igual para un enlace inexistente, cambiado o suspendido (ADR-021).
+- El contrato completo de cada funcionalidad está en `specs/<funcionalidad>/contracts/openapi.yaml`; esta tabla es el resumen.
 - El asistente nunca devuelve datos de otro tenant; sus herramientas son las mismas operaciones de arriba con el rol del usuario.

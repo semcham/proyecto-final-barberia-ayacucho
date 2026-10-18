@@ -20,6 +20,14 @@
     "outDir": "dist",
     "types": ["node", "jest"]
   },
-  "include": ["src", "migrations", "test", "jest.config.ts", "jest.int.config.ts", "jest.arch.config.ts"],
+  "include": [
+    "src",
+    "migrations",
+    "test",
+    "scripts",
+    "jest.config.ts",
+    "jest.int.config.ts",
+    "jest.arch.config.ts"
+  ],
   "exclude": ["test/architecture/fixture"]
 }

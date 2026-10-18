@@ -2,9 +2,16 @@ import { randomBytes } from 'node:crypto';
 import { CrearUsuario } from '../../src/modules/acceso-barberias/identidad/application/crear-usuario';
 import { AccesoDenegado } from '../../src/modules/acceso-barberias';
 import { type AppDePrueba, crearApp } from '../helpers/app';
-import { filasDe } from '../helpers/fixtures';
+import { filasDe, sembrarBarbero, sembrarCita, sembrarCliente, sembrarServicio } from '../helpers/fixtures';
+import {
+  type BarberiaParaReservar,
+  barberiaParaReservar,
+  fechaEnDias,
+  horaLima,
+  nuevaClave,
+} from '../helpers/reservas';
 import { cerrarPools, poolDe } from '../helpers/test-db';
-import { crearEscenario, type Escenario } from '../helpers/sesiones';
+import { crearEscenario, type Escenario, sesionCliente, tokenPara } from '../helpers/sesiones';
 
 // T114 · PR13: cada acción sensible de FR-027 deja exactamente un registro completo en audit_log de su
 // barbería, y la aplicación no puede modificarlo ni borrarlo (SC-007).
@@ -261,6 +268,372 @@ describe('PR13 · Auditoría de acciones sensibles', () => {
       resultado: 'DENEGADO',
     });
     vieneDeLaSolicitud(filas[0], 'correlacion-reuso');
+  });
+
+  // T132 · Funcionalidad 002 (R19, FR-050): las 12 acciones nuevas. Cada una deja un registro con actor,
+  // recurso solo por identificador (tipo:uuid), barbería, resultado, fecha, IP y correlación, sin datos
+  // personales del cliente en el texto.
+  describe('acciones de la funcionalidad 002', () => {
+    const CANARIO = {
+      nombre: 'Cliente Auditado Canario',
+      correo: `canario-${randomBytes(4).toString('hex')}@prueba.pe`,
+      telefono: '977000111',
+    };
+    const RECURSO = /^[a-z-]+:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+    /** Exactamente un registro de la acción, completo, sin datos personales, con la IP y la correlación. */
+    function unRegistro(
+      filas: Fila[],
+      esperado: { tenantId: string; actorId: string; accion: string; recurso: string },
+      idCorrelacion: string,
+    ) {
+      const deLaAccion = filas.filter((fila) => fila.action === esperado.accion);
+      expect(deLaAccion).toHaveLength(1);
+      const [fila] = deLaAccion;
+      esCompleto(fila, { ...esperado, resultado: 'PERMITIDO' });
+      expect(fila.resource).toBe(esperado.recurso);
+      expect(fila.resource).toMatch(RECURSO);
+      vieneDeLaSolicitud(fila, idCorrelacion);
+      const texto = JSON.stringify(fila);
+      for (const dato of Object.values(CANARIO)) expect(texto).not.toContain(dato);
+    }
+
+    const con = (token: string, id: string) => ({ Authorization: `Bearer ${token}`, 'X-Correlation-Id': id });
+    let e: BarberiaParaReservar;
+    let propietario: string;
+
+    beforeAll(async () => {
+      e = await barberiaParaReservar();
+      propietario = await tokenPara(e.barberia.tenantId, e.barberia.propietarioId, 'PROPIETARIO');
+    });
+
+    it('CLIENTE_REGISTRADO (actor: la cuenta nueva)', async () => {
+      let usuarioId = '';
+      let clienteId = '';
+      const filas = await registrosNuevos(e.barberia.tenantId, async () => {
+        const r = await prueba.agente
+          .post('/api/v1/clientes/registro')
+          .set('X-Correlation-Id', 'correlacion-registro-cliente')
+          .send({
+            barberia: e.barberia.slug,
+            ...CANARIO,
+            contrasena: CLAVE,
+            aceptaPoliticaDatos: true,
+            versionPoliticaDatos: '2026-10',
+          })
+          .expect(201);
+        usuarioId = r.body.usuario.id;
+        const { rows } = await poolDe('seed').query('SELECT id FROM customer_profile WHERE user_id = $1', [
+          usuarioId,
+        ]);
+        clienteId = rows[0].id;
+      });
+      unRegistro(
+        filas,
+        {
+          tenantId: e.barberia.tenantId,
+          actorId: usuarioId,
+          accion: 'CLIENTE_REGISTRADO',
+          recurso: `cliente:${clienteId}`,
+        },
+        'correlacion-registro-cliente',
+      );
+    });
+
+    it('CLIENTE_UNIDO (actor: la cuenta que se une con el enlace)', async () => {
+      const otra = await barberiaParaReservar();
+      const cuenta = await sembrarCliente({ tenantId: otra.barberia.tenantId });
+      const filas = await registrosNuevos(e.barberia.tenantId, () =>
+        prueba.agente
+          .post('/api/v1/auth/login')
+          .set('X-Correlation-Id', 'correlacion-union')
+          .send({
+            correo: cuenta.correo,
+            contrasena: cuenta.contrasena,
+            barberia: e.barberia.slug,
+            aceptaPoliticaDatos: true,
+            versionPoliticaDatos: '2026-10',
+            telefono: CANARIO.telefono,
+          })
+          .expect(200),
+      );
+      const { rows } = await poolDe('seed').query(
+        'SELECT id FROM customer_profile WHERE user_id = $1 AND tenant_id = $2',
+        [cuenta.usuarioId, e.barberia.tenantId],
+      );
+      unRegistro(
+        filas,
+        {
+          tenantId: e.barberia.tenantId,
+          actorId: cuenta.usuarioId as string,
+          accion: 'CLIENTE_UNIDO',
+          recurso: `cliente:${rows[0].id}`,
+        },
+        'correlacion-union',
+      );
+    });
+
+    it('CLIENTE_PRESENCIAL_REGISTRADO (actor: el propietario)', async () => {
+      let clienteId = '';
+      const filas = await registrosNuevos(e.barberia.tenantId, async () => {
+        const r = await prueba.agente
+          .post('/api/v1/clientes')
+          .set(con(propietario, 'correlacion-presencial'))
+          .send({
+            nombre: CANARIO.nombre,
+            telefono: CANARIO.telefono,
+            consentimientoVerbal: true,
+            versionPoliticaDatos: '2026-10',
+          })
+          .expect(201);
+        clienteId = r.body.id;
+      });
+      unRegistro(
+        filas,
+        {
+          tenantId: e.barberia.tenantId,
+          actorId: e.barberia.propietarioId,
+          accion: 'CLIENTE_PRESENCIAL_REGISTRADO',
+          recurso: `cliente:${clienteId}`,
+        },
+        'correlacion-presencial',
+      );
+    });
+
+    it('BARBERIA_CAMBIADA (registrada en la barbería destino)', async () => {
+      const origen = await barberiaParaReservar();
+      const enOrigen = await sesionCliente(origen.barberia.tenantId);
+      await sembrarCliente({
+        tenantId: e.barberia.tenantId,
+        usuarioId: enOrigen.cliente.usuarioId as string,
+      });
+      const filas = await registrosNuevos(e.barberia.tenantId, () =>
+        prueba.agente
+          .post('/api/v1/auth/barberia')
+          .set(con(enOrigen.token, 'correlacion-cambio'))
+          .send({ barberia: e.barberia.slug })
+          .expect(200),
+      );
+      unRegistro(
+        filas,
+        {
+          tenantId: e.barberia.tenantId,
+          actorId: enOrigen.cliente.usuarioId as string,
+          accion: 'BARBERIA_CAMBIADA',
+          recurso: `barberia:${e.barberia.tenantId}`,
+        },
+        'correlacion-cambio',
+      );
+    });
+
+    it('ENLACE_CAMBIADO (recurso: la barbería, no el texto del enlace)', async () => {
+      const filas = await registrosNuevos(e.barberia.tenantId, () =>
+        prueba.agente
+          .patch('/api/v1/barberia')
+          .set(con(propietario, 'correlacion-enlace'))
+          .send({ slug: `auditada-${randomBytes(3).toString('hex')}` })
+          .expect(200),
+      );
+      unRegistro(
+        filas,
+        {
+          tenantId: e.barberia.tenantId,
+          actorId: e.barberia.propietarioId,
+          accion: 'ENLACE_CAMBIADO',
+          recurso: `barberia:${e.barberia.tenantId}`,
+        },
+        'correlacion-enlace',
+      );
+    });
+
+    it('SERVICIO_DESACTIVADO y BARBERO_DESACTIVADO', async () => {
+      const servicio = await sembrarServicio({ tenantId: e.barberia.tenantId });
+      const servicioFilas = await registrosNuevos(e.barberia.tenantId, () =>
+        prueba.agente
+          .patch(`/api/v1/servicios/${servicio.servicioId}`)
+          .set(con(propietario, 'correlacion-servicio'))
+          .send({ activo: false })
+          .expect(200),
+      );
+      unRegistro(
+        servicioFilas,
+        {
+          tenantId: e.barberia.tenantId,
+          actorId: e.barberia.propietarioId,
+          accion: 'SERVICIO_DESACTIVADO',
+          recurso: `servicio:${servicio.servicioId}`,
+        },
+        'correlacion-servicio',
+      );
+
+      const barbero = await sembrarBarbero({ tenantId: e.barberia.tenantId });
+      const barberoFilas = await registrosNuevos(e.barberia.tenantId, () =>
+        prueba.agente
+          .patch(`/api/v1/barberos/${barbero.barberoId}`)
+          .set(con(propietario, 'correlacion-barbero'))
+          .send({ activo: false })
+          .expect(200),
+      );
+      unRegistro(
+        barberoFilas,
+        {
+          tenantId: e.barberia.tenantId,
+          actorId: e.barberia.propietarioId,
+          accion: 'BARBERO_DESACTIVADO',
+          recurso: `barbero:${barbero.barberoId}`,
+        },
+        'correlacion-barbero',
+      );
+    });
+
+    it('BLOQUEO_CON_CONFLICTO y CAMBIO_CON_CONFLICTO (horario de atención y disponibilidad)', async () => {
+      const cliente = await sembrarCliente({
+        tenantId: e.barberia.tenantId,
+        nombre: CANARIO.nombre,
+        telefono: CANARIO.telefono,
+      });
+      const dia = fechaEnDias(4);
+      await sembrarCita({
+        tenantId: e.barberia.tenantId,
+        barberoId: e.otroBarberoId,
+        servicioId: e.servicioId,
+        clienteId: cliente.clienteId,
+        inicio: new Date(horaLima(dia, '18:00')),
+      });
+
+      let bloqueoId = '';
+      const bloqueoFilas = await registrosNuevos(e.barberia.tenantId, async () => {
+        const r = await prueba.agente
+          .post(`/api/v1/barberos/${e.otroBarberoId}/bloqueos`)
+          .set(con(propietario, 'correlacion-bloqueo'))
+          .send({ inicio: horaLima(dia, '17:30'), fin: horaLima(dia, '18:30'), confirmarConflictos: true })
+          .expect(201);
+        bloqueoId = r.body.id;
+      });
+      unRegistro(
+        bloqueoFilas,
+        {
+          tenantId: e.barberia.tenantId,
+          actorId: e.barberia.propietarioId,
+          accion: 'BLOQUEO_CON_CONFLICTO',
+          recurso: `bloqueo:${bloqueoId}`,
+        },
+        'correlacion-bloqueo',
+      );
+
+      const reducidos = [0, 1, 2, 3, 4, 5, 6].map((diaSemana) => ({
+        diaSemana,
+        inicio: '09:00',
+        fin: '13:00',
+      }));
+      const disponibilidad = await registrosNuevos(e.barberia.tenantId, () =>
+        prueba.agente
+          .put(`/api/v1/barberos/${e.otroBarberoId}/disponibilidad`)
+          .set(con(propietario, 'correlacion-disponibilidad'))
+          .send({ tramos: reducidos, confirmarConflictos: true })
+          .expect(200),
+      );
+      unRegistro(
+        disponibilidad,
+        {
+          tenantId: e.barberia.tenantId,
+          actorId: e.barberia.propietarioId,
+          accion: 'CAMBIO_CON_CONFLICTO',
+          recurso: `disponibilidad:${e.otroBarberoId}`,
+        },
+        'correlacion-disponibilidad',
+      );
+
+      const horario = await registrosNuevos(e.barberia.tenantId, () =>
+        prueba.agente
+          .put('/api/v1/barberia/horario')
+          .set(con(propietario, 'correlacion-horario'))
+          .send({ tramos: reducidos, confirmarConflictos: true })
+          .expect(200),
+      );
+      unRegistro(
+        horario,
+        {
+          tenantId: e.barberia.tenantId,
+          actorId: e.barberia.propietarioId,
+          accion: 'CAMBIO_CON_CONFLICTO',
+          recurso: `horario-atencion:${e.barberia.tenantId}`,
+        },
+        'correlacion-horario',
+      );
+    });
+
+    it('CITA_RESERVADA, CITA_ESTADO_CAMBIADO y CITA_CANCELADA', async () => {
+      const f = await barberiaParaReservar();
+      const tokenPropietario = await tokenPara(f.barberia.tenantId, f.barberia.propietarioId, 'PROPIETARIO');
+      const cliente = await sesionCliente(f.barberia.tenantId);
+      let citaId = '';
+      const reservada = await registrosNuevos(f.barberia.tenantId, async () => {
+        const r = await prueba.agente
+          .post('/api/v1/citas')
+          .set({ ...con(cliente.token, 'correlacion-reserva'), 'Idempotency-Key': nuevaClave() })
+          .send({
+            servicioId: f.servicioId,
+            barberoId: f.barberoId,
+            inicio: horaLima(fechaEnDias(2), '10:00'),
+          })
+          .expect(201);
+        citaId = r.body.id;
+      });
+      unRegistro(
+        reservada,
+        {
+          tenantId: f.barberia.tenantId,
+          actorId: cliente.cliente.usuarioId as string,
+          accion: 'CITA_RESERVADA',
+          recurso: `cita:${citaId}`,
+        },
+        'correlacion-reserva',
+      );
+
+      const cancelada = await registrosNuevos(f.barberia.tenantId, () =>
+        prueba.agente
+          .post(`/api/v1/citas/${citaId}/cancelar`)
+          .set(con(cliente.token, 'correlacion-cancelar'))
+          .send({ motivo: 'Motivo libre' })
+          .expect(200),
+      );
+      unRegistro(
+        cancelada,
+        {
+          tenantId: f.barberia.tenantId,
+          actorId: cliente.cliente.usuarioId as string,
+          accion: 'CITA_CANCELADA',
+          recurso: `cita:${citaId}`,
+        },
+        'correlacion-cancelar',
+      );
+
+      const pasada = await sembrarCita({
+        tenantId: f.barberia.tenantId,
+        barberoId: f.barberoId,
+        servicioId: f.servicioId,
+        clienteId: cliente.cliente.clienteId,
+        inicio: new Date(horaLima(fechaEnDias(-1), '10:00')),
+      });
+      const cambiada = await registrosNuevos(f.barberia.tenantId, () =>
+        prueba.agente
+          .post(`/api/v1/citas/${pasada}/estado`)
+          .set(con(tokenPropietario, 'correlacion-estado'))
+          .send({ estado: 'COMPLETADA' })
+          .expect(200),
+      );
+      unRegistro(
+        cambiada,
+        {
+          tenantId: f.barberia.tenantId,
+          actorId: f.barberia.propietarioId,
+          accion: 'CITA_ESTADO_CAMBIADO',
+          recurso: `cita:${pasada}`,
+        },
+        'correlacion-estado',
+      );
+    });
   });
 
   it('barberias_app no puede modificar ni borrar registros de auditoría', async () => {

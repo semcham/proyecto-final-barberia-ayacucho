@@ -727,39 +727,39 @@ ADR-015, validación de punta a punta y calidad.
 - [X] T124 Revisión obligatoria de ADR-015 por el cambio de `auth_resolver_cuenta` (`LEFT JOIN`, ADR-020):
   - qué se revisa: el diff de la migración `0009`; que la firma, la ausencia de tenant y el `LIMIT 1` se mantienen; T080 en verde;
   - registrarla con fecha y revisor en la nota de consecuencias de ADR-015 en `docs/01-analisis-de-sistema/07-decisiones-arquitectonicas.md`.
-- [ ] T125 [P] Actualizar `docs/02-arquitectura-software/api-rest.md`:
+- [X] T125 [P] Actualizar `docs/02-arquitectura-software/api-rest.md`:
   - rutas de 002 según [contracts/openapi.yaml](contracts/openapi.yaml), entre ellas `/publico/{slug}/horarios`, `POST /citas/{id}/cancelar` y `/citas/{id}/estado` (ahora `POST`), `/agenda`, `/clientes`, `/auth/barberia` y `/barberia/horario`;
   - regla de `Idempotency-Key`.
-- [ ] T126 [P] Actualizar `docs/03-diseño-de-software/diseño-interno/diseño-interno-de-modulos.md`:
+- [X] T126 [P] Actualizar `docs/03-diseño-de-software/diseño-interno/diseño-interno-de-modulos.md`:
   - diagrama de estados con los códigos en español y la entrada `CONFIRMADA` (FR-035a);
   - mención de las dos restricciones de exclusión y de la marca de conflicto calculada.
-- [ ] T127 [P] Actualizar la matriz rol × operación de `docs/02-arquitectura-software/seguridad-y-privacidad.md` con las filas de [contracts/rbac.md](contracts/rbac.md) y la nota de la vía pública (ADR-021)
-- [ ] T128 [P] Actualizar el modelo de datos de referencia en `docs/02-arquitectura-software/multi-tenancy-y-datos.md`:
+- [X] T127 [P] Actualizar la matriz rol × operación de `docs/02-arquitectura-software/seguridad-y-privacidad.md` con las filas de [contracts/rbac.md](contracts/rbac.md) y la nota de la vía pública (ADR-021)
+- [X] T128 [P] Actualizar el modelo de datos de referencia en `docs/02-arquitectura-software/multi-tenancy-y-datos.md`:
   - entidades nuevas, `period` y las dos restricciones `EXCLUDE`;
   - `consent_record`, `business_hours` en M02;
   - RLS de `tenant`;
   - rol `barberias_publico` en la sección de roles.
-- [ ] T129 [P] Actualizar `tecnologia/plataforma-barberias/README.md` con:
+- [X] T129 [P] Actualizar `tecnologia/plataforma-barberias/README.md` con:
   - el rol nuevo y cómo crearlo en una base existente;
   - `DATABASE_URL_PUBLICO`;
   - las migraciones `0009`–`0012`;
   - las rutas públicas `/b/:slug`.
 - [ ] T130 [P] Revisar con axe-core (0 incumplimientos WCAG A/AA) y Lighthouse en modo celular (≥ 90 en rendimiento, accesibilidad y buenas prácticas) las pantallas nuevas, en especial `/b/:slug`. Comprobar que el JavaScript inicial sigue ≤ 400 KB y registrar las mediciones en `docs/02-arquitectura-software/tecnologias.md`.
-- [ ] T131 [P] Ampliar la prueba de entradas (FR-051, EQ-10, PR10) en `tecnologia/plataforma-barberias/backend/test/integration/host/entradas.spec.ts` a todas las rutas nuevas de [contracts/openapi.yaml](contracts/openapi.yaml):
+- [X] T131 [P] Ampliar la prueba de entradas (FR-051, EQ-10, PR10) en `tecnologia/plataforma-barberias/backend/test/integration/host/entradas.spec.ts` a todas las rutas nuevas de [contracts/openapi.yaml](contracts/openapi.yaml):
   - textos con `<script>`, caracteres de control y longitudes por encima del máximo;
   - fechas imposibles o mal formadas, montos negativos o con más de 2 decimales, duraciones fuera de rango, UUID inválidos;
   - campos `tenantId`, `tenant_id` o `barberiaId` en el cuerpo de rutas con sesión, y el encabezado `X-Tenant-Id`.
 
   Todo responde 400 `VALIDACION` con mensaje controlado y sin ejecutar ni reflejar el contenido.
 
-- [ ] T132 [P] Ampliar la suite de auditoría (PR13, FR-050) en `tecnologia/plataforma-barberias/backend/test/integration/auditoria.spec.ts` con las 12 acciones nuevas de R19:
+- [X] T132 [P] Ampliar la suite de auditoría (PR13, FR-050) en `tecnologia/plataforma-barberias/backend/test/integration/auditoria.spec.ts` con las 12 acciones nuevas de R19:
   - `CLIENTE_REGISTRADO`, `CLIENTE_UNIDO`, `CLIENTE_PRESENCIAL_REGISTRADO`, `BARBERIA_CAMBIADA`;
   - `ENLACE_CAMBIADO`, `SERVICIO_DESACTIVADO`, `BARBERO_DESACTIVADO`, `BLOQUEO_CON_CONFLICTO`, `CAMBIO_CON_CONFLICTO`;
   - `CITA_RESERVADA`, `CITA_CANCELADA`, `CITA_ESTADO_CAMBIADO`.
 
   Cada una con actor, recurso solo por identificador, barbería, resultado y fecha, y sin datos personales en el texto.
 
-- [ ] T133 Medición preliminar de horarios libres (evidencia previa a la prueba de carga de 006 para SC-004, EQ-01). Crear el script `tecnologia/plataforma-barberias/backend/scripts/medir-horarios.ts`, ejecutable con un script nuevo `medir:horarios` en `tecnologia/plataforma-barberias/backend/package.json` que usa el `tsx` ya instalado (sin dependencias nuevas ni descargas), fuera de CI:
+- [X] T133 Medición preliminar de horarios libres (evidencia previa a la prueba de carga de 006 para SC-004, EQ-01). Crear el script `tecnologia/plataforma-barberias/backend/scripts/medir-horarios.ts`, ejecutable con un script nuevo `medir:horarios` en `tecnologia/plataforma-barberias/backend/package.json` que usa el `tsx` ya instalado (sin dependencias nuevas ni descargas), fuera de CI:
   - con una barbería sembrada de 5 barberos y 60 citas en el día, lanza 50 consultas simultáneas a `GET /api/v1/publico/{slug}/horarios` contra el backend de Docker Compose (una instancia), en 10 rondas;
   - informa p50, p95 y errores.
 
@@ -768,7 +768,7 @@ ADR-015, validación de punta a punta y calidad.
 - [ ] T134 Recorrer completo [quickstart.md](quickstart.md):
   - pruebas §2 y recorrido manual §3 cronometrado desde un celular (SC-010 < 3 min, SC-011 < 15 min);
   - registrar los resultados y el estado "Implementada" en la fila de 002 de `docs/trazabilidad.md`.
-- [ ] T135 Ejecutar `npm run lint`, `npm test`, `npm run test:int` y `npm run test:arch` en `tecnologia/plataforma-barberias/backend` y `npm run lint` y `npm test` en `tecnologia/plataforma-barberias/frontend`, todo en verde, y `prettier --check` con el prettier local del proyecto sobre los archivos cambiados
+- [X] T135 Ejecutar `npm run lint`, `npm test`, `npm run test:int` y `npm run test:arch` en `tecnologia/plataforma-barberias/backend` y `npm run lint` y `npm test` en `tecnologia/plataforma-barberias/frontend`, todo en verde, y `prettier --check` con el prettier local del proyecto sobre los archivos cambiados
 
 ---
 

@@ -72,7 +72,8 @@ export class ActualizarBarberia {
         await this.auditoria.registrar({
           accion: 'ENLACE_CAMBIADO',
           actorId: actor.usuarioId,
-          recurso: `enlace:${cambios.slug}`,
+          // Solo identificadores (FR-050): el enlace nuevo se ve en la barbería, no en la auditoría.
+          recurso: `barberia:${actor.tenantId}`,
           resultado: 'PERMITIDO',
         });
       }

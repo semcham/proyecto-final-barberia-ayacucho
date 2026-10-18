@@ -4,7 +4,7 @@ import type { NestExpressApplication } from '@nestjs/platform-express';
 import cookieParser from 'cookie-parser';
 import { AppModule } from './host/app.module';
 import { middlewareContextoSolicitud } from './host/contexto-solicitud';
-import { crearValidationPipe } from './host/validacion';
+import { crearValidationPipe, RechazarCaracteresDeControl } from './host/validacion';
 import { Configuracion, TenantContext } from './shared';
 
 /**
@@ -22,7 +22,7 @@ export function configurarApp(app: NestExpressApplication): void {
   // Después del parser del cuerpo (ver middlewareContextoSolicitud).
   app.use(middlewareContextoSolicitud(app.get(TenantContext)));
   app.enableCors({ origin: configuracion.corsOrigen, credentials: true });
-  app.useGlobalPipes(crearValidationPipe());
+  app.useGlobalPipes(new RechazarCaracteresDeControl(), crearValidationPipe());
   app.enableShutdownHooks();
 }
 

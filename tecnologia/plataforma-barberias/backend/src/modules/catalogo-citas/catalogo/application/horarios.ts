@@ -65,7 +65,8 @@ export class ReemplazarHorarioAtencion {
         await this.auditoria.registrar({
           accion: 'CAMBIO_CON_CONFLICTO',
           actorId: actor.usuarioId,
-          recurso: 'horario:atencion',
+          // Solo identificadores (FR-050): el horario de atención es de la barbería del token.
+          recurso: `horario-atencion:${actor.tenantId}`,
           resultado: 'PERMITIDO',
         });
       }

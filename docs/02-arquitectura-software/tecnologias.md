@@ -55,27 +55,27 @@ Estas condiciones son del proveedor candidato y pueden cambiar: se confirman con
 
 Fuente: `specs/001-registro-acceso-barberia/research.md`. Versiones exactas (sin `^`) fijadas al implementar, en `tecnologia/plataforma-barberias/backend/package.json` y `frontend/package.json`.
 
-| Capa                          | Librería o herramienta (versión fijada)                                      | Para qué                                                                    | Decisión |
-| ----------------------------- | ---------------------------------------------------------------------------- | --------------------------------------------------------------------------- | -------- |
-| Plataforma                    | Node.js 22 LTS (CI y contenedores), TypeScript 5.9 en modo `strict`          | Lenguaje y ejecución; backend con `module: node16`                          | R01      |
-| Backend                       | NestJS 11.2, `@nestjs/cli` 11                                                | Módulos e inyección de dependencias                                         | R01      |
-| Acceso a datos                | Kysely 0.28 sobre `pg` 8, migraciones en SQL explícito                       | Control de la transacción para fijar `tenant_id` con RLS                    | R02      |
-| Hash de contraseñas           | `argon2` 0.45 (Argon2id, m = 19 MiB, t = 2, p = 1)                           | Almacenar contraseñas; p95 del login medido entre 78 y 105 ms (SC-008)              | R06      |
-| Tokens                        | `jose` 5.10 (5.x por compatibilidad con CommonJS), JWT ES256 de 15 min con `kid` | Firmar y verificar el token de acceso                                       | R07      |
-| Identificadores               | `uuid` 11 (UUID v7)                                                          | Identificadores generados en la aplicación (sin `RETURNING`, ADR-015)       | R12      |
-| Validación                    | `class-validator` 0.15 con `whitelist` y `forbidNonWhitelisted`              | Rechazar campos no declarados, incluido `tenant_id`                         | R11      |
-| Límite general de solicitudes | `@nestjs/throttler` 6                                                        | Freno aproximado por instancia; el límite de login vive en PostgreSQL       | R10      |
-| Pruebas del backend           | Jest 29, `supertest`, Testcontainers 12 (PostgreSQL 16)                      | Unitarias, contrato y RLS real; sin Docker, `TEST_DATABASE_ADMIN_URL`        | R18      |
-| Pruebas de contrato           | `yaml` 2, `ajv` 8 y `ajv-formats`                                            | Validar cada respuesta contra el esquema de `contracts/openapi.yaml`        | R18      |
-| Prueba de arquitectura        | `dependency-cruiser` 18                                                      | PR14: matriz de módulos, regla de capas y Kysely solo en infraestructura    | R18      |
-| Calidad de código             | ESLint 9 (`typescript-eslint`), Prettier 3                                   | Estilo y reglas de importación entre módulos                                | —        |
-| Frontend                      | React 19, Vite 6, React Router 7, TanStack Query 5                           | Interfaz y llamadas a la API                                                | R19      |
-| Formularios                   | `react-hook-form` 7 y `zod` 3                                                | Validación de ayuda en el cliente                                           | R19      |
-| Componentes accesibles        | Radix UI: `@radix-ui/react-dialog` 1.3.1, `react-dropdown-menu` 2.2.1, `react-tooltip` 1.4.1, `react-toast` 1.3.1 | Modal de confirmación, menús, ayudas emergentes y avisos (foco, teclado y ARIA resueltos); sin estilos propios | ADR-016  |
-| Tipografía                    | `@fontsource-variable/fraunces` 5.3.0 (títulos) e `@fontsource-variable/inter` 5.3.0 (cuerpo), eje de peso | Fuentes autohospedadas, sin CDN; el navegador descarga solo el subconjunto latino (≈ 37 KB y 48 KB) | ADR-016  |
-| Tipos de la API               | `openapi-typescript` 7                                                       | Generar tipos desde `contracts/openapi.yaml`                                | R19      |
-| Pruebas del frontend          | Vitest 3, Testing Library, MSW 2                                             | Formularios, sesión y simulación de la API                                  | R18      |
-| Entorno local                 | Docker Compose con `postgres:16`; `tsx` para ejecutar las migraciones; `VITE_SONDEO` para que Vite detecte cambios en el volumen montado (Windows y macOS) | Reproducir el entorno                                                       | R20      |
+| Capa                          | Librería o herramienta (versión fijada)                                                                                                                    | Para qué                                                                                                       | Decisión |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- | -------- |
+| Plataforma                    | Node.js 22 LTS (CI y contenedores), TypeScript 5.9 en modo `strict`                                                                                        | Lenguaje y ejecución; backend con `module: node16`                                                             | R01      |
+| Backend                       | NestJS 11.2, `@nestjs/cli` 11                                                                                                                              | Módulos e inyección de dependencias                                                                            | R01      |
+| Acceso a datos                | Kysely 0.28 sobre `pg` 8, migraciones en SQL explícito                                                                                                     | Control de la transacción para fijar `tenant_id` con RLS                                                       | R02      |
+| Hash de contraseñas           | `argon2` 0.45 (Argon2id, m = 19 MiB, t = 2, p = 1)                                                                                                         | Almacenar contraseñas; p95 del login medido entre 78 y 105 ms (SC-008)                                         | R06      |
+| Tokens                        | `jose` 5.10 (5.x por compatibilidad con CommonJS), JWT ES256 de 15 min con `kid`                                                                           | Firmar y verificar el token de acceso                                                                          | R07      |
+| Identificadores               | `uuid` 11 (UUID v7)                                                                                                                                        | Identificadores generados en la aplicación (sin `RETURNING`, ADR-015)                                          | R12      |
+| Validación                    | `class-validator` 0.15 con `whitelist` y `forbidNonWhitelisted`                                                                                            | Rechazar campos no declarados, incluido `tenant_id`                                                            | R11      |
+| Límite general de solicitudes | `@nestjs/throttler` 6                                                                                                                                      | Freno aproximado por instancia; el límite de login vive en PostgreSQL                                          | R10      |
+| Pruebas del backend           | Jest 29, `supertest`, Testcontainers 12 (PostgreSQL 16)                                                                                                    | Unitarias, contrato y RLS real; sin Docker, `TEST_DATABASE_ADMIN_URL`                                          | R18      |
+| Pruebas de contrato           | `yaml` 2, `ajv` 8 y `ajv-formats`                                                                                                                          | Validar cada respuesta contra el esquema de `contracts/openapi.yaml`                                           | R18      |
+| Prueba de arquitectura        | `dependency-cruiser` 18                                                                                                                                    | PR14: matriz de módulos, regla de capas y Kysely solo en infraestructura                                       | R18      |
+| Calidad de código             | ESLint 9 (`typescript-eslint`), Prettier 3                                                                                                                 | Estilo y reglas de importación entre módulos                                                                   | —        |
+| Frontend                      | React 19, Vite 6, React Router 7, TanStack Query 5                                                                                                         | Interfaz y llamadas a la API                                                                                   | R19      |
+| Formularios                   | `react-hook-form` 7 y `zod` 3                                                                                                                              | Validación de ayuda en el cliente                                                                              | R19      |
+| Componentes accesibles        | Radix UI: `@radix-ui/react-dialog` 1.3.1, `react-dropdown-menu` 2.2.1, `react-tooltip` 1.4.1, `react-toast` 1.3.1                                          | Modal de confirmación, menús, ayudas emergentes y avisos (foco, teclado y ARIA resueltos); sin estilos propios | ADR-016  |
+| Tipografía                    | `@fontsource-variable/fraunces` 5.3.0 (títulos) e `@fontsource-variable/inter` 5.3.0 (cuerpo), eje de peso                                                 | Fuentes autohospedadas, sin CDN; el navegador descarga solo el subconjunto latino (≈ 37 KB y 48 KB)            | ADR-016  |
+| Tipos de la API               | `openapi-typescript` 7                                                                                                                                     | Generar tipos desde `contracts/openapi.yaml`                                                                   | R19      |
+| Pruebas del frontend          | Vitest 3, Testing Library, MSW 2                                                                                                                           | Formularios, sesión y simulación de la API                                                                     | R18      |
+| Entorno local                 | Docker Compose con `postgres:16`; `tsx` para ejecutar las migraciones; `VITE_SONDEO` para que Vite detecte cambios en el volumen montado (Windows y macOS) | Reproducir el entorno                                                                                          | R20      |
 
 Esta funcionalidad **no** levanta Redis: no hay lecturas que cachear.
 
@@ -108,18 +108,26 @@ Decisiones: [ADR-016](../01-analisis-de-sistema/07-decisiones-arquitectonicas.md
   El SEO de Activar y de las pantallas con sesión no aplica: `robots.txt` las excluye a propósito. En
   celular el LCP de las pantallas de acceso ronda 2,9 s (red lenta simulada); el resto de métricas, CLS 0
   y TBT de 50 a 120 ms.
+
 - **axe-core 4.10** sobre 30 estados (menús abiertos, modales, errores de formulario, avisos, 320 px; tema
   claro y oscuro): sin incumplimientos WCAG 2.2 A ni AA. Queda un aviso de buena práctica (`region`)
   mientras un menú o una ayuda emergente está abierta, porque Radix los dibuja en un portal fuera de los
-  *landmarks*.
+  _landmarks_.
+- **Funcionalidad 002 (2026-10-18, build de producción):** el JavaScript inicial es de **376,9 KB**
+  (≈ 121 KB comprimido; antes 372 KB), por debajo del presupuesto de 400 KB: `index` 57,4 KB, `react`
+  279,9 KB y `consultas` 39,7 KB. Las 10 pantallas nuevas se cargan al visitarlas (`React.lazy`, ADR-018):
+  la página pública `/b/:slug` suma 6,9 KB (2,7 KB comprimido); la más pesada, Agenda, 9,0 KB.
+  **Pendiente:** Lighthouse en modo celular y axe-core sobre `/b/:slug` y las demás pantallas nuevas (T130 de
+  002). No se ejecutaron porque ninguno de los dos está instalado en el proyecto y descargarlos con `npx`
+  usaría la caché de npm fuera de la unidad D:.
 
 ### 5.2 Licencias de terceros en la interfaz
 
-| Componente                                         | Licencia             | Obligación práctica                                                                                   |
-| -------------------------------------------------- | -------------------- | ----------------------------------------------------------------------------------------------------- |
-| Fraunces e Inter (`@fontsource-variable` 5.3.0)    | SIL OFL 1.1          | Uso comercial libre; no vender las fuentes por separado; conservar su aviso de licencia (va en el paquete) |
-| Radix UI (4 paquetes)                              | MIT                  | Conservar el aviso de copyright y licencia en la distribución (va en el paquete)                       |
-| Ilustración, iconos y favicon (SVG)                | Propios del proyecto | Sin dependencias de terceros; registrados en `frontend/public/img/README.md`                          |
-| Fotos de marca (cuando existan)                    | Según cada foto      | Requisitos y registro de autoría en `frontend/public/img/README.md`                                   |
+| Componente                                      | Licencia             | Obligación práctica                                                                                        |
+| ----------------------------------------------- | -------------------- | ---------------------------------------------------------------------------------------------------------- |
+| Fraunces e Inter (`@fontsource-variable` 5.3.0) | SIL OFL 1.1          | Uso comercial libre; no vender las fuentes por separado; conservar su aviso de licencia (va en el paquete) |
+| Radix UI (4 paquetes)                           | MIT                  | Conservar el aviso de copyright y licencia en la distribución (va en el paquete)                           |
+| Ilustración, iconos y favicon (SVG)             | Propios del proyecto | Sin dependencias de terceros; registrados en `frontend/public/img/README.md`                               |
+| Fotos de marca (cuando existan)                 | Según cada foto      | Requisitos y registro de autoría en `frontend/public/img/README.md`                                        |
 
 Licencias leídas del `package.json` de cada paquete instalado (2026-10-16).

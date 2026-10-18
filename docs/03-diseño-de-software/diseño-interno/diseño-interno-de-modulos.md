@@ -6,18 +6,18 @@ Flujo interno común: **Controlador → Caso de uso → Entidad → Repositorio 
 
 ## 1. Submódulo `citas` (M02 Catálogo y citas)
 
-| Elemento                                                                | Capa                                                        | Responsabilidad                                                                                                  |
-| ----------------------------------------------------------------------- | ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `CitasController`                                                       | Presentación                                                | Valida formato (fechas, identificadores), toma el contexto de la solicitud y llama al caso de uso                |
-| `ConsultarDisponibilidad`                                               | Aplicación                                                  | Obtiene horario y bloqueos (`catalogo`, mismo módulo), citas ocupadas y calcula huecos para un servicio          |
-| `ReservarCita`                                                          | Aplicación                                                  | Orquesta: verifica `SubscriptionPolicy`, valida servicio y barbero, crea la entidad, la persiste, publica evento |
-| `CancelarCita`, `ReprogramarCita`                                       | Aplicación                                                  | Aplican la política de antelación y las transiciones de estado                                                   |
-| `Cita`                                                                  | Dominio                                                     | Entidad con identidad, tenant, barbero, servicio, cliente, `RangoHorario`, estado                                |
-| `RangoHorario`                                                          | Dominio                                                     | Objeto de valor: inicio < fin, duración, operación `seSolapaCon`                                                 |
-| `EstadoCita`                                                            | Dominio                                                     | Transiciones válidas                                                                                             |
-| `CitaRepository`                                                        | Aplicación (puerto)                                         | `guardar`, `buscarPorId`, `listarPorBarbero`, `listarPorRango`                                                   |
-| `CitaRepositoryPostgres`                                                | Infraestructura                                             | Implementa el puerto; traduce la violación de exclusión a `HorarioNoDisponible`                                  |
-| `CatalogQuery` (submódulo `catalogo`, M02) y `SubscriptionPolicy` (M03) | Interfaz del mismo módulo y interfaz pública de otro módulo | Consultadas desde `ReservarCita`                                                                                 |
+| Elemento                                                                     | Capa                                                        | Responsabilidad                                                                                                                                      |
+| ---------------------------------------------------------------------------- | ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `CitasController`                                                            | Presentación                                                | Valida formato (fechas, identificadores), toma el contexto de la solicitud y llama al caso de uso                                                    |
+| `ConsultarDisponibilidad`                                                    | Aplicación                                                  | Obtiene horario y bloqueos (`catalogo`, mismo módulo), citas ocupadas y calcula huecos para un servicio                                              |
+| `ReservarCita`                                                               | Aplicación                                                  | Orquesta: verifica `SubscriptionPolicy`, valida servicio y barbero, crea la entidad, la persiste, publica evento                                     |
+| `CancelarCita`, `CambiarEstadoCita`, `ConsultarAgenda`, `ConsultarHistorial` | Aplicación                                                  | Cancelación con antelación (tardía), transiciones con historial, agenda con marca de conflicto e historial del cliente                               |
+| `Cita`                                                                       | Dominio                                                     | Entidad con identidad, tenant, barbero, servicio, cliente, `RangoHorario`, estado                                                                    |
+| `RangoHorario`                                                               | Dominio                                                     | Objeto de valor: inicio < fin, duración, operación `seSolapaCon`                                                                                     |
+| `EstadoCita`                                                                 | Dominio                                                     | Transiciones válidas                                                                                                                                 |
+| `CitaRepository`                                                             | Aplicación (puerto)                                         | `guardar`, `buscarPorId`, `listarPorBarbero`, `listarPorRango`                                                                                       |
+| `CitaRepositoryPostgres`                                                     | Infraestructura                                             | Implementa el puerto; traduce `appointment_no_overlap_barber` a `HorarioNoDisponible` y `appointment_no_overlap_customer` a `CitaSolapadaDelCliente` |
+| `CatalogQuery` (submódulo `catalogo`, M02) y `SubscriptionPolicy` (M03)      | Interfaz del mismo módulo y interfaz pública de otro módulo | Consultadas desde `ReservarCita`                                                                                                                     |
 
 ### 1.1 Estados de la cita
 
@@ -25,27 +25,50 @@ Flujo interno común: **Controlador → Caso de uso → Entidad → Repositorio 
 
 _Figura. 1.1 Estados de la cita._
 
+> **Pendiente:** la imagen `img/estados-de-la-cita.png` aún muestra los códigos en inglés de la versión
+> planificada. El código Mermaid de abajo es la versión vigente (funcionalidad 002, R10); hay que volver
+> a generar la imagen a partir de él.
+
 <details>
 <summary>Código fuente del diagrama (Mermaid)</summary>
 
 ```mermaid
 stateDiagram-v2
-    [*] --> PENDING: reserva requiere aprobación
-    [*] --> CONFIRMED: reserva directa
-    PENDING --> CONFIRMED: aprobar
-    PENDING --> CANCELLED: cancelar o rechazar
-    CONFIRMED --> CANCELLED: cancelar
-    CONFIRMED --> CONFIRMED: reprogramar
-    CONFIRMED --> COMPLETED: marcar atendida
-    CONFIRMED --> NO_SHOW: marcar inasistencia
-    COMPLETED --> [*]
-    NO_SHOW --> [*]
-    CANCELLED --> [*]
+    [*] --> CONFIRMADA: reserva (en línea o presencial, FR-035a)
+    [*] --> PENDIENTE: reserva con aprobación (mejora futura)
+    PENDIENTE --> CONFIRMADA: aprobar (propietario)
+    PENDIENTE --> CANCELADA: cancelar
+    CONFIRMADA --> CANCELADA: cancelar (cliente hasta el inicio; propietario siempre)
+    CONFIRMADA --> COMPLETADA: completar (desde la hora de inicio)
+    CONFIRMADA --> NO_ASISTIO: no asistió (desde la hora de inicio)
+    COMPLETADA --> [*]
+    NO_ASISTIO --> [*]
+    CANCELADA --> [*]
 ```
 
 </details>
 
-Solo `PENDING` y `CONFIRMED` ocupan el horario (la restricción de exclusión usa esos estados). Cualquier otra transición lanza un error de dominio.
+Toda cita nueva nace `CONFIRMADA` (FR-035a): en la funcionalidad 002 ningún flujo crea citas
+`PENDIENTE`; el estado y la transición `aprobar` quedan definidos para una futura "reserva con
+aprobación". La reprogramación no es una transición: se cancela y se reserva de nuevo. `COMPLETADA`,
+`NO_ASISTIO` y `CANCELADA` son finales; cualquier otra transición lanza `TransicionInvalida` (422
+`TRANSICION_INVALIDA`). Cada cambio, incluida la creación, deja una fila en
+`appointment_status_history` en la misma transacción, con la fila de la cita bloqueada (`FOR UPDATE`).
+
+Solo `PENDIENTE` y `CONFIRMADA` ocupan el horario. Dos restricciones de exclusión de PostgreSQL sobre
+`period tstzrange [)` usan esos estados (principio IV):
+
+- `appointment_no_overlap_barber`: nunca dos citas activas del mismo barbero que se solapen
+  (→ 409 `HORARIO_NO_DISPONIBLE`);
+- `appointment_no_overlap_customer`: un cliente no tiene dos citas activas que se solapen
+  (→ 409 `CITA_SOLAPADA_DEL_CLIENTE`).
+
+**Cancelación tardía (FR-038):** la del cliente con menos antelación que la mínima de la barbería se
+acepta y queda marcada (`late_cancellation`); la del propietario, nunca.
+
+**Marca "en conflicto" (FR-016, FR-005):** no se guarda. La agenda la calcula al leer
+(`MarcaConflicto`) comparando cada cita activa con los bloqueos y los tramos vigentes del día: deja de
+aparecer al borrar el bloqueo o al volver a ampliar el horario.
 
 ### 1.2 Secuencia de reserva
 

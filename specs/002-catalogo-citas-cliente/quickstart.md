@@ -31,19 +31,21 @@ npm test          # dominio sin infraestructura: CalculadoraHorarios, Cita, Hora
 npm run test:int  # Testcontainers: PR09, PR16, PR08, PR13, contrato y casos de uso
 npm run test:arch # PR14 con la matriz nueva (M02 → M01) y el pool público confinado
 cd ../frontend
-npm test          # Vitest + MSW + axe-core en las pantallas nuevas
+npm test          # Vitest + MSW en las pantallas nuevas (en equipos lentos: npx vitest run --maxWorkers=1)
 ```
 
 Comprueba en particular:
 
-| Prueba                       | Qué demuestra                                                                                                                                                 | Resultado esperado                                                                                      |
-| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| PR16 `concurrencia-reservas` | 200 reservas simultáneas, mismo barbero y hora, repartidas en 2 instancias                                                                                    | 1 respuesta 201, 199 respuestas 409 `HORARIO_NO_DISPONIBLE`, 0 respuestas 5xx, 1 cita activa en la base |
-| PR16 variantes               | Solape parcial; mismo cliente con dos barberos; 50 reintentos con la misma `Idempotency-Key`                                                                  | 1 cita en cada caso                                                                                     |
-| PR09 `lectura-publica`       | Permisos exactos de `barberias_publico`; columnas privadas → error de permisos; sin filas de otro tenant; escritura imposible; datos canario ausentes en HTTP | Todo en verde                                                                                           |
-| PR09 `cliente-dos-barberias` | Cliente en A y B: el token de A no ve nada de B; `slug` de B ignorado en operaciones autenticadas                                                             | Todo en verde                                                                                           |
-| PR09 `funciones-definer`     | `auth_resolver_cuenta` con cuentas de cliente devuelve como máximo una fila, sin parámetro de tenant                                                          | Todo en verde                                                                                           |
-| PR08 `rbac`                  | Cada celda de [rbac.md](contracts/rbac.md)                                                                                                                    | Todo en verde                                                                                           |
+| Prueba                       | Qué demuestra                                                                                                                                                     | Resultado esperado                                                                                      |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| PR16 `concurrencia-reservas` | 200 reservas simultáneas, mismo barbero y hora, repartidas en 2 instancias                                                                                        | 1 respuesta 201, 199 respuestas 409 `HORARIO_NO_DISPONIBLE`, 0 respuestas 5xx, 1 cita activa en la base |
+| PR16 variantes               | Solape parcial; mismo cliente con dos barberos; 50 reintentos con la misma `Idempotency-Key`                                                                      | 1 cita en cada caso                                                                                     |
+| PR09 `lectura-publica`       | Permisos exactos de `barberias_publico`; columnas privadas → error de permisos; sin filas de otro tenant; escritura imposible; datos canario ausentes en HTTP     | Todo en verde                                                                                           |
+| PR09 `cliente-dos-barberias` | Cliente en A y B: el token de A no ve nada de B; `slug` de B ignorado en operaciones autenticadas                                                                 | Todo en verde                                                                                           |
+| PR09 `funciones-definer`     | `auth_resolver_cuenta` con cuentas de cliente devuelve como máximo una fila, sin parámetro de tenant                                                              | Todo en verde                                                                                           |
+| PR08 `rbac-002`              | Cada celda de [rbac.md](contracts/rbac.md): la prueba lee la tabla y ejecuta cada fila con los 4 roles                                                            | Todo en verde                                                                                           |
+| PR10 `entradas`              | Textos con caracteres de control o demasiado largos, fechas imposibles, montos y duraciones fuera de rango, UUID inválidos y campos de tenant en las rutas nuevas | 400 `VALIDACION`, sin filas creadas                                                                     |
+| PR13 `auditoria`             | Las 12 acciones nuevas con actor, recurso solo por identificador, barbería, IP y correlación                                                                      | Todo en verde                                                                                           |
 
 ## 3. Recorrido manual (interfaz en `http://localhost:5173`)
 
@@ -102,13 +104,50 @@ SET ROLE barberias_publico; SELECT customer_id FROM appointment LIMIT 1; RESET R
 
 ## 5. Criterios de éxito y dónde se miden
 
-| SC             | Medición                                                                                                                                                                                                                             |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| SC-001         | PR16                                                                                                                                                                                                                                 |
-| SC-002, SC-003 | PR09 (incluida la vía pública)                                                                                                                                                                                                       |
-| SC-004, SC-005 | Prueba de carga de la funcionalidad 006 (EQ-01, EQ-02). En 002 hay una prueba de humo del cálculo y una medición preliminar: `npm run medir:horarios`, con 50 consultas simultáneas y meta p95 ≤ 800 ms, que solo sirve de evidencia |
-| SC-006         | Integración de registro y unión: un `consent_record` por barbería                                                                                                                                                                    |
-| SC-007         | Unitarias de `Cita` e integración de cambio de estado con historial                                                                                                                                                                  |
-| SC-008         | PR08                                                                                                                                                                                                                                 |
-| SC-009         | Integración de cancelación                                                                                                                                                                                                           |
-| SC-010, SC-011 | Recorrido manual cronometrado desde un celular (secciones 3.1 a 3.3)                                                                                                                                                                 |
+| SC             | Medición                                                                                                                                                                                                                                                         |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| SC-001         | PR16                                                                                                                                                                                                                                                             |
+| SC-002, SC-003 | PR09 (incluida la vía pública)                                                                                                                                                                                                                                   |
+| SC-004, SC-005 | Prueba de carga de la funcionalidad 006 (EQ-01, EQ-02). En 002 hay una prueba de humo del cálculo y una medición preliminar: `npm run medir:horarios`, con 50 consultas simultáneas y meta p95 ≤ 800 ms, que solo sirve de evidencia (resultado en la sección 6) |
+| SC-006         | Integración de registro y unión: un `consent_record` por barbería                                                                                                                                                                                                |
+| SC-007         | Unitarias de `Cita` e integración de cambio de estado con historial                                                                                                                                                                                              |
+| SC-008         | PR08                                                                                                                                                                                                                                                             |
+| SC-009         | Integración de cancelación                                                                                                                                                                                                                                       |
+| SC-010, SC-011 | Recorrido manual cronometrado desde un celular (secciones 3.1 a 3.3)                                                                                                                                                                                             |
+
+## 6. Registro de ejecuciones
+
+### 2026-10-18 · Pruebas automáticas (sección 2)
+
+Equipo de desarrollo (Windows 11, 8 GB de RAM), PostgreSQL 16 en Testcontainers. Todo en verde:
+
+| Dónde       | Resultado                                                                                                                       |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `backend/`  | lint, `prettier --check` y `tsc` sin errores · unitarias 308 · integración 801 (43 archivos) · arquitectura 14, sin violaciones |
+| `frontend/` | lint, `prettier --check` y `tsc` sin errores · Vitest 79 (13 archivos), con un solo proceso                                     |
+
+PR16 dentro de la suite: 1 respuesta 201, 199 respuestas 409, 0 respuestas 5xx y una sola cita activa.
+
+### 2026-10-18 · Medición preliminar de horarios libres (T133)
+
+`npm run medir:horarios` contra una sola instancia del backend (build de producción ejecutado con Node
+sobre la base de Docker Compose, con `PUBLICO_LIMITE_POR_MINUTO=100000`), con 5 barberos y 60 citas en el
+día medido y 10 rondas de 50 consultas simultáneas a los horarios públicos. Dos ejecuciones:
+
+| Ejecución | Consultas | p50    | p95      | Máximo   | Errores 5xx |
+| --------- | --------- | ------ | -------- | -------- | ----------- |
+| 1         | 500       | 538 ms | 1 011 ms | 1 230 ms | 0 %         |
+| 2         | 500       | 577 ms | 935 ms   | 1 124 ms | 0 %         |
+
+**La meta de referencia (p95 ≤ 800 ms) no se cumple en este equipo**; la de errores, sí (0 %). Es
+evidencia preliminar: la prueba de carga de 006 (EQ-01) mide con dos réplicas y la caché del catálogo
+(ADR-029). Cada consulta abre tres transacciones (resolver el enlace, datos públicos y lectura de horarios)
+y el pool público tiene 10 conexiones para 50 consultas simultáneas.
+
+### Pendiente
+
+- **Recorrido manual cronometrado desde un celular (sección 3; SC-010 < 3 min, SC-011 < 15 min):** no se
+  ejecutó; requiere a una persona con un celular real.
+- **Lighthouse y axe-core sobre las pantallas nuevas (T130):** no se ejecutaron; ninguno de los dos está
+  instalado en el proyecto. El JavaScript inicial sí se midió: 376,9 KB, dentro del presupuesto de 400 KB
+  ([tecnologías](../../docs/02-arquitectura-software/tecnologias.md)).

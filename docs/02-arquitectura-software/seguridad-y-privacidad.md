@@ -13,29 +13,36 @@ Decisión base: [ADR-010](../01-analisis-de-sistema/07-decisiones-arquitectonica
 
 ✓ permitido · ✓\* permitido solo sobre sus propios recursos · — denegado. PA = Administrador de la plataforma; PR = Propietario (administra todo en su barbería); BA = Barbero; CL = Cliente; AN = Anónimo.
 
-| Operación                                                | AN  | CL              | BA            | PR                   | PA  |
-| -------------------------------------------------------- | --- | --------------- | ------------- | -------------------- | --- |
-| Registrar una barbería (alta con prueba gratuita)        | ✓   | ✓               | ✓             | ✓                    | ✓   |
-| Activar / suspender / reactivar barbería                 | —   | —               | —             | —                    | ✓   |
-| Configurar datos y horarios de la barbería               | —   | —               | —             | ✓                    | —   |
-| Gestionar usuarios y roles de la barbería                | —   | —               | —             | ✓                    | —   |
-| Gestionar servicios y barberos                           | —   | —               | —             | ✓                    | —   |
-| Definir disponibilidad                                   | —   | —               | ✓\*           | ✓                    | —   |
-| Ver catálogo público                                     | ✓   | ✓               | ✓             | ✓                    | —   |
-| Consultar disponibilidad                                 | ✓   | ✓               | ✓             | ✓                    | —   |
-| Reservar cita                                            | —   | ✓\*             | —             | ✓ (presencial)       | —   |
-| Reprogramar / cancelar cita                              | —   | ✓\*             | —             | ✓                    | —   |
-| Cambiar estado de cita (completada, no asistió)          | —   | —               | ✓\*           | ✓                    | —   |
-| Ver agenda                                               | —   | ✓\* (historial) | ✓\*           | ✓ (toda la barbería) | —   |
-| Ver estado de suscripción y pagar                        | —   | —               | —             | ✓                    | —   |
-| Gestionar planes y estados de suscripción                | —   | —               | —             | —                    | ✓   |
-| Ver reportes de la barbería                              | —   | —               | ✓\* (resumen) | ✓                    | —   |
-| Indicadores agregados de la plataforma y auditoría       | —   | —               | —             | —                    | ✓   |
-| Asistente de IA (consultas de catálogo y disponibilidad) | —   | ✓               | —             | ✓                    | —   |
-| Asistente de IA (consultas administrativas)              | —   | —               | —             | ✓                    | —   |
-| Solicitar acceso, rectificación o eliminación de datos   | —   | ✓\*             | —             | ✓\*                  | —   |
+| Operación                                                  | AN  | CL                      | BA            | PR                   | PA  |
+| ---------------------------------------------------------- | --- | ----------------------- | ------------- | -------------------- | --- |
+| Registrar una barbería (alta con prueba gratuita)          | ✓   | ✓                       | ✓             | ✓                    | ✓   |
+| Activar / suspender / reactivar barbería                   | —   | —                       | —             | —                    | ✓   |
+| Configurar datos, enlace, antelación y horario de atención | —   | —                       | — (ve)        | ✓                    | —   |
+| Gestionar usuarios y roles de la barbería                  | —   | —                       | —             | ✓                    | —   |
+| Gestionar servicios y barberos                             | —   | —                       | — (ve)        | ✓                    | —   |
+| Definir disponibilidad y bloqueos                          | —   | —                       | ✓\*           | ✓                    | —   |
+| Ver catálogo público y horarios libres por el enlace       | ✓   | ✓                       | ✓             | ✓                    | —   |
+| Consultar horarios libres con sesión                       | —   | ✓                       | —             | ✓                    | —   |
+| Registrarse como cliente / unirse a otra barbería          | ✓   | ✓ (cambiar de barbería) | —             | —                    | —   |
+| Reservar cita                                              | —   | ✓\*                     | —             | ✓ (presencial)       | —   |
+| Cancelar cita                                              | —   | ✓\* (hasta el inicio)   | —             | ✓ (nunca tardía)     | —   |
+| Cambiar estado de cita (aprobar, completada, no asistió)   | —   | —                       | ✓\*           | ✓                    | —   |
+| Ver agenda                                                 | —   | —                       | ✓\*           | ✓ (toda la barbería) | —   |
+| Ver historial de citas                                     | —   | ✓\*                     | —             | —                    | —   |
+| Buscar clientes y registrar cliente presencial             | —   | —                       | —             | ✓                    | —   |
+| Ver estado de suscripción y pagar                          | —   | —                       | —             | ✓                    | —   |
+| Gestionar planes y estados de suscripción                  | —   | —                       | —             | —                    | ✓   |
+| Ver reportes de la barbería                                | —   | —                       | ✓\* (resumen) | ✓                    | —   |
+| Indicadores agregados de la plataforma y auditoría         | —   | —                       | —             | —                    | ✓   |
+| Asistente de IA (consultas de catálogo y disponibilidad)   | —   | ✓                       | —             | ✓                    | —   |
+| Asistente de IA (consultas administrativas)                | —   | —                       | —             | ✓                    | —   |
+| Solicitar acceso, rectificación o eliminación de datos     | —   | ✓\*                     | —             | ✓\*                  | —   |
 
-La matriz se convierte en una **prueba parametrizada** (PR08): cada celda es un caso. La matriz detallada de la funcionalidad 001 está en `specs/001-registro-acceso-barberia/contracts/rbac.md`.
+La matriz se convierte en una **prueba parametrizada** (PR08): cada celda es un caso. Las matrices detalladas por ruta están en `specs/001-registro-acceso-barberia/contracts/rbac.md` y `specs/002-catalogo-citas-cliente/contracts/rbac.md`; la prueba de 002 (`backend/test/contract/rbac-002.spec.ts`) lee esa tabla y ejecuta cada celda para los cuatro roles.
+
+**Vía pública por enlace (ADR-021):** el catálogo y los horarios libres se leen sin sesión por el `slug` de la barbería, con un rol de base propio (`barberias_publico`: `NOBYPASSRLS`, solo `SELECT` sobre una lista cerrada de columnas públicas, transacción de solo lectura con el tenant del enlace y RLS). Nunca devuelve datos de clientes, del personal ni motivos de bloqueos; un enlace inexistente, cambiado o suspendido responde igual. El `slug` solo se acepta además para elegir la membresía del cliente (registro, ingreso, unión y cambio de barbería, ADR-020); ninguna operación de negocio con sesión lo usa: el tenant sale siempre del token.
+
+**Cliente en varias barberías (ADR-020):** una cuenta por correo con una membresía `CLIENTE` y un perfil por barbería. El token lleva una sola barbería; cambiar de barbería emite otro token tras comprobar la membresía (o crearla con la aceptación de la política de esa barbería) y cierra la sesión anterior.
 
 ## 3. Amenazas, controles y verificación
 
@@ -67,12 +74,12 @@ La matriz se convierte en una **prueba parametrizada** (PR08): cada celda es un 
 
 ### 4.1 Qué guarda el navegador
 
-| Dato | Dónde | Características | Decisión |
-| --- | --- | --- | --- |
-| Token de acceso | Memoria de la página (nunca en `localStorage`, `sessionStorage` ni cookies) | Se pierde al recargar; se recupera con la renovación | ADR-010 |
-| Token de renovación `rt` | Cookie | `HttpOnly`, `Secure`, `SameSite=Strict`, `Path=/api/v1/auth`, 7 días, rotativa; JavaScript no puede leerla | ADR-010 |
-| Indicador `hay_sesion=1` | Cookie | No secreta ni da acceso; `SameSite=Strict`, `Secure` con HTTPS, 7 días; solo evita llamar a `/auth/refresh` sin sesión | ADR-017 |
-| Preferencia de tema (`tema`) | `localStorage` | Solo `claro` u `oscuro`; sin datos personales; si no se puede guardar, se usa el tema del sistema | ADR-016 |
+| Dato                         | Dónde                                                                       | Características                                                                                                        | Decisión |
+| ---------------------------- | --------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- | -------- |
+| Token de acceso              | Memoria de la página (nunca en `localStorage`, `sessionStorage` ni cookies) | Se pierde al recargar; se recupera con la renovación                                                                   | ADR-010  |
+| Token de renovación `rt`     | Cookie                                                                      | `HttpOnly`, `Secure`, `SameSite=Strict`, `Path=/api/v1/auth`, 7 días, rotativa; JavaScript no puede leerla             | ADR-010  |
+| Indicador `hay_sesion=1`     | Cookie                                                                      | No secreta ni da acceso; `SameSite=Strict`, `Secure` con HTTPS, 7 días; solo evita llamar a `/auth/refresh` sin sesión | ADR-017  |
+| Preferencia de tema (`tema`) | `localStorage`                                                              | Solo `claro` u `oscuro`; sin datos personales; si no se puede guardar, se usa el tema del sistema                      | ADR-016  |
 
 Las cookies `rt` y `hay_sesion` son técnicas (necesarias para mantener la sesión) y deben figurar en la política de privacidad y de cookies.
 
@@ -106,3 +113,5 @@ Las cookies `rt` y `hay_sesion` son técnicas (necesarias para mantener la sesi�
 ## 6. Auditoría
 
 Se registran: alta, suspensión y reactivación de barberías; cambios de rol; cambios de plan; inicios de sesión fallidos repetidos; acciones de IA con herramientas sensibles; solicitudes de datos personales; confirmaciones de pago. Cada registro tiene actor, acción, recurso, tenant, fecha y origen. Sin datos sensibles innecesarios.
+
+La funcionalidad 002 agrega 12 acciones (R19): `CLIENTE_REGISTRADO`, `CLIENTE_UNIDO`, `CLIENTE_PRESENCIAL_REGISTRADO`, `BARBERIA_CAMBIADA`, `ENLACE_CAMBIADO`, `SERVICIO_DESACTIVADO`, `BARBERO_DESACTIVADO`, `BLOQUEO_CON_CONFLICTO`, `CAMBIO_CON_CONFLICTO`, `CITA_RESERVADA`, `CITA_CANCELADA` y `CITA_ESTADO_CAMBIADO`. El recurso va siempre como `tipo:identificador` (nunca nombres, teléfonos ni correos); la suite PR13 lo comprueba para cada una.
