@@ -436,11 +436,15 @@ export interface components {
       /** @description Solo para unirse a una barbería nueva. */
       aceptaPoliticaDatos?: boolean;
       versionPoliticaDatos?: string;
+      /** @description Obligatorio al unirse (el perfil de cliente de cada barbería exige teléfono, HU06). */
+      telefono?: string;
     };
     CambiarBarberiaRequest: {
       barberia: string;
       aceptaPoliticaDatos?: boolean;
       versionPoliticaDatos?: string;
+      /** @description Obligatorio al unirse. */
+      telefono?: string;
     };
     RegistroClienteRequest: {
       barberia: string;
@@ -453,8 +457,28 @@ export interface components {
       aceptaPoliticaDatos: true;
       versionPoliticaDatos: string;
     };
-    /** @description Igual que en 001; `usuario.rol` puede ser `CLIENTE` y `usuario.barberia` incluye `slug`. */
-    SesionResponse: Record<string, never>;
+    /** @description Igual que en 001, con `usuario.rol` que admite `CLIENTE` (ADR-020). */
+    SesionResponse: {
+      tokenAcceso: string;
+      /** @enum {string} */
+      tipo: 'Bearer';
+      expiraEn: number;
+      usuario: components['schemas']['UsuarioActual'];
+    };
+    UsuarioActual: {
+      /** Format: uuid */
+      id: string;
+      nombre: string;
+      correo: string;
+      /** @enum {string} */
+      rol: 'PROPIETARIO' | 'BARBERO' | 'CLIENTE';
+      barberia: {
+        /** Format: uuid */
+        id: string;
+        nombre: string;
+        slug: string;
+      };
+    };
     TramoHorario: {
       /** @description 0 = domingo */
       diaSemana: number;

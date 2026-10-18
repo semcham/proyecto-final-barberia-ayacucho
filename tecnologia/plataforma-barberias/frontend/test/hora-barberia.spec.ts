@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   ETIQUETA_HORA_BARBERIA,
   fechaDeBarberia,
+  fechaIsoDeBarberia,
   horaConEtiqueta,
   horaDeBarberia,
 } from '../src/hora-barberia';
@@ -18,6 +19,7 @@ describe('hora de la barbería', () => {
   it('la fecha es la del día local de la barbería', () => {
     // 03:30 UTC del 21 son las 22:30 del martes 20 en Lima.
     expect(fechaDeBarberia('2026-10-21T03:30:00Z', 'America/Lima')).toMatch(/martes.*20.*octubre/i);
+    expect(fechaIsoDeBarberia('2026-10-21T03:30:00Z', 'America/Lima')).toBe('2026-10-20');
   });
 
   it('no depende de la zona del dispositivo: la misma hora con otra zona da otro resultado', () => {

@@ -25,6 +25,11 @@ export class Membresia {
     return new Membresia({ id, tenantId, usuarioId, rol: Rol.BARBERO, estado: 'PENDIENTE' });
   }
 
+  /** Cliente de una barbería (ADR-020): una membresía por cada barbería donde se une, activa desde el alta. */
+  static crearCliente(id: string, tenantId: string, usuarioId: string): Membresia {
+    return new Membresia({ id, tenantId, usuarioId, rol: Rol.CLIENTE, estado: 'ACTIVA' });
+  }
+
   static reconstruir(datos: DatosMembresia): Membresia {
     return new Membresia({ ...datos });
   }

@@ -1,0 +1,31 @@
+/* Confirmación de la reserva: datos de la cita en filas término/valor y acciones apiladas. */
+
+.datos {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-3);
+  margin: 0 0 var(--espacio-5);
+}
+
+.datos > div {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--espacio-4);
+}
+
+.datos dt {
+  color: var(--color-texto-suave);
+}
+
+.datos dd {
+  margin: 0;
+  font-weight: 600;
+  text-align: right;
+}
+
+.acciones {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-3);
+  margin-top: var(--espacio-5);
+}

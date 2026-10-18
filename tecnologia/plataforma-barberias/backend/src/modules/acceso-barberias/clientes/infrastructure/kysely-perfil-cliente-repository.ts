@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { KyselyUnitOfWork, TenantContext } from '../../../../shared';
 import type { PerfilClienteResumen } from '../../api-publica';
 import { PerfilClienteRepository } from '../application/ports/perfil-cliente-repository';
+import type { PerfilCliente } from '../domain/perfil-cliente';
 
 const COLUMNAS = ['id', 'full_name', 'phone'] as const;
 
@@ -17,6 +18,27 @@ export class KyselyPerfilClienteRepository extends PerfilClienteRepository {
     private readonly tenantContext: TenantContext,
   ) {
     super();
+  }
+
+  async crear(perfil: PerfilCliente): Promise<void> {
+    const tenantId = this.tenantContext.actual().valor;
+    if (perfil.tenantId !== tenantId) throw new Error('El perfil no pertenece al tenant del contexto');
+    await this.uow
+      .transaccionActual()
+      .insertInto('customer_profile')
+      .values({
+        id: perfil.id,
+        tenant_id: tenantId,
+        user_id: perfil.usuarioId,
+        full_name: perfil.nombre.valor,
+        email: perfil.correo?.valor ?? null,
+        phone: perfil.telefono.valor,
+        origin: perfil.origen,
+        created_by: perfil.creadoPor,
+        created_at: new Date(),
+        updated_at: new Date(),
+      })
+      .execute();
   }
 
   private consulta() {

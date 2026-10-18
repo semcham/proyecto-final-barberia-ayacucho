@@ -217,6 +217,25 @@ export class KyselyUsuarioRepository extends UsuarioRepository {
       : null;
   }
 
+  async membresiaEnContexto(usuarioId: string): Promise<Membresia | null> {
+    const fila = await this.uow
+      .transaccionActual()
+      .selectFrom('membership')
+      .select(['id', 'tenant_id', 'user_id', 'role_code', 'status'])
+      .where('tenant_id', '=', this.tenantContext.actual().valor)
+      .where('user_id', '=', usuarioId)
+      .executeTakeFirst();
+    return fila
+      ? MembresiaDominio.reconstruir({
+          id: fila.id,
+          tenantId: fila.tenant_id,
+          usuarioId: fila.user_id,
+          rol: Rol.de(fila.role_code),
+          estado: fila.status,
+        })
+      : null;
+  }
+
   async contarPersonalVigente(): Promise<number> {
     const { total } = await this.uow
       .transaccionActual()

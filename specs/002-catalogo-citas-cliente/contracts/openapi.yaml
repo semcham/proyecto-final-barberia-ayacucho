@@ -785,6 +785,10 @@ components:
         barberia: { type: string, maxLength: 140, description: Slug de la página desde la que ingresa. }
         aceptaPoliticaDatos: { type: boolean, description: Solo para unirse a una barbería nueva. }
         versionPoliticaDatos: { type: string, maxLength: 32 }
+        telefono:
+          type: string
+          pattern: '^\+?[0-9 ]{6,20}$'
+          description: Obligatorio al unirse (el perfil de cliente de cada barbería exige teléfono, HU06).
     CambiarBarberiaRequest:
       type: object
       additionalProperties: false
@@ -793,6 +797,7 @@ components:
         barberia: { type: string, maxLength: 140 }
         aceptaPoliticaDatos: { type: boolean }
         versionPoliticaDatos: { type: string, maxLength: 32 }
+        telefono: { type: string, pattern: '^\+?[0-9 ]{6,20}$', description: Obligatorio al unirse. }
     RegistroClienteRequest:
       type: object
       additionalProperties: false
@@ -806,8 +811,29 @@ components:
         aceptaPoliticaDatos: { type: boolean, const: true }
         versionPoliticaDatos: { type: string, maxLength: 32 }
     SesionResponse:
-      description: Igual que en 001; `usuario.rol` puede ser `CLIENTE` y `usuario.barberia` incluye `slug`.
+      description: Igual que en 001, con `usuario.rol` que admite `CLIENTE` (ADR-020).
       type: object
+      required: [tokenAcceso, tipo, expiraEn, usuario]
+      properties:
+        tokenAcceso: { type: string }
+        tipo: { type: string, enum: [Bearer] }
+        expiraEn: { type: integer }
+        usuario: { $ref: '#/components/schemas/UsuarioActual' }
+    UsuarioActual:
+      type: object
+      required: [id, nombre, correo, rol, barberia]
+      properties:
+        id: { type: string, format: uuid }
+        nombre: { type: string }
+        correo: { type: string }
+        rol: { type: string, enum: [PROPIETARIO, BARBERO, CLIENTE] }
+        barberia:
+          type: object
+          required: [id, nombre, slug]
+          properties:
+            id: { type: string, format: uuid }
+            nombre: { type: string }
+            slug: { type: string }
     TramoHorario:
       type: object
       additionalProperties: false

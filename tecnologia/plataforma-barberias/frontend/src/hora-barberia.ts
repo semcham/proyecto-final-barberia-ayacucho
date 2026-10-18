@@ -32,6 +32,15 @@ export function fechaDeBarberia(instante: string | Date, zona: string): string {
   return formato(zona, { weekday: 'long', day: 'numeric', month: 'long' }).format(aFecha(instante));
 }
 
+/** "2026-10-20": fecha local de la barbería, en el formato de los parámetros `fecha` de la API. */
+export function fechaIsoDeBarberia(instante: string | Date, zona: string): string {
+  const partes = formato(zona, { year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(
+    aFecha(instante),
+  );
+  const parte = (tipo: Intl.DateTimeFormatPartTypes) => partes.find((p) => p.type === tipo)?.value ?? '';
+  return `${parte('year')}-${parte('month')}-${parte('day')}`;
+}
+
 /** "10:00 (hora de la barbería)": para mostrar junto a horarios y citas. */
 export function horaConEtiqueta(instante: string | Date, zona: string): string {
   return `${horaDeBarberia(instante, zona)} (${ETIQUETA_HORA_BARBERIA})`;

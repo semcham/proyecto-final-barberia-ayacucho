@@ -74,6 +74,29 @@ export class LimiteUsuariosAlcanzado extends ErrorDeAplicacion {
   }
 }
 
+// --- Funcionalidad 002: cuenta de cliente (ADR-020) ---
+
+export class IngresaDesdeTuBarberia extends ErrorDeAplicacion {
+  readonly codigo = 'INGRESA_DESDE_TU_BARBERIA';
+  constructor() {
+    super('Ingresa desde el enlace de tu barbería para ver y reservar tus citas.');
+  }
+}
+
+export class UnirseRequiereConsentimiento extends ErrorDeAplicacion {
+  readonly codigo = 'UNIRSE_REQUIERE_CONSENTIMIENTO';
+  constructor() {
+    super('Para reservar en esta barbería, acepta su política de tratamiento de datos.');
+  }
+}
+
+export class CuentaDePersonal extends ErrorDeAplicacion {
+  readonly codigo = 'CUENTA_DE_PERSONAL';
+  constructor() {
+    super('Esta cuenta es del personal de una barbería y no puede usarse como cliente.');
+  }
+}
+
 export class DemasiadosIntentos extends ErrorDeAplicacion {
   readonly codigo = 'DEMASIADOS_INTENTOS';
   constructor(readonly reintentarEnSegundos: number) {

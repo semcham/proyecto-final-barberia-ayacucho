@@ -5,6 +5,7 @@ import { ActorActual, Publica } from '../../../../shared';
 import { ActivarCuenta } from '../application/activar-cuenta';
 import { ActivacionDto } from './usuarios.dto';
 import type { Actor } from '../application/autorizacion';
+import { CambiarBarberia } from '../application/cambiar-barberia';
 import { CerrarSesion } from '../application/cerrar-sesion';
 import { IniciarSesion } from '../application/iniciar-sesion';
 import { ObtenerUsuarioActual } from '../application/obtener-usuario-actual';
@@ -12,7 +13,7 @@ import { RenovarSesion } from '../application/renovar-sesion';
 import type { SesionIniciada } from '../application/sesion-iniciada';
 import { NoAutenticado } from '../domain/errores';
 import { borrarCookieRenovacion, fijarCookieRenovacion, NOMBRE_COOKIE_RENOVACION } from './cookie-renovacion';
-import { LoginDto } from './login.dto';
+import { CambiarBarberiaDto, LoginDto } from './login.dto';
 import { Operacion } from './operacion.decorator';
 
 /** Intentos de activación por IP y minuto (los enlaces son de 256 bits; esto frena el abuso). */
@@ -31,6 +32,7 @@ export class AuthController {
     private readonly cerrarSesion: CerrarSesion,
     private readonly obtenerUsuarioActual: ObtenerUsuarioActual,
     private readonly activarCuenta: ActivarCuenta,
+    private readonly cambiarBarberia: CambiarBarberia,
   ) {}
 
   /** POST /api/v1/auth/login · Iniciar sesión (RF04). */
@@ -38,7 +40,32 @@ export class AuthController {
   @Publica()
   @HttpCode(200)
   async login(@Body() dto: LoginDto, @Res({ passthrough: true }) respuesta: Response) {
-    const resultado = await this.iniciarSesion.ejecutar(dto.correo, dto.contrasena);
+    const resultado = await this.iniciarSesion.ejecutar(dto.correo, dto.contrasena, {
+      barberia: dto.barberia,
+      union: {
+        aceptaPoliticaDatos: dto.aceptaPoliticaDatos,
+        versionPoliticaDatos: dto.versionPoliticaDatos,
+        telefono: dto.telefono,
+      },
+    });
+    fijarCookieRenovacion(respuesta, resultado.sesion.tokenRenovacion);
+    return aRespuesta(resultado);
+  }
+
+  /** POST /api/v1/auth/barberia · El cliente cambia su sesión a otra barbería (ADR-020). */
+  @Post('barberia')
+  @HttpCode(200)
+  @Operacion('CAMBIAR_BARBERIA')
+  async cambiarDeBarberia(
+    @ActorActual() actor: Actor,
+    @Body() dto: CambiarBarberiaDto,
+    @Res({ passthrough: true }) respuesta: Response,
+  ) {
+    const resultado = await this.cambiarBarberia.ejecutar(actor, dto.barberia, {
+      aceptaPoliticaDatos: dto.aceptaPoliticaDatos,
+      versionPoliticaDatos: dto.versionPoliticaDatos,
+      telefono: dto.telefono,
+    });
     fijarCookieRenovacion(respuesta, resultado.sesion.tokenRenovacion);
     return aRespuesta(resultado);
   }

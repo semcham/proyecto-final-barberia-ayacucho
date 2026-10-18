@@ -125,9 +125,24 @@ ambos **Aceptados** por el responsable el 2026-10-17. Lo que ya decidió la func
   `appointment_no_overlap_customer` → 409 `CITA_SOLAPADA_DEL_CLIENTE`. La inserción ocurre en la
   transacción del caso de uso. La verificación previa de reglas (FR-030) **no** sustituye a la
   restricción: solo da mensajes mejores.
-- **Descartado:** comprobar en la aplicación y luego insertar; bloqueo con `SELECT … FOR UPDATE` del
-  barbero (serializa todas las reservas de un barbero y aun así exige la restricción); bloqueos en
-  Redis (principio VIII).
+- **Descartado:** comprobar en la aplicación y luego insertar, o un bloqueo del barbero **en lugar de** la
+  restricción (no garantiza nada entre instancias por sí solo); bloqueos en Redis (principio VIII).
+- **Precisión de la implementación (2026-10-17, PR16):**
+  - **Problema medido.** Con 200 inserciones simultáneas que chocan en la restricción de exclusión,
+    cada transacción inserta su fila en el índice GiST y espera a las demás. PostgreSQL detecta el
+    ciclo cada `deadlock_timeout` (1 s) y aborta una (`40P01`). La garantía se cumplía (1 cita), pero
+    199 respuestas salían como 500 y la prueba tardaba 189 s.
+  - **Decisión.** `CitaRepositoryPostgres.guardar` toma
+    `pg_advisory_xact_lock(hashtext(tenant), hashtext(barbero))` justo antes de insertar. Las reservas
+    del mismo barbero entran en orden y la siguiente choca al instante con la cita ya confirmada (409).
+    Para el caso que el bloqueo no ordena (el mismo cliente con barberos distintos, por
+    `appointment_no_overlap_customer`), `40P01` se traduce a `ConflictoConcurrente` y `ReservarCita`
+    reintenta la transacción hasta 3 veces.
+  - **Lo que no cambia.** El bloqueo consultivo es una ayuda de rendimiento, no la garantía: la garantía
+    sigue siendo la restricción (principio IV). Una prueba de PR16 inserta sin el bloqueo y comprueba
+    que la base rechaza el solape con `23P01`.
+  - **Resultado.** PR16 queda en verde en unos 5 s, con 1 respuesta 201, 199 respuestas 409 y 0
+    respuestas 5xx.
 
 ## R07. Hora local (Perú, UTC−5)
 
@@ -360,7 +375,8 @@ ambos **Aceptados** por el responsable el 2026-10-17. Lo que ya decidió la func
   - Sesión: `BARBERIA_CAMBIADA`.
   - Barbería y catálogo: `ENLACE_CAMBIADO`, `SERVICIO_DESACTIVADO`, `BARBERO_DESACTIVADO`.
   - Conflictos: `BLOQUEO_CON_CONFLICTO`, `CAMBIO_CON_CONFLICTO`.
-  - Citas: `CITA_CANCELADA`, `CITA_ESTADO_CAMBIADO`.
+  - Citas: `CITA_RESERVADA` (agregada al implementar la reserva el 2026-10-17; la pide T077),
+    `CITA_CANCELADA`, `CITA_ESTADO_CAMBIADO`.
   - Seguridad: `ACCESO_DENEGADO_ROL` (ya existe).
 
   `resource` lleva solo identificadores (`cita:<id>`), sin datos personales. La lectura pública no se

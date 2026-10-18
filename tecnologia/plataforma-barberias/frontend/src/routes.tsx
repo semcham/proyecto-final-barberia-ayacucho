@@ -18,6 +18,11 @@ const Usuarios = lazy(() => import('./pages/Usuarios'));
 const DisenoApp = lazy(() => import('./components/app/DisenoApp').then((m) => ({ default: m.DisenoApp })));
 // Funcionalidad 002 (T038): esqueleto de rutas. Cada historia reemplaza PaginaPendiente por su pantalla.
 const PaginaPendiente = lazy(() => import('./pages/PaginaPendiente'));
+const RegistroCliente = lazy(() => import('./pages/publico/RegistroCliente'));
+const IngresarBarberia = lazy(() => import('./pages/publico/IngresarBarberia'));
+const ReservarProtegida = lazy(() =>
+  import('./pages/publico/Reservar').then((m) => ({ default: m.ReservarProtegida })),
+);
 
 /** Rutas del panel de 002 y los roles que las ven (solo navegación: el backend exige los permisos). */
 const RUTAS_PANEL_002: { ruta: string; titulo: string; roles: ('PROPIETARIO' | 'BARBERO')[] }[] = [
@@ -32,8 +37,6 @@ const RUTAS_PANEL_002: { ruta: string; titulo: string; roles: ('PROPIETARIO' | '
 /** Rutas públicas por el enlace de la barbería (ADR-021) y del cliente. */
 const RUTAS_ENLACE_002: { ruta: string; titulo: string }[] = [
   { ruta: '/b/:slug', titulo: 'Catálogo de la barbería' },
-  { ruta: '/b/:slug/registro', titulo: 'Crea tu cuenta' },
-  { ruta: '/b/:slug/ingresar', titulo: 'Ingresa a la barbería' },
 ];
 
 function Portada() {
@@ -88,14 +91,9 @@ export function RutasApp() {
           {RUTAS_ENLACE_002.map(({ ruta, titulo }) => (
             <Route key={ruta} path={ruta} element={<PaginaPendiente titulo={titulo} />} />
           ))}
-          <Route
-            path="/b/:slug/reservar"
-            element={
-              <RutaProtegida roles={['CLIENTE']}>
-                <PaginaPendiente titulo="Reserva tu cita" />
-              </RutaProtegida>
-            }
-          />
+          <Route path="/b/:slug/registro" element={<RegistroCliente />} />
+          <Route path="/b/:slug/ingresar" element={<IngresarBarberia />} />
+          <Route path="/b/:slug/reservar" element={<ReservarProtegida />} />
           <Route
             path="/mis-citas"
             element={

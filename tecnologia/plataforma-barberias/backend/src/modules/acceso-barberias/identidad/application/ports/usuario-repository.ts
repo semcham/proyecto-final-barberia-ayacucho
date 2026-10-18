@@ -69,6 +69,11 @@ export abstract class UsuarioRepository {
   /** null si el usuario no pertenece al tenant del contexto (el llamador responde 404). */
   abstract obtener(usuarioId: string): Promise<UsuarioDetalle | null>;
   abstract obtenerMembresia(usuarioId: string): Promise<Membresia | null>;
+  /**
+   * Membresía del usuario en la barbería del contexto, de cualquier rol (personal o CLIENTE), leída con
+   * RLS. La usan el ingreso con enlace y el cambio de barbería (ADR-020).
+   */
+  abstract membresiaEnContexto(usuarioId: string): Promise<Membresia | null>;
   /** Personal que ocupa cupo del plan: membresías PENDIENTE y ACTIVA, incluido el propietario (FR-020). */
   abstract contarPersonalVigente(): Promise<number>;
   abstract actualizarEstado(membresia: Membresia): Promise<void>;

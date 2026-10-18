@@ -3,8 +3,14 @@ import { SuscripcionesPagosModule } from '../suscripciones-pagos';
 import { BarberiasApi, ClientesApi } from './api-publica';
 import { BarberiasApiImpl } from './barberias/application/barberias-api';
 import { ClientesApiImpl } from './clientes/application/clientes-api';
+import { ConsentimientoRepository } from './clientes/application/ports/consentimiento-repository';
 import { PerfilClienteRepository } from './clientes/application/ports/perfil-cliente-repository';
+import { RegistrarCliente } from './clientes/application/registrar-cliente';
+import { UnirseABarberia } from './clientes/application/unirse-a-barberia';
+import { KyselyConsentimientoRepository } from './clientes/infrastructure/kysely-consentimiento-repository';
 import { KyselyPerfilClienteRepository } from './clientes/infrastructure/kysely-perfil-cliente-repository';
+import { ClientesController } from './clientes/presentation/clientes.controller';
+import { CambiarBarberia } from './identidad/application/cambiar-barberia';
 import { TenantRepository } from './barberias/application/ports/tenant-repository';
 import { TermsAcceptanceRepository } from './barberias/application/ports/terms-acceptance-repository';
 import { RegistrarBarberia } from './barberias/application/registrar-barberia';
@@ -44,7 +50,7 @@ import { UsuariosController } from './identidad/presentation/usuarios.controller
 @Module({
   // M01 → M03 está permitido por la matriz de dependencias; solo se usa su interfaz pública.
   imports: [SuscripcionesPagosModule],
-  controllers: [BarberiasController, AuthController, UsuariosController],
+  controllers: [BarberiasController, AuthController, UsuariosController, ClientesController],
   providers: [
     // Puertos → adaptadores
     { provide: PasswordHasher, useClass: Argon2PasswordHasher },
@@ -72,6 +78,11 @@ import { UsuariosController } from './identidad/presentation/usuarios.controller
     RegenerarActivacion,
     ActivarCuenta,
     { provide: PerfilClienteRepository, useClass: KyselyPerfilClienteRepository },
+    { provide: ConsentimientoRepository, useClass: KyselyConsentimientoRepository },
+    // Cuenta de cliente (funcionalidad 002, ADR-020).
+    UnirseABarberia,
+    RegistrarCliente,
+    CambiarBarberia,
     // Interfaces públicas para M02 (ADR-020). PersonalApi se registra con US1.
     { provide: BarberiasApi, useClass: BarberiasApiImpl },
     { provide: ClientesApi, useClass: ClientesApiImpl },

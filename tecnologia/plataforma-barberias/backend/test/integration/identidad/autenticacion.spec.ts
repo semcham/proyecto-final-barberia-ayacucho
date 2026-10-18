@@ -83,14 +83,16 @@ describe('Autenticación (PR07)', () => {
       expect(body.codigo).toBe('CREDENCIALES_INVALIDAS');
     });
 
-    it('cuenta solo de cliente (0009, ADR-020): igual que en 001 hasta que US3 de 002 agregue su ingreso', async () => {
+    it('cuenta solo de cliente (ADR-020): con contraseña errada, el mismo 401; con la correcta, debe ingresar desde su barbería', async () => {
       const cliente = await sembrarCliente({ tenantId: barberia.tenantId });
-      const { body } = await login(cliente.correo as string, cliente.contrasena as string).expect(401);
-      expect(body).toEqual({
+      const errada = await login(cliente.correo as string, 'otra-clave-cualquiera').expect(401);
+      expect(errada.body).toEqual({
         codigo: 'CREDENCIALES_INVALIDAS',
         mensaje: 'Correo o contraseña incorrectos.',
         detalles: [],
       });
+      const correcta = await login(cliente.correo as string, cliente.contrasena as string).expect(409);
+      expect(correcta.body.codigo).toBe('INGRESA_DESDE_TU_BARBERIA');
     });
   });
 

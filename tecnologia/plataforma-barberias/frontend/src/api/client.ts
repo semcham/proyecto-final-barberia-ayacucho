@@ -2,6 +2,23 @@ import type { components } from './schema';
 
 type CuerpoError = components['schemas']['Error'];
 type SesionResponse = components['schemas']['SesionResponse'];
+/** Códigos nuevos de la funcionalidad 002 (el contrato de 002 los lista en la descripción de Error). */
+type CodigoError002 =
+  | 'BARBERIA_NO_DISPONIBLE'
+  | 'INGRESA_DESDE_TU_BARBERIA'
+  | 'UNIRSE_REQUIERE_CONSENTIMIENTO'
+  | 'CUENTA_DE_PERSONAL'
+  | 'ENLACE_NO_DISPONIBLE'
+  | 'NOMBRE_DUPLICADO'
+  | 'USUARIO_YA_VINCULADO'
+  | 'CONFLICTO_CON_CITAS'
+  | 'FUERA_DEL_HORARIO_DE_ATENCION'
+  | 'HORARIO_NO_DISPONIBLE'
+  | 'CITA_SOLAPADA_DEL_CLIENTE'
+  | 'RESERVA_INVALIDA'
+  | 'IDEMPOTENCIA_CONFLICTO'
+  | 'TRANSICION_INVALIDA';
+export type CodigoError = CuerpoError['codigo'] | CodigoError002;
 
 const BASE = '/api/v1';
 
@@ -9,7 +26,7 @@ const BASE = '/api/v1';
 export class ApiError extends Error {
   constructor(
     readonly estado: number,
-    readonly codigo: CuerpoError['codigo'],
+    readonly codigo: CodigoError,
     mensaje: string,
     readonly detalles: Record<string, unknown>[] = [],
     /** Segundos de espera indicados por Retry-After (429). */
@@ -38,10 +55,15 @@ export interface OpcionesLlamada {
   cuerpo?: unknown;
   /** No intentar renovar la sesión ante un 401 (p. ej. en el propio inicio de sesión). */
   sinRenovar?: boolean;
+  /** Encabezados adicionales (p. ej. Idempotency-Key de POST /citas). */
+  encabezados?: Record<string, string>;
 }
 
-function enviar(ruta: string, { metodo = 'GET', cuerpo }: OpcionesLlamada): Promise<Response> {
-  const encabezados: Record<string, string> = { Accept: 'application/json' };
+function enviar(
+  ruta: string,
+  { metodo = 'GET', cuerpo, encabezados: extra }: OpcionesLlamada,
+): Promise<Response> {
+  const encabezados: Record<string, string> = { Accept: 'application/json', ...extra };
   if (cuerpo !== undefined) encabezados['Content-Type'] = 'application/json';
   if (tokenAcceso) encabezados.Authorization = `Bearer ${tokenAcceso}`;
   return fetch(`${BASE}${ruta}`, {
@@ -85,7 +107,7 @@ let renovacionEnCurso: Promise<SesionResponse | null> | null = null;
  * pestañas del sitio: la segunda pestaña renueva después de la primera, ya con la cookie nueva, y no
  * presenta el token que la primera acaba de rotar (FR-008a). Sin la API, se renueva directamente.
  */
-function conBloqueoEntrePestanas<T>(tarea: () => Promise<T>): Promise<T> {
+export function conBloqueoEntrePestanas<T>(tarea: () => Promise<T>): Promise<T> {
   const locks = typeof navigator === 'undefined' ? undefined : navigator.locks;
   return locks ? (locks.request('renovar-sesion', tarea) as Promise<T>) : tarea();
 }

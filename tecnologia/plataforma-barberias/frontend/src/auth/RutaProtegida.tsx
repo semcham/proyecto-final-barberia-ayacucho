@@ -9,11 +9,19 @@ export function inicioDelRol(rol: RolSesion): string {
 }
 
 /**
- * Muestra su contenido solo con sesión iniciada; si no, lleva a /ingresar. Con `roles`, además exige uno de
- * esos roles; si no lo tiene, lleva al inicio de su rol. Es solo una ayuda de navegación: los permisos
- * reales los aplica el backend.
+ * Muestra su contenido solo con sesión iniciada; si no, lleva a `ingreso` (por defecto /ingresar) y recuerda
+ * la dirección completa para volver. Con `roles`, además exige uno de esos roles; si no lo tiene, lleva al
+ * inicio de su rol. Es solo una ayuda de navegación: los permisos reales los aplica el backend.
  */
-export function RutaProtegida({ children, roles }: { children: ReactNode; roles?: RolSesion[] }) {
+export function RutaProtegida({
+  children,
+  roles,
+  ingreso = '/ingresar',
+}: {
+  children: ReactNode;
+  roles?: RolSesion[];
+  ingreso?: string;
+}) {
   const { estado, usuario } = useSesion();
   const ubicacion = useLocation();
 
@@ -21,7 +29,7 @@ export function RutaProtegida({ children, roles }: { children: ReactNode; roles?
     return <PantallaCarga />;
   }
   if (estado === 'anonimo' || !usuario) {
-    return <Navigate to="/ingresar" replace state={{ desde: ubicacion.pathname }} />;
+    return <Navigate to={ingreso} replace state={{ desde: ubicacion.pathname + ubicacion.search }} />;
   }
   if (roles && !roles.includes(usuario.rol)) {
     return <Navigate to={inicioDelRol(usuario.rol)} replace />;

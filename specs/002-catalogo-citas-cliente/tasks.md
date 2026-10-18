@@ -458,25 +458,25 @@ idempotencia (R09).
 
 ### Tests for User Story 3 (MANDATORY - constitution Principle X) ⚠️
 
-- [ ] T075 [P] [US3] **PR16** (EQ-16, SC-001) en `tecnologia/plataforma-barberias/backend/test/integration/citas/concurrencia-reservas.spec.ts`:
+- [X] T075 [P] [US3] **PR16** (EQ-16, SC-001) en `tecnologia/plataforma-barberias/backend/test/integration/citas/concurrencia-reservas.spec.ts`:
   - **Montaje:** levantar **dos instancias** de la aplicación con `crearApp()`, cada una con su propio pool, sobre la misma base; sembrar un barbero, un servicio de 30 min y 200 clientes con sesión.
   - **Caso principal:** lanzar 200 `POST /citas` simultáneos (`Promise.all`, alternando instancias) al mismo barbero e inicio. Se esperan exactamente 1 respuesta 201, 199 respuestas 409 `HORARIO_NO_DISPONIBLE`, 0 respuestas 5xx, y en la base exactamente 1 cita activa para ese barbero y rango (consulta con el pool `seed`).
   - **Variantes:**
     - (a) solape parcial: 100 a las 10:00 y 100 a las 10:15 → 1 cita;
     - (b) el mismo cliente reserva con dos barberos a la misma hora → 1 cita, la otra 409 `CITA_SOLAPADA_DEL_CLIENTE`;
     - (c) 50 reintentos simultáneos con la misma `Idempotency-Key` → 1 cita, y todas las respuestas exitosas traen el mismo `id`.
-- [ ] T076 [P] [US3] Pruebas unitarias de la creación de `Cita` en `tecnologia/plataforma-barberias/backend/test/unit/citas/cita.spec.ts`:
+- [X] T076 [P] [US3] Pruebas unitarias de la creación de `Cita` en `tecnologia/plataforma-barberias/backend/test/unit/citas/cita.spec.ts`:
   - nace `CONFIRMADA`;
   - `fin = inicio + duración`;
   - copia nombre, precio y duración del servicio;
   - rechaza el inicio pasado.
-- [ ] T077 [P] [US3] Integración de la reserva en `tecnologia/plataforma-barberias/backend/test/integration/citas/reservar.spec.ts`:
+- [X] T077 [P] [US3] Integración de la reserva en `tecnologia/plataforma-barberias/backend/test/integration/citas/reservar.spec.ts`:
   - **Datos:** 201 con barbería, servicio, barbero, fecha, hora, precio y estado (FR-034).
   - **Rechazos:** 422 `RESERVA_INVALIDA` con hora pasada, fuera de disponibilidad o del horizonte, en un bloqueo, con servicio inactivo o con un barbero que no ofrece el servicio.
   - **Idempotencia:** misma `Idempotency-Key` y mismo cuerpo → 200 con la misma cita; misma clave con otro cuerpo → 422 `IDEMPOTENCIA_CONFLICTO`; sin `Idempotency-Key` → 400.
   - **Cliente:** un `clienteId` enviado por un cliente → 400.
   - **Registros:** se escriben `appointment_status_history` (`NULL` → `CONFIRMADA`) y la auditoría.
-- [ ] T078 [P] [US3] Integración de la cuenta de cliente en `tecnologia/plataforma-barberias/backend/test/integration/clientes/cuenta-cliente.spec.ts`:
+- [X] T078 [P] [US3] Integración de la cuenta de cliente en `tecnologia/plataforma-barberias/backend/test/integration/clientes/cuenta-cliente.spec.ts`:
   - **Registro:** desde el `slug` crea cuenta, membresía `CLIENTE`, perfil y `consent_record` `EN_LINEA` con versión, fecha, hora e IP, y devuelve una sesión con `rol = CLIENTE` y el `tid` de esa barbería; sin aceptación → 400 y 0 filas; correo existente → 409 `CORREO_NO_DISPONIBLE`.
   - **Ingreso sin enlace:** una cuenta de cliente → 409 `INGRESA_DESDE_TU_BARBERIA`, solo con la contraseña correcta; con una contraseña incorrecta → 401 idéntico al de 001.
   - **Ingreso con enlace** de una barbería sin membresía → 409 `UNIRSE_REQUIERE_CONSENTIMIENTO`; con aceptación → se une y queda un segundo perfil y consentimiento, sin otra cuenta.
@@ -487,12 +487,12 @@ idempotencia (R09).
   - un cliente con membresía en A y B no ve con el token de A citas, perfil ni horarios de B;
   - un `slug` o `barberia` de B enviado en `POST /citas`, `GET /horarios` o `GET /clientes/yo/citas` con el token de A → 400 o ignorado, operando solo sobre A;
   - el perfil de A no es visible desde la sesión de B.
-- [ ] T080 [P] [US3] Ampliar `tecnologia/plataforma-barberias/backend/test/integration/aislamiento/funciones-definer.spec.ts`:
+- [X] T080 [P] [US3] Ampliar `tecnologia/plataforma-barberias/backend/test/integration/aislamiento/funciones-definer.spec.ts`:
   - `auth_resolver_cuenta` devuelve 1 fila con columnas de membresía nulas para una cuenta de cliente con membresía en 3 barberías;
   - devuelve 0 filas con un correo inexistente;
   - sigue sin parámetro de tenant y con su dueño `barberias_auth`.
-- [ ] T081 [P] [US3] Prueba de contrato de `POST /clientes/registro`, `POST /auth/login` (con `barberia` y aceptación) y `POST /auth/barberia` en `tecnologia/plataforma-barberias/backend/test/contract/clientes.contract.spec.ts`, y de `POST /citas` en `tecnologia/plataforma-barberias/backend/test/contract/citas.contract.spec.ts`
-- [ ] T082 [P] [US3] Pruebas de las pantallas en `tecnologia/plataforma-barberias/frontend/test/pages/cliente-reserva.spec.tsx`:
+- [X] T081 [P] [US3] Prueba de contrato de `POST /clientes/registro`, `POST /auth/login` (con `barberia` y aceptación) y `POST /auth/barberia` en `tecnologia/plataforma-barberias/backend/test/contract/clientes.contract.spec.ts`, y de `POST /citas` en `tecnologia/plataforma-barberias/backend/test/contract/citas.contract.spec.ts`
+- [X] T082 [P] [US3] Pruebas de las pantallas en `tecnologia/plataforma-barberias/frontend/test/pages/cliente-reserva.spec.tsx`:
   - registro con consentimiento obligatorio y solo datos mínimos;
   - ingreso desde el enlace con el flujo de unión;
   - la reserva conserva la `Idempotency-Key` entre reintentos y la cambia si cambia la selección;
@@ -501,20 +501,20 @@ idempotencia (R09).
 
 ### Implementation for User Story 3
 
-- [ ] T083 [P] [US3] Crear el dominio de clientes en `tecnologia/plataforma-barberias/backend/src/modules/acceso-barberias/clientes/domain/perfil-cliente.ts` y `tecnologia/plataforma-barberias/backend/src/modules/acceso-barberias/clientes/domain/consentimiento.ts`:
+- [X] T083 [P] [US3] Crear el dominio de clientes en `tecnologia/plataforma-barberias/backend/src/modules/acceso-barberias/clientes/domain/perfil-cliente.ts` y `tecnologia/plataforma-barberias/backend/src/modules/acceso-barberias/clientes/domain/consentimiento.ts`:
   - `PerfilCliente`: nombre 2–120, teléfono, correo normalizado si hay cuenta, origen;
   - `Consentimiento`: versión vigente; `PRESENCIAL` exige `registradoPor`.
-- [ ] T084 [US3] Crear los puertos y repositorios Kysely `PerfilClienteRepository` y `ConsentimientoRepository` en `tecnologia/plataforma-barberias/backend/src/modules/acceso-barberias/clientes/application/ports/` y `tecnologia/plataforma-barberias/backend/src/modules/acceso-barberias/clientes/infrastructure/`, filtrados por el tenant del contexto
-- [ ] T085 [US3] Crear `RegistrarCliente` en `tecnologia/plataforma-barberias/backend/src/modules/acceso-barberias/clientes/application/registrar-cliente.ts`:
+- [X] T084 [US3] Crear los puertos y repositorios Kysely `PerfilClienteRepository` y `ConsentimientoRepository` en `tecnologia/plataforma-barberias/backend/src/modules/acceso-barberias/clientes/application/ports/` y `tecnologia/plataforma-barberias/backend/src/modules/acceso-barberias/clientes/infrastructure/`, filtrados por el tenant del contexto
+- [X] T085 [US3] Crear `RegistrarCliente` en `tecnologia/plataforma-barberias/backend/src/modules/acceso-barberias/clientes/application/registrar-cliente.ts`:
   - resuelve el `slug` a un tenant `ACTIVA` con `TenantRepository` (selector de la constitución 1.2.0);
   - en un `UnitOfWork` con ese tenant crea `user_account` (sin `RETURNING`; unicidad → `CorreoNoDisponible`), membresía `CLIENTE` `ACTIVA`, perfil `EN_LINEA` y consentimiento;
   - registra `CLIENTE_REGISTRADO` y llama a `EmitirSesion`.
-- [ ] T086 [US3] Crear `UnirseABarberia`, usado por el ingreso con enlace y por el cambio de barbería, en `tecnologia/plataforma-barberias/backend/src/modules/acceso-barberias/clientes/application/unirse-a-barberia.ts`:
+- [X] T086 [US3] Crear `UnirseABarberia`, usado por el ingreso con enlace y por el cambio de barbería, en `tecnologia/plataforma-barberias/backend/src/modules/acceso-barberias/clientes/application/unirse-a-barberia.ts`:
   - rechaza cuentas con membresía de personal (`CUENTA_DE_PERSONAL`);
   - exige la aceptación con versión vigente;
   - crea membresía, perfil (con nombre y correo de la cuenta) y consentimiento;
   - registra `CLIENTE_UNIDO`.
-- [ ] T087 [US3] Ampliar `IniciarSesion` en `tecnologia/plataforma-barberias/backend/src/modules/acceso-barberias/identidad/application/iniciar-sesion.ts`:
+- [X] T087 [US3] Ampliar `IniciarSesion` en `tecnologia/plataforma-barberias/backend/src/modules/acceso-barberias/identidad/application/iniciar-sesion.ts`:
   - acepta `barberia` y la aceptación opcional;
   - mantiene el camino de tiempo constante con `auth_resolver_cuenta` (ahora con `LEFT JOIN`);
   - **sin `barberia`:** membresía de personal, o `INGRESA_DESDE_TU_BARBERIA` para clientes;
@@ -523,7 +523,7 @@ idempotencia (R09).
 
   Ampliar también el DTO en `tecnologia/plataforma-barberias/backend/src/modules/acceso-barberias/identidad/presentation/login.dto.ts`.
 
-- [ ] T088 [US3] Crear `CambiarBarberia` en `tecnologia/plataforma-barberias/backend/src/modules/acceso-barberias/identidad/application/cambiar-barberia.ts`:
+- [X] T088 [US3] Crear `CambiarBarberia` en `tecnologia/plataforma-barberias/backend/src/modules/acceso-barberias/identidad/application/cambiar-barberia.ts`:
   - solo con rol `CLIENTE`;
   - resuelve el tenant destino y busca con RLS la membresía del `sub`, o se une si llega la aceptación;
   - emite la sesión en el destino y después cierra la actual en una transacción con el tenant del token;
@@ -531,18 +531,18 @@ idempotencia (R09).
 
   Ruta `POST /auth/barberia` en `tecnologia/plataforma-barberias/backend/src/modules/acceso-barberias/identidad/presentation/auth.controller.ts`, con la cookie `rt` reemplazada.
 
-- [ ] T089 [US3] Crear `ClientesController` (`POST /clientes/registro`, con `@Publica()`, límite por IP y 201 con la cookie `rt`) y su DTO en `tecnologia/plataforma-barberias/backend/src/modules/acceso-barberias/clientes/presentation/clientes.controller.ts` y `tecnologia/plataforma-barberias/backend/src/modules/acceso-barberias/clientes/presentation/clientes.dto.ts`; registrar el submódulo en `acceso-barberias.module.ts`
-- [ ] T090 [US3] Implementar `ClientesApi.perfilDeSesion(usuarioId)` (perfil del cliente en el tenant del contexto) en `tecnologia/plataforma-barberias/backend/src/modules/acceso-barberias/clientes/application/clientes-api.ts`
-- [ ] T091 [P] [US3] Crear la entidad `Cita` y `EstadoCita` en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/citas/domain/cita.ts` y `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/citas/domain/estado-cita.ts`:
+- [X] T089 [US3] Crear `ClientesController` (`POST /clientes/registro`, con `@Publica()`, límite por IP y 201 con la cookie `rt`) y su DTO en `tecnologia/plataforma-barberias/backend/src/modules/acceso-barberias/clientes/presentation/clientes.controller.ts` y `tecnologia/plataforma-barberias/backend/src/modules/acceso-barberias/clientes/presentation/clientes.dto.ts`; registrar el submódulo en `acceso-barberias.module.ts`
+- [X] T090 [US3] Implementar `ClientesApi.perfilDeSesion(usuarioId)` (perfil del cliente en el tenant del contexto) en `tecnologia/plataforma-barberias/backend/src/modules/acceso-barberias/clientes/application/clientes-api.ts`
+- [X] T091 [P] [US3] Crear la entidad `Cita` y `EstadoCita` en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/citas/domain/cita.ts` y `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/citas/domain/estado-cita.ts`:
   - creación `CONFIRMADA` con copia del servicio y `RangoHorario`;
   - las transiciones completas se agregan en US4 y US5.
-- [ ] T092 [US3] Crear `CitaRepository` y `CitaRepositoryPostgres` en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/citas/application/ports/cita-repository.ts` y `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/citas/infrastructure/cita-repository-postgres.ts`:
+- [X] T092 [US3] Crear `CitaRepository` y `CitaRepositoryPostgres` en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/citas/application/ports/cita-repository.ts` y `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/citas/infrastructure/cita-repository-postgres.ts`:
   - `guardar` inserta la cita y su historial en la transacción del caso de uso;
   - traduce `23P01` por nombre de restricción: `appointment_no_overlap_barber` → `HorarioNoDisponible` y `appointment_no_overlap_customer` → `CitaSolapadaDelCliente`;
   - `buscarPorIdempotencia(autor, clave)`;
   - la violación de `appointment_idempotencia` se vuelve a buscar (R09);
   - todas las consultas filtran por el tenant del contexto.
-- [ ] T093 [US3] Crear `ReservarCita` en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/citas/application/reservar-cita.ts`, en este orden:
+- [X] T093 [US3] Crear `ReservarCita` en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/citas/application/reservar-cita.ts`, en este orden:
   1. Autorización.
   2. Perfil del cliente con `ClientesApi.perfilDeSesion` para el rol `CLIENTE`.
   3. Idempotencia con hash SHA-256 del cuerpo normalizado.
@@ -552,17 +552,17 @@ idempotencia (R09).
 
   El conflicto lo decide solo la restricción (principio IV).
 
-- [ ] T094 [US3] Crear `CitasController` (`POST /citas` con el encabezado `Idempotency-Key` obligatorio, en formato UUID) y su DTO en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/citas/presentation/citas.controller.ts` y `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/citas/presentation/citas.dto.ts`; registrarlos en `catalogo-citas.module.ts`
-- [ ] T095 [US3] Ampliar la sesión del navegador en `tecnologia/plataforma-barberias/frontend/src/auth/SesionProvider.tsx`:
+- [X] T094 [US3] Crear `CitasController` (`POST /citas` con el encabezado `Idempotency-Key` obligatorio, en formato UUID) y su DTO en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/citas/presentation/citas.controller.ts` y `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/citas/presentation/citas.dto.ts`; registrarlos en `catalogo-citas.module.ts`
+- [X] T095 [US3] Ampliar la sesión del navegador en `tecnologia/plataforma-barberias/frontend/src/auth/SesionProvider.tsx`:
   - conserva `barberia.slug` del token;
   - `asegurarBarberia(slug)` llama a `POST /auth/barberia` si la sesión es de otra barbería y propaga `UNIRSE_REQUIERE_CONSENTIMIENTO`;
   - mantiene la renovación serializada con Web Locks de 001.
-- [ ] T096 [P] [US3] Crear las pantallas `tecnologia/plataforma-barberias/frontend/src/pages/publico/RegistroCliente.tsx` (`/b/:slug/registro`) e `tecnologia/plataforma-barberias/frontend/src/pages/publico/IngresarBarberia.tsx` (`/b/:slug/ingresar`):
+- [X] T096 [P] [US3] Crear las pantallas `tecnologia/plataforma-barberias/frontend/src/pages/publico/RegistroCliente.tsx` (`/b/:slug/registro`) e `tecnologia/plataforma-barberias/frontend/src/pages/publico/IngresarBarberia.tsx` (`/b/:slug/ingresar`):
   - formularios con `react-hook-form` + `zod` y las reglas del contrato;
   - casilla de política de datos con versión;
   - flujo de unión cuando llega 409 `UNIRSE_REQUIERE_CONSENTIMIENTO`;
   - mensaje "ya tienes cuenta: inicia sesión" ante `CORREO_NO_DISPONIBLE`.
-- [ ] T097 [US3] Crear la pantalla `tecnologia/plataforma-barberias/frontend/src/pages/publico/Reservar.tsx` (`/b/:slug/reservar`, exige sesión de cliente en esa barbería vía `asegurarBarberia`):
+- [X] T097 [US3] Crear la pantalla `tecnologia/plataforma-barberias/frontend/src/pages/publico/Reservar.tsx` (`/b/:slug/reservar`, exige sesión de cliente en esa barbería vía `asegurarBarberia`):
   - resumen de la selección;
   - `Idempotency-Key` generada al abrir la confirmación y reutilizada en los reintentos;
   - pantalla de confirmación con todos los datos;
@@ -752,10 +752,10 @@ ADR-015, validación de punta a punta y calidad.
 
   Todo responde 400 `VALIDACION` con mensaje controlado y sin ejecutar ni reflejar el contenido.
 
-- [ ] T132 [P] Ampliar la suite de auditoría (PR13, FR-050) en `tecnologia/plataforma-barberias/backend/test/integration/auditoria.spec.ts` con las 11 acciones nuevas de R19:
+- [ ] T132 [P] Ampliar la suite de auditoría (PR13, FR-050) en `tecnologia/plataforma-barberias/backend/test/integration/auditoria.spec.ts` con las 12 acciones nuevas de R19:
   - `CLIENTE_REGISTRADO`, `CLIENTE_UNIDO`, `CLIENTE_PRESENCIAL_REGISTRADO`, `BARBERIA_CAMBIADA`;
   - `ENLACE_CAMBIADO`, `SERVICIO_DESACTIVADO`, `BARBERO_DESACTIVADO`, `BLOQUEO_CON_CONFLICTO`, `CAMBIO_CON_CONFLICTO`;
-  - `CITA_CANCELADA`, `CITA_ESTADO_CAMBIADO`.
+  - `CITA_RESERVADA`, `CITA_CANCELADA`, `CITA_ESTADO_CAMBIADO`.
 
   Cada una con actor, recurso solo por identificador, barbería, resultado y fecha, y sin datos personales en el texto.
 
