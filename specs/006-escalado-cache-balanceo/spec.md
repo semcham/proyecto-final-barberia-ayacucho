@@ -157,7 +157,7 @@ El responsable ejecuta una prueba de carga reproducible y obtiene una tabla con 
 - **FR-008**: El catálogo público de cada barbería (los mismos datos y columnas que ya devuelve la vía pública) MUST guardarse en la caché compartida, bajo una clave que incluya el identificador interno de la barbería, y MUST leerse de ahí cuando esté disponible.
 - **FR-009**: La correspondencia entre enlace público y barbería MAY guardarse en la caché solo para enlaces existentes; un enlace inexistente MUST NOT crear entradas en la caché.
 - **FR-010**: Después de confirmar en la base de datos cualquier cambio que afecte lo que se ve en el catálogo público (servicios, barberos, servicios asignados, datos comerciales, horario de atención o enlace), la entrada de esa barbería MUST invalidarse para ambas instancias; la invalidación MUST ocurrir después de confirmar el cambio, nunca antes.
-- **FR-011**: Al cambiar el enlace, MUST invalidarse tanto la correspondencia del enlace anterior como la del nuevo.
+- **FR-011**: Al cambiar el enlace, desde la visita siguiente y por cualquier instancia el enlace anterior MUST responder "barbería no disponible" y el nuevo MUST mostrar el catálogo; ninguna copia guardada puede hacer que el enlace anterior siga funcionando.
 - **FR-012**: Toda entrada de la caché MUST tener un tiempo máximo de vida acotado (red de seguridad ante invalidaciones perdidas); el valor por defecto se fija en el plan y MUST NOT superar 5 minutos.
 - **FR-013**: La caché MUST NOT guardar datos personales de clientes ni datos de contacto o de cuenta del personal, y MUST NOT decidir la disponibilidad: los horarios libres y la reserva MUST usar siempre las citas, bloqueos y disponibilidad vigentes en la base de datos (principios IV y VIII).
 - **FR-013a**: Por defecto, los horarios libres calculados MUST NOT guardarse en la caché: solo se guardan el enlace y el catálogo.
@@ -195,9 +195,8 @@ El responsable ejecuta una prueba de carga reproducible y obtiene una tabla con 
 ### Key Entities
 
 - **Entrada de catálogo en caché**: copia del catálogo público de una barbería (datos comerciales públicos, horario de atención, servicios activos y barberos activos con sus servicios). Se identifica por la barbería; tiene un tiempo máximo de vida; se invalida al cambiar el catálogo.
-- **Correspondencia de enlace en caché**: asocia un enlace público existente al identificador interno de su barbería. Se invalida al cambiar el enlace.
 - **Contador de límite de solicitudes**: número de solicitudes de una IP en una ruta o grupo de rutas durante la ventana de un minuto. No crítico: si se pierde, el conteo se reinicia.
-- **Instancia del backend**: copia idéntica y sin estado de la aplicación; tiene un estado de salud que consulta el balanceador.
+- **Instancia del backend** (en el plan y las tareas, "réplica"): copia idéntica y sin estado de la aplicación; tiene un estado de salud que consulta el balanceador.
 - **Ejecución de medición**: registro de una prueba de carga o de caída con fecha, equipo, condiciones (número de instancias, caché activa o no, datos) y resultados (p50, p95, máximo, errores, tiempo de detección).
 
 ## Success Criteria _(mandatory)_

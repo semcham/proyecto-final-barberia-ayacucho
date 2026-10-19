@@ -81,6 +81,9 @@ Fase 0 del plan. Cada decisión indica qué se eligió, por qué y qué se desca
 - **Docker:** cada réplica tiene un `healthcheck` que llama a `/salud/listo` con
   `node -e "fetch(...)"`: intervalo 5 s, tiempo límite 2 s, 3 reintentos y `start_period` de 20 s.
   `nginx` depende de que ambas estén sanas en el primer arranque.
+- **Sin dependencia de Redis al arrancar:** las réplicas no esperan a `redis` (no hay
+  `depends_on` hacia él). El backend arranca y queda listo sin Redis, y empieza a usarlo cuando
+  responde (interruptor, R06), igual que tras una caída (FR-019).
 - **Nginx (de código abierto) no tiene comprobación activa** (es de Nginx Plus). Usa la **pasiva**:
   - `max_fails=1 fail_timeout=10s`;
   - `proxy_connect_timeout 1s`;
@@ -181,7 +184,9 @@ actuales que simulan IP con `X-Forwarded-For` (`limite-intentos`, `entradas`) ll
 - **Pruebas de arquitectura:** una regla nueva de PR14, `redis-confinado`, permite importar
   `ioredis` solo desde `shared/cache/`.
 
-**Librería**: `ioredis` 5 (MIT), versión exacta fijada al instalar.
+**Librería**: `ioredis` **5.4.2** (MIT), fijada exacta (`--save-exact`). Si al instalar hubiera
+un motivo para otra 5.x (por ejemplo, un aviso de seguridad), se usa la más reciente con al menos
+2 semanas de publicada y se anota en `tecnologias.md`.
 
 - **Ventajas:** tiempo límite por comando (`commandTimeout`), `enableOfflineQueue: false`,
   `maxRetriesPerRequest: 0`, reconexión con `retryStrategy`, y scripts Lua con `defineCommand`.
@@ -235,12 +240,22 @@ salen de ADR-012 (5 fallos) y quedan configurables.
   - Además, resuelve sin código extra el cambio de enlace (FR-011), el enlace reutilizado por otra
     barbería, la barbería suspendida y el enlace inexistente: no se crean entradas por enlaces
     inventados (FR-009).
-- **Horarios libres:** usan de la entrada la duración del servicio, el horario de atención y los
-  barberos que ofrecen el servicio. Siguen leyendo **siempre** de PostgreSQL, en la transacción
-  pública, la disponibilidad semanal de los barberos, los bloqueos y las citas del día (FR-013,
-  US2 escenario 9).
-  - La consulta pasa de 3 transacciones y 8 consultas a **2 transacciones y 4 consultas**: el enlace
-    con los datos de la barbería, y luego disponibilidad, bloqueos y citas del día.
+- **Horarios libres:** hay dos fuentes del día, y ambas abren **una sola** transacción pública.
+  - **Con la entrada en caché (acierto):** `fuenteDelDia(tenantId, catalogo)` toma de la entrada
+    la duración del servicio, el horario de atención y los barberos que ofrecen el servicio, y lee
+    de PostgreSQL solo la disponibilidad semanal, los bloqueos y las citas del día (3 consultas).
+  - **Sin entrada** (caché desactivada, fallo de caché o Redis caído): `fuenteCompleta(tenantId)`
+    lee todo en una transacción (6 consultas), como hace 002 hoy.
+  - En ambos casos, disponibilidad, bloqueos y citas se leen **siempre** vigentes (FR-013, US2
+    escenario 9).
+  - **Ruta de horarios:** solo lee la entrada; no la llena. La llena `GET /publico/{slug}`, que la
+    página pública pide antes de los horarios. Así un fallo en los horarios no suma una
+    transacción más.
+  - **Cuenta por consulta:**
+    - hoy, 3 transacciones y 8 consultas;
+    - con acierto, **2 transacciones y 4 consultas** (el enlace con los datos de la barbería en M01,
+      más la fuente del día);
+    - sin entrada, **2 transacciones y 7 consultas** (el enlace más la fuente completa).
   - Si el servicio pedido no está en la entrada (inexistente o inactivo), la respuesta es la misma
     que hoy.
 
@@ -370,13 +385,13 @@ carreras.
 
 **Decisión**: todo pasa por `CacheCompartida` con interruptor (R06).
 
-| Función                           | Con Redis caído                                                                                |
-| --------------------------------- | ---------------------------------------------------------------------------------------------- |
-| Catálogo                          | Se lee de PostgreSQL y no se intenta guardar                                                   |
-| Horarios                          | Igual que hoy, con los datos del catálogo leídos de PostgreSQL en la misma transacción pública |
-| Reservas, cancelaciones y estados | No usan Redis; solo la invalidación posterior falla en silencio                                |
-| Límite de solicitudes             | Respaldo por instancia (R09)                                                                   |
-| Registros                         | Una línea `CACHE_NO_DISPONIBLE`                                                                |
+| Función                           | Con Redis caído                                                                                                                                                                            |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Catálogo                          | Se lee de PostgreSQL y no se intenta guardar                                                                                                                                               |
+| Horarios                          | `fuenteCompleta`: una sola transacción pública que lee también el servicio, el horario de atención y los barberos (R07), como en 002 pero con el enlace resuelto en una transacción de M01 |
+| Reservas, cancelaciones y estados | No usan Redis; solo la invalidación posterior falla en silencio                                                                                                                            |
+| Límite de solicitudes             | Respaldo por instancia (R09)                                                                                                                                                               |
+| Registros                         | Una línea `CACHE_NO_DISPONIBLE`                                                                                                                                                            |
 
 - **Al volver Redis:** el interruptor se cierra solo. Las entradas que sobrevivieron a una caída de
   red (no a un reinicio, porque Redis no persiste) pueden estar viejas como máximo el TTL de 120 s
@@ -386,14 +401,14 @@ carreras.
 
 **Decisión**: `deploy.resources.limits.memory`, que Compose v2 respeta sin Swarm, en cada servicio.
 
-| Servicio                 | Límite          | Ajustes                                                                                                                    |
-| ------------------------ | --------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `db`                     | 512 MB          | `shared_buffers` por defecto (128 MB), `max_connections=100`                                                               |
-| `redis`                  | 64 MB           | `--maxmemory 48mb --maxmemory-policy allkeys-lru --save "" --appendonly no` (caché sin persistencia; si se llena, expulsa) |
-| `nginx`                  | 32 MB           | `worker_processes 1`                                                                                                       |
-| `backend-1`, `backend-2` | 384 MB cada uno | `NODE_OPTIONS=--max-old-space-size=256`                                                                                    |
-| `preparar-backend`       | 1 GB            | Solo mientras compila y migra; luego termina y libera la memoria                                                           |
-| `frontend` (Vite)        | 512 MB          | —                                                                                                                          |
+| Servicio                 | Límite          | Ajustes                                                                                                                                                                |
+| ------------------------ | --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `db`                     | 512 MB          | `shared_buffers` por defecto (128 MB), `max_connections=100`                                                                                                           |
+| `redis`                  | 64 MB           | `--maxmemory 48mb --maxmemory-policy allkeys-lru --save "" --appendonly no` (caché sin persistencia; si se llena, expulsa)                                             |
+| `nginx`                  | 32 MB           | `command: ["nginx", "-g", "daemon off; worker_processes 1;"]`: la plantilla de `conf.d` no puede fijar `worker_processes`. El ayudante de pruebas usa el mismo comando |
+| `backend-1`, `backend-2` | 384 MB cada uno | `NODE_OPTIONS=--max-old-space-size=256`                                                                                                                                |
+| `preparar-backend`       | 1 GB            | Solo mientras compila y migra; luego termina y libera la memoria                                                                                                       |
+| `frontend` (Vite)        | 512 MB          | —                                                                                                                                                                      |
 
 - **Uso estable:** unos 1,9 GB, más el pico de 1 GB de la preparación, que ocurre antes de que
   arranquen las réplicas.
@@ -433,6 +448,13 @@ imagen y otra herramienta, y la medición debe ser comparable con la de 002.
   - El límite de la vía pública se sube solo para la medición
     (`PUBLICO_LIMITE_POR_MINUTO=100000`), porque desde el equipo todas las solicitudes comparten IP
     (R04).
+  - **Qué mide cada variante** (R07):
+    - **A y C** (caché inactiva): las consultas usan `fuenteCompleta`, con 2 transacciones por
+      consulta. Ya incluyen la mejora de M01 (enlace y datos de la barbería en una transacción), así
+      que no equivalen exactamente a la medición de 002.
+    - **B y D** (caché activa): el script hace un `GET /publico/{slug}` de precarga antes de las
+      rondas, y las consultas usan `fuenteDelDia` (acierto).
+  - **Cada variante se ejecuta dos veces** y se registran ambas, como en 002.
   - Si D no cumple los 800 ms, se evalúa R10 y se mide una variante E.
 
 - **`npm run demo:caida -- --objetivo replica|redis`** (script nuevo, `scripts/demo-caida.ts`):

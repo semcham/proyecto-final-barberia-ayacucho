@@ -133,6 +133,9 @@ $env:CACHE_CATALOGO_ACTIVA = 'true'; docker compose up -d backend-1 backend-2
 cd backend; npm run medir:horarios -- --etiqueta D-2r-con-cache --salida ../../../tmp/medicion-D.json
 ```
 
+- **Repetir cada variante dos veces** y registrar ambas ejecuciones.
+- **En B y D** el script hace una precarga (`GET /publico/{slug}`) antes de las rondas. **En A y C**
+  los horarios usan la fuente completa en una transacción ([research.md](research.md) R07 y R13).
 - **Esperado:** la variante D cumple p95 ≤ 800 ms con 0 % de 5xx (SC-001).
 - **Si D no la cumple:** se evalúa FR-013b (`CACHE_HORARIOS_ACTIVA=true`, [research.md](research.md)
   R10), se mide una variante E y se registran D y E.

@@ -68,8 +68,9 @@ No toca webhooks de pago.
 
 **Purpose**: dependencia nueva, variables de entorno y carpetas.
 
-- [ ] T001 Instalar `ioredis` 5 con versión exacta en `tecnologia/plataforma-barberias/backend/package.json` y `package-lock.json`:
-  - ejecutar `npm install ioredis@<5.x vigente con al menos 2 semanas> --save-exact --cache D:\proyecto-final-barberia-ayacucho\tmp\npm-cache` en `backend/`;
+- [ ] T001 Instalar `ioredis` 5.4.2 con versión exacta en `tecnologia/plataforma-barberias/backend/package.json` y `package-lock.json` ([research.md](research.md) R05):
+  - ejecutar `npm install ioredis@5.4.2 --save-exact --cache D:\proyecto-final-barberia-ayacucho\tmp\npm-cache` en `backend/`;
+  - si hubiera un motivo para otra 5.x, como un aviso de seguridad, usar la más reciente con al menos 2 semanas de publicada y anotar el motivo en T055;
   - borrar `tmp/npm-cache` al terminar;
   - comprobar que no queda nada nuevo en `%LOCALAPPDATA%\npm-cache` por esta instalación.
 - [ ] T002 [P] Agregar a `tecnologia/plataforma-barberias/.env.example`, con comentarios, las variables de [data-model.md](data-model.md) §4:
@@ -99,7 +100,7 @@ No toca webhooks de pago.
   - abierto, no llama a la operación durante `pausaMs`;
   - al vencer la pausa pasa a semiabierto: un éxito lo cierra y un fallo lo reabre;
   - avisa `abierto` y `recuperado` una sola vez por transición.
-- [ ] T006 [P] Pruebas unitarias de la confirmación en `tecnologia/plataforma-barberias/backend/test/unit/shared/al-confirmar.spec.ts`, o integración en `test/integration/shared/unit-of-work.spec.ts` si necesita la base:
+- [ ] T006 [P] Integración de la confirmación en `tecnologia/plataforma-barberias/backend/test/integration/shared/unit-of-work.spec.ts` (necesita una transacción real de PostgreSQL de Testcontainers):
   - `alConfirmar` ejecuta las acciones solo después del `COMMIT` de la transacción más externa;
   - con un error o un `ROLLBACK`, no las ejecuta;
   - llamado dentro de una transacción anidada (mismo tenant), espera a la externa;
@@ -170,7 +171,7 @@ PR16 por Nginx.
 ### Tests for User Story 1 (MANDATORY - constitution Principle X) ⚠️
 
 - [ ] T018 [P] [US1] Ayudante de Nginx para las pruebas en `tecnologia/plataforma-barberias/backend/test/helpers/nginx.ts`:
-  - `iniciarNginx({ backends: [puerto1, puerto2] })` con `GenericContainer('nginx:1.27-alpine')`;
+  - `iniciarNginx({ backends: [puerto1, puerto2] })` con `GenericContainer('nginx:1.27-alpine')` y el mismo comando que Compose (`nginx -g "daemon off; worker_processes 1;"`);
   - copia **la plantilla del repositorio** (`nginx/templates/default.conf.template`) y fija `BACKEND_1` y `BACKEND_2` a `host.testcontainers.internal:{puerto}` mediante `TestContainers.exposeHostPorts`;
   - devuelve la URL publicada.
   - Si `exposeHostPorts` es inestable, aplicar el respaldo de [research.md](research.md) R15 y dejarlo anotado en la tarea.
@@ -182,7 +183,7 @@ PR16 por Nginx.
   - `/salud/listo` no tiene límite de solicitudes.
 - [ ] T020 [P] [US1] Integración del balanceador en `tecnologia/plataforma-barberias/backend/test/integration/escalado/balanceador.spec.ts`: dos instancias en proceso con `INSTANCIA_ID` distinto y `PROXIES_CONFIABLES=loopback`, detrás de Nginx (T018). Casos:
   - **Reparto:** 20 `GET /salud` por Nginx devuelven `X-Instancia` `backend-1` y `backend-2`, y el cuerpo es igual en todas (escenario 1).
-  - **PR04:** con tráfico continuo de GET (unas 20 por segundo), cerrar una instancia. En la ventana de transición, como máximo el 2 % de errores; a partir de 15 s del cierre, 0 % de errores y todas las respuestas de la otra instancia. Al levantarla de nuevo en el mismo puerto, vuelve a recibir tráfico sin intervención (escenarios 2 y 3; SC-002).
+  - **PR04:** con tráfico continuo de GET (unas 20 por segundo), cerrar una instancia. En la ventana de transición, como máximo el 2 % de errores; a partir de 15 s del cierre, 0 % de errores y todas las respuestas de la otra instancia. Al levantarla de nuevo en el mismo puerto, vuelve a recibir tráfico sin intervención, y entre el nuevo arranque y el fin de la prueba hay **0 %** de errores: el alta no pierde solicitudes (escenarios 2 y 3; SC-002).
   - **Sesión entre instancias:** iniciar sesión en una instancia y usar el token en la otra; cerrar sesión en una y comprobar 401 en la otra; los intentos fallidos de inicio de sesión se cuentan en conjunto (escenario 4).
   - **IP real (FR-006):** una solicitud con `X-Forwarded-For: 203.0.113.9` queda auditada o limitada con la IP que entrega Nginx, no con `203.0.113.9`.
   - **Sin réplicas (FR-007):** con ambas cerradas, 503 con cuerpo `{ codigo: 'SERVICIO_NO_DISPONIBLE', … }` y `Retry-After` en menos de 3 s (escenario 6).
@@ -214,7 +215,7 @@ PR16 por Nginx.
   - `upstream api` con `${BACKEND_1}` y `${BACKEND_2}`, cada uno con `max_fails=1 fail_timeout=10s`, y `keepalive 16`;
   - `location /api/`: `proxy_pass`, `proxy_http_version 1.1`, `proxy_set_header X-Forwarded-For $remote_addr`, `X-Real-IP $remote_addr`, `Host` y `X-Forwarded-Proto`;
   - tiempos: `proxy_connect_timeout 1s`, `proxy_read_timeout 30s`, `proxy_next_upstream error timeout http_502 http_503`, `proxy_next_upstream_tries 2`, `proxy_next_upstream_timeout 3s`;
-  - `client_max_body_size 16k`, `server_tokens off`, `worker_processes 1` (en `nginx.conf`, o documentado si no aplica a la plantilla);
+  - `client_max_body_size 16k` y `server_tokens off`. `worker_processes 1` no va en la plantilla: lo fija el comando del contenedor (`nginx -g "daemon off; worker_processes 1;"`), en T027 y en el ayudante T018;
   - `error_page 502 503 504 = @sin_servicio`, que devuelve 503 JSON `SERVICIO_NO_DISPONIBLE` con `Retry-After: 5` y `default_type application/json`;
   - `location = /nginx-salud` devuelve 200, y todo lo demás, 404.
   - Hace pasar T020 junto con T024 y T025.
@@ -223,8 +224,8 @@ PR16 por Nginx.
   - `db` con límite de 512 MB;
   - `redis` (`redis:7.4-alpine`, `--maxmemory 48mb --maxmemory-policy allkeys-lru --save "" --appendonly no`, healthcheck `redis-cli ping`, 64 MB, puerto `${REDIS_PUERTO:-6380}`);
   - `preparar-backend` (`npm ci && npm run build && npm run migrate`, `restart: "no"`, 1 GB);
-  - ancla `x-backend` para `backend-1` y `backend-2`: `node dist/src/main.js`, IP fijas, sin puertos, `depends_on` con `preparar-backend: service_completed_successfully`, `db: service_healthy` y `redis: service_started`, healthcheck `node -e "fetch('http://localhost:3000/api/v1/salud/listo').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"` (5 s, 2 s, 3 reintentos, `start_period` 20 s), 384 MB, y las variables de entorno-compose §1;
-  - `nginx` (`nginx:1.27-alpine`, plantilla montada en `/etc/nginx/templates`, `BACKEND_1` y `BACKEND_2` con las IP fijas, puerto `3000:80`, `depends_on` con ambas réplicas sanas, healthcheck `/nginx-salud`, 32 MB);
+  - ancla `x-backend` para `backend-1` y `backend-2`: `node dist/src/main.js`, IP fijas, sin puertos, `depends_on` con `preparar-backend: service_completed_successfully` y `db: service_healthy` (**sin** dependencia de `redis`: el backend arranca y queda listo sin Redis, FR-019), healthcheck `node -e "fetch('http://localhost:3000/api/v1/salud/listo').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"` (5 s, 2 s, 3 reintentos, `start_period` 20 s), 384 MB, y las variables de entorno-compose §1;
+  - `nginx` (`nginx:1.27-alpine`, `command: ["nginx", "-g", "daemon off; worker_processes 1;"]`, plantilla montada en `/etc/nginx/templates`, `BACKEND_1` y `BACKEND_2` con las IP fijas, puerto `3000:80`, `depends_on` con ambas réplicas sanas, healthcheck `/nginx-salud`, 32 MB);
   - `frontend` con `VITE_API_PROXY=http://nginx:80` y 512 MB;
   - actualizar el comentario de cabecera del archivo, que hoy dice "Sin Redis".
 - [ ] T028 [US1] Verificar a mano el entorno real y anotar el resultado para el quickstart:
@@ -232,7 +233,8 @@ PR16 por Nginx.
   - `docker compose logs preparar-backend` muestra `0013` aplicada una vez;
   - `http://localhost:3000/api/v1/salud/listo` y `http://localhost:5173` responden;
   - el reparto por `X-Instancia` (quickstart §3.1);
-  - `docker stats --no-stream`: el uso estable queda por debajo de unos 2 GB.
+  - `docker stats --no-stream`: el uso estable queda por debajo de unos 2 GB;
+  - con `docker compose stop redis` antes de `docker compose up -d --force-recreate backend-1 backend-2`, las réplicas arrancan y quedan `healthy` sin Redis.
 
 **Checkpoint**: el balanceo funciona y se demuestra solo, sin depender de la caché (US2).
 
@@ -285,14 +287,17 @@ instancia; ninguna fuga entre barberías.
   - hace pasar T030.
 - [ ] T034 [US2] Crear el puerto `CatalogoPublicoQuery` en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/catalogo/application/ports/catalogo-publico-query.ts`:
   - `catalogo(tenantId): Promise<CatalogoPublicoDatos>` (mueve aquí la interfaz `CatalogoPublicoDatos`);
-  - `fuenteDelDia(tenantId, catalogo): FuenteDisponibilidad`, una fuente que toma el servicio, el horario de atención y los barberos candidatos del `catalogo` recibido y lee de la base solo la disponibilidad semanal, los bloqueos y las citas del día.
+  - `fuenteDelDia(tenantId, catalogo): FuenteDisponibilidad`, una fuente que toma el servicio, el horario de atención y los barberos candidatos del `catalogo` recibido y lee de la base solo la disponibilidad semanal, los bloqueos y las citas del día, en **una** transacción;
+  - `fuenteCompleta(tenantId): FuenteDisponibilidad`, una fuente que lee todo (servicio, horario de atención, barberos candidatos, disponibilidad, bloqueos y citas) en **una sola** transacción. Se usa cuando no hay entrada en caché: caché desactivada, fallo o Redis caído ([research.md](research.md) R07 y R11).
 - [ ] T035 [US2] Adaptar `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/catalogo/infrastructure/publico/catalogo-publico.repository.ts` para que implemente `CatalogoPublicoQuery`:
   - `fuenteDelDia` con una transacción `LecturaPublica` y tres consultas (`working_hours`, `time_off` y `appointment`, columnas de ADR-021);
   - candidatos en el mismo orden que hoy (nombre e id);
-  - mantener `fuente(tenantId)` (lectura completa) solo si alguna prueba lo usa; si no, eliminarlo.
+  - `fuenteCompleta` es el actual `fuente(tenantId)` (`leerDia` con 6 consultas en una transacción), renombrado; actualizar sus usos en las pruebas;
+  - una prueba en `tecnologia/plataforma-barberias/backend/test/integration/catalogo/horarios.spec.ts` (ampliar) comprueba que ambas fuentes dan los mismos horarios libres para los mismos datos.
 - [ ] T036 [US2] Crear `ObtenerCatalogoPublico` en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/catalogo/application/obtener-catalogo-publico.ts`:
   - **cache-aside con generación** (R08): `obtener` → si está ausente, `leerGeneracion` → `CatalogoPublicoQuery.catalogo` → `guardarSiGeneracion` con el TTL de la configuración;
   - con `cache.catalogoActiva=false`, va directo a la consulta;
+  - agrega `soloDesdeCache(tenantId): Promise<CatalogoPublicoDatos | null>`, que lee la entrada sin llenarla. Devuelve `null` si la caché está desactivada, si hay un fallo o si Redis está caído. Lo usan los horarios;
   - la serialización de la entrada `v: 1` con lista cerrada de campos, en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/catalogo/application/entrada-catalogo.ts`;
   - hace pasar T029.
 - [ ] T037 [US2] Crear `InvalidadorCatalogoPublico` en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/catalogo/application/invalidador-catalogo-publico.ts`:
@@ -305,7 +310,7 @@ instancia; ninguna fuga entre barberías.
 - [ ] T039 [US2] Cambiar `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/catalogo/presentation/publico.controller.ts`:
   - `barberiaDelEnlace` usa `barberiaPublicaPorEnlace` (una transacción);
   - `GET :slug` devuelve `{ barberia, ...await obtenerCatalogo.ejecutar(tenantId) }`;
-  - `GET :slug/horarios` pasa `repositorio.fuenteDelDia(tenantId, catalogo)` a `ConsultarHorarios`;
+  - `GET :slug/horarios`: si `soloDesdeCache(tenantId)` devuelve la entrada, pasa `repositorio.fuenteDelDia(tenantId, entrada)` a `ConsultarHorarios`; si no, `repositorio.fuenteCompleta(tenantId)`. Siempre es una sola transacción pública, además de la de M01;
   - el contrato de 002 no cambia.
 - [ ] T040 [US2] Registrar `CatalogoPublicoQuery` (con `useExisting` del repositorio), `ObtenerCatalogoPublico` e `InvalidadorCatalogoPublico` en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/catalogo-citas.module.ts`.
   - Ejecutar la suite de 002 (`lectura-publica`, `publico.contract`, `horarios`, `rbac-002`, `entradas`) y comprobar que sigue en verde.
@@ -334,6 +339,7 @@ del límite repartido entre ambas y solo pasan N.
   - **Otra IP:** no se ve afectada (escenario 3).
   - **Ventana:** con un TTL de prueba corto, pasada la ventana vuelve a ser atendida (escenario 2).
   - **Redis detenido:** cada instancia aplica el límite por su cuenta, hasta 10 por instancia, sin 5xx (US4, escenario 4).
+  - **Formularios abiertos (FR-016):** con `REGISTRO_LIMITE_POR_MINUTO=4`, 8 `POST /clientes/registro` desde la misma IP, alternando instancias, dan como máximo 4 respuestas que no son 429, y el resto, 429.
   - **Sin Redis para los intentos (FR-017):** tras 5 inicios de sesión fallidos, el bloqueo de `limite-intentos` rige en ambas instancias y en Redis no hay ninguna clave fuera de `rl:v1:*` y `bp:v1:*`.
 
 ### Implementation for User Story 3
@@ -369,6 +375,8 @@ a ser por instancia, queda una sola alerta y se recupera sin reiniciar (FR-019 a
   - **Cambio durante la caída:** un cambio del catálogo durante la caída se guarda; al volver Redis, la entrada vieja que pudiera quedar no sobrevive al TTL de prueba (escenario 3; FR-021).
   - **Una sola alerta:** tras más de 5 solicitudes, una sola línea `CACHE_NO_DISPONIBLE` en el `Logger` (espía) y ninguna solicitud tarda el tiempo límite estando abierto el interruptor (escenario 5).
   - **Recuperación:** con Redis de nuevo, tras la pausa vuelve a escribir `bp:v1:*` sin reiniciar la aplicación y registra `CACHE_RECUPERADA` (escenario 6).
+  - **Redis lento (caso límite "Caché lenta pero no caída"):** con el contenedor en `docker pause`, cada lectura pública responde en menos de 1 s (tiempo límite de 100 ms más PostgreSQL), con los datos correctos; tras 5 tiempos límite, el interruptor se abre. Con `docker unpause` se recupera.
+  - **Horarios sin entrada:** con Redis detenido, `/horarios` usa `fuenteCompleta` (espía): una transacción pública.
   - **Sin `REDIS_URL`:** `CacheInactiva`, sin alertas.
 
 ### Implementation for User Story 4
@@ -416,12 +424,14 @@ obtener la tabla registrada.
   - opciones `--url` (por defecto `http://localhost:3000/api/v1`), `--etiqueta` y `--salida` (JSON en `tmp/`);
   - reparto por `X-Instancia` en el informe;
   - un aviso si la tasa de 429 es mayor que 0 (límite de la vía pública sin subir);
+  - opción `--precargar` (por defecto, activada): un `GET /publico/{slug}` antes de las rondas, para que en las variantes con caché los horarios lean la entrada ([research.md](research.md) R13);
   - mantener la siembra (5 barberos, 60 citas), las 10 rondas de 50 y la limpieza;
   - usar `scripts/estadisticas.ts`;
   - hace pasar T048.
 - [ ] T050 [US5] Ejecutar las variantes A, B, C y D de [quickstart.md](quickstart.md) §4.3 con el entorno de Compose:
   - `PUBLICO_LIMITE_POR_MINUTO=100000` y `CACHE_CATALOGO_ACTIVA` según la variante;
-  - dos ejecuciones por variante;
+  - dos ejecuciones por variante, registradas ambas;
+  - anotar que A y C usan `fuenteCompleta` (2 transacciones por consulta, con la mejora de M01) y no equivalen exactamente a la medición de 002;
   - anotar fecha, equipo, memoria asignada a Docker, p50, p95, máximo, % de 5xx y reparto;
   - volver a los valores normales y borrar `tmp/` al terminar.
 - [ ] T051 [US5] Ejecutar `npm run demo:caida -- --objetivo replica` y `-- --objetivo redis` (quickstart §4.1 y §4.2) y anotar los resultados (detección, errores en la transición, p95 durante la caída, reincorporación y reservas sin duplicados).
@@ -455,6 +465,7 @@ obtener la tabla registrada.
   - servicios de Compose y puertos (la API por Nginx en el 3000);
   - cómo aplicar un cambio de código con el entorno escalado;
   - ejecución local sin Docker (Redis opcional);
+  - que las réplicas arrancan y funcionan sin Redis, y lo vuelven a usar cuando responde;
   - variables nuevas, memoria recomendada para Docker (3 GB), `demo:caida`, `medir:horarios` con opciones, y ADR-029 y ADR-030.
 - [ ] T059 [P] Actualizar `docs/05-gestion/04-pruebas.md`:
   - PR01, PR04, PR05 y PR09 (caché) con su estado y resultado;
@@ -474,6 +485,14 @@ obtener la tabla registrada.
   - `docker compose down` o dejar el entorno según lo acordado;
   - comprobar que no quedaron contenedores de Testcontainers;
   - formatear con el Prettier local los documentos tocados.
+
+### Pruebas opcionales (sin obligación)
+
+Casos límite de la especificación que el análisis dejó como opcionales. Si se hacen, se agregan a
+las suites indicadas; si no, se dejan anotadas como no hechas en la sección 6 del quickstart.
+
+- [ ] T065 [P] _(Opcional)_ En `tecnologia/plataforma-barberias/backend/test/integration/escalado/balanceador.spec.ts`: un `GET` lento hacia la réplica que se cierra a mitad de la solicitud se reintenta en la otra y termina en 200 (caso límite "Instancia que cae a mitad de una solicitud"; `proxy_next_upstream`).
+- [ ] T066 [P] _(Opcional)_ En `tecnologia/plataforma-barberias/backend/test/integration/escalado/cache-catalogo.spec.ts`: 50 visitas simultáneas al catálogo justo después de una invalidación dan 0 × 5xx y la entrada queda guardada una sola vez (caso límite "Ráfaga sobre un catálogo recién invalidado").
 
 ---
 

@@ -21,6 +21,10 @@ Contrato entre M06 (adaptador de caché) y los módulos que lo usan. Lo verifica
 6. **Contadores sin tenant.** `ClaveContador` solo se crea en `AlmacenLimitesCompartido`, a partir
    de la clave por IP de `@nestjs/throttler`. Si en el futuro hay límites por barbería o por
    usuario, su clave debe incluir `t:{tenantId}` (principio VIII).
+   - **Interpretación de la constitución:** el principio III exige el tenant en "toda clave de
+     caché". Los contadores del límite general no son caché de datos de una barbería: son contadores
+     no críticos por IP, regulados por el principio VIII, más específico. Este exige el tenant solo
+     cuando el límite es por barbería o por usuario. Así lo registra ADR-029.
 7. **Invalidar después de confirmar.** Siempre con `UnitOfWork.alConfirmar`, nunca dentro de la
    transacción.
 

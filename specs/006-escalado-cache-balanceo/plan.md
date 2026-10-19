@@ -31,9 +31,12 @@ el responsable: Nginx, Redis y Docker Compose.
     no en dos (R07).
   - Se invalida **después de confirmar** con `UnitOfWork.alConfirmar`. Un contador de generación y
     un guardado condicionado cierran la carrera entre lectura e invalidación (R08).
-- **Horarios libres.** Toman de la caché el servicio, el horario de atención y los barberos.
-  Disponibilidad, bloqueos y citas se leen siempre de PostgreSQL: pasan de 3 transacciones y
-  8 consultas a 2 y 4.
+- **Horarios libres.** Disponibilidad, bloqueos y citas se leen siempre de PostgreSQL, y cada
+  consulta abre una sola transacción pública (R07).
+  - Con el catálogo en caché, toman de la entrada el servicio, el horario de atención y los
+    barberos: pasan de 3 transacciones y 8 consultas a 2 y 4.
+  - Sin entrada (caché desactivada, fallo o Redis caído), una fuente completa lee todo en una
+    transacción: 2 transacciones y 7 consultas.
   - Si con eso no se cumplen los 800 ms, se evalúa el ajuste condicionado FR-013b (horarios
     calculados, 30 s, con generación por barbería) (R10).
 - **Límite de solicitudes.** El `storage` de `@nestjs/throttler` pasa a contadores en Redis (Lua:
@@ -59,7 +62,8 @@ el responsable: Nginx, Redis y Docker Compose.
   y luego se borra esa carpeta.
 - **Pruebas:** `testcontainers`, que ya está instalado, con `GenericContainer` para Redis y Nginx.
   No se agrega `@testcontainers/redis`.
-- **Frontend:** sin dependencias nuevas.
+- **Frontend:** sin dependencias nuevas, ni cambios de código previstos. Habrá un ajuste mínimo en
+  `src/api/client.ts` solo si la prueba del mensaje `SERVICIO_NO_DISPONIBLE` lo exige (T021).
 
 **Storage**:
 
@@ -84,6 +88,9 @@ el responsable: Nginx, Redis y Docker Compose.
 solo documentado, AWS (Application Load Balancer y ElastiCache) (R16).
 
 **Project Type**: aplicación web (API REST NestJS y SPA React), sin cambios de estructura.
+
+**Terminología**: "réplica" (plan, tareas, entorno) e "instancia del backend" (especificación) son
+lo mismo: una copia idéntica y sin estado del backend detrás del balanceador.
 
 **Performance Goals**:
 
@@ -204,7 +211,7 @@ tecnologia/plataforma-barberias/
 │   │           │   ├── invalidador-catalogo-publico.ts  # nuevo: alConfirmar → invalidar
 │   │           │   ├── servicios.ts, barberos.ts, horarios.ts  # llaman al invalidador (matriz)
 │   │           │   └── ports/catalogo-publico-query.ts  # nuevo puerto que implementa el repositorio público
-│   │           ├── infrastructure/publico/catalogo-publico.repository.ts  # implementa el puerto; fuente del día sin las consultas del catálogo
+│   │           ├── infrastructure/publico/catalogo-publico.repository.ts  # implementa el puerto; fuenteDelDia (con entrada) y fuenteCompleta (sin entrada), una transacción cada una
 │   │           └── presentation/publico.controller.ts   # usa barberiaPublicaPorEnlace + ObtenerCatalogoPublico
 │   └── test/
 │       ├── unit/shared/                  # claves-cache, interruptor, almacen-limites, entrada-catalogo
@@ -212,7 +219,7 @@ tecnologia/plataforma-barberias/
 │       └── integration/escalado/         # cache-catalogo, aislamiento-cache (PR09), limite-compartido,
 │                                         # redis-caido (PR05), salud-listo, balanceador (PR04 + PR16 por Nginx)
 └── frontend/
-    └── src/api/                          # sin cambios de código previstos; prueba del mensaje SERVICIO_NO_DISPONIBLE
+    └── src/api/                          # sin cambios previstos (ajuste mínimo en client.ts solo si la prueba lo exige); prueba de SERVICIO_NO_DISPONIBLE
 ```
 
 **Structure Decision**: se mantiene la estructura de 001 y 002 (principio XII). La caché y los
