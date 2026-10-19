@@ -1,0 +1,102 @@
+openapi: 3.1.0
+info:
+  title: Plataforma de Barberías — escalabilidad y rendimiento (funcionalidad 006)
+  version: 0.3.0
+  description: |
+    Cambios de la funcionalidad 006 sobre los contratos de 001 y 002. No cambia ninguna ruta de
+    negocio: el catálogo público y los horarios libres conservan su contrato
+    (specs/002-catalogo-citas-cliente/contracts/openapi.yaml), ahora atendidos por el balanceador y,
+    cuando corresponde, desde la caché.
+
+    - Nueva ruta GET /salud/listo (disponibilidad para recibir tráfico).
+    - Respuesta 503 SERVICIO_NO_DISPONIBLE generada por el balanceador cuando ninguna réplica responde.
+    - Encabezado de respuesta opcional X-Instancia en todas las rutas.
+servers:
+  - url: http://localhost:3000/api/v1
+    description: Balanceador (Nginx) en Docker Compose
+paths:
+  /salud:
+    get:
+      tags: [Salud]
+      operationId: salud
+      security: []
+      summary: Vivacidad. La instancia responde y PostgreSQL acepta consultas (sin cambios desde 001)
+      responses:
+        '200':
+          description: Viva
+          headers:
+            X-Instancia: { $ref: '#/components/headers/XInstancia' }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [estado]
+                properties:
+                  estado: { const: ok }
+        '503':
+          $ref: '#/components/responses/NoDisponible'
+  /salud/listo:
+    get:
+      tags: [Salud]
+      operationId: saludListo
+      security: []
+      summary: Disponibilidad. PostgreSQL responde y todas las migraciones del código están aplicadas
+      description: |
+        La usan el healthcheck de Docker y, en la nube, la comprobación de salud del balanceador
+        gestionado (ADR-030). Redis no cuenta: sin Redis la instancia sigue lista (FR-019). Sin
+        límite de solicitudes, igual que /salud.
+      responses:
+        '200':
+          description: Lista para recibir tráfico
+          headers:
+            X-Instancia: { $ref: '#/components/headers/XInstancia' }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [estado]
+                properties:
+                  estado: { const: listo }
+        '503':
+          $ref: '#/components/responses/NoDisponible'
+components:
+  headers:
+    XInstancia:
+      description: |
+        Nombre lógico de la réplica que atendió la solicitud (por ejemplo, backend-1). Solo se envía
+        si la instancia tiene INSTANCIA_ID configurado (Docker Compose); en las pruebas y en un
+        despliegue real puede no venir. No contiene IP ni versión.
+      schema:
+        type: string
+        pattern: '^[a-z0-9-]{1,32}$'
+  responses:
+    NoDisponible:
+      description: |
+        La instancia no está viva o no está lista (respuesta del backend), o ninguna réplica responde
+        (respuesta del balanceador, SERVICIO_NO_DISPONIBLE). El cliente puede reintentar más tarde.
+        Las operaciones con Idempotency-Key pueden reintentarse con la misma clave sin duplicar.
+      headers:
+        Retry-After:
+          description: Segundos sugeridos antes de reintentar (solo en la respuesta del balanceador)
+          schema: { type: integer, minimum: 1 }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          examples:
+            balanceador:
+              value:
+                codigo: SERVICIO_NO_DISPONIBLE
+                mensaje: El servicio no está disponible en este momento. Intenta de nuevo en unos segundos.
+                detalles: []
+  schemas:
+    Error:
+      type: object
+      required: [codigo, mensaje, detalles]
+      properties:
+        codigo:
+          type: string
+          description: Se agrega SERVICIO_NO_DISPONIBLE a los códigos de 001 y 002
+        mensaje: { type: string }
+        detalles:
+          type: array
+          items: { type: object }
