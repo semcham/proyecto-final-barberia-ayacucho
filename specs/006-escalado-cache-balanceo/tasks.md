@@ -68,16 +68,16 @@ No toca webhooks de pago.
 
 **Purpose**: dependencia nueva, variables de entorno y carpetas.
 
-- [ ] T001 Instalar `ioredis` 5.4.2 con versión exacta en `tecnologia/plataforma-barberias/backend/package.json` y `package-lock.json` ([research.md](research.md) R05):
+- [X] T001 Instalar `ioredis` 5.4.2 con versión exacta en `tecnologia/plataforma-barberias/backend/package.json` y `package-lock.json` ([research.md](research.md) R05):
   - ejecutar `npm install ioredis@5.4.2 --save-exact --cache D:\proyecto-final-barberia-ayacucho\tmp\npm-cache` en `backend/`;
   - si hubiera un motivo para otra 5.x, como un aviso de seguridad, usar la más reciente con al menos 2 semanas de publicada y anotar el motivo en T055;
   - borrar `tmp/npm-cache` al terminar;
   - comprobar que no queda nada nuevo en `%LOCALAPPDATA%\npm-cache` por esta instalación.
-- [ ] T002 [P] Agregar a `tecnologia/plataforma-barberias/.env.example`, con comentarios, las variables de [data-model.md](data-model.md) §4:
+- [X] T002 [P] Agregar a `tecnologia/plataforma-barberias/.env.example`, con comentarios, las variables de [data-model.md](data-model.md) §4:
   - `REDIS_URL`, `CACHE_CATALOGO_ACTIVA`, `CACHE_HORARIOS_ACTIVA`, `CACHE_CATALOGO_TTL_SEGUNDOS`, `CACHE_TIMEOUT_MS`, `CACHE_FALLOS_PARA_ABRIR`, `CACHE_PAUSA_MS`;
   - `PROXIES_CONFIABLES`, `INSTANCIA_ID`, `DB_POOL_APP_MAX`, `DB_POOL_PUBLICO_MAX`;
   - `RED_SUBRED`, `IP_NGINX`, `IP_BACKEND_1`, `IP_BACKEND_2`, `REDIS_PUERTO`.
-- [ ] T003 [P] Crear las carpetas `tecnologia/plataforma-barberias/backend/src/shared/cache/`, `tecnologia/plataforma-barberias/backend/src/shared/limites/`, `tecnologia/plataforma-barberias/backend/test/integration/escalado/` y `tecnologia/plataforma-barberias/nginx/templates/`, con `.gitkeep` donde queden vacías.
+- [X] T003 [P] Crear las carpetas `tecnologia/plataforma-barberias/backend/src/shared/cache/`, `tecnologia/plataforma-barberias/backend/src/shared/limites/`, `tecnologia/plataforma-barberias/backend/test/integration/escalado/` y `tecnologia/plataforma-barberias/nginx/templates/`, con `.gitkeep` donde queden vacías.
 
 ---
 
@@ -90,17 +90,17 @@ No toca webhooks de pago.
 
 ### Pruebas de la base (primero, deben fallar)
 
-- [ ] T004 [P] Pruebas unitarias de las claves en `tecnologia/plataforma-barberias/backend/test/unit/shared/claves-cache.spec.ts` (FR-014):
+- [X] T004 [P] Pruebas unitarias de las claves en `tecnologia/plataforma-barberias/backend/test/unit/shared/claves-cache.spec.ts` (FR-014):
   - `ClavesCache.catalogoPublico(TenantId)` produce `bp:v1:t:{uuid}:catalogo-publico`, y `generacionCatalogo`, `…:catalogo-publico:gen`;
   - no existe forma de crear una `ClaveCache` sin `TenantId`: constructor privado, y `ClavesCache` no acepta `string` (comprobación de tipos con `// @ts-expect-error` y error en tiempo de ejecución si llega un valor que no es `TenantId`);
   - toda clave empieza por `bp:v1:` y ninguna contiene texto libre (`slug`).
-- [ ] T005 [P] Pruebas unitarias del interruptor en `tecnologia/plataforma-barberias/backend/test/unit/shared/interruptor.spec.ts`, con reloj falso (R06):
+- [X] T005 [P] Pruebas unitarias del interruptor en `tecnologia/plataforma-barberias/backend/test/unit/shared/interruptor.spec.ts`, con reloj falso (R06):
   - sigue cerrado con 4 fallos y se abre con el 5.º seguido;
   - un éxito reinicia la cuenta;
   - abierto, no llama a la operación durante `pausaMs`;
   - al vencer la pausa pasa a semiabierto: un éxito lo cierra y un fallo lo reabre;
   - avisa `abierto` y `recuperado` una sola vez por transición.
-- [ ] T006 [P] Integración de la confirmación en `tecnologia/plataforma-barberias/backend/test/integration/shared/unit-of-work.spec.ts` (necesita una transacción real de PostgreSQL de Testcontainers):
+- [X] T006 [P] Integración de la confirmación en `tecnologia/plataforma-barberias/backend/test/integration/shared/al-confirmar.spec.ts` (necesita una transacción real de PostgreSQL de Testcontainers; `unit-of-work.spec.ts` ya existe desde 001 y no se toca):
   - `alConfirmar` ejecuta las acciones solo después del `COMMIT` de la transacción más externa;
   - con un error o un `ROLLBACK`, no las ejecuta;
   - llamado dentro de una transacción anidada (mismo tenant), espera a la externa;
@@ -109,48 +109,48 @@ No toca webhooks de pago.
 
 ### Implementación de la base
 
-- [ ] T007 Ampliar `Configuracion` en `tecnologia/plataforma-barberias/backend/src/shared/config/configuracion.ts` con las variables de [data-model.md](data-model.md) §4, validadas al arrancar con los rangos de esa tabla:
+- [X] T007 Ampliar `Configuracion` en `tecnologia/plataforma-barberias/backend/src/shared/config/configuracion.ts` con las variables de [data-model.md](data-model.md) §4, validadas al arrancar con los rangos de esa tabla:
   - `redisUrl` es opcional; `cache.catalogoActiva`, `cache.horariosActiva`, `cache.ttlCatalogoSegundos`, `cache.timeoutMs`, `cache.fallosParaAbrir`, `cache.pausaMs`;
   - `proxiesConfiables` (por defecto `loopback`), `instanciaId` (opcional, `^[a-z0-9-]{1,32}$`), `pools.appMax`, `pools.publicoMax`;
   - sus casos en `tecnologia/plataforma-barberias/backend/test/unit/shared/configuracion.spec.ts`.
-- [ ] T008 [P] Hacer configurable el tamaño de los pools:
+- [X] T008 [P] Hacer configurable el tamaño de los pools:
   - `crearBaseDeDatos` en `tecnologia/plataforma-barberias/backend/src/shared/persistence/database.ts` y donde se construye en `tecnologia/plataforma-barberias/backend/src/shared/shared.module.ts` usan `pools.appMax`;
   - `LecturaPublica.conectar` en `tecnologia/plataforma-barberias/backend/src/shared/persistence/lectura-publica.ts`, llamado desde `catalogo-publico.repository.ts`, usa `pools.publicoMax`;
   - los valores por defecto (10) no cambian el comportamiento actual.
-- [ ] T009 Agregar `alConfirmar(accion: () => Promise<void> | void)`:
+- [X] T009 Agregar `alConfirmar(accion: () => Promise<void> | void)`:
   - abstracto en `tecnologia/plataforma-barberias/backend/src/shared/persistence/unit-of-work.ts`;
   - implementado en `tecnologia/plataforma-barberias/backend/src/shared/persistence/kysely-unit-of-work.ts`: guarda la lista en el almacén de la transacción más externa, la ejecuta tras `execute()` resuelto y la descarta si se rechaza;
   - un error se registra con `Logger` y no se propaga;
   - hace pasar T006.
-- [ ] T010 [P] Crear las claves en `tecnologia/plataforma-barberias/backend/src/shared/cache/claves-cache.ts` ([contracts/cache-claves.md](contracts/cache-claves.md) §2):
+- [X] T010 [P] Crear las claves en `tecnologia/plataforma-barberias/backend/src/shared/cache/claves-cache.ts` ([contracts/cache-claves.md](contracts/cache-claves.md) §2):
   - `ClaveCache` y `ClaveGeneracion` (constructores privados) y la fábrica `ClavesCache` con `catalogoPublico`, `generacionCatalogo`, `horarios` y `generacionHorarios`, todas con `TenantId`;
   - `ClaveContador.desde(hashDelLimite)`, con prefijo `rl:v1:`;
   - hace pasar T004.
-- [ ] T011 [P] Crear el interruptor en `tecnologia/plataforma-barberias/backend/src/shared/cache/interruptor.ts`:
+- [X] T011 [P] Crear el interruptor en `tecnologia/plataforma-barberias/backend/src/shared/cache/interruptor.ts`:
   - clase pura con `Clock` inyectado, `ejecutar<T>(op, siAbierto)` y eventos `alAbrir` y `alRecuperar`;
   - sin dependencias externas;
   - hace pasar T005.
-- [ ] T012 Crear el puerto `CacheCompartida` en `tecnologia/plataforma-barberias/backend/src/shared/cache/cache-compartida.ts` con `obtener`, `guardarSiGeneracion`, `leerGeneracion`, `invalidar` y `contar`:
+- [X] T012 Crear el puerto `CacheCompartida` en `tecnologia/plataforma-barberias/backend/src/shared/cache/cache-compartida.ts` con `obtener`, `guardarSiGeneracion`, `leerGeneracion`, `invalidar` y `contar`:
   - recibe `ClaveCache`, `ClaveGeneracion` y `ClaveContador`, nunca `string`;
   - el contrato de "ausente" y `null` sigue [contracts/cache-claves.md](contracts/cache-claves.md) §5;
   - implementar también `CacheInactiva`, que siempre da ausente o `null` y nunca falla, en `tecnologia/plataforma-barberias/backend/src/shared/cache/cache-inactiva.ts`.
-- [ ] T013 Crear el adaptador `RedisCacheCompartida` en `tecnologia/plataforma-barberias/backend/src/shared/cache/redis-cache-compartida.ts`:
+- [X] T013 Crear el adaptador `RedisCacheCompartida` en `tecnologia/plataforma-barberias/backend/src/shared/cache/redis-cache-compartida.ts`:
   - `ioredis` con `commandTimeout = cache.timeoutMs`, `enableOfflineQueue: false`, `maxRetriesPerRequest: 0`, `lazyConnect` y `retryStrategy` con espera creciente hasta 2 s;
   - los tres scripts Lua de [contracts/cache-claves.md](contracts/cache-claves.md) §4 con `defineCommand`;
   - valores JSON con campo `v`: ilegible u otra versión equivale a ausente (FR-015);
   - toda operación pasa por el `Interruptor`, que registra `CACHE_NO_DISPONIBLE` y `CACHE_RECUPERADA` una sola vez por transición;
   - cierra la conexión en `onModuleDestroy`.
-- [ ] T014 Registrar la caché en `tecnologia/plataforma-barberias/backend/src/shared/shared.module.ts` y exportarla en `tecnologia/plataforma-barberias/backend/src/shared/index.ts`:
+- [X] T014 Registrar la caché en `tecnologia/plataforma-barberias/backend/src/shared/shared.module.ts` y exportarla en `tecnologia/plataforma-barberias/backend/src/shared/index.ts`:
   - fábrica de `CacheCompartida`: `RedisCacheCompartida` si hay `redisUrl` y `CacheInactiva` si no;
   - exportar `CacheCompartida`, `ClavesCache`, `ClaveCache`, `ClaveGeneracion` y `ClaveContador` (no el adaptador Redis).
-- [ ] T015 [P] Agregar la regla `redis-confinado` en `tecnologia/plataforma-barberias/backend/.dependency-cruiser.cjs`:
+- [X] T015 [P] Agregar la regla `redis-confinado` en `tecnologia/plataforma-barberias/backend/.dependency-cruiser.cjs`:
   - `ioredis` solo puede importarse desde `src/shared/cache/`;
   - agregar el caso de violación en el fixture de `tecnologia/plataforma-barberias/backend/test/architecture/` (archivo de módulo que importa `ioredis`), con su verificación en la prueba de PR14.
-- [ ] T016 [P] Ayudante de Redis para las pruebas en `tecnologia/plataforma-barberias/backend/test/helpers/redis.ts`:
+- [X] T016 [P] Ayudante de Redis para las pruebas en `tecnologia/plataforma-barberias/backend/test/helpers/redis.ts`:
   - `iniciarRedis()` con `GenericContainer('redis:7.4-alpine')`, el mismo comando sin persistencia de [research.md](research.md) R12, que fija `REDIS_URL`;
   - `detener()`, `reiniciar()`, `vaciar()` (`FLUSHALL`), `claves(patron)` y `valores()` para inspeccionar.
   - Usa `testcontainers`, que ya está instalado.
-- [ ] T017 [P] Ampliar `crearApp` en `tecnologia/plataforma-barberias/backend/test/helpers/app.ts`:
+- [X] T017 [P] Ampliar `crearApp` en `tecnologia/plataforma-barberias/backend/test/helpers/app.ts`:
   - opción `escuchar: true`, que levanta la aplicación en un puerto libre de `127.0.0.1` y devuelve `puerto`, para las pruebas con dos instancias y con Nginx;
   - opción `entorno`, que fija variables antes de construir el módulo (`INSTANCIA_ID`, `CACHE_*`) y las restaura al cerrar.
 
@@ -532,7 +532,7 @@ las suites indicadas; si no, se dejan anotadas como no hechas en la sección 6 d
 - US1: T018–T021 en paralelo; T022–T023 antes de T024; T026 y T027 en paralelo con T025.
 - US2: T029–T032 en paralelo; T033 y T034 en paralelo.
 - US3 y US4: sus pruebas (T041, T042 y T045) en paralelo con las de US2.
-- Polish: T054–T059.
+- Polish: T054–T059, y T065 y T066 (opcionales).
 
 ---
 

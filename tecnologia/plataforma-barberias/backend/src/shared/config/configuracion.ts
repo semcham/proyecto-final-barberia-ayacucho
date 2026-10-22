@@ -1,3 +1,4 @@
+import { isIP } from 'node:net';
 import { Injectable } from '@nestjs/common';
 
 function requerida(nombre: string): string {
@@ -34,6 +35,68 @@ function pasoDeHorarios(nombre: string, porDefecto: number): number {
     throw new Error(`La variable de entorno ${nombre} debe ser un divisor de 60`);
   }
   return numero;
+}
+
+/** Valor opcional: ausente o vacío equivale a no definido. */
+function opcional(nombre: string): string | undefined {
+  const valor = process.env[nombre];
+  return valor === undefined || valor.trim() === '' ? undefined : valor.trim();
+}
+
+function booleano(nombre: string, porDefecto: boolean): boolean {
+  const valor = opcional(nombre);
+  if (valor === undefined) return porDefecto;
+  if (valor !== 'true' && valor !== 'false') {
+    throw new Error(`La variable de entorno ${nombre} debe ser true o false`);
+  }
+  return valor === 'true';
+}
+
+function urlRedis(nombre: string): string | undefined {
+  const valor = opcional(nombre);
+  if (valor === undefined) return undefined;
+  let url: URL;
+  try {
+    url = new URL(valor);
+  } catch {
+    throw new Error(`La variable de entorno ${nombre} debe ser una URL redis:// o rediss://`);
+  }
+  if (url.protocol !== 'redis:' && url.protocol !== 'rediss:') {
+    throw new Error(`La variable de entorno ${nombre} debe ser una URL redis:// o rediss://`);
+  }
+  return valor;
+}
+
+// Palabras que Express entiende en `trust proxy`, además de IP y subredes (R04 de 006).
+const PROXIES_CON_NOMBRE = new Set(['loopback', 'linklocal', 'uniquelocal']);
+
+function proxyValido(valor: string): boolean {
+  if (PROXIES_CON_NOMBRE.has(valor)) return true;
+  const [ip, prefijo, ...resto] = valor.split('/');
+  const version = isIP(ip);
+  if (version === 0 || resto.length > 0) return false;
+  if (prefijo === undefined) return true;
+  const bits = Number(prefijo);
+  return /^\d{1,3}$/.test(prefijo) && bits <= (version === 4 ? 32 : 128);
+}
+
+/** Proxies de confianza para X-Forwarded-For: lista de palabras de Express, IP o subredes. */
+function proxies(nombre: string, porDefecto: string): string[] {
+  const lista = (opcional(nombre) ?? porDefecto).split(',').map((parte) => parte.trim());
+  if (!lista.every(proxyValido)) {
+    throw new Error(
+      `La variable de entorno ${nombre} debe ser una lista de IP, subredes o loopback/linklocal/uniquelocal`,
+    );
+  }
+  return lista;
+}
+
+function identificador(nombre: string): string | undefined {
+  const valor = opcional(nombre);
+  if (valor !== undefined && !/^[a-z0-9-]{1,32}$/.test(valor)) {
+    throw new Error(`La variable de entorno ${nombre} debe tener de 1 a 32 caracteres a-z, 0-9 o "-"`);
+  }
+  return valor;
 }
 
 // Los PEM pueden venir en una sola línea con "\n" literales (formato de .env).
@@ -82,4 +145,24 @@ export class Configuracion {
   readonly versionTerminos = process.env.TERMS_VERSION ?? '';
   readonly versionPoliticaDatos = process.env.PRIVACY_POLICY_VERSION ?? '';
   readonly puerto = entero('PORT', 3000);
+  /** Redis para la caché compartida y los límites (ADR-029). Sin valor: sin caché y límite por instancia. */
+  readonly redisUrl = urlRedis('REDIS_URL');
+  readonly cache = {
+    catalogoActiva: booleano('CACHE_CATALOGO_ACTIVA', true),
+    /** Caché de horarios calculados (FR-013b): solo si la medición lo exige. */
+    horariosActiva: booleano('CACHE_HORARIOS_ACTIVA', false),
+    /** Tiempo máximo de vida de la entrada del catálogo (FR-012: como máximo 5 minutos). */
+    ttlCatalogoSegundos: enteroEnRango('CACHE_CATALOGO_TTL_SEGUNDOS', 120, 10, 300),
+    timeoutMs: enteroEnRango('CACHE_TIMEOUT_MS', 100, 10, 1000),
+    fallosParaAbrir: enteroEnRango('CACHE_FALLOS_PARA_ABRIR', 5, 1, 50),
+    pausaMs: enteroEnRango('CACHE_PAUSA_MS', 10_000, 1000, 60_000),
+  };
+  /** `trust proxy` de Express: solo el balanceador (R04 de 006); por defecto, loopback. */
+  readonly proxiesConfiables = proxies('PROXIES_CONFIABLES', 'loopback');
+  /** Nombre lógico de la réplica (encabezado X-Instancia). */
+  readonly instanciaId = identificador('INSTANCIA_ID');
+  readonly pools = {
+    appMax: enteroEnRango('DB_POOL_APP_MAX', 10, 2, 50),
+    publicoMax: enteroEnRango('DB_POOL_PUBLICO_MAX', 10, 2, 50),
+  };
 }

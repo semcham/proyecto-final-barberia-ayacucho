@@ -46,6 +46,8 @@ describe('Reglas de arquitectura (PR14)', () => {
       'matriz-m01',
       'matriz-m02',
       'lectura-publica-confinada',
+      // Funcionalidad 006 (T015).
+      'redis-confinado',
     ])('%s', (regla) => {
       expect(salida).toContain(regla);
     });
@@ -57,6 +59,11 @@ describe('Reglas de arquitectura (PR14)', () => {
       expect(enLinea('matriz-m01', 'usa-m02.ts')).toBe(true);
       expect(enLinea('matriz-m02', 'usa-interno-m01.ts')).toBe(true);
       expect(enLinea('lectura-publica-confinada', 'repositorio-citas.ts')).toBe(true);
+    });
+
+    it('la violación de 006 se atribuye a su archivo del fixture', () => {
+      const lineas = salida.split(/\r?\n/);
+      expect(lineas.some((l) => l.includes('redis-confinado') && l.includes('usa-redis.ts'))).toBe(true);
     });
   });
 });

@@ -4,7 +4,7 @@
  * Grupos: en '(^|/)src/modules/([^/]+)/' el nombre del módulo es $2.
  */
 const FRAMEWORKS =
-  'node_modules/(@nestjs|kysely|pg|argon2|jose|express|class-validator|class-transformer|cookie-parser)/';
+  'node_modules/(@nestjs|kysely|pg|argon2|jose|express|class-validator|class-transformer|cookie-parser|ioredis)/';
 
 /** @type {import('dependency-cruiser').IConfiguration} */
 module.exports = {
@@ -78,6 +78,15 @@ module.exports = {
         pathNot: '(^|/)src/modules/catalogo-citas/catalogo/infrastructure/publico/',
       },
       to: { path: '(^|/)src/shared/lectura-publica\\.ts$' },
+    },
+    {
+      name: 'redis-confinado',
+      comment:
+        'Solo el adaptador de la caché compartida de M06 (shared/cache/) importa ioredis; el resto usa el ' +
+        'puerto CacheCompartida (ADR-029, principio II).',
+      severity: 'error',
+      from: { path: '(^|/)src/', pathNot: '(^|/)src/shared/cache/' },
+      to: { path: 'node_modules/ioredis/' },
     },
     {
       name: 'm06-sin-modulos-de-negocio',

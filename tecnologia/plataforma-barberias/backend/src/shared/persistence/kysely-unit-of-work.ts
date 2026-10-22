@@ -1,5 +1,5 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { sql, type Transaction } from 'kysely';
 import { TenantContext } from '../tenant/tenant-context';
 import type { TenantId } from '../tenant/tenant-id';
@@ -7,9 +7,13 @@ import { BASE_DE_DATOS, type BaseDeDatos } from './database';
 import type { Database } from './db-types';
 import { UnitOfWork } from './unit-of-work';
 
+type AccionPosterior = () => Promise<void> | void;
+
 interface TransaccionEnCurso {
   trx: Transaction<Database>;
   tenantId: TenantId | null;
+  /** Acciones de `alConfirmar`: las de las transacciones anidadas se suman a las de la más externa. */
+  alConfirmar: AccionPosterior[];
 }
 
 /**
@@ -20,6 +24,7 @@ interface TransaccionEnCurso {
 @Injectable()
 export class KyselyUnitOfWork extends UnitOfWork {
   private readonly almacen = new AsyncLocalStorage<TransaccionEnCurso>();
+  private readonly logger = new Logger(KyselyUnitOfWork.name);
 
   constructor(
     @Inject(BASE_DE_DATOS) private readonly db: BaseDeDatos,
@@ -41,11 +46,22 @@ export class KyselyUnitOfWork extends UnitOfWork {
 
   async ejecutarSinTenant<T>(fn: () => Promise<T>): Promise<T> {
     if (this.almacen.getStore()) throw new Error('Ya hay una transacción en curso');
-    return this.db
+    const acciones: AccionPosterior[] = [];
+    const resultado = await this.db
       .transaction()
       .execute((trx) =>
-        this.almacen.run({ trx, tenantId: null }, () => this.tenantContext.ejecutarCon(null, fn)),
+        this.almacen.run({ trx, tenantId: null, alConfirmar: acciones }, () =>
+          this.tenantContext.ejecutarCon(null, fn),
+        ),
       );
+    await this.ejecutarAcciones(acciones);
+    return resultado;
+  }
+
+  alConfirmar(accion: AccionPosterior): void {
+    const enCurso = this.almacen.getStore();
+    if (!enCurso) throw new Error('alConfirmar requiere una transacción en curso');
+    enCurso.alConfirmar.push(accion);
   }
 
   async fijarTenant(tenantId: TenantId): Promise<void> {
@@ -69,10 +85,28 @@ export class KyselyUnitOfWork extends UnitOfWork {
     return enCurso.trx;
   }
 
-  private abrir<T>(tenantId: TenantId, fn: () => Promise<T>): Promise<T> {
-    return this.db.transaction().execute(async (trx) => {
+  private async abrir<T>(tenantId: TenantId, fn: () => Promise<T>): Promise<T> {
+    const acciones: AccionPosterior[] = [];
+    const resultado = await this.db.transaction().execute(async (trx) => {
       await sql`select set_config('app.tenant_id', ${tenantId.valor}, true)`.execute(trx);
-      return this.almacen.run({ trx, tenantId }, () => this.tenantContext.ejecutarCon(tenantId, fn));
+      return this.almacen.run({ trx, tenantId, alConfirmar: acciones }, () =>
+        this.tenantContext.ejecutarCon(tenantId, fn),
+      );
     });
+    await this.ejecutarAcciones(acciones);
+    return resultado;
+  }
+
+  /** Tras el COMMIT, en orden. Un fallo se registra y no cambia el resultado (FR-010 de 006). */
+  private async ejecutarAcciones(acciones: AccionPosterior[]): Promise<void> {
+    for (const accion of acciones) {
+      try {
+        await accion();
+      } catch (error) {
+        this.logger.error(
+          `Falló una acción posterior a la confirmación: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+    }
   }
 }

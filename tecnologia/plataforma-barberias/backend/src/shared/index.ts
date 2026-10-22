@@ -12,5 +12,7 @@ export { KyselyUnitOfWork } from './persistence/kysely-unit-of-work';
 export { VerificadorBaseDeDatos, BASE_DE_DATOS, type BaseDeDatos } from './persistence/database';
 export type { Database } from './persistence/db-types';
 export { AuditLog, type EntradaAuditoria, type AccionAuditada } from './audit/audit-log';
+export { CacheCompartida, type Conteo } from './cache/cache-compartida';
+export { ClavesCache, ClaveCache, ClaveGeneracion, ClaveContador } from './cache/claves-cache';
 export { SharedModule } from './shared.module';
 export { Publica, RequiereOperacion, ActorActual, CLAVE_PUBLICA, CLAVE_OPERACION } from './http/decoradores';

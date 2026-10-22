@@ -22,4 +22,11 @@ export abstract class UnitOfWork {
 
   /** Ejecuta `fn` en una transacción nueva e independiente de la actual (p. ej. auditoría de una denegación). */
   abstract ejecutarAparte<T>(tenantId: TenantId, fn: () => Promise<T>): Promise<T>;
+
+  /**
+   * Registra una acción que se ejecuta solo después del COMMIT de la transacción más externa en curso
+   * (p. ej. invalidar la caché, R08 de 006). Con ROLLBACK se descarta. Un error de la acción se registra y no
+   * cambia el resultado. Fuera de una transacción lanza un error.
+   */
+  abstract alConfirmar(accion: () => Promise<void> | void): void;
 }

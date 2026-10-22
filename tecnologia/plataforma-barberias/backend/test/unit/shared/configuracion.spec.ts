@@ -83,3 +83,126 @@ describe('Configuracion: vía pública y horarios libres', () => {
     expect(() => new Configuracion()).toThrow(/RESERVA_HORIZONTE_DIAS/);
   });
 });
+
+// T007 · Funcionalidad 006: caché, interruptor, proxies de confianza, instancia y pools (data-model.md §4).
+describe('Configuracion: caché compartida, balanceo y pools', () => {
+  const original = { ...process.env };
+  const VARIABLES = [
+    'REDIS_URL',
+    'CACHE_CATALOGO_ACTIVA',
+    'CACHE_HORARIOS_ACTIVA',
+    'CACHE_CATALOGO_TTL_SEGUNDOS',
+    'CACHE_TIMEOUT_MS',
+    'CACHE_FALLOS_PARA_ABRIR',
+    'CACHE_PAUSA_MS',
+    'PROXIES_CONFIABLES',
+    'INSTANCIA_ID',
+    'DB_POOL_APP_MAX',
+    'DB_POOL_PUBLICO_MAX',
+  ];
+
+  beforeEach(() => {
+    process.env = { ...original, ...MINIMAS };
+    for (const variable of VARIABLES) delete process.env[variable];
+  });
+
+  afterAll(() => {
+    process.env = original;
+  });
+
+  it('valores por defecto', () => {
+    const configuracion = new Configuracion();
+    expect(configuracion.redisUrl).toBeUndefined();
+    expect(configuracion.cache).toEqual({
+      catalogoActiva: true,
+      horariosActiva: false,
+      ttlCatalogoSegundos: 120,
+      timeoutMs: 100,
+      fallosParaAbrir: 5,
+      pausaMs: 10_000,
+    });
+    expect(configuracion.proxiesConfiables).toEqual(['loopback']);
+    expect(configuracion.instanciaId).toBeUndefined();
+    expect(configuracion.pools).toEqual({ appMax: 10, publicoMax: 10 });
+  });
+
+  it('una variable vacía equivale a no definida', () => {
+    process.env.REDIS_URL = '';
+    process.env.INSTANCIA_ID = '';
+    const configuracion = new Configuracion();
+    expect(configuracion.redisUrl).toBeUndefined();
+    expect(configuracion.instanciaId).toBeUndefined();
+  });
+
+  it.each(['redis://redis:6379', 'redis://localhost:6380/0', 'rediss://cache.example.com:6380'])(
+    'acepta REDIS_URL %s',
+    (valor) => {
+      process.env.REDIS_URL = valor;
+      expect(new Configuracion().redisUrl).toBe(valor);
+    },
+  );
+
+  it.each(['http://redis:6379', 'redis', 'localhost:6379'])('rechaza REDIS_URL %s', (valor) => {
+    process.env.REDIS_URL = valor;
+    expect(() => new Configuracion()).toThrow(/REDIS_URL/);
+  });
+
+  it.each([
+    ['CACHE_CATALOGO_ACTIVA', 'false', (c: Configuracion) => c.cache.catalogoActiva, false],
+    ['CACHE_HORARIOS_ACTIVA', 'true', (c: Configuracion) => c.cache.horariosActiva, true],
+  ])('%s=%s', (variable, valor, leer, esperado) => {
+    process.env[variable] = valor;
+    expect(leer(new Configuracion())).toBe(esperado);
+  });
+
+  it.each(['CACHE_CATALOGO_ACTIVA', 'CACHE_HORARIOS_ACTIVA'])('%s solo acepta true o false', (v) => {
+    process.env[v] = 'si';
+    expect(() => new Configuracion()).toThrow(new RegExp(v));
+  });
+
+  it.each([
+    ['CACHE_CATALOGO_TTL_SEGUNDOS', ['10', '300'], ['9', '301', '1.5']],
+    ['CACHE_TIMEOUT_MS', ['10', '1000'], ['9', '1001']],
+    ['CACHE_FALLOS_PARA_ABRIR', ['1', '50'], ['0', '51']],
+    ['CACHE_PAUSA_MS', ['1000', '60000'], ['999', '60001']],
+    ['DB_POOL_APP_MAX', ['2', '50'], ['1', '51']],
+    ['DB_POOL_PUBLICO_MAX', ['2', '50'], ['1', '51']],
+  ])('%s: rango', (variable, validos, invalidos) => {
+    for (const valor of validos) {
+      process.env[variable] = valor;
+      expect(() => new Configuracion()).not.toThrow();
+    }
+    for (const valor of invalidos) {
+      process.env[variable] = valor;
+      expect(() => new Configuracion()).toThrow(new RegExp(variable));
+    }
+  });
+
+  it.each([
+    ['172.28.0.10', ['172.28.0.10']],
+    ['loopback, 172.28.0.10', ['loopback', '172.28.0.10']],
+    ['10.0.0.0/24', ['10.0.0.0/24']],
+    ['::1', ['::1']],
+  ])('acepta PROXIES_CONFIABLES=%s', (valor, esperado) => {
+    process.env.PROXIES_CONFIABLES = valor;
+    expect(new Configuracion().proxiesConfiables).toEqual(esperado);
+  });
+
+  it.each(['todo', '172.28.0.300', '10.0.0.0/40', 'loopback,,', '*'])(
+    'rechaza PROXIES_CONFIABLES=%s',
+    (valor) => {
+      process.env.PROXIES_CONFIABLES = valor;
+      expect(() => new Configuracion()).toThrow(/PROXIES_CONFIABLES/);
+    },
+  );
+
+  it.each(['backend-1', 'replica2'])('acepta INSTANCIA_ID=%s', (valor) => {
+    process.env.INSTANCIA_ID = valor;
+    expect(new Configuracion().instanciaId).toBe(valor);
+  });
+
+  it.each(['Backend 1', 'a'.repeat(33), '<script>'])('rechaza INSTANCIA_ID=%s', (valor) => {
+    process.env.INSTANCIA_ID = valor;
+    expect(() => new Configuracion()).toThrow(/INSTANCIA_ID/);
+  });
+});

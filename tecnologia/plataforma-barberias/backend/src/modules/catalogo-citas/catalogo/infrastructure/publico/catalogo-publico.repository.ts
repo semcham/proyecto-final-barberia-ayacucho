@@ -40,7 +40,7 @@ export class CatalogoPublicoRepository implements OnModuleDestroy {
   private readonly lectura: LecturaPublica;
 
   constructor(configuracion: Configuracion) {
-    this.lectura = LecturaPublica.conectar(configuracion.databaseUrlPublico);
+    this.lectura = LecturaPublica.conectar(configuracion.databaseUrlPublico, configuracion.pools.publicoMax);
   }
 
   async onModuleDestroy(): Promise<void> {
