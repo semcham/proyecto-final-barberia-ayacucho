@@ -9,7 +9,12 @@ export { HorarioSemanal, HorarioInvalido, type Tramo } from './tiempo/horario-se
 export { Configuracion } from './config/configuracion';
 export { UnitOfWork } from './persistence/unit-of-work';
 export { KyselyUnitOfWork } from './persistence/kysely-unit-of-work';
-export { VerificadorBaseDeDatos, BASE_DE_DATOS, type BaseDeDatos } from './persistence/database';
+export {
+  VerificadorBaseDeDatos,
+  VerificadorMigraciones,
+  BASE_DE_DATOS,
+  type BaseDeDatos,
+} from './persistence/database';
 export type { Database } from './persistence/db-types';
 export { AuditLog, type EntradaAuditoria, type AccionAuditada } from './audit/audit-log';
 export { CacheCompartida, type Conteo } from './cache/cache-compartida';

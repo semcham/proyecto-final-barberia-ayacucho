@@ -18,7 +18,9 @@ type CodigoError002 =
   | 'RESERVA_INVALIDA'
   | 'IDEMPOTENCIA_CONFLICTO'
   | 'TRANSICION_INVALIDA';
-export type CodigoError = CuerpoError['codigo'] | CodigoError002;
+/** Código del balanceador cuando ninguna réplica responde (contrato de 006, ADR-030). */
+type CodigoError006 = 'SERVICIO_NO_DISPONIBLE';
+export type CodigoError = CuerpoError['codigo'] | CodigoError002 | CodigoError006;
 
 const BASE = '/api/v1';
 

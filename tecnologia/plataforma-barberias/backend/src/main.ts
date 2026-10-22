@@ -14,9 +14,21 @@ import { Configuracion, TenantContext } from './shared';
 export function configurarApp(app: NestExpressApplication): void {
   const configuracion = app.get(Configuracion);
   app.setGlobalPrefix('api/v1');
-  // Detrás del balanceador (ADR-006): la IP real del cliente viene en X-Forwarded-For.
-  app.set('trust proxy', 'loopback, linklocal, uniquelocal');
+  // Detrás del balanceador (ADR-030): la IP del cliente se toma de X-Forwarded-For SOLO si la conexión llega
+  // desde un proxy de confianza (PROXIES_CONFIABLES: la IP de Nginx en Compose; loopback por defecto).
+  // Nginx sobrescribe ese encabezado, así que un valor enviado por el cliente no cambia la IP (006 R04).
+  app.set('trust proxy', configuracion.proxiesConfiables);
   app.disable('x-powered-by');
+  const instancia = configuracion.instanciaId;
+  if (instancia) {
+    // Nombre lógico de la réplica que atendió (006 R14): demuestra el reparto sin leer registros.
+    app.use(
+      (_solicitud: unknown, respuesta: { setHeader(n: string, v: string): void }, siguiente: () => void) => {
+        respuesta.setHeader('X-Instancia', instancia);
+        siguiente();
+      },
+    );
+  }
   app.useBodyParser('json', { limit: '16kb' });
   app.use(cookieParser());
   // Después del parser del cuerpo (ver middlewareContextoSolicitud).

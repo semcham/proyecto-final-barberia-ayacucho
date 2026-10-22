@@ -68,16 +68,16 @@ No toca webhooks de pago.
 
 **Purpose**: dependencia nueva, variables de entorno y carpetas.
 
-- [X] T001 Instalar `ioredis` 5.4.2 con versión exacta en `tecnologia/plataforma-barberias/backend/package.json` y `package-lock.json` ([research.md](research.md) R05):
+- [x] T001 Instalar `ioredis` 5.4.2 con versión exacta en `tecnologia/plataforma-barberias/backend/package.json` y `package-lock.json` ([research.md](research.md) R05):
   - ejecutar `npm install ioredis@5.4.2 --save-exact --cache D:\proyecto-final-barberia-ayacucho\tmp\npm-cache` en `backend/`;
   - si hubiera un motivo para otra 5.x, como un aviso de seguridad, usar la más reciente con al menos 2 semanas de publicada y anotar el motivo en T055;
   - borrar `tmp/npm-cache` al terminar;
   - comprobar que no queda nada nuevo en `%LOCALAPPDATA%\npm-cache` por esta instalación.
-- [X] T002 [P] Agregar a `tecnologia/plataforma-barberias/.env.example`, con comentarios, las variables de [data-model.md](data-model.md) §4:
+- [x] T002 [P] Agregar a `tecnologia/plataforma-barberias/.env.example`, con comentarios, las variables de [data-model.md](data-model.md) §4:
   - `REDIS_URL`, `CACHE_CATALOGO_ACTIVA`, `CACHE_HORARIOS_ACTIVA`, `CACHE_CATALOGO_TTL_SEGUNDOS`, `CACHE_TIMEOUT_MS`, `CACHE_FALLOS_PARA_ABRIR`, `CACHE_PAUSA_MS`;
   - `PROXIES_CONFIABLES`, `INSTANCIA_ID`, `DB_POOL_APP_MAX`, `DB_POOL_PUBLICO_MAX`;
   - `RED_SUBRED`, `IP_NGINX`, `IP_BACKEND_1`, `IP_BACKEND_2`, `REDIS_PUERTO`.
-- [X] T003 [P] Crear las carpetas `tecnologia/plataforma-barberias/backend/src/shared/cache/`, `tecnologia/plataforma-barberias/backend/src/shared/limites/`, `tecnologia/plataforma-barberias/backend/test/integration/escalado/` y `tecnologia/plataforma-barberias/nginx/templates/`, con `.gitkeep` donde queden vacías.
+- [x] T003 [P] Crear las carpetas `tecnologia/plataforma-barberias/backend/src/shared/cache/`, `tecnologia/plataforma-barberias/backend/src/shared/limites/`, `tecnologia/plataforma-barberias/backend/test/integration/escalado/` y `tecnologia/plataforma-barberias/nginx/templates/`, con `.gitkeep` donde queden vacías.
 
 ---
 
@@ -90,17 +90,17 @@ No toca webhooks de pago.
 
 ### Pruebas de la base (primero, deben fallar)
 
-- [X] T004 [P] Pruebas unitarias de las claves en `tecnologia/plataforma-barberias/backend/test/unit/shared/claves-cache.spec.ts` (FR-014):
+- [x] T004 [P] Pruebas unitarias de las claves en `tecnologia/plataforma-barberias/backend/test/unit/shared/claves-cache.spec.ts` (FR-014):
   - `ClavesCache.catalogoPublico(TenantId)` produce `bp:v1:t:{uuid}:catalogo-publico`, y `generacionCatalogo`, `…:catalogo-publico:gen`;
   - no existe forma de crear una `ClaveCache` sin `TenantId`: constructor privado, y `ClavesCache` no acepta `string` (comprobación de tipos con `// @ts-expect-error` y error en tiempo de ejecución si llega un valor que no es `TenantId`);
   - toda clave empieza por `bp:v1:` y ninguna contiene texto libre (`slug`).
-- [X] T005 [P] Pruebas unitarias del interruptor en `tecnologia/plataforma-barberias/backend/test/unit/shared/interruptor.spec.ts`, con reloj falso (R06):
+- [x] T005 [P] Pruebas unitarias del interruptor en `tecnologia/plataforma-barberias/backend/test/unit/shared/interruptor.spec.ts`, con reloj falso (R06):
   - sigue cerrado con 4 fallos y se abre con el 5.º seguido;
   - un éxito reinicia la cuenta;
   - abierto, no llama a la operación durante `pausaMs`;
   - al vencer la pausa pasa a semiabierto: un éxito lo cierra y un fallo lo reabre;
   - avisa `abierto` y `recuperado` una sola vez por transición.
-- [X] T006 [P] Integración de la confirmación en `tecnologia/plataforma-barberias/backend/test/integration/shared/al-confirmar.spec.ts` (necesita una transacción real de PostgreSQL de Testcontainers; `unit-of-work.spec.ts` ya existe desde 001 y no se toca):
+- [x] T006 [P] Integración de la confirmación en `tecnologia/plataforma-barberias/backend/test/integration/shared/al-confirmar.spec.ts` (necesita una transacción real de PostgreSQL de Testcontainers; `unit-of-work.spec.ts` ya existe desde 001 y no se toca):
   - `alConfirmar` ejecuta las acciones solo después del `COMMIT` de la transacción más externa;
   - con un error o un `ROLLBACK`, no las ejecuta;
   - llamado dentro de una transacción anidada (mismo tenant), espera a la externa;
@@ -109,48 +109,48 @@ No toca webhooks de pago.
 
 ### Implementación de la base
 
-- [X] T007 Ampliar `Configuracion` en `tecnologia/plataforma-barberias/backend/src/shared/config/configuracion.ts` con las variables de [data-model.md](data-model.md) §4, validadas al arrancar con los rangos de esa tabla:
+- [x] T007 Ampliar `Configuracion` en `tecnologia/plataforma-barberias/backend/src/shared/config/configuracion.ts` con las variables de [data-model.md](data-model.md) §4, validadas al arrancar con los rangos de esa tabla:
   - `redisUrl` es opcional; `cache.catalogoActiva`, `cache.horariosActiva`, `cache.ttlCatalogoSegundos`, `cache.timeoutMs`, `cache.fallosParaAbrir`, `cache.pausaMs`;
   - `proxiesConfiables` (por defecto `loopback`), `instanciaId` (opcional, `^[a-z0-9-]{1,32}$`), `pools.appMax`, `pools.publicoMax`;
   - sus casos en `tecnologia/plataforma-barberias/backend/test/unit/shared/configuracion.spec.ts`.
-- [X] T008 [P] Hacer configurable el tamaño de los pools:
+- [x] T008 [P] Hacer configurable el tamaño de los pools:
   - `crearBaseDeDatos` en `tecnologia/plataforma-barberias/backend/src/shared/persistence/database.ts` y donde se construye en `tecnologia/plataforma-barberias/backend/src/shared/shared.module.ts` usan `pools.appMax`;
   - `LecturaPublica.conectar` en `tecnologia/plataforma-barberias/backend/src/shared/persistence/lectura-publica.ts`, llamado desde `catalogo-publico.repository.ts`, usa `pools.publicoMax`;
   - los valores por defecto (10) no cambian el comportamiento actual.
-- [X] T009 Agregar `alConfirmar(accion: () => Promise<void> | void)`:
+- [x] T009 Agregar `alConfirmar(accion: () => Promise<void> | void)`:
   - abstracto en `tecnologia/plataforma-barberias/backend/src/shared/persistence/unit-of-work.ts`;
   - implementado en `tecnologia/plataforma-barberias/backend/src/shared/persistence/kysely-unit-of-work.ts`: guarda la lista en el almacén de la transacción más externa, la ejecuta tras `execute()` resuelto y la descarta si se rechaza;
   - un error se registra con `Logger` y no se propaga;
   - hace pasar T006.
-- [X] T010 [P] Crear las claves en `tecnologia/plataforma-barberias/backend/src/shared/cache/claves-cache.ts` ([contracts/cache-claves.md](contracts/cache-claves.md) §2):
+- [x] T010 [P] Crear las claves en `tecnologia/plataforma-barberias/backend/src/shared/cache/claves-cache.ts` ([contracts/cache-claves.md](contracts/cache-claves.md) §2):
   - `ClaveCache` y `ClaveGeneracion` (constructores privados) y la fábrica `ClavesCache` con `catalogoPublico`, `generacionCatalogo`, `horarios` y `generacionHorarios`, todas con `TenantId`;
   - `ClaveContador.desde(hashDelLimite)`, con prefijo `rl:v1:`;
   - hace pasar T004.
-- [X] T011 [P] Crear el interruptor en `tecnologia/plataforma-barberias/backend/src/shared/cache/interruptor.ts`:
+- [x] T011 [P] Crear el interruptor en `tecnologia/plataforma-barberias/backend/src/shared/cache/interruptor.ts`:
   - clase pura con `Clock` inyectado, `ejecutar<T>(op, siAbierto)` y eventos `alAbrir` y `alRecuperar`;
   - sin dependencias externas;
   - hace pasar T005.
-- [X] T012 Crear el puerto `CacheCompartida` en `tecnologia/plataforma-barberias/backend/src/shared/cache/cache-compartida.ts` con `obtener`, `guardarSiGeneracion`, `leerGeneracion`, `invalidar` y `contar`:
+- [x] T012 Crear el puerto `CacheCompartida` en `tecnologia/plataforma-barberias/backend/src/shared/cache/cache-compartida.ts` con `obtener`, `guardarSiGeneracion`, `leerGeneracion`, `invalidar` y `contar`:
   - recibe `ClaveCache`, `ClaveGeneracion` y `ClaveContador`, nunca `string`;
   - el contrato de "ausente" y `null` sigue [contracts/cache-claves.md](contracts/cache-claves.md) §5;
   - implementar también `CacheInactiva`, que siempre da ausente o `null` y nunca falla, en `tecnologia/plataforma-barberias/backend/src/shared/cache/cache-inactiva.ts`.
-- [X] T013 Crear el adaptador `RedisCacheCompartida` en `tecnologia/plataforma-barberias/backend/src/shared/cache/redis-cache-compartida.ts`:
+- [x] T013 Crear el adaptador `RedisCacheCompartida` en `tecnologia/plataforma-barberias/backend/src/shared/cache/redis-cache-compartida.ts`:
   - `ioredis` con `commandTimeout = cache.timeoutMs`, `enableOfflineQueue: false`, `maxRetriesPerRequest: 0`, `lazyConnect` y `retryStrategy` con espera creciente hasta 2 s;
   - los tres scripts Lua de [contracts/cache-claves.md](contracts/cache-claves.md) §4 con `defineCommand`;
   - valores JSON con campo `v`: ilegible u otra versión equivale a ausente (FR-015);
   - toda operación pasa por el `Interruptor`, que registra `CACHE_NO_DISPONIBLE` y `CACHE_RECUPERADA` una sola vez por transición;
   - cierra la conexión en `onModuleDestroy`.
-- [X] T014 Registrar la caché en `tecnologia/plataforma-barberias/backend/src/shared/shared.module.ts` y exportarla en `tecnologia/plataforma-barberias/backend/src/shared/index.ts`:
+- [x] T014 Registrar la caché en `tecnologia/plataforma-barberias/backend/src/shared/shared.module.ts` y exportarla en `tecnologia/plataforma-barberias/backend/src/shared/index.ts`:
   - fábrica de `CacheCompartida`: `RedisCacheCompartida` si hay `redisUrl` y `CacheInactiva` si no;
   - exportar `CacheCompartida`, `ClavesCache`, `ClaveCache`, `ClaveGeneracion` y `ClaveContador` (no el adaptador Redis).
-- [X] T015 [P] Agregar la regla `redis-confinado` en `tecnologia/plataforma-barberias/backend/.dependency-cruiser.cjs`:
+- [x] T015 [P] Agregar la regla `redis-confinado` en `tecnologia/plataforma-barberias/backend/.dependency-cruiser.cjs`:
   - `ioredis` solo puede importarse desde `src/shared/cache/`;
   - agregar el caso de violación en el fixture de `tecnologia/plataforma-barberias/backend/test/architecture/` (archivo de módulo que importa `ioredis`), con su verificación en la prueba de PR14.
-- [X] T016 [P] Ayudante de Redis para las pruebas en `tecnologia/plataforma-barberias/backend/test/helpers/redis.ts`:
+- [x] T016 [P] Ayudante de Redis para las pruebas en `tecnologia/plataforma-barberias/backend/test/helpers/redis.ts`:
   - `iniciarRedis()` con `GenericContainer('redis:7.4-alpine')`, el mismo comando sin persistencia de [research.md](research.md) R12, que fija `REDIS_URL`;
   - `detener()`, `reiniciar()`, `vaciar()` (`FLUSHALL`), `claves(patron)` y `valores()` para inspeccionar.
   - Usa `testcontainers`, que ya está instalado.
-- [X] T017 [P] Ampliar `crearApp` en `tecnologia/plataforma-barberias/backend/test/helpers/app.ts`:
+- [x] T017 [P] Ampliar `crearApp` en `tecnologia/plataforma-barberias/backend/test/helpers/app.ts`:
   - opción `escuchar: true`, que levanta la aplicación en un puerto libre de `127.0.0.1` y devuelve `puerto`, para las pruebas con dos instancias y con Nginx;
   - opción `entorno`, que fija variables antes de construir el módulo (`INSTANCIA_ID`, `CACHE_*`) y las restaura al cerrar.
 
@@ -170,65 +170,65 @@ PR16 por Nginx.
 
 ### Tests for User Story 1 (MANDATORY - constitution Principle X) ⚠️
 
-- [ ] T018 [P] [US1] Ayudante de Nginx para las pruebas en `tecnologia/plataforma-barberias/backend/test/helpers/nginx.ts`:
-  - `iniciarNginx({ backends: [puerto1, puerto2] })` con `GenericContainer('nginx:1.27-alpine')` y el mismo comando que Compose (`nginx -g "daemon off; worker_processes 1;"`);
+- [x] T018 [P] [US1] Ayudante de Nginx para las pruebas en `tecnologia/plataforma-barberias/backend/test/helpers/nginx.ts`:
+  - `iniciarNginx({ backends: [puerto1, puerto2] })` con `GenericContainer('nginx:1.27-alpine')` y los mismos archivos que Compose (`nginx/nginx.conf` con `worker_processes 1` y la plantilla);
   - copia **la plantilla del repositorio** (`nginx/templates/default.conf.template`) y fija `BACKEND_1` y `BACKEND_2` a `host.testcontainers.internal:{puerto}` mediante `TestContainers.exposeHostPorts`;
   - devuelve la URL publicada.
   - Si `exposeHostPorts` es inestable, aplicar el respaldo de [research.md](research.md) R15 y dejarlo anotado en la tarea.
-- [ ] T019 [P] [US1] Integración de salud en `tecnologia/plataforma-barberias/backend/test/integration/escalado/salud-listo.spec.ts` (FR-004):
+- [x] T019 [P] [US1] Integración de salud en `tecnologia/plataforma-barberias/backend/test/integration/escalado/salud-listo.spec.ts` (FR-004):
   - con una base sin la migración `0013`, `GET /salud/listo` responde 503, y tras migrar, 200 `{ estado: 'listo' }`;
   - con la base caída, 503;
   - sin Redis (`CacheInactiva`) sigue en 200;
   - dos `migrarHastaLaUltima` en paralelo sobre una base vacía terminan sin error y cada migración aparece una sola vez en `kysely_migration`;
   - `/salud/listo` no tiene límite de solicitudes.
-- [ ] T020 [P] [US1] Integración del balanceador en `tecnologia/plataforma-barberias/backend/test/integration/escalado/balanceador.spec.ts`: dos instancias en proceso con `INSTANCIA_ID` distinto y `PROXIES_CONFIABLES=loopback`, detrás de Nginx (T018). Casos:
+- [x] T020 [P] [US1] Integración del balanceador en `tecnologia/plataforma-barberias/backend/test/integration/escalado/balanceador.spec.ts`: dos instancias en proceso con `INSTANCIA_ID` distinto y `PROXIES_CONFIABLES=loopback`, detrás de Nginx (T018). Casos:
   - **Reparto:** 20 `GET /salud` por Nginx devuelven `X-Instancia` `backend-1` y `backend-2`, y el cuerpo es igual en todas (escenario 1).
-  - **PR04:** con tráfico continuo de GET (unas 20 por segundo), cerrar una instancia. En la ventana de transición, como máximo el 2 % de errores; a partir de 15 s del cierre, 0 % de errores y todas las respuestas de la otra instancia. Al levantarla de nuevo en el mismo puerto, vuelve a recibir tráfico sin intervención, y entre el nuevo arranque y el fin de la prueba hay **0 %** de errores: el alta no pierde solicitudes (escenarios 2 y 3; SC-002).
+  - **PR04:** ~~con tráfico continuo por el túnel~~ **pasó a Docker Compose (T028)**: por el túnel de Testcontainers, una instancia detenida no rechaza la conexión y el resultado dependía del azar (0 % y 50 % de errores en dos corridas iguales; research.md R15, respaldo aplicado). Resultado con Compose: 0 errores en la caída, reincorporación en 17,8 s (quickstart §6).
   - **Sesión entre instancias:** iniciar sesión en una instancia y usar el token en la otra; cerrar sesión en una y comprobar 401 en la otra; los intentos fallidos de inicio de sesión se cuentan en conjunto (escenario 4).
   - **IP real (FR-006):** una solicitud con `X-Forwarded-For: 203.0.113.9` queda auditada o limitada con la IP que entrega Nginx, no con `203.0.113.9`.
-  - **Sin réplicas (FR-007):** con ambas cerradas, 503 con cuerpo `{ codigo: 'SERVICIO_NO_DISPONIBLE', … }` y `Retry-After` en menos de 3 s (escenario 6).
+  - **Sin réplicas (FR-007):** **pasó a Docker Compose (T028)** por el mismo motivo (por el túnel, Nginx esperaba 30 s). Resultado con Compose: 503 `SERVICIO_NO_DISPONIBLE` en 2,4 s con `Retry-After: 5`.
   - **PR16 por Nginx (FR-026, SC-007):** 200 `POST /citas` simultáneos (mismo barbero y hora, `Idempotency-Key` distintas) a través de Nginx dan 1 × 201, 199 × 409 `HORARIO_NO_DISPONIBLE`, 0 × 5xx y 1 cita activa en la base. Reutiliza la siembra de `test/integration/citas/concurrencia-reservas.spec.ts`.
-- [ ] T021 [P] [US1] Prueba del frontend en `tecnologia/plataforma-barberias/frontend/test/api/servicio-no-disponible.test.tsx` (Vitest + MSW):
+- [x] T021 [P] [US1] Prueba del frontend en `tecnologia/plataforma-barberias/frontend/test/api/servicio-no-disponible.spec.tsx` (Vitest + MSW; `.spec.tsx` porque Vitest solo incluye `test/**/*.spec.*`):
   - un 503 con `codigo: 'SERVICIO_NO_DISPONIBLE'` llega como `ApiError` con su mensaje;
   - la página pública muestra ese mensaje, no "Ocurrió un error inesperado".
   - Si hace falta, ajustar `tecnologia/plataforma-barberias/frontend/src/api/client.ts` solo lo necesario.
 
 ### Implementation for User Story 1
 
-- [ ] T022 [US1] Crear la migración `tecnologia/plataforma-barberias/backend/migrations/0013_salud_listo.ts`:
+- [x] T022 [US1] Crear la migración `tecnologia/plataforma-barberias/backend/migrations/0013_salud_listo.ts`:
   - `GRANT SELECT ON kysely_migration TO barberias_app` y, en `down`, `REVOKE`;
   - registrarla en el proveedor de `tecnologia/plataforma-barberias/backend/migrations/index.ts`.
-- [ ] T023 [US1] Agregar `VerificadorMigraciones` en `tecnologia/plataforma-barberias/backend/src/shared/persistence/database.ts`, exportado en `shared/index.ts`:
+- [x] T023 [US1] Agregar `VerificadorMigraciones` en `tecnologia/plataforma-barberias/backend/src/shared/persistence/database.ts`, exportado en `shared/index.ts`:
   - compara el nombre máximo en `kysely_migration` con la última migración de `ProveedorDeMigraciones`;
   - devuelve `false` ante un error de permisos o de conexión;
   - recuerda el `true` (las migraciones no se deshacen), pero sigue consultando la base en cada llamada.
-- [ ] T024 [US1] Agregar `GET /salud/listo` en `tecnologia/plataforma-barberias/backend/src/host/salud.controller.ts` según [contracts/openapi.yaml](contracts/openapi.yaml):
+- [x] T024 [US1] Agregar `GET /salud/listo` en `tecnologia/plataforma-barberias/backend/src/host/salud.controller.ts` según [contracts/openapi.yaml](contracts/openapi.yaml):
   - `@Publica()` y `@SkipThrottle()`;
   - 200 `{ estado: 'listo' }` o 503;
   - registrar `VerificadorMigraciones` en el módulo;
   - hace pasar T019.
-- [ ] T025 [US1] Cambiar `configurarApp` en `tecnologia/plataforma-barberias/backend/src/main.ts`:
+- [x] T025 [US1] Cambiar `configurarApp` en `tecnologia/plataforma-barberias/backend/src/main.ts`:
   - `app.set('trust proxy', configuracion.proxiesConfiables)`, en lugar del valor fijo con `uniquelocal` (R04);
   - si hay `instanciaId`, un middleware agrega `X-Instancia` a toda respuesta (R14).
   - Las pruebas existentes que simulan IP desde `loopback` (`limite-intentos`, `entradas`) deben seguir en verde.
-- [ ] T026 [US1] Crear la plantilla de Nginx `tecnologia/plataforma-barberias/nginx/templates/default.conf.template` según [contracts/entorno-compose.md](contracts/entorno-compose.md) §2:
-  - `upstream api` con `${BACKEND_1}` y `${BACKEND_2}`, cada uno con `max_fails=1 fail_timeout=10s`, y `keepalive 16`;
+- [x] T026 [US1] Crear la plantilla de Nginx `tecnologia/plataforma-barberias/nginx/templates/default.conf.template` según [contracts/entorno-compose.md](contracts/entorno-compose.md) §2:
+  - `upstream api` con `${BACKEND_1}` y `${BACKEND_2}`, cada uno con `max_fails=3 fail_timeout=10s` (con 1, un fallo pasajero de la réplica sana dejaba a Nginx sin réplicas; quickstart §6), y `keepalive 16`;
   - `location /api/`: `proxy_pass`, `proxy_http_version 1.1`, `proxy_set_header X-Forwarded-For $remote_addr`, `X-Real-IP $remote_addr`, `Host` y `X-Forwarded-Proto`;
   - tiempos: `proxy_connect_timeout 1s`, `proxy_read_timeout 30s`, `proxy_next_upstream error timeout http_502 http_503`, `proxy_next_upstream_tries 2`, `proxy_next_upstream_timeout 3s`;
-  - `client_max_body_size 16k` y `server_tokens off`. `worker_processes 1` no va en la plantilla: lo fija el comando del contenedor (`nginx -g "daemon off; worker_processes 1;"`), en T027 y en el ayudante T018;
+  - `client_max_body_size 16k` y `server_tokens off`. `worker_processes 1` no va en la plantilla: lo fija `nginx/nginx.conf` propio (`-g` choca con la directiva que ya define la imagen), montado en T027 y en el ayudante T018;
   - `error_page 502 503 504 = @sin_servicio`, que devuelve 503 JSON `SERVICIO_NO_DISPONIBLE` con `Retry-After: 5` y `default_type application/json`;
   - `location = /nginx-salud` devuelve 200, y todo lo demás, 404.
   - Hace pasar T020 junto con T024 y T025.
-- [ ] T027 [US1] Reescribir `tecnologia/plataforma-barberias/docker-compose.yml` según [contracts/entorno-compose.md](contracts/entorno-compose.md) §1 (R01, R12):
+- [x] T027 [US1] Reescribir `tecnologia/plataforma-barberias/docker-compose.yml` según [contracts/entorno-compose.md](contracts/entorno-compose.md) §1 (R01, R12):
   - red `plataforma` con `ipam` (`${RED_SUBRED:-172.28.0.0/24}`);
   - `db` con límite de 512 MB;
   - `redis` (`redis:7.4-alpine`, `--maxmemory 48mb --maxmemory-policy allkeys-lru --save "" --appendonly no`, healthcheck `redis-cli ping`, 64 MB, puerto `${REDIS_PUERTO:-6380}`);
   - `preparar-backend` (`npm ci && npm run build && npm run migrate`, `restart: "no"`, 1 GB);
-  - ancla `x-backend` para `backend-1` y `backend-2`: `node dist/src/main.js`, IP fijas, sin puertos, `depends_on` con `preparar-backend: service_completed_successfully` y `db: service_healthy` (**sin** dependencia de `redis`: el backend arranca y queda listo sin Redis, FR-019), healthcheck `node -e "fetch('http://localhost:3000/api/v1/salud/listo').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"` (5 s, 2 s, 3 reintentos, `start_period` 20 s), 384 MB, y las variables de entorno-compose §1;
-  - `nginx` (`nginx:1.27-alpine`, `command: ["nginx", "-g", "daemon off; worker_processes 1;"]`, plantilla montada en `/etc/nginx/templates`, `BACKEND_1` y `BACKEND_2` con las IP fijas, puerto `3000:80`, `depends_on` con ambas réplicas sanas, healthcheck `/nginx-salud`, 32 MB);
+  - ancla `x-backend` para `backend-1` y `backend-2`: `node dist/src/main.js` leyendo el build del volumen `backend-dist` y `node_modules` del volumen, de solo lectura (desde la carpeta montada, un arranque tardó más de 2 min), IP fijas, sin puertos, `depends_on` con `preparar-backend: service_completed_successfully` y `db: service_healthy` (**sin** dependencia de `redis`: el backend arranca y queda listo sin Redis, FR-019), healthcheck `node -e "fetch('http://localhost:3000/api/v1/salud/listo').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"` (5 s, 2 s, 3 reintentos, `start_period` 20 s), 384 MB, y las variables de entorno-compose §1;
+  - `nginx` (`nginx:1.27-alpine`, `nginx/nginx.conf` y plantilla montados en `/etc/nginx/`, `BACKEND_1` y `BACKEND_2` con las IP fijas, puerto `3000:80`, `depends_on` con ambas réplicas sanas, healthcheck `/nginx-salud`, 32 MB);
   - `frontend` con `VITE_API_PROXY=http://nginx:80` y 512 MB;
   - actualizar el comentario de cabecera del archivo, que hoy dice "Sin Redis".
-- [ ] T028 [US1] Verificar a mano el entorno real y anotar el resultado para el quickstart:
+- [x] T028 [US1] Verificar a mano el entorno real y anotar el resultado para el quickstart:
   - `docker compose up -d` y `docker compose ps`: `preparar-backend` sale con 0; réplicas y Nginx quedan `healthy`;
   - `docker compose logs preparar-backend` muestra `0013` aplicada una vez;
   - `http://localhost:3000/api/v1/salud/listo` y `http://localhost:5173` responden;
@@ -543,7 +543,7 @@ las suites indicadas; si no, se dejan anotadas como no hechas en la sección 6 d
 Task: "Ayudante de Nginx en backend/test/helpers/nginx.ts"
 Task: "Integración de salud en backend/test/integration/escalado/salud-listo.spec.ts"
 Task: "Integración del balanceador en backend/test/integration/escalado/balanceador.spec.ts"
-Task: "Prueba del frontend en frontend/test/api/servicio-no-disponible.test.tsx"
+Task: "Prueba del frontend en frontend/test/api/servicio-no-disponible.spec.tsx"
 
 # Implementación en paralelo tras la migración:
 Task: "Plantilla de Nginx en nginx/templates/default.conf.template"

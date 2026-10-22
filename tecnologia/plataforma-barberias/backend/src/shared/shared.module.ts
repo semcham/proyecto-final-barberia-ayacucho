@@ -10,6 +10,7 @@ import {
   type BaseDeDatos,
   crearBaseDeDatos,
   VerificadorBaseDeDatos,
+  VerificadorMigraciones,
 } from './persistence/database';
 import { KyselyUnitOfWork } from './persistence/kysely-unit-of-work';
 import { UnitOfWork } from './persistence/unit-of-work';
@@ -42,6 +43,11 @@ import { TenantContext } from './tenant/tenant-context';
       inject: [BASE_DE_DATOS],
       useFactory: (db: BaseDeDatos) => new VerificadorBaseDeDatos(db),
     },
+    {
+      provide: VerificadorMigraciones,
+      inject: [BASE_DE_DATOS],
+      useFactory: (db: BaseDeDatos) => new VerificadorMigraciones(db),
+    },
     KyselyUnitOfWork,
     { provide: UnitOfWork, useExisting: KyselyUnitOfWork },
     { provide: AuditLog, useClass: KyselyAuditLog },
@@ -53,6 +59,7 @@ import { TenantContext } from './tenant/tenant-context';
     CacheCompartida,
     BASE_DE_DATOS,
     VerificadorBaseDeDatos,
+    VerificadorMigraciones,
     KyselyUnitOfWork,
     UnitOfWork,
     AuditLog,

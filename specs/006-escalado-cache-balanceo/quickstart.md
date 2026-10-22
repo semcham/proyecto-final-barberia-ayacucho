@@ -37,15 +37,15 @@ cd ../frontend
 npx vitest run --maxWorkers=1 --minWorkers=1   # incluye el mensaje SERVICIO_NO_DISPONIBLE
 ```
 
-| Prueba                     | Qué demuestra                                                                                                                                     | Resultado esperado                                                            |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| `cache-catalogo`           | Acierto y fallo; invalidación por cada fila de la matriz, vista desde la otra instancia; cambio revertido; carrera de lectura e invalidación; TTL | Todo en verde                                                                 |
-| `aislamiento-cache` (PR09) | Claves con el tenant de su dueña; sin datos canario en Redis; nombres iguales en dos barberías; enlace reutilizado por otra barbería              | 0 fugas                                                                       |
-| `limite-compartido`        | N aceptadas en total con dos instancias; otra IP no afectada; respaldo por instancia sin Redis; intentos de inicio de sesión sin claves en Redis  | Todo en verde                                                                 |
-| `redis-caido` (PR05)       | Redis detenido: catálogo, horarios y reservas correctos; una sola alerta; recuperación sin reiniciar                                              | Todo en verde                                                                 |
-| `salud-listo`              | 503 antes de migrar y 200 después; dos migraciones en paralelo aplican cada una una vez                                                           | Todo en verde                                                                 |
-| `balanceador`              | Reparto entre réplicas; caída de una (PR04); `X-Forwarded-For` falso ignorado; 503 sin réplicas; **PR16 a través de Nginx**                       | ≤ 2 % de errores en la transición y 0 % después; 1 × 201, 199 × 409 y 0 × 5xx |
-| Suites de 001 y 002        | Sin regresiones                                                                                                                                   | Mismos totales que en 002 más las nuevas                                      |
+| Prueba                     | Qué demuestra                                                                                                                                                                                                                                                                                                                               | Resultado esperado                       |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
+| `cache-catalogo`           | Acierto y fallo; invalidación por cada fila de la matriz, vista desde la otra instancia; cambio revertido; carrera de lectura e invalidación; TTL                                                                                                                                                                                           | Todo en verde                            |
+| `aislamiento-cache` (PR09) | Claves con el tenant de su dueña; sin datos canario en Redis; nombres iguales en dos barberías; enlace reutilizado por otra barbería                                                                                                                                                                                                        | 0 fugas                                  |
+| `limite-compartido`        | N aceptadas en total con dos instancias; otra IP no afectada; respaldo por instancia sin Redis; intentos de inicio de sesión sin claves en Redis                                                                                                                                                                                            | Todo en verde                            |
+| `redis-caido` (PR05)       | Redis detenido: catálogo, horarios y reservas correctos; una sola alerta; recuperación sin reiniciar                                                                                                                                                                                                                                        | Todo en verde                            |
+| `salud-listo`              | 503 antes de migrar y 200 después; dos migraciones en paralelo aplican cada una una vez                                                                                                                                                                                                                                                     | Todo en verde                            |
+| `balanceador`              | Reparto entre réplicas; sesión entre instancias; `X-Forwarded-For` falso ignorado; **PR16 a través de Nginx**. La caída de una réplica (PR04) y el 503 sin réplicas se verifican con Docker Compose (§4.1 y §6): por el túnel de Testcontainers una instancia caída no se comporta como en el entorno real ([research.md](research.md) R15) | 1 × 201, 199 × 409 y 0 × 5xx             |
+| Suites de 001 y 002        | Sin regresiones                                                                                                                                                                                                                                                                                                                             | Mismos totales que en 002 más las nuevas |
 
 ## 3. Recorrido manual con el entorno real
 
@@ -81,7 +81,7 @@ npx vitest run --maxWorkers=1 --minWorkers=1   # incluye el mensaje SERVICIO_NO_
 6. **Sin réplicas.**
    - `docker compose stop backend-1 backend-2` y abrir la página pública.
    - **Esperado:** 503 `SERVICIO_NO_DISPONIBLE` y el mensaje en la interfaz.
-   - `docker compose start backend-1 backend-2` para volver.
+   - `docker compose up -d --no-deps backend-1 backend-2` para volver (sin `--no-deps`, Compose repite `preparar-backend`).
 
 ## 4. Demos y prueba de carga (fuera de CI)
 
@@ -95,9 +95,9 @@ npm run demo:caida -- --objetivo replica
 ```
 
 - **Qué hace:** tráfico continuo por Nginx durante 60 s; a los 15 s, `docker compose stop backend-2`;
-  a los 40 s, `start`.
+  a los 40 s, `docker compose up -d --no-deps backend-2`.
 - **Esperado:** `backend-2` deja de recibir solicitudes en 15 s o menos; como máximo el 2 % de
-  errores en la transición y 0 % después; vuelve a recibir tráfico tras el `start`.
+  errores en la transición y 0 % después; vuelve a recibir tráfico tras volver a levantarla.
 - **A mano (línea de corte 2):** los mismos dos comandos `docker compose` en otra terminal, con el
   tráfico corriendo.
 
@@ -120,16 +120,16 @@ comparten IP detrás de Docker Desktop.
 cd ..
 $env:PUBLICO_LIMITE_POR_MINUTO = '100000'
 # Variante A: 1 réplica, sin caché
-$env:CACHE_CATALOGO_ACTIVA = 'false'; docker compose up -d backend-1 backend-2; docker compose stop backend-2
+$env:CACHE_CATALOGO_ACTIVA = 'false'; docker compose up -d --no-deps backend-1 backend-2; docker compose stop backend-2
 cd backend; npm run medir:horarios -- --etiqueta A-1r-sin-cache --salida ../../../tmp/medicion-A.json; cd ..
 # Variante B: 1 réplica, con caché
-$env:CACHE_CATALOGO_ACTIVA = 'true'; docker compose up -d backend-1; docker compose stop backend-2
+$env:CACHE_CATALOGO_ACTIVA = 'true'; docker compose up -d --no-deps backend-1; docker compose stop backend-2
 cd backend; npm run medir:horarios -- --etiqueta B-1r-con-cache --salida ../../../tmp/medicion-B.json; cd ..
 # Variante C: 2 réplicas, sin caché
-$env:CACHE_CATALOGO_ACTIVA = 'false'; docker compose up -d backend-1 backend-2
+$env:CACHE_CATALOGO_ACTIVA = 'false'; docker compose up -d --no-deps backend-1 backend-2
 cd backend; npm run medir:horarios -- --etiqueta C-2r-sin-cache --salida ../../../tmp/medicion-C.json; cd ..
 # Variante D: 2 réplicas, con caché
-$env:CACHE_CATALOGO_ACTIVA = 'true'; docker compose up -d backend-1 backend-2
+$env:CACHE_CATALOGO_ACTIVA = 'true'; docker compose up -d --no-deps backend-1 backend-2
 cd backend; npm run medir:horarios -- --etiqueta D-2r-con-cache --salida ../../../tmp/medicion-D.json
 ```
 
@@ -145,23 +145,53 @@ Env:CACHE_CATALOGO_ACTIVA`), ejecutar `docker compose up -d` para volver a los v
 
 ## 5. Criterios de éxito y dónde se miden
 
-| SC     | Medición                                                     |
-| ------ | ------------------------------------------------------------ |
-| SC-001 | §4.3, variantes A–D (y E si hace falta)                      |
-| SC-002 | `balanceador` (CI) y §4.1                                    |
-| SC-003 | `cache-catalogo` (matriz desde la otra instancia) y §3.3–3.4 |
-| SC-004 | `aislamiento-cache` (PR09)                                   |
-| SC-005 | `redis-caido` (CI) y §4.2                                    |
-| SC-006 | `limite-compartido`                                          |
-| SC-007 | `balanceador` (PR16 por Nginx)                               |
-| SC-008 | §1                                                           |
-| SC-009 | §6                                                           |
+| SC     | Medición                                                                                         |
+| ------ | ------------------------------------------------------------------------------------------------ |
+| SC-001 | §4.3, variantes A–D (y E si hace falta)                                                          |
+| SC-002 | §4.1 y §6 con Docker Compose (por el túnel de Testcontainers la caída no es representativa, R15) |
+| SC-003 | `cache-catalogo` (matriz desde la otra instancia) y §3.3–3.4                                     |
+| SC-004 | `aislamiento-cache` (PR09)                                                                       |
+| SC-005 | `redis-caido` (CI) y §4.2                                                                        |
+| SC-006 | `limite-compartido`                                                                              |
+| SC-007 | `balanceador` (PR16 por Nginx)                                                                   |
+| SC-008 | §1                                                                                               |
+| SC-009 | §6                                                                                               |
 
 ## 6. Registro de ejecuciones
 
-_(Se completa al implementar: fecha, equipo, memoria asignada a Docker, variante, p50, p95, máximo,
-% de 5xx y reparto por réplica; para las caídas, detección, errores en la transición, p95 durante la
-caída y reincorporación.)_
+### 2026-10-22 · US1 con Docker Compose (T028; PR04 y FR-007)
+
+Equipo de desarrollo: Windows 11, 8 GB de RAM, 8 procesadores lógicos, Docker Desktop 29.8 (WSL 2).
+Entorno levantado con `docker compose up -d` (dos réplicas, Nginx, Redis, PostgreSQL y frontend). Las
+mediciones se hicieron con un script temporal de tráfico (el definitivo es `demo:caida`, T047).
+
+| Comprobación                                | Resultado                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Arranque                                    | `preparar-backend` termina con 0; réplicas y Nginx `healthy`; `/salud/listo` 200; la interfaz en 5173 y la API a través de Vite pasan por Nginx                                                                                                                                                                                                                                                                                                                          |
+| Reparto                                     | 6 solicitudes seguidas: `backend-1`, `backend-2`, alternadas                                                                                                                                                                                                                                                                                                                                                                                                             |
+| Memoria estable                             | Réplicas 40–49 MB, Nginx 3 MB, Redis 4–11 MB, PostgreSQL 23–27 MB, Vite 136–149 MB (unos 260 MB en total, muy por debajo de los límites)                                                                                                                                                                                                                                                                                                                                 |
+| **Caída de una réplica con tráfico (PR04)** | 20 solicitudes por segundo durante 60 s; `docker compose stop -t 1 backend-2` a los 15 s. Durante la caída, **0 errores en 514 solicitudes**; `backend-2` dejó de recibir tráfico **3,2 s** después de la orden (lo que tarda en detenerse). Tras `docker compose up -d --no-deps backend-2` volvió a recibir tráfico a los **17,8 s** (arranque de unos 14 s más la reincorporación), con **0 errores en 1 251 solicitudes**. Meta de SC-002 (≤ 15 s y ≤ 2 %): cumplida |
+| **Sin réplicas (FR-007)**                   | Con las dos detenidas: **503** `SERVICIO_NO_DISPONIBLE` en **2,4 s** (dos intentos con `proxy_connect_timeout 1s` hacia IP de contenedores detenidos), con `Retry-After: 5` y `application/json`. Meta (< 3 s): cumplida                                                                                                                                                                                                                                                 |
+| **IP falsa (FR-006)**                       | 300 solicitudes a la vía pública, cada una con un `X-Forwarded-For` distinto: 240 aceptadas (120 por réplica, límite todavía por instancia hasta US3) y **60 × 429**. Si el encabezado falso se aceptara, cada solicitud contaría como otra IP y no habría ningún 429                                                                                                                                                                                                    |
+| Arranque sin Redis                          | Con `redis` detenido, las dos réplicas recreadas quedaron `healthy` y `/salud/listo` respondió 200                                                                                                                                                                                                                                                                                                                                                                       |
+
+**Ajustes que salieron de esta verificación** (ya aplicados en `docker-compose.yml`, en la plantilla de
+Nginx y en [research.md](research.md) R01 y R02):
+
+1. **Las réplicas leen el build de un volumen de Docker** (`backend-dist`), no de la carpeta del equipo:
+   desde la carpeta montada, un arranque tardó más de 2 minutos; ahora, unos 14 s.
+2. **`max_fails=3` en lugar de 1:** con 1, mientras una réplica arrancaba con el equipo cargado, un único
+   fallo pasajero de la otra dejó a Nginx sin réplicas y respondió 503 durante 10 s (335 errores en una
+   corrida). Con 3, la corrida de la tabla dio 0 errores.
+3. **`start_period` de 60 s y 5 reintentos** en el healthcheck: con 20 s y 3, el primer arranque se
+   marcó como fallido.
+4. **Reiniciar réplicas siempre con `--no-deps`:** `docker compose start backend-2` volvió a ejecutar
+   `preparar-backend` (unos 2 minutos de `npm ci` y build) y reescribió `node_modules` con la otra réplica
+   en marcha.
+
+**PR16 a través de Nginx** se verifica en CI (`balanceador.spec.ts`): 1 × 201, 199 × 409
+`HORARIO_NO_DISPONIBLE`, 0 × 5xx y 1 cita activa, repartidas entre las dos instancias (3 corridas
+iguales).
 
 ### Pendiente (fuera del alcance de 006)
 

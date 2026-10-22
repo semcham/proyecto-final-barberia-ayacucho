@@ -11,6 +11,7 @@ import * as m0009 from './0009_cuenta_cliente';
 import * as m0010 from './0010_catalogo';
 import * as m0011 from './0011_citas';
 import * as m0012 from './0012_lectura_publica';
+import * as m0013 from './0013_salud_listo';
 
 // Registro explícito de migraciones, en orden. Cada historia agrega aquí las suyas.
 // (Un proveedor estático evita depender de importaciones dinámicas de archivos .ts.)
@@ -27,7 +28,11 @@ const MIGRACIONES: Record<string, Migration> = {
   '0010_catalogo': m0010,
   '0011_citas': m0011,
   '0012_lectura_publica': m0012,
+  '0013_salud_listo': m0013,
 };
+
+/** Nombre de la última migración que conoce el código (GET /salud/listo, 006). */
+export const ULTIMA_MIGRACION = Object.keys(MIGRACIONES).sort().at(-1) as string;
 
 export class ProveedorDeMigraciones implements MigrationProvider {
   async getMigrations(): Promise<Record<string, Migration>> {

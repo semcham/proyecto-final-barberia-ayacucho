@@ -1,6 +1,65 @@
-# Entorno de desarrollo local (R20). Sin Redis: esta funcionalidad no tiene lecturas que cachear.
-# Uso: copiar .env.example a .env y `docker compose up -d`. El backend aplica las migraciones pendientes
-# al arrancar (como barberias_owner); también se pueden aplicar a mano con `docker compose exec backend npm run migrate`.
+# Entorno local escalado (funcionalidad 006, ADR-029 y ADR-030; contrato en
+# specs/006-escalado-cache-balanceo/contracts/entorno-compose.md):
+#
+#   navegador → frontend (Vite, 5173) ─┐
+#   API (http://localhost:3000) ──────→ nginx → backend-1 / backend-2 → db (PostgreSQL) y redis (caché)
+#
+# Uso: copiar .env.example a .env y `docker compose up -d`.
+# - preparar-backend instala, compila y aplica las migraciones UNA sola vez y termina; las réplicas arrancan
+#   después, con el build compilado (sin recarga en caliente: para eso, el backend local con `npm run
+#   start:dev`, ver README). Tras cambiar código del backend:
+#     docker compose up -d --force-recreate preparar-backend backend-1 backend-2
+# - Las réplicas NO dependen de Redis para arrancar: sin Redis funcionan sin caché y con el límite de
+#   solicitudes por instancia, y vuelven a usarlo cuando responde (FR-019).
+# - Límites de memoria para un equipo de 8 GB (research.md R12): uso estable de unos 1,9 GB.
+# - Esto no es alta disponibilidad: Nginx, PostgreSQL y Redis son únicos (ADR-006, ADR-030).
+
+x-backend: &backend
+  image: node:22
+  # Las réplicas NO leen el código desde la carpeta montada del equipo (en Docker Desktop sobre Windows esa
+  # lectura es muy lenta: un arranque tardó más de 2 minutos): usan el build que preparar-backend copia al
+  # volumen backend-dist y las dependencias del volumen backend-node-modules, ambos de solo lectura.
+  working_dir: /srv
+  command: node dist/src/main.js
+  env_file: .env
+  volumes:
+    - backend-dist:/srv/dist:ro
+    - backend-node-modules:/srv/node_modules:ro
+  depends_on:
+    preparar-backend:
+      condition: service_completed_successfully
+    db:
+      condition: service_healthy
+  healthcheck:
+    test:
+      - CMD
+      - node
+      - -e
+      - fetch('http://localhost:3000/api/v1/salud/listo').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))
+    interval: 5s
+    timeout: 2s
+    retries: 5
+    # En Windows con el código montado desde el equipo, el arranque medido fue de unos 36 s (2026-10-22).
+    start_period: 60s
+  restart: unless-stopped
+  deploy:
+    resources:
+      limits:
+        memory: 384M
+
+x-backend-entorno: &backend-entorno
+  DATABASE_URL_APP: postgres://barberias_app:barberias_app_dev@db:5432/barberias
+  DATABASE_URL_OWNER: postgres://barberias_owner:barberias_owner_dev@db:5432/barberias
+  DATABASE_URL_PUBLICO: postgres://barberias_publico:barberias_publico_dev@db:5432/barberias
+  REDIS_URL: redis://redis:6379
+  # Solo Nginx es proxy de confianza: el X-Forwarded-For que envíe un cliente no cambia la IP (R04).
+  PROXIES_CONFIABLES: ${IP_NGINX:-172.28.0.10}
+  CACHE_CATALOGO_ACTIVA: ${CACHE_CATALOGO_ACTIVA:-true}
+  CACHE_HORARIOS_ACTIVA: ${CACHE_HORARIOS_ACTIVA:-false}
+  PUBLICO_LIMITE_POR_MINUTO: ${PUBLICO_LIMITE_POR_MINUTO:-120}
+  NODE_ENV: production
+  NODE_OPTIONS: --max-old-space-size=256
+
 services:
   db:
     image: postgres:16
@@ -8,6 +67,7 @@ services:
       POSTGRES_DB: barberias
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_SUPERUSER_PASSWORD:-postgres_dev}
+    command: postgres -c max_connections=100
     ports:
       # Puerto publicado en el equipo (DB_PUERTO en .env, 5433 por defecto) para no chocar con un PostgreSQL
       # instalado localmente en el 5432. Dentro de la red de Compose la base sigue en db:5432.
@@ -20,34 +80,123 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    networks: [plataforma]
+    deploy:
+      resources:
+        limits:
+          memory: 512M
 
-  backend:
+  redis:
+    image: redis:7.4-alpine
+    # Caché sin persistencia (principio VIII: nunca fuente de verdad); si se llena, expulsa por LRU.
+    command:
+      [
+        'redis-server',
+        '--save',
+        '',
+        '--appendonly',
+        'no',
+        '--maxmemory',
+        '48mb',
+        '--maxmemory-policy',
+        'allkeys-lru',
+      ]
+    ports:
+      # Solo para depurar desde el equipo (redis-cli); las réplicas usan redis:6379 dentro de la red.
+      - '${REDIS_PUERTO:-6380}:6379'
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 2s
+      retries: 5
+    networks: [plataforma]
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+
+  # Una sola ejecución: dependencias, build, migraciones y copia del build al volumen de las réplicas (R01,
+  # R03). Si falla, las réplicas no arrancan y el error queda en `docker compose logs preparar-backend`.
+  # Al reiniciar una réplica usar `docker compose up -d --no-deps backend-N`: sin --no-deps, Compose vuelve a
+  # ejecutar este servicio (unos 2 minutos) y reescribe node_modules con la otra réplica en marcha.
+  preparar-backend:
     image: node:22
     working_dir: /app
-    # Aplica las migraciones pendientes antes de arrancar: si una falla, el contenedor se detiene y el
-    # error queda en `docker compose logs backend` (en lugar de fallar después en cada solicitud).
-    # Solo para desarrollo: en producción las migraciones son un paso separado (despliegue-y-escalabilidad.md).
-    command: sh -c "npm ci && npm run migrate && npm run start:dev"
+    command: >
+      sh -c "npm ci && npm run build && npm run migrate &&
+             rm -rf /srv/dist/* && cp -r dist/. /srv/dist/"
     env_file: .env
     environment:
-      DATABASE_URL_APP: postgres://barberias_app:barberias_app_dev@db:5432/barberias
       DATABASE_URL_OWNER: postgres://barberias_owner:barberias_owner_dev@db:5432/barberias
-      DATABASE_URL_PUBLICO: postgres://barberias_publico:barberias_publico_dev@db:5432/barberias
-    ports:
-      - '3000:3000'
     volumes:
       - ./backend:/app
       - backend-node-modules:/app/node_modules
+      - backend-dist:/srv/dist
     depends_on:
       db:
         condition: service_healthy
+    restart: 'no'
+    networks: [plataforma]
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+
+  backend-1:
+    <<: *backend
+    environment:
+      <<: *backend-entorno
+      INSTANCIA_ID: backend-1
+    networks:
+      plataforma:
+        ipv4_address: ${IP_BACKEND_1:-172.28.0.11}
+
+  backend-2:
+    <<: *backend
+    environment:
+      <<: *backend-entorno
+      INSTANCIA_ID: backend-2
+    networks:
+      plataforma:
+        ipv4_address: ${IP_BACKEND_2:-172.28.0.12}
+
+  nginx:
+    image: nginx:1.27-alpine
+    environment:
+      BACKEND_1: ${IP_BACKEND_1:-172.28.0.11}:3000
+      BACKEND_2: ${IP_BACKEND_2:-172.28.0.12}:3000
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/templates:/etc/nginx/templates:ro
+    ports:
+      # La API se publica por el balanceador, en el mismo puerto de siempre.
+      - '3000:80'
+    depends_on:
+      backend-1:
+        condition: service_healthy
+      backend-2:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '-O', '-', 'http://127.0.0.1/nginx-salud']
+      interval: 5s
+      timeout: 2s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      plataforma:
+        ipv4_address: ${IP_NGINX:-172.28.0.10}
+    deploy:
+      resources:
+        limits:
+          memory: 32M
 
   frontend:
     image: node:22
     working_dir: /app
     command: sh -c "npm ci && npm run dev -- --host"
     environment:
-      VITE_API_PROXY: http://backend:3000
+      # La interfaz habla con la API a través del balanceador (FR-002).
+      VITE_API_PROXY: http://nginx:80
       # El volumen montado desde Windows/macOS no notifica cambios: Vite los sondea para recargar.
       # En Linux se puede poner VITE_SONDEO=false en .env para ahorrar CPU.
       VITE_SONDEO: ${VITE_SONDEO:-true}
@@ -57,9 +206,22 @@ services:
       - ./frontend:/app
       - frontend-node-modules:/app/node_modules
     depends_on:
-      - backend
+      - nginx
+    networks: [plataforma]
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+networks:
+  plataforma:
+    ipam:
+      config:
+        - subnet: ${RED_SUBRED:-172.28.0.0/24}
 
 volumes:
   datos-postgres:
   backend-node-modules:
+  # Build del backend que copia preparar-backend; las réplicas lo leen de aquí (no de la carpeta del equipo).
+  backend-dist:
   frontend-node-modules:

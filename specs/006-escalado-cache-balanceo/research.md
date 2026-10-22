@@ -27,11 +27,19 @@ Fase 0 del plan. Cada decisión indica qué se eligió, por qué y qué se desca
 **Decisión**:
 
 - **Un servicio de preparación de una sola ejecución, `preparar-backend`**, ejecuta
-  `npm ci && npm run build && npm run migrate` y termina.
+  `npm ci && npm run build && npm run migrate`, copia el build al volumen `backend-dist` y termina.
 - **Dos servicios explícitos, `backend-1` y `backend-2`**, definidos con un ancla YAML común
   (`x-backend`). Arrancan solo cuando `preparar-backend` terminó bien
   (`condition: service_completed_successfully`) y ejecutan el build compilado
   (`node dist/src/main.js`), sin `--watch`.
+- **Las réplicas no leen la carpeta del equipo** (ajuste del 2026-10-22, al verificar con Compose): usan
+  `backend-dist` y `backend-node-modules` montados de solo lectura. En Docker Desktop sobre Windows, leer
+  `dist/` desde la carpeta montada hizo que un arranque tardara más de 2 minutos; desde un volumen de
+  Docker tarda segundos. De paso, las réplicas no cambian si se edita el código hasta repetir la
+  preparación.
+- **Reiniciar una réplica con `docker compose up -d --no-deps backend-N`:** `docker compose start` o
+  `up` sin `--no-deps` vuelven a ejecutar `preparar-backend`, su dependencia (unos 2 minutos), y
+  reescriben `node_modules` con la otra réplica en marcha.
 - **`nginx`** (imagen `nginx:1.27-alpine`) es el único punto de entrada de la API. Publica el puerto
   `3000` del equipo, así las URL de siempre (`http://localhost:3000/api/v1/...`) siguen funcionando.
   Los backends ya no publican puertos.
@@ -79,13 +87,16 @@ Fase 0 del plan. Cada decisión indica qué se eligió, por qué y qué se desca
   `barberias_app`. Es una tabla técnica, sin datos de negocio ni de barberías. Antes de aplicarla,
   la ruta responde 503, que es lo correcto, porque faltan migraciones.
 - **Docker:** cada réplica tiene un `healthcheck` que llama a `/salud/listo` con
-  `node -e "fetch(...)"`: intervalo 5 s, tiempo límite 2 s, 3 reintentos y `start_period` de 20 s.
-  `nginx` depende de que ambas estén sanas en el primer arranque.
+  `node -e "fetch(...)"`: intervalo 5 s, tiempo límite 2 s, 5 reintentos y `start_period` de 60 s
+  (ajustado el 2026-10-22: con 20 s y 3 reintentos, un arranque de 36 s en este equipo se marcaba como
+  fallido). `nginx` depende de que ambas estén sanas en el primer arranque.
 - **Sin dependencia de Redis al arrancar:** las réplicas no esperan a `redis` (no hay
   `depends_on` hacia él). El backend arranca y queda listo sin Redis, y empieza a usarlo cuando
   responde (interruptor, R06), igual que tras una caída (FR-019).
 - **Nginx (de código abierto) no tiene comprobación activa** (es de Nginx Plus). Usa la **pasiva**:
-  - `max_fails=1 fail_timeout=10s`;
+  - `max_fails=3 fail_timeout=10s` (ajustado el 2026-10-22: con `max_fails=1`, mientras una réplica
+    arrancaba con el equipo cargado, un único fallo pasajero de la otra dejó a Nginx sin réplicas y
+    respondió 503 durante 10 s; con 3, una réplica caída se detecta igual en milisegundos con tráfico);
   - `proxy_connect_timeout 1s`;
   - `proxy_next_upstream error timeout http_502 http_503`, con `proxy_next_upstream_tries 2` y
     `proxy_next_upstream_timeout 3s`.
@@ -97,7 +108,7 @@ Fase 0 del plan. Cada decisión indica qué se eligió, por qué y qué se desca
   - Las solicitudes no idempotentes (POST, PUT, PATCH, DELETE) **no se reintentan**: es el
     comportamiento por defecto de Nginx desde 1.9.13. Una reserva en curso hacia la réplica que cae
     puede fallar; el cliente la reintenta con la misma `Idempotency-Key` y no se duplica (002).
-  - La detección ocurre con la primera solicitud fallida: menos de 15 s (FR-003, SC-002).
+  - La detección ocurre con los primeros fallos: menos de 15 s (FR-003, SC-002).
 
 **Alternativas descartadas**:
 
@@ -401,14 +412,14 @@ carreras.
 
 **Decisión**: `deploy.resources.limits.memory`, que Compose v2 respeta sin Swarm, en cada servicio.
 
-| Servicio                 | Límite          | Ajustes                                                                                                                                                                |
-| ------------------------ | --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `db`                     | 512 MB          | `shared_buffers` por defecto (128 MB), `max_connections=100`                                                                                                           |
-| `redis`                  | 64 MB           | `--maxmemory 48mb --maxmemory-policy allkeys-lru --save "" --appendonly no` (caché sin persistencia; si se llena, expulsa)                                             |
-| `nginx`                  | 32 MB           | `command: ["nginx", "-g", "daemon off; worker_processes 1;"]`: la plantilla de `conf.d` no puede fijar `worker_processes`. El ayudante de pruebas usa el mismo comando |
-| `backend-1`, `backend-2` | 384 MB cada uno | `NODE_OPTIONS=--max-old-space-size=256`                                                                                                                                |
-| `preparar-backend`       | 1 GB            | Solo mientras compila y migra; luego termina y libera la memoria                                                                                                       |
-| `frontend` (Vite)        | 512 MB          | —                                                                                                                                                                      |
+| Servicio                 | Límite          | Ajustes                                                                                                                                                                                                         |
+| ------------------------ | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `db`                     | 512 MB          | `shared_buffers` por defecto (128 MB), `max_connections=100`                                                                                                                                                    |
+| `redis`                  | 64 MB           | `--maxmemory 48mb --maxmemory-policy allkeys-lru --save "" --appendonly no` (caché sin persistencia; si se llena, expulsa)                                                                                      |
+| `nginx`                  | 32 MB           | `nginx/nginx.conf` propio con `worker_processes 1`: la plantilla de `conf.d` no puede fijar esa directiva y `-g` choca con la que ya define la imagen. Compose y el ayudante de pruebas montan el mismo archivo |
+| `backend-1`, `backend-2` | 384 MB cada uno | `NODE_OPTIONS=--max-old-space-size=256`                                                                                                                                                                         |
+| `preparar-backend`       | 1 GB            | Solo mientras compila y migra; luego termina y libera la memoria                                                                                                                                                |
+| `frontend` (Vite)        | 512 MB          | —                                                                                                                                                                                                               |
 
 - **Uso estable:** unos 1,9 GB, más el pico de 1 GB de la preparación, que ocurre antes de que
   arranquen las réplicas.
@@ -444,7 +455,7 @@ imagen y otra herramienta, y la medición debe ser comparable con la de 002.
   | D        | 2        | Activa             |
   - Se pasa a una réplica con `docker compose stop backend-2`.
   - La caché se activa o desactiva con `CACHE_CATALOGO_ACTIVA` y
-    `docker compose up -d backend-1 backend-2`.
+    `docker compose up -d --no-deps backend-1 backend-2`.
   - El límite de la vía pública se sube solo para la medición
     (`PUBLICO_LIMITE_POR_MINUTO=100000`), porque desde el equipo todas las solicitudes comparten IP
     (R04).
@@ -460,7 +471,8 @@ imagen y otra herramienta, y la medición debe ser comparable con la de 002.
 - **`npm run demo:caida -- --objetivo replica|redis`** (script nuevo, `scripts/demo-caida.ts`):
   - genera tráfico continuo por Nginx (unas 20 solicitudes por segundo, mezcla de catálogo y
     horarios) durante 60 s;
-  - a los 15 s ejecuta `docker compose stop backend-2` (o `redis`) y a los 40 s, `start`;
+  - a los 15 s ejecuta `docker compose stop backend-2` (o `redis`) y a los 40 s,
+    `docker compose up -d --no-deps` del mismo servicio;
   - informa por segundo las solicitudes, los errores y la réplica que atendió, el tiempo hasta que
     `backend-2` deja de recibir tráfico, el porcentaje de errores en la transición, la
     reincorporación y el p95 durante la caída;
@@ -487,42 +499,47 @@ registros.
 
 **En CI** (Testcontainers con PostgreSQL y Redis; Nginx en un contenedor para el balanceo):
 
-| Prueba                          | Tipo                    | Qué demuestra                                                                                                                                                                                                                                                   |
-| ------------------------------- | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `claves-cache`                  | Unitaria                | No se construye una clave de barbería sin `TenantId`; prefijo y formato                                                                                                                                                                                         |
-| `interruptor`                   | Unitaria                | Abre con 5 fallos, pausa de 10 s, semiabierto, cierra; reloj falso                                                                                                                                                                                              |
-| `almacen-limites`               | Unitaria                | Usa la caché si responde; respaldo en memoria si devuelve `null`                                                                                                                                                                                                |
-| `entrada-catalogo`              | Unitaria                | Formato desconocido o JSON roto → ausente                                                                                                                                                                                                                       |
-| `cache-catalogo`                | Integración             | Fallo y acierto; invalidación por cada caso de uso de R08, comprobada desde una **segunda instancia** que comparte Redis; cambio revertido sin invalidar; carrera de R08; TTL. En `catalogo/horarios`: `fuenteDelDia` y `fuenteCompleta` dan los mismos horarios libres para los mismos datos (T035) |
-| `aislamiento-cache` (PR09)      | Integración             | Dos barberías con nombres iguales; todas las claves de Redis contienen el tenant de su dueña; ningún valor contiene datos canario (correos, teléfonos de clientes y del personal, motivos de bloqueo); A deja el enlace `x` y B lo toma: `/publico/x` muestra B |
-| `limite-compartido`             | Integración             | Dos instancias sobre el mismo Redis: N aceptadas en total, 429 después; otra IP no afectada; Redis detenido → límite por instancia; intentos de inicio de sesión sin claves en Redis                                                                            |
+| Prueba                          | Tipo                    | Qué demuestra                                                                                                                                                                                                                                                                                                                                             |
+| ------------------------------- | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `claves-cache`                  | Unitaria                | No se construye una clave de barbería sin `TenantId`; prefijo y formato                                                                                                                                                                                                                                                                                   |
+| `interruptor`                   | Unitaria                | Abre con 5 fallos, pausa de 10 s, semiabierto, cierra; reloj falso                                                                                                                                                                                                                                                                                        |
+| `almacen-limites`               | Unitaria                | Usa la caché si responde; respaldo en memoria si devuelve `null`                                                                                                                                                                                                                                                                                          |
+| `entrada-catalogo`              | Unitaria                | Formato desconocido o JSON roto → ausente                                                                                                                                                                                                                                                                                                                 |
+| `cache-catalogo`                | Integración             | Fallo y acierto; invalidación por cada caso de uso de R08, comprobada desde una **segunda instancia** que comparte Redis; cambio revertido sin invalidar; carrera de R08; TTL. En `catalogo/horarios`: `fuenteDelDia` y `fuenteCompleta` dan los mismos horarios libres para los mismos datos (T035)                                                      |
+| `aislamiento-cache` (PR09)      | Integración             | Dos barberías con nombres iguales; todas las claves de Redis contienen el tenant de su dueña; ningún valor contiene datos canario (correos, teléfonos de clientes y del personal, motivos de bloqueo); A deja el enlace `x` y B lo toma: `/publico/x` muestra B                                                                                           |
+| `limite-compartido`             | Integración             | Dos instancias sobre el mismo Redis: N aceptadas en total, 429 después; otra IP no afectada; Redis detenido → límite por instancia; intentos de inicio de sesión sin claves en Redis                                                                                                                                                                      |
 | `redis-caido` (PR05, funcional) | Integración             | Contenedor de Redis detenido: catálogo y horarios correctos, reservas correctas, interruptor abierto con una sola línea `CACHE_NO_DISPONIBLE`; Redis de nuevo → se usa sin reiniciar. Redis lento (`docker pause`): respuesta en menos de 1 s, el interruptor se abre y se recupera con `unpause`; sin entrada, los horarios usan `fuenteCompleta` (T045) |
-| `salud-listo`                   | Integración             | 503 antes de las migraciones y 200 después; dos `migrarHastaLaUltima` en paralelo aplican cada migración una vez                                                                                                                                                |
-| `balanceador`                   | Integración             | Nginx con la **misma plantilla** del repositorio, delante de dos instancias en proceso. Ver el detalle abajo                                                                                                                                                    |
-| PR14                            | Arquitectura            | Regla `redis-confinado` y el resto sin cambios                                                                                                                                                                                                                  |
-| `SERVICIO_NO_DISPONIBLE`        | Frontend (Vitest + MSW) | La interfaz muestra el mensaje del 503 del balanceador                                                                                                                                                                                                          |
+| `salud-listo`                   | Integración             | 503 antes de las migraciones y 200 después; dos `migrarHastaLaUltima` en paralelo aplican cada migración una vez                                                                                                                                                                                                                                          |
+| `balanceador`                   | Integración             | Nginx con la **misma configuración** del repositorio, delante de dos instancias en proceso. Ver el detalle abajo                                                                                                                                                                                                                                          |
+| PR14                            | Arquitectura            | Regla `redis-confinado` y el resto sin cambios                                                                                                                                                                                                                                                                                                            |
+| `SERVICIO_NO_DISPONIBLE`        | Frontend (Vitest + MSW) | La interfaz muestra el mensaje del 503 del balanceador                                                                                                                                                                                                                                                                                                    |
 
-Detalle de `balanceador`:
+Detalle de `balanceador` (tal como quedó al implementar, 2026-10-22):
 
-- Nginx se publica hacia el equipo con `TestContainers.exposeHostPorts`.
-- Comprueba que ambas instancias reciben tráfico (`X-Instancia`).
-- Cerrar una instancia (PR04 automatizado): como máximo el 2 % de errores en la transición y 0 %
-  después.
-- Un `X-Forwarded-For` falso no cambia la IP de la auditoría ni la del límite.
-- Con ambas instancias cerradas, responde 503 `SERVICIO_NO_DISPONIBLE`.
+- Nginx alcanza las instancias por el túnel de `TestContainers.exposeHostPorts`.
+- Comprueba que ambas instancias reciben tráfico (`X-Instancia`) y que Nginx no revela su versión.
+- La sesión vale en ambas instancias, el cierre en una rige en la otra y los intentos de inicio de
+  sesión se cuentan juntos.
+- Un `X-Forwarded-For` falso no cambia la IP que ve la aplicación (la que usan el límite y la
+  auditoría).
 - Repite **PR16** a través de Nginx: 200 reservas simultáneas, 1 creada y 0 respuestas 5xx.
 
 **Fuera de CI** (manuales, con comandos documentados): `medir:horarios` (PR01, cuatro variantes),
 `demo:caida --objetivo replica` (PR04 con el entorno real) y `--objetivo redis` (PR05 con carga), y
 el recorrido del entorno completo con `docker compose up -d`.
 
-**Riesgo y respaldo**:
+**Riesgo y respaldo — respaldo aplicado el 2026-10-22**:
 
-- `exposeHostPorts` usa un contenedor auxiliar con SSH (imagen pequeña, también en D:). Si en
-  Windows o en el runner resultara inestable, `balanceador` pasa a ejecutar las instancias como
-  contenedores con el `dist/` montado.
-- Si eso tampoco fuera estable dentro del plazo, PR04 y PR16 por Nginx quedan como demos manuales,
-  registradas, y PR16 sigue en CI con sus 2 instancias en proceso (como en 002).
+- `exposeHostPorts` usa un contenedor auxiliar con SSH (imagen pequeña, también en D:). Con las dos
+  instancias en marcha es estable (reparto, IP, sesión y PR16 pasaron en todas las corridas).
+- **Con una instancia detenida, el túnel no se comporta como una red real:** acepta la conexión aunque
+  la instancia ya no exista y la deja colgada o la cierra según el momento, y su reenvío emite errores
+  no capturados (`AggregateError`) dentro de Jest. En dos corridas iguales, la caída de una instancia dio
+  0 % y 50 % de errores; sin réplicas, Nginx tardó 30 s (su `proxy_read_timeout`) en responder el 503.
+- **Por eso la caída de una réplica con tráfico (PR04) y el 503 sin réplicas (FR-007) se verifican con
+  el entorno real de Docker Compose**, donde una réplica detenida rechaza la conexión al instante
+  (T028 y quickstart.md §6). No se ejecutan las instancias como contenedores dentro de la prueba: eso
+  sumaría imágenes, red y tiempo de CI para medir algo que Compose ya mide en condiciones reales.
 - **Las conexiones** que llegan por el túnel aparecen como `loopback`, así que la prueba usa
   `PROXIES_CONFIABLES=loopback`. La prueba de encabezado falso sigue siendo válida, porque Nginx
   sobrescribe el encabezado.

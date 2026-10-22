@@ -2,8 +2,9 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
-// En Docker Compose el backend se llama "backend"; fuera de Docker se puede cambiar con VITE_API_PROXY.
-const destinoApi = process.env.VITE_API_PROXY ?? 'http://backend:3000';
+// En Docker Compose la API se atiende por el balanceador "nginx" (006, ADR-030); fuera de Docker se puede
+// cambiar con VITE_API_PROXY (por ejemplo, http://localhost:3000).
+const destinoApi = process.env.VITE_API_PROXY ?? 'http://nginx:80';
 
 export default defineConfig({
   plugins: [react()],

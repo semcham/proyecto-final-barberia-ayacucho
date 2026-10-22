@@ -34,6 +34,8 @@ export async function crearApp(
     ajustar?: (constructor: TestingModuleBuilder) => TestingModuleBuilder;
     entorno?: Record<string, string | undefined>;
     escuchar?: boolean;
+    /** Puerto fijo para `escuchar` (p. ej. volver a levantar una instancia caída en su mismo puerto). */
+    puerto?: number;
   } = {},
 ): Promise<AppDePrueba> {
   const anteriores = new Map<string, string | undefined>();
@@ -55,7 +57,7 @@ export async function crearApp(
     configurarApp(app);
     let puerto: number | undefined;
     if (opciones.escuchar) {
-      await app.listen(0, '127.0.0.1');
+      await app.listen(opciones.puerto ?? 0, '127.0.0.1');
       puerto = (app.getHttpServer().address() as AddressInfo).port;
     } else {
       await app.init();
