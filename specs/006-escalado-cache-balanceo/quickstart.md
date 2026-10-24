@@ -193,6 +193,25 @@ Nginx y en [research.md](research.md) R01 y R02):
 `HORARIO_NO_DISPONIBLE`, 0 × 5xx y 1 cita activa, repartidas entre las dos instancias (3 corridas
 iguales).
 
+### 2026-10-24 · US4 con Docker Compose (T047; PR05)
+
+Mismo equipo. Entorno con `$env:PUBLICO_LIMITE_POR_MINUTO='100000'; docker compose up -d` y el frontend
+detenido. Tráfico con `npm run demo:caida` (unas 17 solicitudes por segundo por Nginx, catálogo y horarios).
+
+| Comprobación                                        | Resultado                                                                                                                                                                                                                                                 |
+| --------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Redis detenido con tráfico** (`--objetivo redis`) | `docker compose stop redis` a los 15 s y `up -d --no-deps redis` a los 40 s: **0 errores en 1 010 solicitudes** (0 en los 10 s de la transición). p95 durante la caída **962 ms**, todo desde PostgreSQL (meta de §4.2: ≤ 2 s); p95 de la corrida, 567 ms |
+| **Reservas durante la caída**                       | 20 reservas, cada una enviada dos veces con la misma `Idempotency-Key`: 20 × 201 y 20 × 200 con la misma cita; en la base **20 citas y 0 solapadas**                                                                                                      |
+| **Alerta y recuperación**                           | En cada caída, **una** línea `CACHE_NO_DISPONIBLE` y **una** `CACHE_RECUPERADA` por réplica (tres caídas: dos corridas y la pausa); al volver Redis, de nuevo claves `bp:v1:*` sin reiniciar las réplicas                                                 |
+| **Redis lento** (`docker pause`)                    | Catálogo por Nginx: las primeras lecturas tardan 0,86, 0,49, 0,28 y 0,23 s (tiempos límite de 100 ms hasta 5 fallos), y luego 16–28 ms con el interruptor abierto, todas 200. Tras `docker unpause` y la pausa de 10 s, se recupera                       |
+| Caída de una réplica (`--objetivo replica`)         | 0 errores en 980 solicitudes; `backend-2` volvió al reparto 13,7 s después de iniciarlo                                                                                                                                                                   |
+| Memoria                                             | Réplicas 52–66 MB, PostgreSQL 57 MB, Redis 4 MB, Nginx 5 MB                                                                                                                                                                                               |
+
+**Ojo con las variables:** `docker compose up -d --no-deps backend-2`, que ejecuta el script, toma las
+variables de la terminal desde la que se lanzó `npm run demo:caida`. Si `PUBLICO_LIMITE_POR_MINUTO` no está
+fijada ahí, la réplica vuelve con el límite de 120 y aparecen 429 (el script lo avisa). Fijarla en la misma
+terminal antes de lanzar la demostración.
+
 ### Pendiente (fuera del alcance de 006)
 
 - **EQ-02 / PR02 · carga de reservas** (20 por segundo durante 5 min, p95 ≤ 1 500 ms): no se mide en

@@ -369,7 +369,7 @@ a ser por instancia, queda una sola alerta y se recupera sin reiniciar (FR-019 a
 
 ### Tests for User Story 4 (MANDATORY - constitution Principle X) ⚠️
 
-- [ ] T045 [P] [US4] **PR05** funcional en `tecnologia/plataforma-barberias/backend/test/integration/escalado/redis-caido.spec.ts`: una instancia con Redis (T016), con `CACHE_FALLOS_PARA_ABRIR=5` y `CACHE_PAUSA_MS=1000`. Casos:
+- [x] T045 [P] [US4] **PR05** funcional en `tecnologia/plataforma-barberias/backend/test/integration/escalado/redis-caido.spec.ts`: una instancia con Redis (T016), con `CACHE_FALLOS_PARA_ABRIR=5` y `CACHE_PAUSA_MS=1000`. Casos:
   - **Lecturas sin Redis:** con Redis detenido, `GET /publico/{slug}` y `/horarios` responden 200 con los datos correctos (iguales a los de la base), cada una en menos de 2 s (escenario 1).
   - **Escrituras sin Redis:** reservar, cancelar y cambiar estado dan los mismos resultados que con Redis, y la doble reserva sigue dando 409 (escenario 2).
   - **Cambio durante la caída:** un cambio del catálogo durante la caída se guarda; al volver Redis, la entrada vieja que pudiera quedar no sobrevive al TTL de prueba (escenario 3; FR-021).
@@ -381,13 +381,13 @@ a ser por instancia, queda una sola alerta y se recupera sin reiniciar (FR-019 a
 
 ### Implementation for User Story 4
 
-- [ ] T046 [US4] Revisar y ajustar las rutas sin Redis para que T045 pase sin cambios de contrato:
+- [x] T046 [US4] Revisar y ajustar las rutas sin Redis para que T045 pase sin cambios de contrato:
   - `ObtenerCatalogoPublico` trata un fallo como ausente y no intenta guardar con el interruptor abierto;
   - `InvalidadorCatalogoPublico` falla en silencio;
   - el respaldo del límite (T043);
   - registros del interruptor en `redis-cache-compartida.ts` con nivel `warn` y una línea por transición.
   - Si `ioredis` emite errores no capturados, agregar el manejador `client.on('error', …)` sin registrar una línea por intento.
-- [ ] T047 [US4] Crear `tecnologia/plataforma-barberias/backend/scripts/demo-caida.ts` y el script `"demo:caida": "tsx scripts/demo-caida.ts"` en `tecnologia/plataforma-barberias/backend/package.json` (R13):
+- [x] T047 [US4] Crear `tecnologia/plataforma-barberias/backend/scripts/demo-caida.ts` y el script `"demo:caida": "tsx scripts/demo-caida.ts"` en `tecnologia/plataforma-barberias/backend/package.json` (R13):
   - opciones `--objetivo replica|redis`, `--url` (por defecto `http://localhost:3000/api/v1`), `--duracion` (60 s), `--parada` (15 s), `--arranque` (40 s) y `--salida` (JSON en `tmp/`);
   - siembra una barbería de prueba como `medir-horarios.ts` y la limpia al terminar;
   - genera tráfico continuo (unas 20 por segundo, catálogo y horarios);
