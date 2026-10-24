@@ -1,9 +1,10 @@
 import { Controller, Get, Param, Query } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
-import { BarberiaNoDisponible, BarberiasApi } from '../../../acceso-barberias';
+import { BarberiasApi } from '../../../acceso-barberias';
 import { Publica } from '../../../../shared';
 import { ConsultarHorarios, type HorariosLibresVista } from '../application/consultar-horarios';
-import { CatalogoPublicoRepository } from '../infrastructure/publico/catalogo-publico.repository';
+import { ObtenerCatalogoPublico } from '../application/obtener-catalogo-publico';
+import { CatalogoPublicoQuery } from '../application/ports/catalogo-publico-query';
 import { ConsultaHorariosDto } from './horarios.dto';
 
 /** Solicitudes por IP y minuto a la vía pública (configurable para las pruebas). */
@@ -13,6 +14,10 @@ const limitePublico = () => Number(process.env.PUBLICO_LIMITE_POR_MINUTO ?? 120)
  * T072 · Vía pública por enlace (RF10, RF11; ADR-021). Solo GET, sin sesión: no lee `Authorization` (un
  * token enviado no cambia nada). El `slug` lo resuelve M01; si no existe, cambió o la barbería está
  * suspendida, la respuesta es la misma: 404 `BARBERIA_NO_DISPONIBLE` (FR-022).
+ *
+ * 006 (T039): el enlace y los datos de la barbería se leen en cada solicitud, en una transacción de M01; el
+ * catálogo sale de la caché compartida por barbería (R07) y los horarios usan esa entrada si ya existe, sin
+ * llenarla, y leen siempre vigente la ocupación del día (R11).
  */
 @Controller('publico')
 @Publica()
@@ -20,7 +25,8 @@ const limitePublico = () => Number(process.env.PUBLICO_LIMITE_POR_MINUTO ?? 120)
 export class PublicoController {
   constructor(
     private readonly barberias: BarberiasApi,
-    private readonly repositorio: CatalogoPublicoRepository,
+    private readonly obtenerCatalogo: ObtenerCatalogoPublico,
+    private readonly consulta: CatalogoPublicoQuery,
     private readonly consultarHorarios: ConsultarHorarios,
   ) {}
 
@@ -28,8 +34,7 @@ export class PublicoController {
   @Get(':slug')
   async catalogo(@Param('slug') slug: string) {
     const { tenantId, barberia } = await this.barberiaDelEnlace(slug);
-    const datos = await this.repositorio.catalogo(tenantId);
-    return { barberia, ...datos };
+    return { barberia, ...(await this.obtenerCatalogo.ejecutar(tenantId)) };
   }
 
   /** GET /api/v1/publico/:slug/horarios · Horas de inicio libres por servicio, fecha y barbero opcional. */
@@ -39,7 +44,11 @@ export class PublicoController {
     @Query() consulta: ConsultaHorariosDto,
   ): Promise<HorariosLibresVista> {
     const { tenantId, barberia } = await this.barberiaDelEnlace(slug);
-    return this.consultarHorarios.ejecutar(this.repositorio.fuente(tenantId), barberia.zonaHoraria, {
+    const entrada = await this.obtenerCatalogo.soloDesdeCache(tenantId);
+    const fuente = entrada
+      ? this.consulta.fuenteDelDia(tenantId, entrada)
+      : this.consulta.fuenteCompleta(tenantId);
+    return this.consultarHorarios.ejecutar(fuente, barberia.zonaHoraria, {
       servicioId: consulta.servicio,
       fecha: consulta.fecha,
       barberoId: consulta.barbero,
@@ -47,10 +56,7 @@ export class PublicoController {
   }
 
   private async barberiaDelEnlace(slug: string) {
-    const tenantId = await this.barberias.resolverSlugPublico(slug);
-    const barberia = await this.barberias.datosPublicos(tenantId);
-    // Suspendida entre las dos lecturas: misma respuesta que un enlace inexistente.
-    if (!barberia) throw new BarberiaNoDisponible();
+    const { tenantId, barberia } = await this.barberias.barberiaPublicaPorEnlace(slug);
     return {
       tenantId,
       // Objeto cerrado con las columnas públicas del contrato (CatalogoPublico.barberia).

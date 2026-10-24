@@ -33,6 +33,10 @@ export abstract class TenantRepository {
   abstract idActivaPorSlug(slug: string): Promise<string | null>;
   /** Datos públicos de una barbería ACTIVA, o null. */
   abstract datosPublicos(id: string): Promise<DatosPublicosBarberia | null>;
+  /** Id y datos públicos de la barbería ACTIVA con ese slug, en una sola consulta (006 R07), o null. */
+  abstract datosPublicosPorSlug(
+    slug: string,
+  ): Promise<{ id: string; barberia: DatosPublicosBarberia } | null>;
   /** Zona horaria y antelación de cancelación de una barbería. */
   abstract configuracionAgenda(id: string): Promise<ConfiguracionAgenda | null>;
 }

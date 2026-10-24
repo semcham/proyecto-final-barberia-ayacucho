@@ -13,6 +13,25 @@ import { EnlaceNoDisponible } from '../domain/errores';
 const INTENTOS_DE_SLUG = 5;
 const VIOLACION_DE_UNICIDAD = '23505';
 
+/** Solo columnas públicas (FR-018 de 002). */
+function aDatosPublicos(fila: {
+  name: string;
+  slug: string;
+  address: string | null;
+  phone: string | null;
+  description: string | null;
+  timezone: string;
+}): DatosPublicosBarberia {
+  return {
+    nombre: fila.name,
+    slug: fila.slug,
+    direccion: fila.address,
+    telefono: fila.phone,
+    descripcion: fila.description,
+    zonaHoraria: fila.timezone,
+  };
+}
+
 @Injectable()
 export class KyselyTenantRepository extends TenantRepository {
   constructor(private readonly uow: KyselyUnitOfWork) {
@@ -119,16 +138,18 @@ export class KyselyTenantRepository extends TenantRepository {
       .where('id', '=', id)
       .where('status', '=', 'ACTIVA')
       .executeTakeFirst();
-    return fila
-      ? {
-          nombre: fila.name,
-          slug: fila.slug,
-          direccion: fila.address,
-          telefono: fila.phone,
-          descripcion: fila.description,
-          zonaHoraria: fila.timezone,
-        }
-      : null;
+    return fila ? aDatosPublicos(fila) : null;
+  }
+
+  async datosPublicosPorSlug(slug: string): Promise<{ id: string; barberia: DatosPublicosBarberia } | null> {
+    const fila = await this.uow
+      .transaccionActual()
+      .selectFrom('tenant')
+      .select(['id', 'name', 'slug', 'address', 'phone', 'description', 'timezone'])
+      .where('slug', '=', slug)
+      .where('status', '=', 'ACTIVA')
+      .executeTakeFirst();
+    return fila ? { id: fila.id, barberia: aDatosPublicos(fila) } : null;
   }
 
   async configuracionAgenda(id: string): Promise<ConfiguracionAgenda | null> {

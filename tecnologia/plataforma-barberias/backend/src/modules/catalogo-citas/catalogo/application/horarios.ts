@@ -12,6 +12,7 @@ import {
   horarioDesde,
   type TramoVista,
 } from './comun';
+import { InvalidadorCatalogoPublico } from './invalidador-catalogo-publico';
 import { BarberoRepository, CitasActivasQuery, HorarioRepository } from './ports/catalogo-repositorios';
 
 export interface ComandoHorario {
@@ -51,16 +52,19 @@ export class ReemplazarHorarioAtencion {
     private readonly barberias: BarberiasApi,
     private readonly reloj: Clock,
     private readonly auditoria: AuditLog,
+    private readonly invalidador: InvalidadorCatalogoPublico,
   ) {}
 
   async ejecutar(actor: Actor, comando: ComandoHorario): Promise<HorarioVista> {
     await this.autorizacion.exigir(actor, 'GESTIONAR_HORARIO_ATENCION');
     const nuevo = horarioDesde(comando.tramos);
-    return this.uow.ejecutar(TenantId.de(actor.tenantId), async () => {
+    const tenantId = TenantId.de(actor.tenantId);
+    return this.uow.ejecutar(tenantId, async () => {
       const zona = new ZonaHoraria((await this.barberias.configuracionAgenda()).zonaHoraria);
       const afectadas = fueraDelHorario(await this.citas.futuras({}, this.reloj.ahora()), nuevo, zona);
       exigirConfirmacion(afectadas, comando.confirmarConflictos, zona);
       await this.horarios.reemplazarAtencion(nuevo);
+      this.invalidador.catalogoCambio(tenantId);
       if (afectadas.length > 0) {
         await this.auditoria.registrar({
           accion: 'CAMBIO_CON_CONFLICTO',

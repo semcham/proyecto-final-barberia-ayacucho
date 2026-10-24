@@ -4,23 +4,14 @@ import { Configuracion, type Database, HorarioSemanal, type TenantId } from '../
 import { LecturaPublica } from '../../../../../shared/lectura-publica';
 import { ESTADOS_ACTIVOS } from '../../../citas/domain/estado-cita';
 import {
+  type CatalogoPublicoDatos,
+  CatalogoPublicoQuery,
+} from '../../application/ports/catalogo-publico-query';
+import {
   type ConsultaDelDia,
   type DatosDelDia,
   FuenteDisponibilidad,
 } from '../../application/ports/fuente-disponibilidad';
-
-/** Catálogo público sin los datos de la barbería (esos los da M01, `BarberiasApi.datosPublicos`). */
-export interface CatalogoPublicoDatos {
-  horario: { tramos: { diaSemana: number; inicio: string; fin: string }[] };
-  servicios: {
-    id: string;
-    nombre: string;
-    descripcion: string | null;
-    precio: string;
-    duracionMinutos: number;
-  }[];
-  barberos: { id: string; nombre: string; servicioIds: string[] }[];
-}
 
 const hhmm = (hora: string) => hora.slice(0, 5);
 const minutos = (hora: string) => HorarioSemanal.minutosDe(hora);
@@ -29,17 +20,18 @@ const minutos = (hora: string) => HorarioSemanal.minutosDe(hora);
  * T070 · Lecturas de la vía pública por enlace (ADR-021). Es la única pieza que usa el pool del rol
  * `barberias_publico` (regla lectura-publica-confinada de PR14):
  *
- * - recibe el tenant que el controlador ya resolvió desde el `slug` con `BarberiasApi.resolverSlugPublico`;
+ * - recibe el tenant que el controlador ya resolvió desde el `slug` con `BarberiasApi.barberiaPublicaPorEnlace`;
  * - cada lectura corre en `LecturaPublica.ejecutar(tenantId, …)`: transacción de solo lectura con el tenant
  *   fijado, de modo que RLS filtra las filas; además cada consulta filtra por ese tenant;
  * - selecciona SOLO columnas de la lista cerrada de la migración 0012 (pedir otra falla en PostgreSQL) y
  *   devuelve objetos cerrados, sin motivos de bloqueo ni datos de clientes.
  */
 @Injectable()
-export class CatalogoPublicoRepository implements OnModuleDestroy {
+export class CatalogoPublicoRepository extends CatalogoPublicoQuery implements OnModuleDestroy {
   private readonly lectura: LecturaPublica;
 
   constructor(configuracion: Configuracion) {
+    super();
     this.lectura = LecturaPublica.conectar(configuracion.databaseUrlPublico, configuracion.pools.publicoMax);
   }
 
@@ -106,8 +98,37 @@ export class CatalogoPublicoRepository implements OnModuleDestroy {
     });
   }
 
-  /** Fuente de disponibilidad del cálculo de horarios para la barbería del enlace. */
-  fuente(tenantId: TenantId): FuenteDisponibilidad {
+  /**
+   * Fuente con el catálogo de la caché (006 R11): servicio, horario de atención y candidatos salen de
+   * `catalogo`; de la base solo se lee la ocupación del día, en una transacción con tres consultas.
+   */
+  fuenteDelDia(tenantId: TenantId, catalogo: CatalogoPublicoDatos): FuenteDisponibilidad {
+    const lectura = this.lectura;
+    return new (class extends FuenteDisponibilidad {
+      async datosDelDia(consulta: ConsultaDelDia): Promise<DatosDelDia> {
+        const servicio = catalogo.servicios.find((s) => s.id === consulta.servicioId);
+        if (!servicio) return { duracionMin: null, atencion: [], barberos: [], ocupacion: [] };
+        const dia = consulta.fecha.diaSemana;
+        const atencion = catalogo.horario.tramos
+          .filter((t) => t.diaSemana === dia)
+          .map((t) => ({ inicioMin: minutos(t.inicio), finMin: minutos(t.fin) }));
+        // Mismo orden que la consulta de candidatos: el catálogo ya viene por nombre e id.
+        const ids = catalogo.barberos
+          .filter((b) => b.servicioIds.includes(consulta.servicioId))
+          .filter((b) => !consulta.barberoId || b.id === consulta.barberoId)
+          .map((b) => b.id);
+        const base = { duracionMin: servicio.duracionMinutos, atencion };
+        if (ids.length === 0) return { ...base, barberos: [], ocupacion: [] };
+        return {
+          ...base,
+          ...(await lectura.ejecutar(tenantId, (tx) => leerOcupacion(tx, tenantId.valor, consulta, ids))),
+        };
+      }
+    })();
+  }
+
+  /** Fuente que lee todo de la base (sin entrada en caché): seis consultas en una transacción. */
+  fuenteCompleta(tenantId: TenantId): FuenteDisponibilidad {
     const lectura = this.lectura;
     return new (class extends FuenteDisponibilidad {
       datosDelDia(consulta: ConsultaDelDia): Promise<DatosDelDia> {
@@ -158,6 +179,21 @@ async function leerDia(
     return { duracionMin: servicio.duration_min, atencion: [], barberos: [], ocupacion: [] };
   }
 
+  return {
+    duracionMin: servicio.duration_min,
+    atencion: atencion.map((t) => ({ inicioMin: minutos(t.start_time), finMin: minutos(t.end_time) })),
+    ...(await leerOcupacion(tx, tenant, consulta, ids)),
+  };
+}
+
+/** Disponibilidad semanal, bloqueos y citas activas del día de los candidatos `ids` (en ese orden). */
+async function leerOcupacion(
+  tx: Transaction<Database>,
+  tenant: string,
+  consulta: ConsultaDelDia,
+  ids: string[],
+): Promise<Pick<DatosDelDia, 'barberos' | 'ocupacion'>> {
+  const dia = consulta.fecha.diaSemana;
   const disponibilidad = await tx
     .selectFrom('working_hours')
     .select(['barber_id', 'start_time', 'end_time'])
@@ -185,8 +221,6 @@ async function leerDia(
     .execute();
 
   return {
-    duracionMin: servicio.duration_min,
-    atencion: atencion.map((t) => ({ inicioMin: minutos(t.start_time), finMin: minutos(t.end_time) })),
     barberos: ids.map((barberoId) => ({
       barberoId,
       activo: true,

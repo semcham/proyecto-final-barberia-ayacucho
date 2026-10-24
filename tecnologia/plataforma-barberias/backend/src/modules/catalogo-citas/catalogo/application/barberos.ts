@@ -8,6 +8,7 @@ import { DatoInvalido, NoEncontrado } from '../domain/errores';
 import { LimiteBarberos } from '../domain/limite-barberos';
 import { AutorizacionCatalogoCitas } from './autorizacion';
 import { aBarberoVista, type BarberoVista, exigirConfirmacion } from './comun';
+import { InvalidadorCatalogoPublico } from './invalidador-catalogo-publico';
 import { BarberoRepository, CitasActivasQuery, ServicioRepository } from './ports/catalogo-repositorios';
 
 export interface DatosNuevoBarbero {
@@ -79,6 +80,7 @@ export class CrearBarbero {
     private readonly uow: UnitOfWork,
     private readonly barberos: BarberoRepository,
     private readonly reglas: ReglasBarbero,
+    private readonly invalidador: InvalidadorCatalogoPublico,
   ) {}
 
   async ejecutar(actor: Actor, datos: DatosNuevoBarbero): Promise<BarberoVista> {
@@ -94,6 +96,7 @@ export class CrearBarbero {
       await this.reglas.validarUsuario(barbero.usuarioId);
       await this.reglas.exigirCupo(tenantId);
       await this.barberos.crear(barbero);
+      this.invalidador.catalogoCambio(tenantId);
       return aBarberoVista(barbero);
     });
   }
@@ -115,6 +118,7 @@ export class ActualizarBarbero {
     private readonly barberias: BarberiasApi,
     private readonly reloj: Clock,
     private readonly auditoria: AuditLog,
+    private readonly invalidador: InvalidadorCatalogoPublico,
   ) {}
 
   async ejecutar(actor: Actor, id: string, cambios: CambiosBarbero): Promise<BarberoVista> {
@@ -149,6 +153,8 @@ export class ActualizarBarbero {
       }
 
       await this.barberos.actualizar(barbero);
+      // Invalida aunque solo cambie el usuario vinculado: invalidar de más es seguro (cache-claves.md §3).
+      this.invalidador.catalogoCambio(tenantId);
       if (desactiva) {
         await this.auditoria.registrar({
           accion: 'BARBERO_DESACTIVADO',

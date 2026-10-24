@@ -40,7 +40,10 @@ import { DisponibilidadController } from './catalogo/presentation/disponibilidad
 import { HorarioAtencionController } from './catalogo/presentation/horario-atencion.controller';
 import { ServiciosController } from './catalogo/presentation/servicios.controller';
 import { ConsultarHorarios } from './catalogo/application/consultar-horarios';
+import { InvalidadorCatalogoPublico } from './catalogo/application/invalidador-catalogo-publico';
+import { ObtenerCatalogoPublico } from './catalogo/application/obtener-catalogo-publico';
 import { CatalogQuery } from './catalogo/application/ports/catalog-query';
+import { CatalogoPublicoQuery } from './catalogo/application/ports/catalogo-publico-query';
 import { FuenteDisponibilidad } from './catalogo/application/ports/fuente-disponibilidad';
 import { KyselyCatalogQuery } from './catalogo/infrastructure/kysely-catalog-query';
 import { FuenteDisponibilidadKysely } from './catalogo/infrastructure/kysely-fuente-disponibilidad';
@@ -103,6 +106,10 @@ import { HistorialController } from './citas/presentation/historial.controller';
     // vía pública por cada barbería del enlace (ADR-021).
     { provide: FuenteDisponibilidad, useClass: FuenteDisponibilidadKysely },
     CatalogoPublicoRepository,
+    // Catálogo público en la caché compartida (006 US2): mismo repositorio detrás del puerto.
+    { provide: CatalogoPublicoQuery, useExisting: CatalogoPublicoRepository },
+    ObtenerCatalogoPublico,
+    InvalidadorCatalogoPublico,
     ConsultarHorarios,
     { provide: CitaRepository, useClass: CitaRepositoryPostgres },
     ReservarCita,

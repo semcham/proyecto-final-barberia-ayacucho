@@ -1,3 +1,7 @@
+import { randomUUID } from 'node:crypto';
+import { ConsultarHorarios } from '../../../src/modules/catalogo-citas/catalogo/application/consultar-horarios';
+import { CatalogoPublicoQuery } from '../../../src/modules/catalogo-citas/catalogo/application/ports/catalogo-publico-query';
+import { TenantId } from '../../../src/shared';
 import { type AppDePrueba, crearApp } from '../../helpers/app';
 import {
   sembrarBarbero,
@@ -111,6 +115,55 @@ describe('Horarios libres', () => {
     expect((await publicos(`servicio=${e.servicioId}&fecha=${fechaEnDias(-1)}`)).body.horas).toEqual([]);
     const otra = await barberiaParaReservar();
     expect((await publicos(`servicio=${otra.servicioId}&fecha=${fecha}`)).body.horas).toEqual([]);
+  });
+
+  it('006 (T035): la fuente con el catálogo en caché y la fuente completa dan los mismos horarios', async () => {
+    const g = await barberiaParaReservar();
+    const dia = fechaEnDias(7);
+    const tenantId = TenantId.de(g.barberia.tenantId);
+    // Un barbero sin el servicio, uno con disponibilidad parcial, un bloqueo y una cita.
+    await sembrarBarbero({ tenantId: g.barberia.tenantId, nombre: 'Beto', servicios: [] });
+    const { barberoId: parcial } = await sembrarBarbero({
+      tenantId: g.barberia.tenantId,
+      nombre: 'Carla',
+      servicios: [g.servicioId],
+    });
+    await sembrarDisponibilidad(
+      g.barberia.tenantId,
+      parcial,
+      SEMANA_COMPLETA.map((t) => ({ ...t, inicio: '13:00', fin: '17:00' })),
+    );
+    await sembrarBloqueo({
+      tenantId: g.barberia.tenantId,
+      barberoId: g.barberoId,
+      inicio: new Date(horaLima(dia, '10:00')),
+      fin: new Date(horaLima(dia, '11:15')),
+    });
+    const cliente = await sembrarCliente({ tenantId: g.barberia.tenantId });
+    await sembrarCita({
+      tenantId: g.barberia.tenantId,
+      barberoId: g.barberoId,
+      servicioId: g.servicioId,
+      clienteId: cliente.clienteId,
+      inicio: new Date(horaLima(dia, '16:00')),
+    });
+
+    const consulta = prueba.app.get(CatalogoPublicoQuery);
+    const consultar = prueba.app.get(ConsultarHorarios);
+    const catalogo = await consulta.catalogo(tenantId);
+    for (const barberoId of [undefined, g.barberoId, parcial]) {
+      for (const servicioId of [g.servicioId, randomUUID()]) {
+        const pedido = { servicioId, fecha: dia, barberoId };
+        const conCache = await consultar.ejecutar(
+          consulta.fuenteDelDia(tenantId, catalogo),
+          'America/Lima',
+          pedido,
+        );
+        const completa = await consultar.ejecutar(consulta.fuenteCompleta(tenantId), 'America/Lima', pedido);
+        expect(conCache.horas).toEqual(completa.horas);
+        if (servicioId === g.servicioId) expect(completa.horas.length).toBeGreaterThan(0);
+      }
+    }
   });
 
   it('humo de rendimiento: un día con 5 barberos y 60 citas se calcula en menos de 200 ms', async () => {

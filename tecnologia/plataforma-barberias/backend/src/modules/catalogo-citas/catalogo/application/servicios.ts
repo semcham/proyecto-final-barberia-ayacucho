@@ -6,6 +6,7 @@ import { DatoInvalido, NoEncontrado } from '../domain/errores';
 import { type DatosServicio, Servicio } from '../domain/servicio';
 import { AutorizacionCatalogoCitas } from './autorizacion';
 import { aServicioVista, exigirConfirmacion, type ServicioVista } from './comun';
+import { InvalidadorCatalogoPublico } from './invalidador-catalogo-publico';
 import { CitasActivasQuery, ServicioRepository } from './ports/catalogo-repositorios';
 
 export interface CambiosServicio extends Partial<DatosServicio> {
@@ -37,13 +38,16 @@ export class CrearServicio {
     private readonly autorizacion: AutorizacionCatalogoCitas,
     private readonly uow: UnitOfWork,
     private readonly servicios: ServicioRepository,
+    private readonly invalidador: InvalidadorCatalogoPublico,
   ) {}
 
   async ejecutar(actor: Actor, datos: DatosServicio): Promise<ServicioVista> {
     await this.autorizacion.exigir(actor, 'GESTIONAR_SERVICIOS');
     const servicio = Servicio.crear(uuidv7(), datos);
-    return this.uow.ejecutar(TenantId.de(actor.tenantId), async () => {
+    const tenantId = TenantId.de(actor.tenantId);
+    return this.uow.ejecutar(tenantId, async () => {
       await this.servicios.crear(servicio);
+      this.invalidador.catalogoCambio(tenantId);
       return aServicioVista(servicio);
     });
   }
@@ -64,6 +68,7 @@ export class ActualizarServicio {
     private readonly barberias: BarberiasApi,
     private readonly reloj: Clock,
     private readonly auditoria: AuditLog,
+    private readonly invalidador: InvalidadorCatalogoPublico,
   ) {}
 
   async ejecutar(actor: Actor, id: string, cambios: CambiosServicio): Promise<ServicioVista> {
@@ -72,8 +77,9 @@ export class ActualizarServicio {
     if (activo === undefined && Object.values(datos).every((v) => v === undefined)) {
       throw new DatoInvalido('cuerpo', 'sin_cambios');
     }
+    const tenantId = TenantId.de(actor.tenantId);
 
-    return this.uow.ejecutar(TenantId.de(actor.tenantId), async () => {
+    return this.uow.ejecutar(tenantId, async () => {
       const servicio = await this.servicios.porId(id);
       if (!servicio) throw new NoEncontrado();
       servicio.editar(datos);
@@ -89,6 +95,7 @@ export class ActualizarServicio {
       }
 
       await this.servicios.actualizar(servicio);
+      this.invalidador.catalogoCambio(tenantId);
       if (desactiva) {
         await this.auditoria.registrar({
           accion: 'SERVICIO_DESACTIVADO',

@@ -32,11 +32,24 @@ export class BarberiasApiImpl extends BarberiasApi {
   }
 
   async resolverSlugPublico(slug: string): Promise<TenantId> {
-    if (typeof slug !== 'string' || slug.length > LARGO_MAXIMO_SLUG || !FORMATO_SLUG.test(slug)) {
-      throw new BarberiaNoDisponible();
-    }
+    exigirFormato(slug);
     const id = await this.uow.ejecutarSinTenant(() => this.tenants.idActivaPorSlug(slug));
     if (!id) throw new BarberiaNoDisponible();
     return TenantId.de(id);
+  }
+
+  async barberiaPublicaPorEnlace(
+    slug: string,
+  ): Promise<{ tenantId: TenantId; barberia: DatosPublicosBarberia }> {
+    exigirFormato(slug);
+    const fila = await this.uow.ejecutarSinTenant(() => this.tenants.datosPublicosPorSlug(slug));
+    if (!fila) throw new BarberiaNoDisponible();
+    return { tenantId: TenantId.de(fila.id), barberia: fila.barberia };
+  }
+}
+
+function exigirFormato(slug: string): void {
+  if (typeof slug !== 'string' || slug.length > LARGO_MAXIMO_SLUG || !FORMATO_SLUG.test(slug)) {
+    throw new BarberiaNoDisponible();
   }
 }

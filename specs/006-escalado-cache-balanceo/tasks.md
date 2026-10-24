@@ -252,15 +252,15 @@ instancia; ninguna fuga entre barberías.
 
 ### Tests for User Story 2 (MANDATORY - constitution Principle X) ⚠️
 
-- [ ] T029 [P] [US2] Prueba unitaria de la entrada en `tecnologia/plataforma-barberias/backend/test/unit/catalogo/entrada-catalogo.spec.ts`:
+- [x] T029 [P] [US2] Prueba unitaria de la entrada en `tecnologia/plataforma-barberias/backend/test/unit/catalogo/entrada-catalogo.spec.ts`:
   - serializar y leer una entrada `v: 1` con sus campos ([data-model.md](data-model.md) §2.1);
   - otra versión o un JSON ilegible equivale a ausente;
   - la entrada no admite campos fuera de la lista: un objeto con `telefono` de un cliente o el `reason` de un bloqueo no se serializa.
-- [ ] T030 [P] [US2] Integración de M01 en `tecnologia/plataforma-barberias/backend/test/integration/barberias/barberias-api.spec.ts` (ampliar):
+- [x] T030 [P] [US2] Integración de M01 en `tecnologia/plataforma-barberias/backend/test/integration/barberias/barberias-api.spec.ts` (ampliar):
   - `barberiaPublicaPorEnlace(slug)` devuelve `tenantId` y los datos públicos en **una** transacción;
   - un enlace inexistente, mal formado o de una barbería suspendida da `BarberiaNoDisponible`, igual que `resolverSlugPublico`;
   - tras cambiar el enlace, el anterior da `BarberiaNoDisponible` al instante.
-- [ ] T031 [P] [US2] Integración de la caché del catálogo en `tecnologia/plataforma-barberias/backend/test/integration/escalado/cache-catalogo.spec.ts`: dos instancias (A y B) sobre el mismo PostgreSQL y el mismo Redis (T016, T017). Casos:
+- [x] T031 [P] [US2] Integración de la caché del catálogo en `tecnologia/plataforma-barberias/backend/test/integration/escalado/cache-catalogo.spec.ts`: dos instancias (A y B) sobre el mismo PostgreSQL y el mismo Redis (T016, T017). Casos:
   - **Fallo y acierto:** la primera visita por A lee la base y crea `bp:v1:t:{id}:catalogo-publico`; la segunda, por B, no lee el catálogo de la base (espía en el puerto `CatalogoPublicoQuery`) y devuelve el mismo cuerpo (escenarios 1 y 2).
   - **Matriz (FR-023, SC-003):** para cada fila con ✓ en la columna "Catálogo" de [contracts/cache-claves.md](contracts/cache-claves.md) §3 (crear servicio, editar precio, desactivar y reactivar servicio, crear barbero, cambiar nombre, desactivar barbero, cambiar servicios asignados, reemplazar horario de atención), hacer el cambio por A con la sesión del propietario y comprobar por B que la visita siguiente lo muestra. Se genera desde la tabla para que una fila nueva sin caso haga fallar la prueba.
   - **Enlace:** `ActualizarBarberia` cambia nombre o enlace y la visita siguiente, por B, ya los refleja; el enlace anterior da 404 `BARBERIA_NO_DISPONIBLE` (escenario 4).
@@ -270,7 +270,7 @@ instancia; ninguna fuga entre barberías.
   - **Horarios:** con la entrada en caché, crear una cita o un bloqueo cambia los horarios libres en la visita siguiente, porque se leen vigentes (escenario 9).
   - **Desactivada:** con `CACHE_CATALOGO_ACTIVA=false` no se escribe ninguna clave `bp:v1:*`.
   - **Contrato:** la respuesta de `GET /publico/{slug}` sigue validando contra el esquema de 002, en ambas variantes.
-- [ ] T032 [P] [US2] **PR09** de la caché en `tecnologia/plataforma-barberias/backend/test/integration/aislamiento/aislamiento-cache.spec.ts` (FR-022, SC-004):
+- [x] T032 [P] [US2] **PR09** de la caché en `tecnologia/plataforma-barberias/backend/test/integration/aislamiento/aislamiento-cache.spec.ts` (FR-022, SC-004):
   - Barberías A y B con servicios y barberos de **nombres iguales**, sembradas con datos canario: correos y teléfonos únicos de clientes y del personal, motivos de bloqueo y nombres de clientes en citas.
   - Tras visitar ambos enlaces y sus horarios: cada clave `bp:v1:t:*` contiene el `tenantId` de la barbería cuyos datos guarda (se compara el contenido con la base); ninguna clave contiene un `slug`; ningún valor en Redis contiene un dato canario.
   - `/publico/{slug-A}` nunca devuelve ids de servicios ni barberos de B.
@@ -279,40 +279,40 @@ instancia; ninguna fuga entre barberías.
 
 ### Implementation for User Story 2
 
-- [ ] T033 [US2] Agregar `barberiaPublicaPorEnlace(slug): Promise<{ tenantId: TenantId; barberia: DatosPublicosBarberia }>` en M01:
+- [x] T033 [US2] Agregar `barberiaPublicaPorEnlace(slug): Promise<{ tenantId: TenantId; barberia: DatosPublicosBarberia }>` en M01:
   - método abstracto en `tecnologia/plataforma-barberias/backend/src/modules/acceso-barberias/api-publica.ts`;
   - implementación en `tecnologia/plataforma-barberias/backend/src/modules/acceso-barberias/barberias/application/barberias-api.ts`: misma validación de formato que `resolverSlugPublico`, una sola `ejecutarSinTenant`;
   - consulta única `datosPublicosPorSlug` (barbería activa por enlace, con columnas públicas) en `tecnologia/plataforma-barberias/backend/src/modules/acceso-barberias/barberias/application/ports/tenant-repository.ts` y `…/infrastructure/kysely-tenant-repository.ts`;
   - `resolverSlugPublico` y `datosPublicos` se mantienen para el registro, el inicio de sesión y el cambio de barbería;
   - hace pasar T030.
-- [ ] T034 [US2] Crear el puerto `CatalogoPublicoQuery` en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/catalogo/application/ports/catalogo-publico-query.ts`:
+- [x] T034 [US2] Crear el puerto `CatalogoPublicoQuery` en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/catalogo/application/ports/catalogo-publico-query.ts`:
   - `catalogo(tenantId): Promise<CatalogoPublicoDatos>` (mueve aquí la interfaz `CatalogoPublicoDatos`);
   - `fuenteDelDia(tenantId, catalogo): FuenteDisponibilidad`, una fuente que toma el servicio, el horario de atención y los barberos candidatos del `catalogo` recibido y lee de la base solo la disponibilidad semanal, los bloqueos y las citas del día, en **una** transacción;
   - `fuenteCompleta(tenantId): FuenteDisponibilidad`, una fuente que lee todo (servicio, horario de atención, barberos candidatos, disponibilidad, bloqueos y citas) en **una sola** transacción. Se usa cuando no hay entrada en caché: caché desactivada, fallo o Redis caído ([research.md](research.md) R07 y R11).
-- [ ] T035 [US2] Adaptar `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/catalogo/infrastructure/publico/catalogo-publico.repository.ts` para que implemente `CatalogoPublicoQuery`:
+- [x] T035 [US2] Adaptar `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/catalogo/infrastructure/publico/catalogo-publico.repository.ts` para que implemente `CatalogoPublicoQuery`:
   - `fuenteDelDia` con una transacción `LecturaPublica` y tres consultas (`working_hours`, `time_off` y `appointment`, columnas de ADR-021);
   - candidatos en el mismo orden que hoy (nombre e id);
   - `fuenteCompleta` es el actual `fuente(tenantId)` (`leerDia` con 6 consultas en una transacción), renombrado; actualizar sus usos en las pruebas;
   - una prueba en `tecnologia/plataforma-barberias/backend/test/integration/catalogo/horarios.spec.ts` (ampliar) comprueba que ambas fuentes dan los mismos horarios libres para los mismos datos.
-- [ ] T036 [US2] Crear `ObtenerCatalogoPublico` en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/catalogo/application/obtener-catalogo-publico.ts`:
+- [x] T036 [US2] Crear `ObtenerCatalogoPublico` en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/catalogo/application/obtener-catalogo-publico.ts`:
   - **cache-aside con generación** (R08): `obtener` → si está ausente, `leerGeneracion` → `CatalogoPublicoQuery.catalogo` → `guardarSiGeneracion` con el TTL de la configuración;
   - con `cache.catalogoActiva=false`, va directo a la consulta;
   - agrega `soloDesdeCache(tenantId): Promise<CatalogoPublicoDatos | null>`, que lee la entrada sin llenarla. Devuelve `null` si la caché está desactivada, si hay un fallo o si Redis está caído. Lo usan los horarios;
   - la serialización de la entrada `v: 1` con lista cerrada de campos, en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/catalogo/application/entrada-catalogo.ts`;
   - hace pasar T029.
-- [ ] T037 [US2] Crear `InvalidadorCatalogoPublico` en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/catalogo/application/invalidador-catalogo-publico.ts`:
+- [x] T037 [US2] Crear `InvalidadorCatalogoPublico` en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/catalogo/application/invalidador-catalogo-publico.ts`:
   - `catalogoCambio(tenantId)` hace `uow.alConfirmar(() => cache.invalidar(ClavesCache.catalogoPublico(t), ClavesCache.generacionCatalogo(t)))`.
-- [ ] T038 [US2] Llamar al invalidador dentro de la transacción de cada caso de uso de la matriz:
+- [x] T038 [US2] Llamar al invalidador dentro de la transacción de cada caso de uso de la matriz:
   - `CrearServicio` y `ActualizarServicio` en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/catalogo/application/servicios.ts`;
   - `CrearBarbero` y `ActualizarBarbero` en `…/catalogo/application/barberos.ts`;
   - `ReemplazarHorarioAtencion` en `…/catalogo/application/horarios.ts`.
   - **No** llamarlo desde `ReemplazarDisponibilidad` ni desde los bloqueos (fuera de la entrada).
-- [ ] T039 [US2] Cambiar `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/catalogo/presentation/publico.controller.ts`:
+- [x] T039 [US2] Cambiar `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/catalogo/presentation/publico.controller.ts`:
   - `barberiaDelEnlace` usa `barberiaPublicaPorEnlace` (una transacción);
   - `GET :slug` devuelve `{ barberia, ...await obtenerCatalogo.ejecutar(tenantId) }`;
   - `GET :slug/horarios`: si `soloDesdeCache(tenantId)` devuelve la entrada, pasa `repositorio.fuenteDelDia(tenantId, entrada)` a `ConsultarHorarios`; si no, `repositorio.fuenteCompleta(tenantId)`. Siempre es una sola transacción pública, además de la de M01;
   - el contrato de 002 no cambia.
-- [ ] T040 [US2] Registrar `CatalogoPublicoQuery` (con `useExisting` del repositorio), `ObtenerCatalogoPublico` e `InvalidadorCatalogoPublico` en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/catalogo-citas.module.ts`.
+- [x] T040 [US2] Registrar `CatalogoPublicoQuery` (con `useExisting` del repositorio), `ObtenerCatalogoPublico` e `InvalidadorCatalogoPublico` en `tecnologia/plataforma-barberias/backend/src/modules/catalogo-citas/catalogo-citas.module.ts`.
   - Ejecutar la suite de 002 (`lectura-publica`, `publico.contract`, `horarios`, `rbac-002`, `entradas`) y comprobar que sigue en verde.
   - Hace pasar T031 y T032.
 

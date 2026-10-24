@@ -54,4 +54,12 @@ export abstract class BarberiasApi {
    * en todos los casos (FR-022).
    */
   abstract resolverSlugPublico(slug: string): Promise<TenantId>;
+  /**
+   * Tenant y datos públicos de la barbería activa con ese enlace, leídos juntos en una sola transacción
+   * (006 R07): la vía pública los pide en cada solicitud, nunca de la caché. Mismos errores que
+   * `resolverSlugPublico`.
+   */
+  abstract barberiaPublicaPorEnlace(
+    slug: string,
+  ): Promise<{ tenantId: TenantId; barberia: DatosPublicosBarberia }>;
 }
