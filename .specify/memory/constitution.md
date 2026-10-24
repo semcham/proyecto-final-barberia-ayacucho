@@ -1,6 +1,44 @@
 <!--
 Sync Impact Report
 ==================
+Version change: 1.2.0 → 1.3.0
+Bump rationale: MINOR. Se amplía materialmente la guía del principio III con una tercera excepción
+acotada, sin eliminar ni redefinir nada: todo lo que cumplía la versión 1.2.0 (funcionalidades 001,
+002 y 006) sigue cumpliendo. Enmienda aprobada por el responsable el 2026-10-24, junto con ADR-031,
+al aprobar el plan de la funcionalidad 003.
+
+Modified principles:
+  - III. Aislamiento por barbería (NO NEGOCIABLE) — se añade la excepción acotada "operaciones de
+    la plataforma": el administrador de la plataforma, que no pertenece a ninguna barbería, opera
+    sobre barberías, suscripciones, pagos y comprobantes con una cuenta y una sesión propias de la
+    plataforma, con segundo factor obligatorio y un token sin tenant que no sirve en operaciones de
+    una barbería. Sus lecturas entre barberías usan un rol sin `BYPASSRLS`, de solo lectura y con
+    permisos por columna. Cada escritura afecta a una sola barbería, identificada en la ruta, con su
+    tenant fijado, RLS y auditoría en esa barbería. No ve citas, clientes, catálogo ni usuarios. Las
+    notificaciones del proveedor de pagos y los trabajos en segundo plano pueden localizar el tenant
+    con esa lectura, por clave exacta, nunca con datos del cliente. Origen:
+    specs/003-suscripciones-pagos/research.md R06 y Complexity Tracking del plan de 003.
+Added principles: ninguno
+Added sections: ninguna
+Removed sections: ninguna
+
+Templates requiring updates:
+  ✅ .specify/templates/plan-template.md — puerta III de la Constitution Check (versión 1.3.0)
+  ✅ .specify/templates/spec-template.md — revisado; sin cambios necesarios
+  ✅ .specify/templates/tasks-template.md — revisado; sin cambios necesarios
+  ✅ .claude/skills/speckit-*/SKILL.md — revisados; sin referencias al principio III
+  ✅ docs/01-analisis-de-sistema/07-decisiones-arquitectonicas.md — ADR-022, ADR-023, ADR-024 y
+     ADR-031 Aceptados
+  ✅ docs/02-arquitectura-software/multi-tenancy-y-datos.md — control 1 con las tres excepciones,
+     rol barberias_plataforma y casos especiales del administrador, del webhook y de las tareas
+  ✅ specs/003-suscripciones-pagos/plan.md — puerta III en verde
+  ✅ specs/001-registro-acceso-barberia/plan.md, specs/002-catalogo-citas-cliente/plan.md y
+     specs/006-escalado-cache-balanceo/plan.md — sin cambios: no usan la excepción nueva
+
+Follow-up TODOs: ninguno. ADR-031 (operaciones de la plataforma) está Aceptado desde el
+2026-10-24; la excepción no puede usarse fuera de lo que ese ADR describe.
+
+--- Historial: informe de la versión 1.2.0 ---
 Version change: 1.1.0 → 1.2.0
 Bump rationale: MINOR. Se amplía materialmente la guía del principio III con una segunda
 excepción acotada, sin eliminar ni redefinir nada: todo lo que cumplía la versión 1.1.0
@@ -139,12 +177,27 @@ intercambiables.
   (cuenta, membresía, perfil de cliente, consentimiento y sesión) y MUST NOT leer ni modificar
   otros datos de negocio. Una vez emitida la sesión, el tenant MUST salir solo del token; ninguna
   operación de negocio con sesión MUST aceptar el `slug`. La decisión se registra en ADR-020.
+- **Excepción acotada: operaciones de la plataforma.** El administrador de la plataforma, que no
+  pertenece a ninguna barbería, MAY operar sobre barberías, suscripciones, pagos y comprobantes de
+  cualquier barbería. Su cuenta y su sesión MUST ser propias de la plataforma, con segundo factor
+  obligatorio, y su token MUST NOT llevar tenant ni servir en operaciones de una barbería. Sus
+  lecturas entre barberías MUST hacerse con un rol de base de datos sin `BYPASSRLS`, de solo
+  lectura y con permisos por columna sobre esas tablas. Cada escritura MUST afectar a una sola
+  barbería, identificada por el administrador en la ruta, en una transacción con ese tenant fijado
+  y con RLS, y MUST auditarse en esa barbería. MUST NOT ver ni modificar citas, clientes, catálogo
+  ni usuarios. Las notificaciones del proveedor de pagos y los trabajos en segundo plano MAY
+  localizar el tenant con esa misma lectura, por una clave exacta, nunca con datos del cliente. La
+  decisión se registra en ADR-031.
 
 **Razón:** ADR-003 y ADR-010; `tenant_id` por sí solo no basta. Una fuga entre barberías (R01)
 es el riesgo más grave del sistema. La primera excepción existe porque RF10 exige mostrar el
 catálogo sin iniciar sesión; se limita a lo que la barbería publica y no puede escribir. La segunda
 existe porque el cliente es quien indica en qué barbería quiere reservar, y eso ocurre antes de
-tener la sesión de esa barbería; se limita a crear o elegir su propia membresía.
+tener la sesión de esa barbería; se limita a crear o elegir su propia membresía. La tercera existe
+porque el administrador de la plataforma cobra y revisa pagos de todas las barberías sin pertenecer
+a ninguna, y porque los pagos confirmados por el proveedor y los vencimientos llegan sin sesión; se
+limita a metadatos de pago y estado, sin `BYPASSRLS`, y toda escritura sigue protegida por la RLS de
+la barbería afectada.
 
 ### IV. Citas sin duplicados garantizadas por la base de datos
 
@@ -319,4 +372,4 @@ implementación. La excepción existe solo porque la plataforma de CI impone la 
   alternativa más simple descartada, y registrarse como ADR.
 - La guía de ejecución del proyecto está en `README.md` y en `docs/`.
 
-**Version**: 1.2.0 | **Ratified**: 2026-10-15 | **Last Amended**: 2026-10-17
+**Version**: 1.3.0 | **Ratified**: 2026-10-15 | **Last Amended**: 2026-10-24

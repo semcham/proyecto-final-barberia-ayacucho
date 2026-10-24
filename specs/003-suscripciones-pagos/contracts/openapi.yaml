@@ -1,0 +1,816 @@
+openapi: 3.1.0
+info:
+  title: Plataforma de barberías · 003 Suscripciones y pagos
+  version: 0.3.0
+  description: >
+    Contrato de la funcionalidad 003. Prefijo /api/v1. Errores con el formato común
+    { codigo, mensaje, detalles } (001). Importes en céntimos enteros de soles (PEN).
+    Las rutas /plataforma/* exigen un token de plataforma (aud "plataforma", sin tid; ADR-031);
+    las demás rutas autenticadas exigen un token de barbería y rechazan el de plataforma.
+servers:
+  - url: /api/v1
+tags:
+  - name: Suscripción (propietario)
+  - name: Proveedor de pagos
+  - name: Plataforma (administrador)
+paths:
+  /planes:
+    get:
+      tags: [Suscripción (propietario)]
+      summary: Planes contratables (públicos y activos)
+      security: [{ barberia: [] }]
+      responses:
+        "200":
+          description: Planes
+          content:
+            application/json:
+              schema:
+                { type: array, items: { $ref: "#/components/schemas/Plan" } }
+  /suscripcion:
+    get:
+      tags: [Suscripción (propietario)]
+      summary: Estado, plan, fechas, límites y avisos (RF19, FR-001)
+      security: [{ barberia: [] }]
+      responses:
+        "200":
+          description: Suscripción de la barbería del token
+          content:
+            application/json:
+              { schema: { $ref: "#/components/schemas/Suscripcion" } }
+  /suscripcion/estado-operativo:
+    get:
+      tags: [Suscripción (propietario)]
+      summary: Qué permite el estado actual (aviso previo a reservar; FR-006). PROPIETARIO, BARBERO y CLIENTE
+      security: [{ barberia: [] }]
+      responses:
+        "200":
+          description: Estado operativo
+          content:
+            application/json:
+              { schema: { $ref: "#/components/schemas/EstadoOperativo" } }
+  /suscripcion/pagos:
+    get:
+      tags: [Suscripción (propietario)]
+      summary: Historial de pagos de la barbería, del más reciente al más antiguo (RF25, FR-025)
+      security: [{ barberia: [] }]
+      parameters:
+        - {
+            name: pagina,
+            in: query,
+            schema: { type: integer, minimum: 1, default: 1 },
+          }
+      responses:
+        "200":
+          description: Página del historial
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [pagos, total]
+                properties:
+                  pagos:
+                    {
+                      type: array,
+                      items: { $ref: "#/components/schemas/Pago" },
+                    }
+                  total: { type: integer }
+    post:
+      tags: [Suscripción (propietario)]
+      summary: Iniciar el pago de un período (Yape o transferencia). Reutiliza el pago abierto si es igual (FR-012)
+      security: [{ barberia: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [planId, medio]
+              properties:
+                planId: { type: string, format: uuid }
+                medio: { type: string, enum: [YAPE, TRANSFERENCIA] }
+      responses:
+        "201":
+          description: Pago creado
+          content:
+            application/json:
+              { schema: { $ref: "#/components/schemas/PagoIniciado" } }
+        "200":
+          description: Ya existía un pago abierto igual; se devuelve ese
+          content:
+            application/json:
+              { schema: { $ref: "#/components/schemas/PagoIniciado" } }
+        "409":
+          description: PAGO_ADELANTADO_NO_PERMITIDO (ya está pagado el período siguiente)
+          content:
+            {
+              application/json:
+                { schema: { $ref: "#/components/schemas/Error" } },
+            }
+        "422":
+          description: MEDIO_NO_DISPONIBLE_PARA_EL_PLAN (importe fuera del rango de Yape) o PLAN_NO_CONTRATABLE
+          content:
+            {
+              application/json:
+                { schema: { $ref: "#/components/schemas/Error" } },
+            }
+        "503":
+          description: PAGO_EN_LINEA_NO_DISPONIBLE (proveedor caído o lento; detalles con la alternativa de transferencia)
+          content:
+            {
+              application/json:
+                { schema: { $ref: "#/components/schemas/Error" } },
+            }
+  /suscripcion/pagos/{pagoId}:
+    get:
+      tags: [Suscripción (propietario)]
+      summary: Estado de un pago (la interfaz lo consulta al volver del proveedor)
+      security: [{ barberia: [] }]
+      parameters: [{ $ref: "#/components/parameters/PagoId" }]
+      responses:
+        "200":
+          {
+            description: Pago,
+            content:
+              {
+                application/json:
+                  { schema: { $ref: "#/components/schemas/Pago" } },
+              },
+          }
+        "404":
+          {
+            description: NO_ENCONTRADO (también si es de otra barbería),
+            content:
+              {
+                application/json:
+                  { schema: { $ref: "#/components/schemas/Error" } },
+              },
+          }
+  /suscripcion/pagos/{pagoId}/comprobante:
+    post:
+      tags: [Suscripción (propietario)]
+      summary: Subir el comprobante de una transferencia (FR-020; JPG, PNG o PDF de hasta 5 MB, verificado por bytes)
+      security: [{ barberia: [] }]
+      parameters: [{ $ref: "#/components/parameters/PagoId" }]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [archivo, numeroOperacion, fechaTransferencia]
+              properties:
+                archivo: { type: string, format: binary }
+                numeroOperacion: { type: string, minLength: 6, maxLength: 40 }
+                fechaTransferencia: { type: string, format: date }
+      responses:
+        "201":
+          {
+            description: Pago en revisión,
+            content:
+              {
+                application/json:
+                  { schema: { $ref: "#/components/schemas/Pago" } },
+              },
+          }
+        "400":
+          {
+            description: VALIDACION (tipo real no permitido,
+            tamaño,
+            número o fecha),
+            content:
+              {
+                application/json:
+                  { schema: { $ref: "#/components/schemas/Error" } },
+              },
+          }
+        "409":
+          {
+            description: COMPROBANTE_YA_EN_REVISION o PAGO_NO_ESPERA_COMPROBANTE,
+            content:
+              {
+                application/json:
+                  { schema: { $ref: "#/components/schemas/Error" } },
+              },
+          }
+        "429":
+          {
+            description: DEMASIADOS_INTENTOS (5 comprobantes por día),
+            content:
+              {
+                application/json:
+                  { schema: { $ref: "#/components/schemas/Error" } },
+              },
+          }
+    get:
+      tags: [Suscripción (propietario)]
+      summary: Descargar el comprobante (solo con sesión; attachment, nosniff, no-store; FR-041)
+      security: [{ barberia: [] }]
+      parameters: [{ $ref: "#/components/parameters/PagoId" }]
+      responses:
+        "200":
+          description: Archivo
+          content:
+            image/jpeg: { schema: { type: string, format: binary } }
+            image/png: { schema: { type: string, format: binary } }
+            application/pdf: { schema: { type: string, format: binary } }
+        "404":
+          {
+            description: NO_ENCONTRADO,
+            content:
+              {
+                application/json:
+                  { schema: { $ref: "#/components/schemas/Error" } },
+              },
+          }
+  /pagos/notificaciones:
+    post:
+      tags: [Proveedor de pagos]
+      summary: Notificación firmada del proveedor (RF24; FR-013 a FR-018). Sin token de usuario; límite 60/min por IP
+      security: []
+      parameters:
+        - name: X-Firma
+          in: header
+          required: true
+          description: >-
+            Formato t={unix},v1={hex}, con v1 = HMAC-SHA256 de "{t}.{cuerpo crudo}" (formato del simulador;
+            el del proveedor real se traduce en su adaptador)
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/NotificacionProveedor" }
+      responses:
+        "200": { description: Recibida (aplicada, repetida o sin efecto) }
+        "401":
+          { description: Firma inválida, ausente o vencida; sin ningún efecto }
+        "429": { description: Demasiadas solicitudes }
+  /plataforma/auth/ingresar:
+    post:
+      tags: [Plataforma (administrador)]
+      summary: Primer paso del ingreso del administrador (contraseña) → desafío de segundo factor (R07)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [correo, contrasena]
+              properties:
+                correo: { type: string, format: email }
+                contrasena: { type: string, minLength: 1, maxLength: 200 }
+      responses:
+        "200":
+          description: Desafío de 5 minutos
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [desafio, expiraEn]
+                properties:
+                  desafio: { type: string, format: uuid }
+                  expiraEn: { type: string, format: date-time }
+        "401":
+          {
+            description: NO_AUTENTICADO (mismo mensaje para correo o contraseña incorrectos),
+          }
+        "429": { description: DEMASIADOS_INTENTOS }
+  /plataforma/auth/segundo-factor:
+    post:
+      tags: [Plataforma (administrador)]
+      summary: Segundo paso (TOTP o código de recuperación) → sesión de plataforma
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [desafio]
+              properties:
+                desafio: { type: string, format: uuid }
+                codigo: { type: string, pattern: "^[0-9]{6}$" }
+                codigoRecuperacion:
+                  { type: string, minLength: 10, maxLength: 20 }
+      responses:
+        "200":
+          description: Token de acceso (10 min) y cookie de renovación de plataforma
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [tokenAcceso, tipo, expiraEn]
+                properties:
+                  tokenAcceso: { type: string }
+                  tipo: { type: string, const: Bearer }
+                  expiraEn: { type: string, format: date-time }
+        "401": { description: NO_AUTENTICADO }
+        "429": { description: DEMASIADOS_INTENTOS }
+  /plataforma/auth/renovar:
+    post:
+      tags: [Plataforma (administrador)]
+      summary: Renovar con la cookie de plataforma (vida máxima 8 h)
+      security: []
+      responses:
+        "200": { description: Token nuevo }
+        "401": { description: NO_AUTENTICADO }
+  /plataforma/auth/salir:
+    post:
+      tags: [Plataforma (administrador)]
+      security: [{ plataforma: [] }]
+      responses:
+        "204": { description: Sesión cerrada }
+  /plataforma/barberias:
+    get:
+      tags: [Plataforma (administrador)]
+      summary: Barberías con estado y suscripción (sin datos de negocio; FR-038)
+      security: [{ plataforma: [] }]
+      parameters:
+        - { name: buscar, in: query, schema: { type: string, maxLength: 80 } }
+        - {
+            name: pagina,
+            in: query,
+            schema: { type: integer, minimum: 1, default: 1 },
+          }
+      responses:
+        "200":
+          description: Página
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  barberias:
+                    {
+                      type: array,
+                      items:
+                        { $ref: "#/components/schemas/BarberiaPlataforma" },
+                    }
+                  total: { type: integer }
+  /plataforma/barberias/{barberiaId}/suspension:
+    put:
+      tags: [Plataforma (administrador)]
+      summary: Suspender la barbería (RF02; FR-034)
+      security: [{ plataforma: [] }]
+      parameters: [{ $ref: "#/components/parameters/BarberiaId" }]
+      requestBody: { $ref: "#/components/requestBodies/Motivo" }
+      responses:
+        "204": { description: Suspendida }
+        "404": { description: NO_ENCONTRADO }
+    delete:
+      tags: [Plataforma (administrador)]
+      summary: Reactivar la barbería
+      security: [{ plataforma: [] }]
+      parameters: [{ $ref: "#/components/parameters/BarberiaId" }]
+      responses:
+        "204": { description: Reactivada }
+  /plataforma/barberias/{barberiaId}/suscripcion/suspension:
+    put:
+      tags: [Plataforma (administrador)]
+      summary: Suspender la suscripción con motivo (FR-035)
+      security: [{ plataforma: [] }]
+      parameters: [{ $ref: "#/components/parameters/BarberiaId" }]
+      requestBody: { $ref: "#/components/requestBodies/Motivo" }
+      responses:
+        "204": { description: Suspendida }
+    delete:
+      tags: [Plataforma (administrador)]
+      summary: Reactivar la suscripción (estado recalculado por fechas)
+      security: [{ plataforma: [] }]
+      parameters: [{ $ref: "#/components/parameters/BarberiaId" }]
+      responses:
+        "204": { description: Reactivada }
+  /plataforma/barberias/{barberiaId}/activacion-manual:
+    post:
+      tags: [Plataforma (administrador)]
+      summary: Activar un período a mano (contingencia R08/R15; FR-036)
+      security: [{ plataforma: [] }]
+      parameters: [{ $ref: "#/components/parameters/BarberiaId" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [planId, motivo, referenciaExterna]
+              properties:
+                planId: { type: string, format: uuid }
+                motivo: { type: string, minLength: 5, maxLength: 300 }
+                referenciaExterna: { type: string, minLength: 3, maxLength: 80 }
+      responses:
+        "201":
+          {
+            description: Pago MANUAL aprobado y período creado,
+            content:
+              {
+                application/json:
+                  { schema: { $ref: "#/components/schemas/Pago" } },
+              },
+          }
+        "409": { description: PAGO_ADELANTADO_NO_PERMITIDO }
+  /plataforma/comprobantes:
+    get:
+      tags: [Plataforma (administrador)]
+      summary: Cola de comprobantes en revisión, de todas las barberías (FR-022)
+      security: [{ plataforma: [] }]
+      responses:
+        "200":
+          description: Cola, del más antiguo al más reciente
+          content:
+            application/json:
+              schema:
+                {
+                  type: array,
+                  items: { $ref: "#/components/schemas/ComprobantePorRevisar" },
+                }
+  /plataforma/barberias/{barberiaId}/pagos/{pagoId}/comprobante:
+    get:
+      tags: [Plataforma (administrador)]
+      summary: Ver el comprobante (solo con sesión de plataforma; attachment, nosniff, no-store)
+      security: [{ plataforma: [] }]
+      parameters:
+        [
+          { $ref: "#/components/parameters/BarberiaId" },
+          { $ref: "#/components/parameters/PagoId" },
+        ]
+      responses:
+        "200": { description: Archivo }
+        "404": { description: NO_ENCONTRADO }
+  /plataforma/barberias/{barberiaId}/pagos/{pagoId}/revision:
+    post:
+      tags: [Plataforma (administrador)]
+      summary: Aprobar o rechazar un comprobante, una sola vez (FR-022 a FR-024)
+      security: [{ plataforma: [] }]
+      parameters:
+        [
+          { $ref: "#/components/parameters/BarberiaId" },
+          { $ref: "#/components/parameters/PagoId" },
+        ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [resultado]
+              properties:
+                resultado: { type: string, enum: [APROBADO, RECHAZADO] }
+                importeTransferidoCentimos:
+                  {
+                    type: integer,
+                    minimum: 1,
+                    description: Obligatorio para aprobar; debe ser igual al importe del pago,
+                  }
+                motivo:
+                  {
+                    type: string,
+                    minLength: 5,
+                    maxLength: 300,
+                    description: Obligatorio para rechazar,
+                  }
+      responses:
+        "200":
+          {
+            description: Revisado,
+            content:
+              {
+                application/json:
+                  { schema: { $ref: "#/components/schemas/Pago" } },
+              },
+          }
+        "409": { description: PAGO_YA_REVISADO o NUMERO_OPERACION_YA_APROBADO }
+        "422": { description: IMPORTE_DISTINTO }
+  /plataforma/pagos/por-revisar:
+    get:
+      tags: [Plataforma (administrador)]
+      summary: Pagos marcados para revisión (duplicados, importe distinto, aprobados tras rechazo, devoluciones, eventos sin pago; FR-025a)
+      security: [{ plataforma: [] }]
+      responses:
+        "200":
+          description: Lista
+          content:
+            application/json:
+              schema:
+                {
+                  type: array,
+                  items: { $ref: "#/components/schemas/PagoPorRevisar" },
+                }
+  /plataforma/barberias/{barberiaId}/pagos/{pagoId}/revision/resolucion:
+    post:
+      tags: [Plataforma (administrador)]
+      summary: Marcar resuelta una revisión con nota (no mueve dinero; queda en auditoría)
+      security: [{ plataforma: [] }]
+      parameters:
+        [
+          { $ref: "#/components/parameters/BarberiaId" },
+          { $ref: "#/components/parameters/PagoId" },
+        ]
+      requestBody: { $ref: "#/components/requestBodies/Motivo" }
+      responses:
+        "204": { description: Resuelta }
+components:
+  securitySchemes:
+    barberia:
+      { type: http, scheme: bearer, description: Token de barbería (con tid) }
+    plataforma:
+      {
+        type: http,
+        scheme: bearer,
+        description: 'Token de plataforma (aud "plataforma", sin tid, ADR-031)',
+      }
+  parameters:
+    PagoId:
+      {
+        name: pagoId,
+        in: path,
+        required: true,
+        schema: { type: string, format: uuid },
+      }
+    BarberiaId:
+      {
+        name: barberiaId,
+        in: path,
+        required: true,
+        schema: { type: string, format: uuid },
+      }
+  requestBodies:
+    Motivo:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            additionalProperties: false
+            required: [motivo]
+            properties:
+              motivo: { type: string, minLength: 5, maxLength: 300 }
+  schemas:
+    Error:
+      type: object
+      required: [codigo, mensaje, detalles]
+      properties:
+        codigo: { type: string }
+        mensaje: { type: string }
+        detalles: { type: array, items: { type: object } }
+    Plan:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          id,
+          codigo,
+          nombre,
+          precioCentimos,
+          moneda,
+          maxUsuarios,
+          maxBarberos,
+          mediosDisponibles,
+        ]
+      properties:
+        id: { type: string, format: uuid }
+        codigo: { type: string }
+        nombre: { type: string }
+        precioCentimos: { type: integer }
+        moneda: { type: string, const: PEN }
+        maxUsuarios: { type: integer }
+        maxBarberos: { type: integer }
+        mediosDisponibles:
+          { type: array, items: { type: string, enum: [YAPE, TRANSFERENCIA] } }
+    Suscripcion:
+      type: object
+      additionalProperties: false
+      required:
+        [estado, plan, iniciaEn, finCobertura, diasRestantes, limites, avisos]
+      properties:
+        estado:
+          {
+            type: string,
+            enum: [TRIAL, ACTIVE, PAST_DUE, EXPIRED, CANCELLED, SUSPENDED],
+          }
+        plan: { $ref: "#/components/schemas/Plan" }
+        iniciaEn: { type: string, format: date-time }
+        finPrueba: { type: [string, "null"], format: date-time }
+        finCobertura:
+          {
+            type: [string, "null"],
+            format: date-time,
+            description: Fin del último período pagado o de la prueba,
+          }
+        finGracia: { type: [string, "null"], format: date-time }
+        diasRestantes: { type: integer }
+        proximoPeriodo:
+          type: [object, "null"]
+          properties:
+            plan: { $ref: "#/components/schemas/Plan" }
+            iniciaEn: { type: string, format: date-time }
+        limites:
+          type: object
+          properties:
+            maxUsuarios: { type: integer }
+            usuariosActivos: { type: integer }
+            maxBarberos: { type: integer }
+            barberosActivos: { type: integer }
+        motivoSuspension: { type: [string, "null"] }
+        pagoAbierto:
+          { oneOf: [{ $ref: "#/components/schemas/Pago" }, { type: "null" }] }
+        avisos:
+          {
+            type: array,
+            items:
+              {
+                type: string,
+                enum:
+                  [
+                    EN_GRACIA,
+                    PRUEBA_POR_TERMINAR,
+                    EXCEDE_LIMITES_DEL_PROXIMO_PLAN,
+                    VENCIDA,
+                    SUSPENDIDA,
+                  ],
+              },
+          }
+    EstadoOperativo:
+      type: object
+      additionalProperties: false
+      required: [estado, aceptaReservas, configuracionEditable]
+      properties:
+        estado: { type: string }
+        aceptaReservas: { type: boolean }
+        configuracionEditable: { type: boolean }
+        mensaje: { type: [string, "null"] }
+    Pago:
+      type: object
+      additionalProperties: false
+      required: [id, plan, importeCentimos, moneda, medio, estado, creadoEn]
+      properties:
+        id: { type: string, format: uuid }
+        plan:
+          {
+            type: object,
+            properties: { id: { type: string }, nombre: { type: string } },
+          }
+        importeCentimos: { type: integer }
+        moneda: { type: string, const: PEN }
+        medio: { type: string, enum: [YAPE, TRANSFERENCIA, MANUAL] }
+        estado:
+          {
+            type: string,
+            enum:
+              [
+                PENDIENTE,
+                ESPERANDO_COMPROBANTE,
+                EN_REVISION,
+                APROBADO,
+                RECHAZADO,
+                ANULADO,
+                EXPIRADO,
+              ],
+          }
+        marca:
+          {
+            type: [string, "null"],
+            enum:
+              [
+                DUPLICADO,
+                IMPORTE_DISTINTO,
+                APROBADO_TRAS_RECHAZO,
+                DEVOLUCION,
+                NUMERO_REPETIDO,
+                null,
+              ],
+          }
+        periodo:
+          type: [object, "null"]
+          properties:
+            iniciaEn: { type: string, format: date-time }
+            terminaEn: { type: string, format: date-time }
+        motivoRechazo: { type: [string, "null"] }
+        numeroOperacionFinal:
+          {
+            type: [string, "null"],
+            description: "Solo los últimos 4 caracteres",
+          }
+        creadoEn: { type: string, format: date-time }
+        aprobadoEn: { type: [string, "null"], format: date-time }
+    PagoIniciado:
+      type: object
+      additionalProperties: false
+      required: [pago]
+      properties:
+        pago: { $ref: "#/components/schemas/Pago" }
+        urlPago:
+          {
+            type: [string, "null"],
+            format: uri,
+            description: Solo YAPE; flujo alojado del proveedor,
+          }
+        transferencia:
+          type: [object, "null"]
+          description: Solo TRANSFERENCIA
+          properties:
+            banco: { type: string }
+            titular: { type: string }
+            numeroCuenta: { type: string }
+            cci: { type: string }
+            importeCentimos: { type: integer }
+            referencia: { type: string }
+    NotificacionProveedor:
+      type: object
+      required:
+        [
+          evento_id,
+          tipo,
+          referencia,
+          estado,
+          importe_centimos,
+          moneda,
+          emitido_en,
+        ]
+      properties:
+        evento_id: { type: string, maxLength: 80 }
+        tipo: { type: string, enum: [pago.actualizado, pago.devuelto] }
+        referencia: { type: string, maxLength: 80 }
+        estado:
+          {
+            type: string,
+            enum: [APROBADO, RECHAZADO, PENDIENTE, EXPIRADO, DEVUELTO],
+          }
+        importe_centimos: { type: integer }
+        moneda: { type: string }
+        emitido_en: { type: string, format: date-time }
+    BarberiaPlataforma:
+      type: object
+      additionalProperties: false
+      required: [id, nombre, slug, estadoBarberia, estadoSuscripcion]
+      properties:
+        id: { type: string, format: uuid }
+        nombre: { type: string }
+        slug: { type: string }
+        estadoBarberia: { type: string, enum: [ACTIVA, SUSPENDIDA] }
+        estadoSuscripcion: { type: string }
+        plan: { type: string }
+        finCobertura: { type: [string, "null"], format: date-time }
+    ComprobantePorRevisar:
+      type: object
+      additionalProperties: false
+      required: [barberia, pago, enviadoEn]
+      properties:
+        barberia:
+          {
+            type: object,
+            properties: { id: { type: string }, nombre: { type: string } },
+          }
+        pago:
+          type: object
+          properties:
+            id: { type: string }
+            plan: { type: string }
+            importeCentimos: { type: integer }
+            referencia: { type: string }
+            numeroOperacion: { type: string }
+            fechaTransferencia: { type: string, format: date }
+            numeroYaUsadoEn:
+              {
+                type: array,
+                items:
+                  {
+                    type: string,
+                    description: Ids de pagos con el mismo número u hash de archivo,
+                  },
+              }
+        enviadoEn: { type: string, format: date-time }
+    PagoPorRevisar:
+      type: object
+      additionalProperties: false
+      required: [marca, detectadoEn]
+      properties:
+        marca:
+          {
+            type: string,
+            enum:
+              [
+                DUPLICADO,
+                IMPORTE_DISTINTO,
+                APROBADO_TRAS_RECHAZO,
+                DEVOLUCION,
+                SIN_PAGO,
+              ],
+          }
+        barberia:
+          {
+            type: [object, "null"],
+            properties: { id: { type: string }, nombre: { type: string } },
+          }
+        pagoId: { type: [string, "null"] }
+        eventoId: { type: [string, "null"] }
+        importeCentimos: { type: [integer, "null"] }
+        detectadoEn: { type: string, format: date-time }

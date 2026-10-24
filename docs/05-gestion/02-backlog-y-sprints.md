@@ -98,9 +98,10 @@ Si hay atraso, se recorta **profundidad o acabado** dentro de cada funcionalidad
 | ADR-021 | Lecturas públicas por enlace (excepción del principio III, constitución 1.1.0). **Aceptado el 2026-10-17**                                                                 | 002           |
 | ADR-029 | Redis para la caché del catálogo y el límite general de solicitudes, con claves por tenant (ampliación del principio VIII, constitución 1.1.0). **Aceptado el 2026-10-19** | 006           |
 | ADR-030 | Balanceo local con Nginx como representación de ADR-006. **Aceptado el 2026-10-19**                                                                                        | 006           |
-| ADR-022 | Pagos: pasarela en sandbox o simulada tras `PaymentGateway`, cambiable por configuración, y transferencia con comprobante                                                  | 003           |
-| ADR-023 | Almacenamiento de archivos (comprobantes)                                                                                                                                  | 003           |
-| ADR-024 | Tareas programadas sin duplicados entre instancias (vencimiento de la prueba; también recordatorios de 004)                                                                | 003           |
+| ADR-022 | Pagos: pasarela en sandbox o simulada tras `PaymentGateway`, cambiable por configuración, y transferencia con comprobante. **Aceptado el 2026-10-24**                      | 003           |
+| ADR-023 | Almacenamiento de archivos (comprobantes). **Aceptado el 2026-10-24**                                                                                                      | 003           |
+| ADR-024 | Tareas programadas sin duplicados entre instancias (vencimiento de la prueba; también recordatorios de 004). **Aceptado el 2026-10-24**                                    | 003           |
+| ADR-031 | Operaciones del administrador de la plataforma fuera de las barberías (con la enmienda 1.3.0 del principio III). **Aceptado el 2026-10-24**                                | 003           |
 | ADR-025 | Bus de eventos con salida transaccional (_outbox_)                                                                                                                         | 004           |
 | ADR-026 | Proveedor de correo (Mailpit en desarrollo; producción por verificar) y WhatsApp tras `NotificationChannel`                                                                | 004           |
 | ADR-027 | Proveedor de IA (OpenRouter solo en desarrollo; producción por decidir; política de datos)                                                                                 | 005           |

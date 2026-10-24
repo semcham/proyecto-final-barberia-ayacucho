@@ -38,40 +38,46 @@
 
 ## Constitution Check
 
-*GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
+_GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
-Gates from `.specify/memory/constitution.md` (v1.2.0). Mark each ✅ / ❌ (justify ❌ in
+Gates from `.specify/memory/constitution.md` (v1.3.0). Mark each ✅ / ❌ (justify ❌ in
 Complexity Tracking and record an ADR):
 
 - [ ] **I. Six modules**: work fits in M01–M06 (no new module); cross-module calls only via
-  public `index` and the allowed-dependency matrix; side effects via M06 events
+      public `index` and the allowed-dependency matrix; side effects via M06 events
 - [ ] **II. Four layers / Clean Architecture**: presentation, application, domain,
-  infrastructure per submodule; domain imports no framework/DB/Redis/provider SDK
+      infrastructure per submodule; domain imports no framework/DB/Redis/provider SDK
 - [ ] **III. Tenant isolation**: `tenant_id` from the signed token only (never from client
-  input); RLS on every business table; repositories filter by tenant; cache keys/events include
-  tenant. Only two exceptions: (1) public read-only lookups by barbershop slug (catalog, free
-  slots), public columns only, no writes, no RLS bypass for the app role (ADR-021); (2) membership
-  selection by slug before the session exists (client sign-up, login from the barbershop link,
-  joining or switching barbershop), only after verifying identity or creating the account, writing
-  only the person's own rows, never in business operations with a session (ADR-020)
+      input); RLS on every business table; repositories filter by tenant; cache keys/events include
+      tenant. Only three exceptions: (1) public read-only lookups by barbershop slug (catalog, free
+      slots), public columns only, no writes, no RLS bypass for the app role (ADR-021); (2) membership
+      selection by slug before the session exists (client sign-up, login from the barbershop link,
+      joining or switching barbershop), only after verifying identity or creating the account, writing
+      only the person's own rows, never in business operations with a session (ADR-020); (3) platform
+      operations: the platform admin (own account and session, mandatory second factor, token without
+      tenant that never works on barbershop operations) reads across barbershops only through a
+      read-only, column-level role without `BYPASSRLS`; each write targets one barbershop named in the
+      route, with its tenant fixed, RLS and audit in that barbershop; never appointments, clients,
+      catalog or users; provider webhooks and background jobs may locate the tenant through that same
+      read by exact key, never from client input (ADR-031)
 - [ ] **IV. No duplicate appointments**: PostgreSQL exclusion constraint + transaction;
-  conflict mapped to "horario no disponible"
+      conflict mapped to "horario no disponible"
 - [ ] **V. Payments**: subscriptions only; `PaymentGateway` port; no card data stored;
-  signed + idempotent webhook; reconciliation
+      signed + idempotent webhook; reconciliation
 - [ ] **VI. AI**: `AIProvider` port; closed role-based tools calling use cases; no free SQL,
-  no direct DB/repository access
+      no direct DB/repository access
 - [ ] **VII. Notifications**: `NotificationChannel` port driven by events; WhatsApp consent
-  recorded; async; failure never blocks the operation; email fallback
+      recorded; async; failure never blocks the operation; email fallback
 - [ ] **VIII. Redis**: cache (TTL + invalidation) and non-critical counters only (general
-  rate limit, loss-tolerant); security or cost counters (login attempts, AI quota) and security
-  state stay in PostgreSQL; never source of truth; system works if Redis is down
+      rate limit, loss-tolerant); security or cost counters (login attempts, AI quota) and security
+      state stay in PostgreSQL; never source of truth; system works if Redis is down
 - [ ] **IX. Web only**: responsive web UI over REST/HTTPS; no native mobile app
 - [ ] **X. Mandatory tests**: tests planned for every story, including tenant-isolation
-  (PR09), booking concurrency (PR16) and architecture (PR14) where touched
+      (PR09), booking concurrency (PR16) and architecture (PR14) where touched
 - [ ] **XI. ADR**: any architectural change recorded in
-  `docs/01-analisis-de-sistema/07-decisiones-arquitectonicas.md`
+      `docs/01-analisis-de-sistema/07-decisiones-arquitectonicas.md`
 - [ ] **XII. Code location**: all application code under `tecnologia/plataforma-barberias/`;
-  only CI workflows may live in `.github/workflows/` (no application logic there)
+      only CI workflows may live in `.github/workflows/` (no application logic there)
 
 ## Project Structure
 
@@ -88,6 +94,7 @@ specs/[###-feature]/
 ```
 
 ### Source Code (repository root)
+
 <!--
   ACTION REQUIRED: Replace the placeholder tree below with the concrete layout
   for this feature. Delete unused options and expand the chosen structure with
@@ -155,7 +162,7 @@ directories captured above]
 
 > **Fill ONLY if Constitution Check has violations that must be justified**
 
-| Violation | Why Needed | Simpler Alternative Rejected Because |
-|-----------|------------|-------------------------------------|
-| [e.g., 4th project] | [current need] | [why 3 projects insufficient] |
-| [e.g., Repository pattern] | [specific problem] | [why direct DB access insufficient] |
+| Violation                  | Why Needed         | Simpler Alternative Rejected Because |
+| -------------------------- | ------------------ | ------------------------------------ |
+| [e.g., 4th project]        | [current need]     | [why 3 projects insufficient]        |
+| [e.g., Repository pattern] | [specific problem] | [why direct DB access insufficient]  |
