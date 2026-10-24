@@ -72,7 +72,7 @@ Requisitos: el entorno de 006 en marcha y una barbería registrada en prueba gra
      reservar, y la reserva por la API responde 403 `SUSCRIPCION_NO_PERMITE`.
    - **Acción:** cancelar una cita existente. **Esperado:** se permite.
    - **Acción:** crear un servicio. **Esperado:** se rechaza.
-8. **Conciliación** (US4).
+8. **Conciliación** (US1, principio V).
    - **Acción:** `npm run simulador:modo -- aprobar_despues 900000` (la aprobación no notifica a
      tiempo) y aprobar con `POST /control/sesiones/{ref}/aprobar` sin notificación.
    - **Esperado:** a los 10 minutos o menos, la conciliación deja el pago aprobado.
@@ -103,19 +103,19 @@ docker compose exec -T db psql -U postgres -d barberias -c "SELECT job, replica,
 
 ## 5. Criterios de éxito y dónde se miden
 
-| SC     | Medición                                                      |
-| ------ | ------------------------------------------------------------- |
-| SC-001 | §3 paso 2 (cronometrado)                                      |
-| SC-002 | PR17 y §3 paso 3                                              |
-| SC-003 | `vencimiento-dos-replicas` y §4                               |
-| SC-004 | `conciliacion` y §3 paso 8                                    |
-| SC-005 | PR06 y §3 paso 4                                              |
-| SC-006 | PR09 (`aislamiento-pagos`, `lectura-plataforma`) y §3 paso 10 |
-| SC-007 | §3 paso 5 (cronometrado)                                      |
-| SC-008 | `restricciones-estado` y §3 paso 7                            |
-| SC-009 | PR20 (la misma suite con cada adaptador)                      |
-| SC-010 | `canarios`                                                    |
-| SC-011 | PR17 (aprobación tardía) y `comprobantes` (número repetido)   |
+| SC     | Medición                                                                                             |
+| ------ | ---------------------------------------------------------------------------------------------------- |
+| SC-001 | §3 paso 2 (cronometrado)                                                                             |
+| SC-002 | PR17 y §3 paso 3                                                                                     |
+| SC-003 | `vencimiento-dos-replicas` y §4                                                                      |
+| SC-004 | `conciliacion` y §3 paso 8                                                                           |
+| SC-005 | PR06 y §3 paso 4                                                                                     |
+| SC-006 | PR09 (`aislamiento-pagos`, `lectura-plataforma`) y §3 paso 10                                        |
+| SC-007 | §3 paso 5 (cronometrado)                                                                             |
+| SC-008 | `restricciones-estado` y §3 paso 7                                                                   |
+| SC-009 | PR20 (la misma suite con cada adaptador)                                                             |
+| SC-010 | `canarios`                                                                                           |
+| SC-011 | PR17 (aprobación tardía y período objetivo), `cobertura-derivada` y `comprobantes` (número repetido) |
 
 ## 6. Registro de ejecuciones
 

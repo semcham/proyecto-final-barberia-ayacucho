@@ -28,6 +28,7 @@ El administrador (ADMIN) solo tiene token de plataforma (ADR-031).
 | `PUT, DELETE /plataforma/barberias/{id}/suscripcion/suspension`                                   | 401         | 401        | 401        | ✓       | 401                             |
 | `POST /plataforma/barberias/{id}/activacion-manual`                                               | 401         | 401        | 401        | ✓       | 401                             |
 | `GET /plataforma/comprobantes`                                                                    | 401         | 401        | 401        | ✓       | 401                             |
+| `GET /plataforma/barberias/{id}/pagos/{pagoId}`                                                   | 401         | 401        | 401        | ✓       | 401                             |
 | `GET /plataforma/barberias/{id}/pagos/{pagoId}/comprobante`                                       | 401         | 401        | 401        | ✓       | 401                             |
 | `POST /plataforma/barberias/{id}/pagos/{pagoId}/revision`                                         | 401         | 401        | 401        | ✓       | 401                             |
 | `GET /plataforma/pagos/por-revisar`                                                               | 401         | 401        | 401        | ✓       | 401                             |
@@ -38,5 +39,6 @@ El administrador (ADMIN) solo tiene token de plataforma (ADR-031).
 
 - El pago, el comprobante o la suscripción de otra barbería responden 404 al propietario, igual que
   si no existieran.
+- `GET /suscripcion/estado-operativo` devuelve todos los campos solo al PROPIETARIO; a BARBERO y CLIENTE, solo `aceptaReservas` y `mensaje`, sin el estado de la suscripción (FR-039).
 - En las rutas `/plataforma/barberias/{id}/…`, un `pagoId` que no es de esa barbería responde 404.
   La escritura corre con el tenant `{id}` fijado y RLS (ADR-031).

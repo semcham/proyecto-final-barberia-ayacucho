@@ -40,7 +40,7 @@
 
 _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
-Gates from `.specify/memory/constitution.md` (v1.3.0). Mark each ✅ / ❌ (justify ❌ in
+Gates from `.specify/memory/constitution.md` (v1.3.1). Mark each ✅ / ❌ (justify ❌ in
 Complexity Tracking and record an ADR):
 
 - [ ] **I. Six modules**: work fits in M01–M06 (no new module); cross-module calls only via
@@ -59,7 +59,10 @@ Complexity Tracking and record an ADR):
       read-only, column-level role without `BYPASSRLS`; each write targets one barbershop named in the
       route, with its tenant fixed, RLS and audit in that barbershop; never appointments, clients,
       catalog or users; provider webhooks and background jobs may locate the tenant through that same
-      read by exact key, never from client input (ADR-031)
+      read by exact key, never from client input; only the named platform tables (`provider_event`,
+      `scheduled_job_run`, `platform_session`, `platform_challenge`, `platform_admin`,
+      `platform_audit_log`) may lack `tenant_id`, hold no business data, and the app role may only
+      insert into `provider_event` and never read `platform_admin` (ADR-031)
 - [ ] **IV. No duplicate appointments**: PostgreSQL exclusion constraint + transaction;
       conflict mapped to "horario no disponible"
 - [ ] **V. Payments**: subscriptions only; `PaymentGateway` port; no card data stored;

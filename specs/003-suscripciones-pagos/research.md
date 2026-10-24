@@ -111,7 +111,7 @@ se pierden, igual que cuando un proveedor real "olvida" una sesión vencida.
 **Decisión:**
 
 1. **Ruta:** `POST /api/v1/pagos/notificaciones`. Es pública (no lleva token de usuario), con límite
-   propio de 60 por minuto por IP (FR-013a). El cuerpo crudo se conserva para verificar la firma: un
+   propio de 600 por minuto por IP por defecto, configurable con `PAGOS_NOTIFICACIONES_LIMITE_POR_MINUTO` (FR-013a; 60 podía quedarse corto si el proveedor envía todo desde pocas IP). El cuerpo crudo se conserva para verificar la firma: un
    `verify` del parser JSON, solo en esta ruta, con un máximo de 16 KB.
 2. **Firma:** la verifica el adaptador. Para eso:
    - el HMAC-SHA256 se compara en tiempo constante (`timingSafeEqual`);
@@ -124,22 +124,30 @@ se pierden, igual que cuando un proveedor real "olvida" una sesión vencida.
 
 3. **Reenvíos legítimos del proveedor días después:** el proveedor vuelve a firmar con un `t` nuevo.
    El mismo `evento_id` se reconoce como ya procesado y responde **200** sin efecto. Esto es
-   compatible con el borde "lo reenvía días después" de la especificación.
+   compatible con el borde "lo reenvía días después" de la especificación. **Por verificar con el
+   proveedor (R15):** que sus reenvíos lleguen firmados de nuevo con un `t` nuevo. Si reenviara la
+   firma original, el adaptador del proveedor real tendría que ampliar la ventana o validar por otra vía.
 4. **Tenant:** con el `referencia_proveedor` verificado, una lectura exacta por la vía de la plataforma
    (R06) devuelve `(tenant_id, pago_id)`. Si no hay pago, el evento queda como `SIN_PAGO` para revisión
    del administrador (FR-016). Con el tenant obtenido, todo lo demás corre en **una transacción con
    ese tenant fijado y RLS**:
-   - `INSERT` del evento con `ON CONFLICT (evento_id) DO NOTHING`; si no inserta, es un repetido y
-     responde 200;
-   - bloqueo de la fila del pago (`FOR UPDATE`);
-   - transición del pago según la máquina de [data-model.md](data-model.md) §3;
-   - si se aprueba, inserción del período y actualización de la suscripción.
+   - bloqueo de la fila del pago (`FOR UPDATE`), que serializa los eventos del mismo pago;
+   - cálculo de la transición según la máquina de [data-model.md](data-model.md) §3, y con ella del
+     `effect` del evento;
+   - `INSERT` del evento, ya con su `effect`, con `ON CONFLICT (event_id) DO NOTHING`. El rol de la
+     aplicación **solo puede insertar** en `provider_event`, sin leerla ni actualizarla (constitución
+     1.3.1): la cantidad de filas insertadas dice si el evento era repetido; si es 0, la transacción
+     se revierte y se responde 200 sin efecto;
+   - si se insertó, la transición del pago y, si se aprueba, la inserción del período y la
+     actualización de la suscripción.
+
+   Un evento sin pago (`SIN_PAGO`) solo se inserta, sin tenant.
 
    O se aplica todo, o nada (FR-015).
 
 5. **Comparación de importe y moneda:** contra lo fijado al iniciar el pago (FR-005b). Si no coinciden,
    el pago no se aplica y queda `revision = IMPORTE_DISTINTO`.
-6. **Respuesta rápida (FR-018):** la transacción es corta (un puñado de filas) y no llama al proveedor.
+6. **Respuesta rápida (FR-018):** la transacción es corta (un puñado de filas) y no llama al proveedor; meta de 1 s o menos para el 95 % (en las pruebas se mide el p95, con un objetivo de 300 ms).
    La verificación extra con `consultarPago` la hace la conciliación, no la notificación.
 
 **Alternativas descartadas:**
@@ -166,17 +174,29 @@ se pierden, igual que cuando un proveedor real "olvida" una sesión vencida.
 
   La duración es un mes calendario, ajustado al último día del mes (FR-004).
 
-- **Pago por adelantado:** como máximo un período. Al iniciar un pago se rechaza con
-  `PAGO_ADELANTADO_NO_PERMITIDO` si ya existe un período que empieza después del actual.
+- **Período objetivo (H1):** al iniciar, cada pago guarda en `covers_after` la cobertura vigente
+  (fin de la prueba o del último período, o el instante si estaba vencida). Al aprobar, si ya existe
+  un período con `starts_at >= covers_after`, el período objetivo está tomado y el pago queda
+  **duplicado, sin período**. Sin esta regla, dos aprobaciones del "próximo período" (por ejemplo, un
+  Yape anulado que el propietario terminó de pagar y una transferencia) crearían dos períodos
+  seguidos sin solaparse, y la restricción `EXCLUDE` no lo impediría. Regla completa en
+  [data-model.md](data-model.md) §3.
+- **Pago por adelantado:** como máximo un período. Se rechaza con `PAGO_ADELANTADO_NO_PERMITIDO` al
+  iniciar si ya existe un período que empieza después del actual, y **se comprueba otra vez al
+  aprobar** (si se excediera, el pago queda duplicado).
 - **Un pago abierto por suscripción:** índice único parcial
   `UNIQUE (subscription_id) WHERE status IN ('PENDIENTE', 'ESPERANDO_COMPROBANTE', 'EN_REVISION')`. Un
   pago de transferencia sin comprobante a los 7 días pasa a `EXPIRADO` (tarea de R08). Con dos intentos simultáneos
   hay **una sola fila**: el segundo choca con el índice y recibe la existente si es el mismo plan y el
-  mismo medio, o anula la anterior y reintenta si es otro (FR-012).
+  mismo medio **y su sesión de pago sigue vigente** (`checkout_url_expires_at` posterior a ahora;
+  si venció, la anula, intenta cancelarla en el proveedor y crea una nueva: H3), o anula la anterior y
+  reintenta si es otro plan o medio. **Excepción:** un pago `EN_REVISION` nunca se anula; el intento
+  nuevo recibe 409 `COMPROBANTE_YA_EN_REVISION`, porque el dinero pudo haberse transferido (H4,
+  FR-021).
 - **Aprobación tardía (FR-012a):**
   - `ANULADO` y `EXPIRADO` pasan a `APROBADO` si llega la aprobación del proveedor;
-  - si ya hay un período que cubre ese tramo, el pago se aprueba sin período nuevo y queda con
-    `revision = DUPLICADO`;
+  - si su período objetivo ya está tomado (regla de arriba), el pago se aprueba sin período nuevo y
+    queda con `revision = DUPLICADO`;
   - el historial siempre lo muestra.
 
   Un `APROBADO` después de un `RECHAZADO` se registra con `revision = APROBADO_TRAS_RECHAZO` y no
@@ -213,8 +233,13 @@ se pierden, igual que cuando un proveedor real "olvida" una sesión vencida.
   contador de abuso con efecto sobre el almacenamiento, así que no va en Redis.
 - **Número de operación (FR-022b):** se normaliza (solo dígitos y letras, en mayúsculas) y tiene un
   **índice único global** `UNIQUE (bank_operation_number) WHERE status = 'APROBADO'`. La unicidad la
-  garantiza PostgreSQL aunque la fila esté protegida por RLS. Al revisar, el administrador ve si el
-  número aparece en otro pago, de cualquier barbería, por la vía de la plataforma (R06).
+  garantiza PostgreSQL aunque la fila esté protegida por RLS. Se guardan además
+  `bank_operation_last4` y `bank_operation_hash` (SHA-256 del número normalizado). El rol de
+  plataforma lee esas dos columnas y **nunca** el número completo (permiso por columna): la cola
+  muestra los últimos 4 caracteres y detecta repeticiones entre barberías comparando los hash. El
+  número completo solo se ve en el detalle de un comprobante, leído con el rol de la aplicación y el
+  tenant de la barbería fijado (H2). Se descartó una vista: en PostgreSQL una vista se ejecuta con
+  los permisos de su dueño, y con RLS forzada no devolvería filas sin tenant.
 - **Revisión:** solo una vez (FR-022c), con `UPDATE ... WHERE status = 'EN_REVISION'` y la fila
   bloqueada. La segunda revisión recibe `PAGO_YA_REVISADO` (409). Aprobar aplica R04 en la misma
   transacción. Rechazar exige un motivo de 5 a 300 caracteres.
@@ -228,7 +253,7 @@ se pierden, igual que cuando un proveedor real "olvida" una sesión vencida.
 - `file-type` (detección por contenido): una dependencia nueva para tres firmas de bytes.
 - Leer el comprobante automáticamente (OCR): fuera de alcance; la revisión es manual.
 
-## R06 · Administrador de la plataforma y principio III (ADR-031, enmienda 1.3.0)
+## R06 · Administrador de la plataforma y principio III (ADR-031, constitución 1.3.0 y 1.3.1)
 
 **Problema:** el administrador no pertenece a ninguna barbería. Revisa comprobantes y pagos **de
 todas**, y suspende barberías y suscripciones. El principio III dice que el tenant sale **solo** del
@@ -254,11 +279,18 @@ NOINHERIT`):
    - `SELECT` **solo por columna** sobre `tenant(id, name, slug, status)`, `subscription`, `plan`,
      `subscription_period`, `payment` (sin el archivo del comprobante) y `provider_event`;
    - políticas RLS `FOR SELECT TO barberias_plataforma USING (true)` en esas tablas, sin escritura;
-   - transacciones `READ ONLY`.
+   - transacciones `READ ONLY`, **siempre**: el rol no tiene ningún `INSERT`, `UPDATE` ni `DELETE`
+     (constitución 1.3.1, C3).
 
-   Su única escritura es en las tablas de identidad del propio administrador (`platform_admin`,
-   `platform_session`, `platform_challenge`), que no contienen datos de barberías; así, el rol de la
-   aplicación nunca lee hashes ni secretos de los administradores.
+   **Tablas de la plataforma** (constitución 1.3.1): `provider_event`, `scheduled_job_run`,
+   `platform_session`, `platform_challenge`, `platform_admin` y `platform_audit_log` no tienen
+   barbería ni datos de negocio.
+   - El rol de la aplicación escribe las sesiones y desafíos del administrador (`platform_session`,
+     `platform_challenge`), la auditoría del acceso y las corridas de tareas, y **solo inserta** en
+     `provider_event` (C1).
+   - El rol de la aplicación **no tiene ningún permiso** sobre `platform_admin`, donde están el hash de
+     la contraseña, el secreto TOTP y los códigos de recuperación. Esa tabla la lee solo
+     `barberias_plataforma` y la escribe solo la orden `plataforma:crear-admin` con `barberias_owner`.
 
    Es el mismo patrón probado de ADR-021, pero entre barberías y solo para metadatos de pago. Lo usan
    **únicamente** `suscripciones-pagos/*/infrastructure/plataforma/`,
@@ -275,11 +307,12 @@ NOINHERIT`):
    obtienen el tenant de la fila que buscan (R03 y R08), con la misma vía de lectura, nunca de datos
    del cliente.
 6. **Auditoría del acceso.** La tabla global `platform_audit_log` registra los inicios de sesión,
-   segundos factores y cierres del administrador, que no tienen barbería. Lo hecho sobre una barbería
+   segundos factores y cierres del administrador, que no tienen barbería (admitido por la constitución
+   1.3.1). Lo hecho sobre una barbería
    va al `audit_log` de esa barbería.
 
-**Texto de la enmienda** (aprobado y aplicado el 2026-10-24 en la constitución 1.3.0). Agrega al
-principio III:
+**Texto de la enmienda** (aprobado y aplicado el 2026-10-24 en la constitución 1.3.0; la aclaración
+1.3.1 le agrega el párrafo "Tablas de la plataforma"). Agrega al principio III:
 
 > - **Excepción acotada: operaciones de la plataforma.** El administrador de la plataforma, que no
 >   pertenece a ninguna barbería, MAY operar sobre barberías, suscripciones, pagos y comprobantes de
@@ -318,16 +351,25 @@ puerta III de `.specify/templates/plan-template.md`, la de
   contraseña equivale a dar servicio gratis a cualquier barbería.
 - **Implementación con `node:crypto`**, sin librería:
   - HMAC-SHA1, 6 dígitos y paso de 30 s, con tolerancia de ±1 paso;
-  - se rechaza un código ya usado (se guarda el último paso aceptado);
+  - se rechaza un código ya usado: cada sesión guarda en `platform_session.totp_step` el paso con el
+    que se abrió, y un código cuyo paso no es mayor que el último de ese administrador se rechaza.
+    `UNIQUE (admin_id, totp_step)` cierra la carrera entre dos réplicas que reciben el mismo código a
+    la vez. No
+    se escribe en `platform_admin` (C3);
   - el secreto de 20 bytes se cifra en reposo con AES-256-GCM y la llave `PLATAFORMA_LLAVE_TOTP` del
     entorno;
   - las pruebas usan los vectores del RFC 6238.
 - **Alta:** la orden `plataforma:crear-admin` imprime **una sola vez**:
   - la URI `otpauth://totp/...` para escribirla o pegarla en una aplicación de autenticación;
-  - 10 códigos de recuperación de un solo uso, guardados con hash Argon2id.
+  - 10 códigos de recuperación de un solo uso, guardados con hash Argon2id en `platform_admin`. Su uso
+    se registra en `platform_challenge.used_recovery_index`, con `UNIQUE (admin_id,
+used_recovery_index)`: la base garantiza que cada código sirve una sola vez.
 
   No se genera código QR, para no sumar una librería; si se quiere, `qrcode` (MIT) es una opción
   futura.
+
+- **Trabajo futuro (L5):** la rotación de `PLATAFORMA_LLAVE_TOTP` (volver a cifrar los secretos con una
+  llave nueva, con una ventana en la que se aceptan las dos).
 
 - **Flujo:**
   1. `POST /plataforma/auth/ingresar` con correo y contraseña devuelve un `desafio` de 5 minutos;
@@ -377,7 +419,8 @@ Tareas de 003 (en M03, registradas en el ejecutor por el host):
    - expira a las 24 horas (FR-027).
 
 **Registro:** cada corrida se anota en `scheduled_job_run` (tarea, réplica, inicio, fin, procesados y
-errores). Es una tabla global con conteos, sin datos de barberías. Si una réplica se cae a mitad, el
+errores). Es una tabla de la plataforma (constitución 1.3.1) con conteos, sin datos de barberías: la escribe
+el rol de la aplicación (`INSERT` y `UPDATE`) y la lee `barberias_plataforma`. Si una réplica se cae a mitad, el
 candado se libera al cerrarse su conexión, y la siguiente corrida retoma lo pendiente (FR-032).
 
 **Alternativas descartadas:**
@@ -453,7 +496,9 @@ menos de 1 MB.
 - **Mensaje:** M02 traduce el error a "Esta barbería no acepta reservas por ahora" y M01 a "Tu
   suscripción no permite este cambio". Nunca a "horario no disponible" (FR-007).
 - **Aviso previo en la interfaz:** `GET /suscripcion/estado-operativo`, para PROPIETARIO, BARBERO y
-  CLIENTE con su sesión, devuelve `{ estado, aceptaReservas, configuracionEditable, mensaje }`. El
+  CLIENTE con su sesión. Al PROPIETARIO le devuelve `{ estado, aceptaReservas, configuracionEditable,
+mensaje }`; a BARBERO y CLIENTE, solo `{ aceptaReservas, mensaje }`, sin el estado de la
+  suscripción (FR-039, M8). El
   cliente lo ve **antes** de elegir un horario, en la pantalla de reservar (que ya exige sesión).
 - **Catálogo público:** sigue igual. Mostrar "no acepta reservas" en la vía pública exigiría que la vía
   pública de M02 leyera una tabla de M03 (prohibido por el principio I) o ampliar la excepción de
@@ -510,18 +555,19 @@ manual), los casos de uso del administrador. Al reactivar se **recalcula por las
 
 ## R14 · Pruebas obligatorias y cómo se ejecutan
 
-| Prueba                       | Qué demuestra                                                                                                                                                                                                                                              | Dónde                                                                                    |
-| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| PR06                         | Pasarela caída y lenta: mensaje en 3 s o menos, el circuito se abre tras 5 fallos y el resto sigue                                                                                                                                                         | `test/integration/pagos/proveedor-caido.spec.ts` (simulador en modos `caido` y `lento`)  |
-| PR08                         | Matriz de permisos de 003, celda por celda (propietario, barbero, cliente, administrador y anónimo), leída de [contracts/rbac.md](contracts/rbac.md); el token de plataforma no sirve en rutas de barbería ni el de barbería en rutas de plataforma        | `test/contract/rbac-003.spec.ts`                                                         |
-| PR09                         | Pagos, suscripciones, eventos y comprobantes invisibles entre barberías, por la API y por SQL directo con el rol de la aplicación; `barberias_plataforma` sin escritura, sin `BYPASSRLS`, sin acceso a citas, clientes ni al contenido de los comprobantes | `test/integration/aislamiento/aislamiento-pagos.spec.ts`, `lectura-plataforma.spec.ts`   |
-| PR17                         | Notificación válida, repetida 10 veces (1 transición y 1 período), firma inválida, sin firma, reenvío vencido, fuera de orden, importe distinto, pago desconocido; y concurrencia entre la notificación y la conciliación                                  | `test/integration/pagos/notificaciones.spec.ts`                                          |
-| PR20                         | La **misma** suite de contrato del puerto `PaymentGateway` contra el simulador (siempre) y contra el ambiente de pruebas del proveedor (solo con `PAGOS_SANDBOX_*` definidas; si no, se salta con aviso)                                                   | `test/contract/payment-gateway.contract.ts` y `test/integration/pagos/gateway-*.spec.ts` |
-| PR25                         | Máquina de estados de la suscripción, cálculo de períodos (fin de mes, gracia y adelantado) y `PoliticaDeOperacion`                                                                                                                                        | `test/unit/suscripciones/*.spec.ts`                                                      |
-| Vencimiento con dos réplicas | Dos instancias en proceso ejecutan `vencer-suscripciones` a la vez sobre 50 suscripciones: cada una cambia una sola vez, con 1 auditoría; una caída a mitad se retoma                                                                                      | `test/integration/tareas/vencimiento-dos-replicas.spec.ts`                               |
-| PR13                         | Auditoría de las acciones del administrador y de las transiciones automáticas                                                                                                                                                                              | `test/integration/auditoria.spec.ts` (ampliado)                                          |
-| PR14                         | Reglas nuevas: `lectura-plataforma-confinada`, `pasarela-solo-por-puerto`, `simulador-fuera-del-monolito`, y la llamada a `exigirOperacion` en los casos de uso de escritura                                                                               | `test/architecture/`                                                                     |
-| Datos canario (SC-010)       | Ningún secreto, teléfono de pagador ni contenido de comprobante en los registros ni en los errores                                                                                                                                                         | `test/integration/pagos/canarios.spec.ts`                                                |
+| Prueba                       | Qué demuestra                                                                                                                                                                                                                                                                                                                                                                                                                                  | Dónde                                                                                    |
+| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| PR06                         | Pasarela caída y lenta: mensaje en 3 s o menos, el circuito se abre tras 5 fallos y el resto sigue                                                                                                                                                                                                                                                                                                                                             | `test/integration/pagos/proveedor-caido.spec.ts` (simulador en modos `caido` y `lento`)  |
+| PR08                         | Matriz de permisos de 003, celda por celda (propietario, barbero, cliente, administrador y anónimo), leída de [contracts/rbac.md](contracts/rbac.md); el token de plataforma no sirve en rutas de barbería ni el de barbería en rutas de plataforma                                                                                                                                                                                            | `test/contract/rbac-003.spec.ts`                                                         |
+| PR09                         | Pagos, suscripciones, eventos y comprobantes invisibles entre barberías, por la API y por SQL directo con el rol de la aplicación; `barberias_plataforma` sin **ninguna** escritura, sin `BYPASSRLS`, sin acceso a citas, clientes, al número de operación completo ni al contenido de los comprobantes; el rol de la aplicación solo inserta en `provider_event` (sin leerla) y no tiene permisos sobre `platform_admin` (constitución 1.3.1) | `test/integration/aislamiento/aislamiento-pagos.spec.ts`, `lectura-plataforma.spec.ts`   |
+| PR17                         | Notificación válida, repetida 10 veces (1 transición y 1 período), firma inválida, sin firma, reenvío vencido, fuera de orden, importe distinto, pago desconocido; y concurrencia entre la notificación y la conciliación                                                                                                                                                                                                                      | `test/integration/pagos/notificaciones.spec.ts`                                          |
+| PR20                         | La **misma** suite de contrato del puerto `PaymentGateway` contra el simulador (siempre) y contra el ambiente de pruebas del proveedor (solo con `PAGOS_SANDBOX_*` definidas; si no, se salta con aviso)                                                                                                                                                                                                                                       | `test/contract/payment-gateway.contract.ts` y `test/integration/pagos/gateway-*.spec.ts` |
+| PR25                         | Máquina de estados de la suscripción, cálculo de períodos (fin de mes, gracia y adelantado) y `PoliticaDeOperacion`                                                                                                                                                                                                                                                                                                                            | `test/unit/suscripciones/*.spec.ts`                                                      |
+| Vencimiento con dos réplicas | Dos instancias en proceso ejecutan `vencer-suscripciones` a la vez sobre 50 suscripciones: cada una cambia una sola vez, con 1 auditoría; una caída a mitad se retoma                                                                                                                                                                                                                                                                          | `test/integration/tareas/vencimiento-dos-replicas.spec.ts`                               |
+| PR13                         | Auditoría de las acciones del administrador y de las transiciones automáticas                                                                                                                                                                                                                                                                                                                                                                  | `test/integration/auditoria.spec.ts` (ampliado)                                          |
+| PR14                         | Reglas nuevas: `lectura-plataforma-confinada`, `pasarela-solo-por-puerto`, `simulador-fuera-del-monolito`, y la llamada a `exigirOperacion` en los casos de uso de escritura                                                                                                                                                                                                                                                                   | `test/architecture/`                                                                     |
+| Datos canario (SC-010)       | Ningún secreto (llave del proveedor, secreto de firma, secreto TOTP, códigos de recuperación), teléfono de pagador ni contenido de comprobante en los registros, la auditoría ni los errores                                                                                                                                                                                                                                                   | `test/integration/pagos/canarios.spec.ts`                                                |
+| Cobertura derivada (M2)      | `subscription.current_period_end` coincide con los períodos después de cada pago, vencimiento, reactivación y activación manual                                                                                                                                                                                                                                                                                                                | `test/integration/suscripciones/cobertura-derivada.spec.ts`                              |
 
 El simulador se arranca dentro del proceso de Jest. Las pruebas con dos instancias reutilizan los
 ayudantes de 006 (`crearApp({ escuchar: true })`).

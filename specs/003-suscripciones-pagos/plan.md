@@ -22,11 +22,14 @@ Las garantías de dinero están en PostgreSQL, como las de las citas:
 - los períodos pagados no se solapan (restricción de exclusión);
 - un pago crea a lo sumo un período (`UNIQUE`);
 - hay un solo pago abierto por suscripción (índice único parcial);
-- un número de operación bancaria se aprueba una sola vez (índice único global).
+- un número de operación bancaria se aprueba una sola vez (índice único global);
+- cada pago guarda su **período objetivo** (`covers_after`): una segunda aprobación del mismo
+  período queda como duplicado y no crea otro período.
 
 El **administrador de la plataforma** no pertenece a ninguna barbería, y eso exige una tercera
 excepción acotada al principio III: **ADR-031**, aceptado el 2026-10-24 junto con la enmienda 1.3.0
-de la constitución, ya aplicada (ver Complexity Tracking).
+de la constitución y su aclaración 1.3.1 (tablas de la plataforma), ya aplicadas (ver Complexity
+Tracking).
 
 ## Technical Context
 
@@ -76,7 +79,8 @@ El simulador se arranca dentro del proceso de las pruebas.
 
 - Iniciar un pago, o recibir el mensaje alternativo, en 3 s o menos (SC-005), con un tiempo límite de
   2 s hacia el proveedor.
-- La notificación se procesa en menos de 300 ms en el p95 (una transacción corta).
+- La notificación se responde en 1 s o menos para el 95 % (FR-018); en las pruebas se mide el p95,
+  con un objetivo de 300 ms (una transacción corta).
 - La tarea de vencimiento procesa 50 suscripciones en menos de 10 s.
 
 **Constraints**:
@@ -95,7 +99,8 @@ migraciones y 1 servicio de Compose.
 _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
 Verificación antes de la investigación y otra vez tras el diseño, con la constitución 1.2.0. Se
-repitió el 2026-10-24 con la 1.3.0, tras aprobarse la enmienda:
+repitió el 2026-10-24 con la 1.3.0, tras aprobarse la enmienda, y otra vez con la aclaración 1.3.1,
+tras el análisis de consistencia:
 
 - [x] **I. Seis módulos.** Todo queda en M03, con los submódulos nuevos `pagos` y `plataforma`, en M01
       (`identidad` para el administrador y `barberias` para suspender) y en M06 (`tareas` y
@@ -106,9 +111,13 @@ repitió el 2026-10-24 con la 1.3.0, tras aprobarse la enmienda:
       están en `application/ports`. Los adaptadores están en `infrastructure`. La máquina de estados, los
       períodos y la política de operación son dominio puro.
 - [x] **III. Aislamiento.** ✅ con la tercera excepción acotada, "operaciones de la plataforma"
-      (constitución 1.3.0, ADR-031, Aceptado el 2026-10-24). El administrador identifica la barbería en
-      la ruta y lee entre barberías con el rol `barberias_plataforma` (`NOBYPASSRLS`, solo lectura por
-      columna), exactamente dentro de lo que la excepción permite. Con la 1.2.0 esta puerta no pasaba,
+      (constitución 1.3.0 y 1.3.1, ADR-031, Aceptado el 2026-10-24). El administrador identifica la
+      barbería en la ruta y lee entre barberías con el rol `barberias_plataforma` (`NOBYPASSRLS`, solo
+      lectura por columna y **sin escritura en ninguna tabla**), exactamente dentro de lo que la
+      excepción permite. Las tablas sin `tenant_id` son solo las seis tablas de la plataforma que
+      nombra la 1.3.1, sin datos de negocio. El rol de la aplicación solo inserta en `provider_event`
+      (sin leerlo), escribe las sesiones y desafíos del administrador y no tiene permiso sobre
+      `platform_admin`. Con la 1.2.0 esta puerta no pasaba,
       porque ninguna de las dos excepciones de entonces lo cubría. Todo lo demás cumple:
   - toda tabla de negocio nueva tiene `tenant_id` y RLS con `FORCE`;
   - los repositorios filtran por tenant;
@@ -119,7 +128,8 @@ repitió el 2026-10-24 con la 1.3.0, tras aprobarse la enmienda:
       insertar, dentro de la misma transacción.
 - [x] **V. Pagos.** Solo suscripciones. Puerto `PaymentGateway`. Flujo alojado sin datos de tarjeta.
       Notificación firmada (HMAC, tiempo constante, ±5 min), idempotente por `evento_id` y aplicada de
-      forma atómica. Conciliación cada 15 min. La confirmación nunca viene del navegador.
+      forma atómica. Conciliación periódica (`conciliar-pagos`, en P1 junto con el pago con Yape). La
+      confirmación nunca viene del navegador.
 - [x] **VI. IA.** No aplica.
 - [x] **VII. Notificaciones.** No aplica: los avisos por correo quedan para 004, y los de 003 se ven
       en el panel.
@@ -134,7 +144,7 @@ repitió el 2026-10-24 con la 1.3.0, tras aprobarse la enmienda:
 - [x] **XII. Ubicación.** Todo el código va en `tecnologia/plataforma-barberias/`, incluido el
       simulador (`backend/simulador-pagos/`).
 
-**Resultado (2026-10-24, constitución 1.3.0):** **pasa**. Los cuatro ADR están Aceptados y la
+**Resultado (2026-10-24, constitución 1.3.1):** **pasa**. Los cuatro ADR están Aceptados y la
 enmienda está aplicada, así que la funcionalidad queda lista para `/speckit-tasks` y, después,
 `/speckit-implement`. La excepción nueva solo puede usarse dentro de lo que describe ADR-031, y PR09
 `lectura-plataforma` y PR08 `rbac-003` lo verifican.
@@ -259,7 +269,7 @@ sequenceDiagram
     N->>B: (cualquier réplica)
     B->>B: verificar firma (HMAC, ±5 min)
     B->>DB: plataforma: tenant del pago por referencia exacta
-    B->>DB: TX con tenant: INSERT provider_event (evento único) · FOR UPDATE payment · INSERT subscription_period (EXCLUDE) · UPDATE subscription
+    B->>DB: TX con tenant: FOR UPDATE payment · INSERT provider_event con su efecto (evento único; si se repite, nada) · INSERT subscription_period (EXCLUDE) · UPDATE subscription
     B-->>G: 200
     P->>N: GET /suscripcion/pagos/{id} (al volver)
     N->>B: lee el estado confirmado
@@ -272,14 +282,16 @@ sequenceDiagram
    - rol `barberias_plataforma` y `LecturaPlataforma`, con PR09 de la lectura de plataforma;
    - interruptor movido a `shared/resiliencia/`;
    - ejecutor de tareas (ADR-024);
+   - repositorios de suscripción, períodos y planes, que usan US1 y US2;
    - puerto `PaymentGateway`, simulador y su adaptador, con la suite de contrato PR20 contra el
      simulador;
    - `PoliticaDeOperacion` y `exigirOperacion` (sin las llamadas todavía);
    - token de plataforma y `@Plataforma()` en `AuthGuard`;
    - reglas de PR14.
 2. **P1:**
-   - **US1, pagar con Yape:** planes, estado, iniciar el pago, notificación (PR17), períodos y la
-     pantalla de suscripción.
+   - **US1, pagar con Yape:** planes, estado, iniciar el pago, notificación (PR17), períodos, la
+     tarea `conciliar-pagos` (principio V: P1 no se entrega sin conciliación) y la pantalla de
+     suscripción.
    - **US2, vencimiento y restricciones:** tarea `vencer-suscripciones` con dos réplicas, llamadas a
      `exigirOperacion` en 002 y en M01, `restricciones-estado`, PR25 y el aviso al cliente.
    - PR06 (proveedor caído) al cerrar P1.
@@ -288,8 +300,8 @@ sequenceDiagram
      (PR08 de las rutas de plataforma).
    - **US3, transferencia:** comprobante, almacenamiento (ADR-023), cola de revisión, aprobación única
      y número de operación único.
-   - **US4, historial y conciliación:** tarea `conciliar-pagos`, expiraciones y la lista de pagos por
-     revisar.
+   - **US4, historial y conciliación:** historial del propietario y lista de pagos por revisar. La
+     tarea `conciliar-pagos` ya se entregó en US1.
 4. **P3, US5:** suspender y reactivar la barbería (M01) y la suscripción; activación manual; listado
    de barberías.
 5. **Cierre:**
@@ -299,30 +311,33 @@ sequenceDiagram
    - demostración de vencimiento con dos réplicas.
 
 **Dependencia entre prioridades:** el ingreso del administrador está en P2, porque P1 no lo necesita.
-Pero el **rol de plataforma** está en la base, porque la tarea de vencimiento (P1) y la notificación
-(P1) lo usan para encontrar el tenant.
+Pero el **rol de plataforma** está en la base, porque la tarea de vencimiento, la conciliación y la
+notificación (P1) lo usan para encontrar el tenant. Los repositorios de suscripción y períodos también
+están en la base, porque US1 y US2 los usan. La prueba de US2 del pago simultáneo con el vencimiento
+usa `AplicarResultadoDelProveedor` de US1.
 
 **Líneas de corte** (backlog §3.2), en este orden:
 
 1. Simulador en lugar del ambiente de pruebas si al día 11 no hay credenciales (R15).
 2. Panel del administrador como listas con aprobar y rechazar.
-3. Conciliación como tarea sin pantalla.
+3. Lista de pagos por revisar sin pantalla (la tarea de conciliación no se recorta).
 4. Cambio de plan sin prorrateo (ya aplicado).
 
-**No se recortan nunca:** la notificación firmada e idempotente, la tarea sin duplicados, ningún dato
-de tarjeta, PR09 y PR17.
+**No se recortan nunca:** la notificación firmada e idempotente, la conciliación, la tarea sin
+duplicados, ningún dato de tarjeta, PR09 y PR17.
 
 ## Documentos que se actualizan con este plan
 
-| Documento                                                      | Cambio                                                                                              |
-| -------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| `docs/01-analisis-de-sistema/07-decisiones-arquitectonicas.md` | ADR-022, ADR-023, ADR-024 y ADR-031, **Aceptados** el 2026-10-24, con sus filas en la tabla resumen |
-| `docs/05-gestion/06-mvp-y-evolucion.md`                        | Se corrige la frase que daba por existente el adaptador de `PaymentGateway` (pedido 4)              |
-| `docs/05-gestion/02-backlog-y-sprints.md` §3.3                 | ADR-022 a ADR-024 y ADR-031, Aceptados                                                              |
-| `docs/trazabilidad.md`                                         | Fila de 003: especificada y planificada, lista para tareas                                          |
+| Documento                                                      | Cambio                                                                                                                              |
+| -------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `docs/01-analisis-de-sistema/07-decisiones-arquitectonicas.md` | ADR-022, ADR-023, ADR-024 y ADR-031, **Aceptados** el 2026-10-24, con sus filas en la tabla resumen                                 |
+| `docs/05-gestion/06-mvp-y-evolucion.md`                        | Se corrige la frase que daba por existente el adaptador de `PaymentGateway` (pedido 4)                                              |
+| `docs/05-gestion/02-backlog-y-sprints.md` §3.3                 | ADR-022 a ADR-024 y ADR-031, Aceptados                                                                                              |
+| `docs/trazabilidad.md`                                         | Fila de 003: especificada y planificada, lista para tareas                                                                          |
+| `docs/02-arquitectura-software/multi-tenancy-y-datos.md`       | Constitución 1.3.1; rol `barberias_plataforma` sin escrituras y permisos del rol de la aplicación sobre las tablas de la plataforma |
 
-**Con la aprobación (2026-10-24)** se actualizaron además la constitución (1.3.0, con su Sync Impact
-Report), la puerta III de `.specify/templates/plan-template.md` y el control 1 de
+**Con la aprobación (2026-10-24)** se actualizaron además la constitución (1.3.0 y luego 1.3.1, con
+sus Sync Impact Report), la puerta III de `.specify/templates/plan-template.md` y el control 1 de
 `docs/02-arquitectura-software/multi-tenancy-y-datos.md`, con el rol de plataforma y los casos
 especiales del administrador, del webhook y de las tareas.
 
@@ -336,16 +351,16 @@ especiales del administrador, del webhook y de las tareas.
 
 ## Trazabilidad
 
-| Historia | RF                     | EQ           | ADR               | Componente                                              | Pruebas                                                    |
-| -------- | ---------------------- | ------------ | ----------------- | ------------------------------------------------------- | ---------------------------------------------------------- |
-| US1      | RF19, RF20, RF23, RF24 | EQ-06, EQ-17 | ADR-007, 012, 022 | M03 `suscripciones`, `pagos`; simulador                 | PR17, PR20, PR06                                           |
-| US2      | RF21, RF22             | EQ-08        | ADR-024, 031      | M03 `suscripciones`; M06 `tareas`; M02 y M01 (llamadas) | PR25, `restricciones-estado`, vencimiento con dos réplicas |
-| US3      | RF20, RF25             | EQ-09, EQ-13 | ADR-022, 023, 031 | M03 `pagos`, `plataforma`                               | PR09, PR13, `comprobantes`                                 |
-| US4      | RF25, RF26             | EQ-17        | ADR-022, 024      | M03 `pagos`                                             | `conciliacion`, PR17                                       |
-| US5      | RF02 (mínimo), RF22    | EQ-08, EQ-13 | ADR-031           | M01 `identidad`, `barberias`; M03 `plataforma`          | PR08, PR13, PR09                                           |
+| Historia | RF                           | EQ           | ADR                    | Componente                                              | Pruebas                                                    |
+| -------- | ---------------------------- | ------------ | ---------------------- | ------------------------------------------------------- | ---------------------------------------------------------- |
+| US1      | RF19, RF20, RF23, RF24, RF26 | EQ-06, EQ-17 | ADR-007, 012, 022, 024 | M03 `suscripciones`, `pagos`; simulador                 | PR17, PR20, PR06, `conciliacion`                           |
+| US2      | RF21, RF22                   | EQ-08        | ADR-024, 031           | M03 `suscripciones`; M06 `tareas`; M02 y M01 (llamadas) | PR25, `restricciones-estado`, vencimiento con dos réplicas |
+| US3      | RF20, RF25                   | EQ-09, EQ-13 | ADR-022, 023, 031      | M03 `pagos`, `plataforma`                               | PR09, PR13, `comprobantes`                                 |
+| US4      | RF25                         | EQ-17        | ADR-022                | M03 `pagos`, `plataforma`                               | `historial`, `pagos-por-revisar`, PR13                     |
+| US5      | RF02 (mínimo), RF22          | EQ-08, EQ-13 | ADR-031                | M01 `identidad`, `barberias`; M03 `plataforma`          | PR08, PR13, PR09                                           |
 
 ## Complexity Tracking
 
-| Violación                                                                                                                                                                                                                                                       | Por qué hace falta                                                                                                                                                                                                                                                                     | Alternativa más simple descartada                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Principio III:** el administrador identifica la barbería en la ruta y lee entre barberías con el rol `barberias_plataforma` (ADR-031 y la enmienda 1.3.0, **aprobados y aplicados** el 2026-10-24: queda amparado por la tercera excepción del principio III) | El administrador revisa comprobantes y pagos de todas las barberías y actúa sobre una a la vez, sin pertenecer a ninguna (FR-022, FR-034 a FR-038). La notificación del proveedor y la tarea de vencimiento llegan sin sesión y deben encontrar el tenant del pago o de la suscripción | **Membresía del administrador en cada barbería:** multiplica cuentas y no da una vista entre barberías. **Rol `BYPASSRLS`:** omite RLS también en citas y clientes, y su creación en RDS está por validar. **Funciones `SECURITY DEFINER` por listado:** sirven para claves exactas, no para colas paginadas, y cada una sería otra omisión de RLS. **Copiar los pagos a una tabla global:** saca datos de dinero de RLS. La solución elegida conserva `NOBYPASSRLS`, limita la lectura por columna a metadatos de pago, deja **todas** las escrituras con el tenant fijado y RLS, y se confina con PR14 y PR09, igual que ADR-021 |
+| Violación                                                                                                                                                                                                                                                                                                                                                     | Por qué hace falta                                                                                                                                                                                                                                                                     | Alternativa más simple descartada                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Principio III:** el administrador identifica la barbería en la ruta y lee entre barberías con el rol `barberias_plataforma` (ADR-031, la enmienda 1.3.0 y la aclaración 1.3.1, **aprobados y aplicados** el 2026-10-24: queda amparado por la tercera excepción del principio III; las tablas de la plataforma sin `tenant_id` son las que nombra la 1.3.1) | El administrador revisa comprobantes y pagos de todas las barberías y actúa sobre una a la vez, sin pertenecer a ninguna (FR-022, FR-034 a FR-038). La notificación del proveedor y la tarea de vencimiento llegan sin sesión y deben encontrar el tenant del pago o de la suscripción | **Membresía del administrador en cada barbería:** multiplica cuentas y no da una vista entre barberías. **Rol `BYPASSRLS`:** omite RLS también en citas y clientes, y su creación en RDS está por validar. **Funciones `SECURITY DEFINER` por listado:** sirven para claves exactas, no para colas paginadas, y cada una sería otra omisión de RLS. **Copiar los pagos a una tabla global:** saca datos de dinero de RLS. La solución elegida conserva `NOBYPASSRLS`, limita la lectura por columna a metadatos de pago, deja **todas** las escrituras con el tenant fijado y RLS, y se confina con PR14 y PR09, igual que ADR-021 |

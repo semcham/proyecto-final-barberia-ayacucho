@@ -1,6 +1,37 @@
 <!--
 Sync Impact Report
 ==================
+Version change: 1.3.0 → 1.3.1
+Bump rationale: PATCH. Aclaración del alcance de la excepción "operaciones de la plataforma" del
+principio III, sin ampliar lo que permite: nombra las tablas de la plataforma (sin barbería y sin
+datos de negocio), admite la auditoría del acceso del administrador sin barbería y prohíbe al rol de
+la aplicación leer `provider_event` y `platform_admin`. Aprobada por el responsable el 2026-10-24
+tras el análisis de consistencia de la funcionalidad 003 (hallazgos C1 a C3).
+
+Modified principles:
+  - III. Aislamiento por barbería (NO NEGOCIABLE) — en la excepción "operaciones de la plataforma"
+    se agrega el párrafo "Tablas de la plataforma": `provider_event`, `scheduled_job_run`,
+    `platform_session`, `platform_challenge`, `platform_admin` y `platform_audit_log` pueden no
+    tener `tenant_id` ni RLS por barbería porque no contienen datos de negocio; el acceso del
+    administrador se audita sin barbería; el rol de la aplicación solo inserta en `provider_event` y
+    no lee `platform_admin`. El rol de lectura de la plataforma queda de solo lectura de verdad: las
+    sesiones y desafíos del administrador los escribe el rol de la aplicación.
+Added principles: ninguno
+Added sections: ninguna
+Removed sections: ninguna
+
+Templates requiring updates:
+  ✅ .specify/templates/plan-template.md — puerta III (versión 1.3.1, tablas de la plataforma)
+  ✅ .specify/templates/spec-template.md y tasks-template.md — revisados; sin cambios necesarios
+  ✅ docs/01-analisis-de-sistema/07-decisiones-arquitectonicas.md — ADR-031 (y ADR-022, ADR-024)
+     con los roles y tablas corregidos
+  ✅ docs/02-arquitectura-software/multi-tenancy-y-datos.md — rol barberias_plataforma de solo
+     lectura y tablas de la plataforma
+  ✅ specs/003-suscripciones-pagos/ — spec, plan, research, data-model, contratos y tasks
+
+Follow-up TODOs: ninguno.
+
+--- Historial: informe de la versión 1.3.0 ---
 Version change: 1.2.0 → 1.3.0
 Bump rationale: MINOR. Se amplía materialmente la guía del principio III con una tercera excepción
 acotada, sin eliminar ni redefinir nada: todo lo que cumplía la versión 1.2.0 (funcionalidades 001,
@@ -186,8 +217,14 @@ intercambiables.
   barbería, identificada por el administrador en la ruta, en una transacción con ese tenant fijado
   y con RLS, y MUST auditarse en esa barbería. MUST NOT ver ni modificar citas, clientes, catálogo
   ni usuarios. Las notificaciones del proveedor de pagos y los trabajos en segundo plano MAY
-  localizar el tenant con esa misma lectura, por una clave exacta, nunca con datos del cliente. La
-  decisión se registra en ADR-031.
+  localizar el tenant con esa misma lectura, por una clave exacta, nunca con datos del cliente.
+  **Tablas de la plataforma:** `provider_event`, `scheduled_job_run`, `platform_session`,
+  `platform_challenge`, `platform_admin` y `platform_audit_log` no pertenecen a ninguna barbería ni
+  contienen datos de negocio; por eso MAY no tener `tenant_id` ni RLS por barbería, y MUST NOT
+  guardar datos personales de clientes ni datos de negocio de las barberías. El acceso del
+  administrador (ingreso, segundo factor y salida) MAY auditarse en `platform_audit_log` sin
+  barbería. El rol de la aplicación MUST NOT leer `provider_event` (solo insertar eventos) ni
+  `platform_admin`. La decisión se registra en ADR-031.
 
 **Razón:** ADR-003 y ADR-010; `tenant_id` por sí solo no basta. Una fuga entre barberías (R01)
 es el riesgo más grave del sistema. La primera excepción existe porque RF10 exige mostrar el
@@ -372,4 +409,4 @@ implementación. La excepción existe solo porque la plataforma de CI impone la 
   alternativa más simple descartada, y registrarse como ADR.
 - La guía de ejecución del proyecto está en `README.md` y en `docs/`.
 
-**Version**: 1.3.0 | **Ratified**: 2026-10-15 | **Last Amended**: 2026-10-24
+**Version**: 1.3.1 | **Ratified**: 2026-10-15 | **Last Amended**: 2026-10-24

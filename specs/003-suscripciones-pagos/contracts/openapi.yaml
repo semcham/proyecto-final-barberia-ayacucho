@@ -102,7 +102,9 @@ paths:
             application/json:
               { schema: { $ref: "#/components/schemas/PagoIniciado" } }
         "409":
-          description: PAGO_ADELANTADO_NO_PERMITIDO (ya está pagado el período siguiente)
+          description: >-
+            PAGO_ADELANTADO_NO_PERMITIDO (ya está pagado el período siguiente) o
+            COMPROBANTE_YA_EN_REVISION (hay un comprobante en revisión: no se anula ni se crea otro pago)
           content:
             {
               application/json:
@@ -227,7 +229,7 @@ paths:
   /pagos/notificaciones:
     post:
       tags: [Proveedor de pagos]
-      summary: Notificación firmada del proveedor (RF24; FR-013 a FR-018). Sin token de usuario; límite 60/min por IP
+      summary: Notificación firmada del proveedor (RF24; FR-013 a FR-018). Sin token de usuario; límite por IP de 600/min por defecto, configurable (PAGOS_NOTIFICACIONES_LIMITE_POR_MINUTO)
       security: []
       parameters:
         - name: X-Firma
@@ -390,7 +392,7 @@ paths:
   /plataforma/barberias/{barberiaId}/activacion-manual:
     post:
       tags: [Plataforma (administrador)]
-      summary: Activar un período a mano (contingencia R08/R15; FR-036)
+      summary: Activar un período a mano (contingencia R08/R15; FR-036). Registra un pago MANUAL con el precio del plan como importe
       security: [{ plataforma: [] }]
       parameters: [{ $ref: "#/components/parameters/BarberiaId" }]
       requestBody:
@@ -431,6 +433,30 @@ paths:
                   type: array,
                   items: { $ref: "#/components/schemas/ComprobantePorRevisar" },
                 }
+  /plataforma/barberias/{barberiaId}/pagos/{pagoId}:
+    get:
+      tags: [Plataforma (administrador)]
+      summary: >-
+        Detalle de un pago para revisarlo, con el número de operación completo, leído con el tenant de
+        la barbería fijado (no por la lectura de plataforma; H2)
+      security: [{ plataforma: [] }]
+      parameters:
+        [
+          { $ref: "#/components/parameters/BarberiaId" },
+          { $ref: "#/components/parameters/PagoId" },
+        ]
+      responses:
+        "200":
+          description: Detalle
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  pago: { $ref: "#/components/schemas/Pago" }
+                  numeroOperacion: { type: [string, "null"] }
+                  fechaTransferencia: { type: [string, "null"], format: date }
+        "404": { description: NO_ENCONTRADO }
   /plataforma/barberias/{barberiaId}/pagos/{pagoId}/comprobante:
     get:
       tags: [Plataforma (administrador)]
@@ -614,11 +640,13 @@ components:
             iniciaEn: { type: string, format: date-time }
         limites:
           type: object
+          description: >-
+            Límites del plan vigente. Lo que la barbería usa (usuarios y barberos activos) no sale de
+            aquí: M03 no puede leer M01 ni M02 (matriz de PR14). La interfaz compara estos límites con
+            GET /usuarios y GET /barberos para el aviso de FR-005a.
           properties:
             maxUsuarios: { type: integer }
-            usuariosActivos: { type: integer }
             maxBarberos: { type: integer }
-            barberosActivos: { type: integer }
         motivoSuspension: { type: [string, "null"] }
         pagoAbierto:
           { oneOf: [{ $ref: "#/components/schemas/Pago" }, { type: "null" }] }
@@ -628,20 +656,16 @@ components:
             items:
               {
                 type: string,
-                enum:
-                  [
-                    EN_GRACIA,
-                    PRUEBA_POR_TERMINAR,
-                    EXCEDE_LIMITES_DEL_PROXIMO_PLAN,
-                    VENCIDA,
-                    SUSPENDIDA,
-                  ],
+                enum: [EN_GRACIA, PRUEBA_POR_TERMINAR, VENCIDA, SUSPENDIDA],
               },
           }
     EstadoOperativo:
       type: object
       additionalProperties: false
-      required: [estado, aceptaReservas, configuracionEditable]
+      description: >-
+        Al PROPIETARIO se le devuelven todos los campos. A BARBERO y CLIENTE solo aceptaReservas y
+        mensaje, sin el estado de la suscripción (FR-039).
+      required: [aceptaReservas]
       properties:
         estado: { type: string }
         aceptaReservas: { type: boolean }
@@ -776,7 +800,16 @@ components:
             plan: { type: string }
             importeCentimos: { type: integer }
             referencia: { type: string }
-            numeroOperacion: { type: string }
+            numeroOperacionFinal:
+              {
+                type: string,
+                description: Últimos 4 caracteres; el número completo solo en el detalle,
+              }
+            numeroRepetido:
+              {
+                type: boolean,
+                description: El mismo número (por su hash) figura en otro pago,
+              }
             fechaTransferencia: { type: string, format: date }
             numeroYaUsadoEn:
               {
