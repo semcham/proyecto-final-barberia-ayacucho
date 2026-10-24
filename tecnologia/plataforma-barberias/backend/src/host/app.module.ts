@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
-import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerGuard, ThrottlerModule, ThrottlerStorageService } from '@nestjs/throttler';
 import { AccesoBarberiasModule } from '../modules/acceso-barberias';
 import { CatalogoCitasModule } from '../modules/catalogo-citas';
-import { SharedModule } from '../shared';
+import { AlmacenLimitesCompartido, CacheCompartida, SharedModule } from '../shared';
 import { AuthGuard } from './auth.guard';
 import { ErrorFilter } from './error.filter';
 import { RolesGuard } from './roles.guard';
@@ -19,8 +19,16 @@ import { TenantHeaderInterceptor } from './tenant-header.interceptor';
     SharedModule,
     AccesoBarberiasModule,
     CatalogoCitasModule,
-    // Freno general por instancia (R10). El límite estricto del inicio de sesión vive en PostgreSQL (US2).
-    ThrottlerModule.forRoot({ throttlers: [{ name: 'general', ttl: 60_000, limit: 300 }] }),
+    // Freno general por IP, compartido entre réplicas en la caché (006 US3, ADR-029), con respaldo en
+    // memoria por instancia si Redis no responde. El límite estricto del inicio de sesión vive en
+    // PostgreSQL (US2 de 001, principio VIII).
+    ThrottlerModule.forRootAsync({
+      inject: [CacheCompartida],
+      useFactory: (cache: CacheCompartida) => ({
+        throttlers: [{ name: 'general', ttl: 60_000, limit: 300 }],
+        storage: new AlmacenLimitesCompartido(cache, new ThrottlerStorageService()),
+      }),
+    }),
   ],
   controllers: [SaludController],
   providers: [

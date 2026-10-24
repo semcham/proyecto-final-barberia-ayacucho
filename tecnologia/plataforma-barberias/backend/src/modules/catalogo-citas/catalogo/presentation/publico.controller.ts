@@ -9,6 +9,8 @@ import { ConsultaHorariosDto } from './horarios.dto';
 
 /** Solicitudes por IP y minuto a la vía pública (configurable para las pruebas). */
 const limitePublico = () => Number(process.env.PUBLICO_LIMITE_POR_MINUTO ?? 120);
+/** Ventana del límite en ms: un minuto; las pruebas la acortan para verla terminar (006 T042). */
+const ventanaPublica = () => Number(process.env.PUBLICO_VENTANA_MS ?? 60_000);
 
 /**
  * T072 · Vía pública por enlace (RF10, RF11; ADR-021). Solo GET, sin sesión: no lee `Authorization` (un
@@ -21,7 +23,7 @@ const limitePublico = () => Number(process.env.PUBLICO_LIMITE_POR_MINUTO ?? 120)
  */
 @Controller('publico')
 @Publica()
-@Throttle({ general: { limit: limitePublico, ttl: 60_000 } })
+@Throttle({ general: { limit: limitePublico, ttl: ventanaPublica } })
 export class PublicoController {
   constructor(
     private readonly barberias: BarberiasApi,

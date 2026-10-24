@@ -217,6 +217,10 @@ describe('PR09 · Aislamiento de la caché compartida (dos instancias)', () => {
       const respuesta = await app.agente.get(ruta);
       expect(respuesta.status).toBe(404);
     }
-    expect(await redis.claves('*')).toEqual([]);
+    // Ninguna clave de datos. Solo quedan los contadores del límite por IP (US3), que no llevan el enlace.
+    expect(await redis.claves('bp:v1:*')).toEqual([]);
+    const claves = await redis.claves('*');
+    expect(claves.every((clave) => clave.startsWith('rl:v1:'))).toBe(true);
+    expect(claves.join('\n')).not.toContain(`no-existe-${sufijo}`);
   });
 });

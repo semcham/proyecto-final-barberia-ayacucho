@@ -330,11 +330,11 @@ del límite repartido entre ambas y solo pasan N.
 
 ### Tests for User Story 3 (MANDATORY - constitution Principle X) ⚠️
 
-- [ ] T041 [P] [US3] Prueba unitaria del almacenamiento en `tecnologia/plataforma-barberias/backend/test/unit/shared/almacen-limites.spec.ts`, con caché falsa:
+- [x] T041 [P] [US3] Prueba unitaria del almacenamiento en `tecnologia/plataforma-barberias/backend/test/unit/shared/almacen-limites.spec.ts`, con caché falsa:
   - si `contar` responde, arma `totalHits`, `timeToExpire`, `isBlocked = total > limit` y `timeToBlockExpire`;
   - si devuelve `null`, delega en el almacenamiento en memoria;
   - la clave pasada a la caché es `rl:v1:` más la clave del guard, sin tenant.
-- [ ] T042 [P] [US3] Integración del límite compartido en `tecnologia/plataforma-barberias/backend/test/integration/escalado/limite-compartido.spec.ts`: dos instancias sobre el mismo Redis, con `PUBLICO_LIMITE_POR_MINUTO=10`. Casos:
+- [x] T042 [P] [US3] Integración del límite compartido en `tecnologia/plataforma-barberias/backend/test/integration/escalado/limite-compartido.spec.ts`: dos instancias sobre el mismo Redis, con `PUBLICO_LIMITE_POR_MINUTO=10`. Casos:
   - **Compartido:** 20 `GET /publico/{slug}` desde la misma IP (`X-Forwarded-For` desde `loopback`), alternando instancias, dan exactamente 10 aceptadas y 10 × 429 `DEMASIADOS_INTENTOS` con tiempo de espera (escenario 1; SC-006).
   - **Otra IP:** no se ve afectada (escenario 3).
   - **Ventana:** con un TTL de prueba corto, pasada la ventana vuelve a ser atendida (escenario 2).
@@ -344,12 +344,12 @@ del límite repartido entre ambas y solo pasan N.
 
 ### Implementation for User Story 3
 
-- [ ] T043 [US3] Crear `AlmacenLimitesCompartido implements ThrottlerStorage` en `tecnologia/plataforma-barberias/backend/src/shared/limites/almacen-limites-compartido.ts`:
+- [x] T043 [US3] Crear `AlmacenLimitesCompartido implements ThrottlerStorage` en `tecnologia/plataforma-barberias/backend/src/shared/limites/almacen-limites-compartido.ts`:
   - recibe `CacheCompartida` y una instancia de `ThrottlerStorageService` (memoria) como respaldo;
   - cumple la firma `increment(key, ttl, limit, blockDuration, throttlerName)` de `@nestjs/throttler` 6;
   - exportarlo en `tecnologia/plataforma-barberias/backend/src/shared/index.ts`;
   - hace pasar T041.
-- [ ] T044 [US3] Configurar `ThrottlerModule.forRootAsync` en `tecnologia/plataforma-barberias/backend/src/host/app.module.ts`:
+- [x] T044 [US3] Configurar `ThrottlerModule.forRootAsync` en `tecnologia/plataforma-barberias/backend/src/host/app.module.ts`:
   - mismos límites (`general` de 300 por 60 s) y `storage: AlmacenLimitesCompartido`;
   - actualizar el comentario "Freno general por instancia" para decir que es compartido, con respaldo por instancia (ADR-029);
   - comprobar que los `@Throttle` de `publico`, `clientes`, `barberias` y `auth` siguen funcionando;

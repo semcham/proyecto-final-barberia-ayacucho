@@ -19,5 +19,6 @@ export type { Database } from './persistence/db-types';
 export { AuditLog, type EntradaAuditoria, type AccionAuditada } from './audit/audit-log';
 export { CacheCompartida, type Conteo } from './cache/cache-compartida';
 export { ClavesCache, ClaveCache, ClaveGeneracion, ClaveContador } from './cache/claves-cache';
+export { AlmacenLimitesCompartido } from './limites/almacen-limites-compartido';
 export { SharedModule } from './shared.module';
 export { Publica, RequiereOperacion, ActorActual, CLAVE_PUBLICA, CLAVE_OPERACION } from './http/decoradores';
