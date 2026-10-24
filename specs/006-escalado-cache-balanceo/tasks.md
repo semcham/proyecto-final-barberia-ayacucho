@@ -412,7 +412,7 @@ obtener la tabla registrada.
 
 ### Tests for User Story 5 (MANDATORY - constitution Principle X) ⚠️
 
-- [ ] T048 [P] [US5] Prueba unitaria de las estadísticas en `tecnologia/plataforma-barberias/backend/test/unit/scripts/estadisticas.spec.ts`:
+- [x] T048 [P] [US5] Prueba unitaria de las estadísticas en `tecnologia/plataforma-barberias/backend/test/unit/scripts/estadisticas.spec.ts`:
   - p50, p95 y máximo con listas conocidas (incluidos los casos borde de 1 y 2 elementos);
   - porcentaje de 5xx;
   - conteo por `X-Instancia`.
@@ -420,7 +420,7 @@ obtener la tabla registrada.
 
 ### Implementation for User Story 5
 
-- [ ] T049 [US5] Ampliar `tecnologia/plataforma-barberias/backend/scripts/medir-horarios.ts` (R13):
+- [x] T049 [US5] Ampliar `tecnologia/plataforma-barberias/backend/scripts/medir-horarios.ts` (R13):
   - opciones `--url` (por defecto `http://localhost:3000/api/v1`), `--etiqueta` y `--salida` (JSON en `tmp/`);
   - reparto por `X-Instancia` en el informe;
   - un aviso si la tasa de 429 es mayor que 0 (límite de la vía pública sin subir);
@@ -428,20 +428,20 @@ obtener la tabla registrada.
   - mantener la siembra (5 barberos, 60 citas), las 10 rondas de 50 y la limpieza;
   - usar `scripts/estadisticas.ts`;
   - hace pasar T048.
-- [ ] T050 [US5] Ejecutar las variantes A, B, C y D de [quickstart.md](quickstart.md) §4.3 con el entorno de Compose:
+- [x] T050 [US5] Ejecutar las variantes A, B, C y D de [quickstart.md](quickstart.md) §4.3 con el entorno de Compose:
   - `PUBLICO_LIMITE_POR_MINUTO=100000` y `CACHE_CATALOGO_ACTIVA` según la variante;
   - dos ejecuciones por variante, registradas ambas;
   - anotar que A y C usan `fuenteCompleta` (2 transacciones por consulta, con la mejora de M01) y no equivalen exactamente a la medición de 002;
   - anotar fecha, equipo, memoria asignada a Docker, p50, p95, máximo, % de 5xx y reparto;
   - volver a los valores normales y borrar `tmp/` al terminar.
-- [ ] T051 [US5] Ejecutar `npm run demo:caida -- --objetivo replica` y `-- --objetivo redis` (quickstart §4.1 y §4.2) y anotar los resultados (detección, errores en la transición, p95 durante la caída, reincorporación y reservas sin duplicados).
-- [ ] T052 [US5] **Condicional (FR-013b):** solo si la variante D supera los 800 ms. Implementar la caché de horarios según [research.md](research.md) R10:
+- [x] T051 [US5] Ejecutar `npm run demo:caida -- --objetivo replica` y `-- --objetivo redis` (quickstart §4.1 y §4.2) y anotar los resultados (detección, errores en la transición, p95 durante la caída, reincorporación y reservas sin duplicados).
+- [x] T052 [US5] **No aplicada (2026-10-24):** en caliente la variante D dio p95 de 288 y 273 ms; el exceso de una corrida en frío (831 ms) se debe al arranque de las réplicas, no al cálculo de horarios (quickstart.md §6). **Condicional (FR-013b):** solo si la variante D supera los 800 ms. Implementar la caché de horarios según [research.md](research.md) R10:
   - con `cache.horariosActiva`: claves `ClavesCache.horarios` y `generacionHorarios`, TTL de 30 s, en el controlador público o en un caso de uso `ObtenerHorariosPublicos` en `…/catalogo/application/`;
   - un `InvalidadorHorarios`, cuyo `INCR` se ejecuta tras confirmar en todos los casos de uso de la columna "Horarios" de [contracts/cache-claves.md](contracts/cache-claves.md) §3 (incluidos `ReservarCita`, `CancelarCita` y `CambiarEstadoCita` en `…/citas/application/`, y los bloqueos y la disponibilidad);
   - sus pruebas de matriz y de PR09 en `cache-catalogo.spec.ts` y `aislamiento-cache.spec.ts`;
   - medir la variante E y agregar la decisión con D y E a ADR-029.
   - Si D cumple la meta, marcar la tarea como **no aplicada** con la medición que lo justifica.
-- [ ] T053 [US5] Registrar los resultados de T050–T052 en la sección 6 de [quickstart.md](quickstart.md), con la tabla de variantes, las demos y la causa probable si alguna meta no se cumple. Dejar **EQ-02/PR02** y **EQ-03/PR03** como pendientes (FR-027a).
+- [x] T053 [US5] Registrar los resultados de T050–T052 en la sección 6 de [quickstart.md](quickstart.md), con la tabla de variantes, las demos y la causa probable si alguna meta no se cumple. Dejar **EQ-02/PR02** y **EQ-03/PR03** como pendientes (FR-027a).
 
 **Checkpoint**: la evidencia está medida y registrada, cumpla o no la meta.
 

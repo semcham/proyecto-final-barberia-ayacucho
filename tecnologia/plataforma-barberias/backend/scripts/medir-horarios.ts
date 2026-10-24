@@ -8,19 +8,38 @@
  *    ya está corriendo (una instancia).
  * 3. Informa p50, p95, máximo y errores, y borra lo sembrado.
  *
- * Variables (todas opcionales):
- * - `MEDIR_API` (por defecto `http://localhost:3000/api/v1`);
- * - `MEDIR_DB_SUPERUSUARIO` (por defecto la base de Docker Compose: `postgres://postgres:postgres_dev@localhost:5433/barberias`);
- * - `MEDIR_RONDAS` (10) y `MEDIR_CONCURRENCIA` (50).
+ * Opciones (006, T049; todas opcionales):
+ * - `--url` (por defecto `http://localhost:3000/api/v1`, es decir, por Nginx con Docker Compose);
+ * - `--etiqueta` (nombre de la variante, p. ej. `D-2r-con-cache`) y `--salida` (archivo JSON del resultado);
+ * - `--precargar` (activada por defecto; `--no-precargar` la quita): un `GET /publico/{slug}` antes de las
+ *   rondas, para que con la caché activa los horarios lean la entrada del catálogo (006 R13).
+ *
+ * Variables (opcionales): `MEDIR_API` (si no se pasa `--url`), `MEDIR_DB_SUPERUSUARIO` (por defecto la base de
+ * Docker Compose: `postgres://postgres:postgres_dev@localhost:5433/barberias`), `MEDIR_RONDAS` (10) y
+ * `MEDIR_CONCURRENCIA` (50).
  *
  * El backend medido debe arrancar con `PUBLICO_LIMITE_POR_MINUTO` alto (por ejemplo 100000): con el límite
  * de producción (120 por IP y minuto) casi todas las consultas de una sola IP recibirían 429.
  */
 import { randomUUID } from 'node:crypto';
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
 import { performance } from 'node:perf_hooks';
+import { parseArgs } from 'node:util';
 import { Pool } from 'pg';
+import { porcentaje5xx, repartoPorInstancia, resumenTiempos } from './estadisticas';
 
-const API = process.env.MEDIR_API ?? 'http://localhost:3000/api/v1';
+const { values: opciones } = parseArgs({
+  allowNegative: true,
+  options: {
+    url: { type: 'string' },
+    etiqueta: { type: 'string', default: 'sin-etiqueta' },
+    salida: { type: 'string' },
+    precargar: { type: 'boolean', default: true },
+  },
+});
+
+const API = opciones.url ?? process.env.MEDIR_API ?? 'http://localhost:3000/api/v1';
 const DB = process.env.MEDIR_DB_SUPERUSUARIO ?? 'postgres://postgres:postgres_dev@localhost:5433/barberias';
 const RONDAS = Number(process.env.MEDIR_RONDAS ?? 10);
 const CONCURRENCIA = Number(process.env.MEDIR_CONCURRENCIA ?? 50);
@@ -32,12 +51,6 @@ function fechaLima(dias: number): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Lima' }).format(
     new Date(Date.now() + dias * 86_400_000),
   );
-}
-
-function percentil(ordenados: number[], p: number): number {
-  if (ordenados.length === 0) return Number.NaN;
-  const indice = Math.min(ordenados.length - 1, Math.ceil((p / 100) * ordenados.length) - 1);
-  return ordenados[Math.max(0, indice)];
 }
 
 interface Sembrado {
@@ -137,15 +150,25 @@ async function limpiar(db: Pool, tenantId: string): Promise<void> {
 
 async function medir(sembrado: Sembrado) {
   const url = `${API}/publico/${sembrado.slug}/horarios?servicio=${sembrado.servicioId}&fecha=${sembrado.fecha}`;
-  // Calentamiento: conexiones del pool y planes de consulta.
-  const calentamiento = await fetch(url);
-  if (calentamiento.status !== 200) {
-    throw new Error(
-      `La consulta de calentamiento respondió ${calentamiento.status}: ${await calentamiento.text()}`,
-    );
+  // Precarga (006 R13): con la caché activa, deja la entrada del catálogo lista para los horarios.
+  if (opciones.precargar) {
+    const precarga = await fetch(`${API}/publico/${sembrado.slug}`);
+    await precarga.arrayBuffer();
+    if (precarga.status !== 200) throw new Error(`La precarga del catálogo respondió ${precarga.status}`);
+  }
+  // Calentamiento: conexiones del pool y planes de consulta, en las dos réplicas si las hay.
+  for (let i = 0; i < 2; i += 1) {
+    const calentamiento = await fetch(url);
+    if (calentamiento.status !== 200) {
+      throw new Error(
+        `La consulta de calentamiento respondió ${calentamiento.status}: ${await calentamiento.text()}`,
+      );
+    }
+    await calentamiento.arrayBuffer();
   }
   const tiempos: number[] = [];
-  const estados = new Map<number, number>();
+  const estados: number[] = [];
+  const instancias: (string | null)[] = [];
   let errores = 0;
   for (let ronda = 0; ronda < RONDAS; ronda += 1) {
     await Promise.all(
@@ -155,26 +178,28 @@ async function medir(sembrado: Sembrado) {
           const respuesta = await fetch(url);
           await respuesta.arrayBuffer();
           tiempos.push(performance.now() - inicio);
-          estados.set(respuesta.status, (estados.get(respuesta.status) ?? 0) + 1);
+          estados.push(respuesta.status);
+          instancias.push(respuesta.headers.get('x-instancia'));
         } catch {
           errores += 1;
         }
       }),
     );
   }
-  tiempos.sort((a, b) => a - b);
-  const total = RONDAS * CONCURRENCIA;
-  const cincoXX = [...estados].filter(([estado]) => estado >= 500).reduce((suma, [, n]) => suma + n, 0);
+  const porEstado: Record<string, number> = {};
+  for (const estado of estados) porEstado[estado] = (porEstado[estado] ?? 0) + 1;
   return {
-    consultas: total,
+    etiqueta: opciones.etiqueta,
+    url: API,
+    precarga: opciones.precargar,
+    consultas: RONDAS * CONCURRENCIA,
     rondas: RONDAS,
     concurrencia: CONCURRENCIA,
-    p50_ms: Math.round(percentil(tiempos, 50)),
-    p95_ms: Math.round(percentil(tiempos, 95)),
-    max_ms: Math.round(tiempos.at(-1) ?? Number.NaN),
-    estados: Object.fromEntries(estados),
+    ...resumenTiempos(tiempos),
+    estados: porEstado,
     errores_de_red: errores,
-    porcentaje_5xx: Number(((100 * cincoXX) / total).toFixed(2)),
+    porcentaje_5xx: porcentaje5xx(estados),
+    reparto: repartoPorInstancia(instancias),
   };
 }
 
@@ -186,12 +211,22 @@ async function principal(): Promise<void> {
     console.log(
       `Barbería sembrada: ${sembrado.slug} (${BARBEROS} barberos, ${CITAS} citas el ${sembrado.fecha}).`,
     );
-    const resultado = await medir(sembrado);
+    const resultado = { fecha: new Date().toISOString(), ...(await medir(sembrado)) };
     console.log(JSON.stringify(resultado, null, 2));
-    const cumple = resultado.p95_ms <= 800 && resultado.porcentaje_5xx === 0;
+    const cumple =
+      resultado.p95_ms !== null &&
+      resultado.p95_ms <= 800 &&
+      resultado.porcentaje_5xx === 0 &&
+      resultado.errores_de_red === 0;
     console.log(`Meta de referencia (p95 ≤ 800 ms y 0 % de 5xx): ${cumple ? 'se cumple' : 'NO se cumple'}.`);
-    if ((resultado.estados[429] ?? 0) > 0) {
+    if ((resultado.estados['429'] ?? 0) > 0) {
       console.log('Aviso: hubo respuestas 429. Arranca el backend con PUBLICO_LIMITE_POR_MINUTO alto.');
+    }
+    if (opciones.salida) {
+      const salida = resolve(opciones.salida);
+      mkdirSync(dirname(salida), { recursive: true });
+      writeFileSync(salida, JSON.stringify(resultado, null, 2));
+      console.log(`Resultado en ${salida}`);
     }
   } finally {
     if (sembrado) await limpiar(db, sembrado.tenantId);

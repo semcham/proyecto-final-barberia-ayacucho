@@ -51,7 +51,9 @@ x-backend-entorno: &backend-entorno
   DATABASE_URL_APP: postgres://barberias_app:barberias_app_dev@db:5432/barberias
   DATABASE_URL_OWNER: postgres://barberias_owner:barberias_owner_dev@db:5432/barberias
   DATABASE_URL_PUBLICO: postgres://barberias_publico:barberias_publico_dev@db:5432/barberias
-  REDIS_URL: redis://redis:6379
+  # Por IP fija, no por nombre: con Redis detenido, resolver "redis" tarda 3–4 s (ENOTFOUND tras consultar
+  # el DNS del equipo) en cada reconexión, y esas esperas llegaron a demorar solicitudes 3–5 s (2026-10-24).
+  REDIS_URL: redis://${IP_REDIS:-172.28.0.13}:6379
   # Solo Nginx es proxy de confianza: el X-Forwarded-For que envíe un cliente no cambia la IP (R04).
   PROXIES_CONFIABLES: ${IP_NGINX:-172.28.0.10}
   CACHE_CATALOGO_ACTIVA: ${CACHE_CATALOGO_ACTIVA:-true}
@@ -71,12 +73,12 @@ services:
     ports:
       # Puerto publicado en el equipo (DB_PUERTO en .env, 5433 por defecto) para no chocar con un PostgreSQL
       # instalado localmente en el 5432. Dentro de la red de Compose la base sigue en db:5432.
-      - '${DB_PUERTO:-5433}:5432'
+      - "${DB_PUERTO:-5433}:5432"
     volumes:
       - ./db/init:/docker-entrypoint-initdb.d:ro
       - datos-postgres:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U postgres -d barberias']
+      test: ["CMD-SHELL", "pg_isready -U postgres -d barberias"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -91,25 +93,27 @@ services:
     # Caché sin persistencia (principio VIII: nunca fuente de verdad); si se llena, expulsa por LRU.
     command:
       [
-        'redis-server',
-        '--save',
-        '',
-        '--appendonly',
-        'no',
-        '--maxmemory',
-        '48mb',
-        '--maxmemory-policy',
-        'allkeys-lru',
+        "redis-server",
+        "--save",
+        "",
+        "--appendonly",
+        "no",
+        "--maxmemory",
+        "48mb",
+        "--maxmemory-policy",
+        "allkeys-lru",
       ]
     ports:
-      # Solo para depurar desde el equipo (redis-cli); las réplicas usan redis:6379 dentro de la red.
-      - '${REDIS_PUERTO:-6380}:6379'
+      # Solo para depurar desde el equipo (redis-cli); las réplicas usan su IP fija dentro de la red.
+      - "${REDIS_PUERTO:-6380}:6379"
     healthcheck:
-      test: ['CMD', 'redis-cli', 'ping']
+      test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 2s
       retries: 5
-    networks: [plataforma]
+    networks:
+      plataforma:
+        ipv4_address: ${IP_REDIS:-172.28.0.13}
     deploy:
       resources:
         limits:
@@ -135,7 +139,7 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    restart: 'no'
+    restart: "no"
     networks: [plataforma]
     deploy:
       resources:
@@ -170,14 +174,14 @@ services:
       - ./nginx/templates:/etc/nginx/templates:ro
     ports:
       # La API se publica por el balanceador, en el mismo puerto de siempre.
-      - '3000:80'
+      - "3000:80"
     depends_on:
       backend-1:
         condition: service_healthy
       backend-2:
         condition: service_healthy
     healthcheck:
-      test: ['CMD', 'wget', '-q', '-O', '-', 'http://127.0.0.1/nginx-salud']
+      test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1/nginx-salud"]
       interval: 5s
       timeout: 2s
       retries: 3
@@ -201,7 +205,7 @@ services:
       # En Linux se puede poner VITE_SONDEO=false en .env para ahorrar CPU.
       VITE_SONDEO: ${VITE_SONDEO:-true}
     ports:
-      - '5173:5173'
+      - "5173:5173"
     volumes:
       - ./frontend:/app
       - frontend-node-modules:/app/node_modules

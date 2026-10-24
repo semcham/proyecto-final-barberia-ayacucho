@@ -11,7 +11,7 @@ Describe lo que el entorno local garantiza a quien lo usa (desarrollo, demos, me
 | Servicio           | Imagen              | Red (`plataforma`, 172.28.0.0/24) | Puerto en el equipo                    | Memoria                                                   | Arranca cuando                                                                                                                                                              | Comprobación de salud                                                                                           |
 | ------------------ | ------------------- | --------------------------------- | -------------------------------------- | --------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
 | `db`               | `postgres:16`       | dinámica                          | `${DB_PUERTO:-5433}`                   | 512 MB                                                    | —                                                                                                                                                                           | `pg_isready` (como hoy)                                                                                         |
-| `redis`            | `redis:7.4-alpine`  | dinámica                          | `${REDIS_PUERTO:-6380}` (para depurar) | 64 MB (`maxmemory 48mb`, `allkeys-lru`, sin persistencia) | —                                                                                                                                                                           | `redis-cli ping`                                                                                                |
+| `redis`            | `redis:7.4-alpine`  | 172.28.0.13                       | `${REDIS_PUERTO:-6380}` (para depurar) | 64 MB (`maxmemory 48mb`, `allkeys-lru`, sin persistencia) | —                                                                                                                                                                           | `redis-cli ping`                                                                                                |
 | `preparar-backend` | `node:22`           | dinámica                          | —                                      | 1 GB                                                      | `db` sana                                                                                                                                                                   | Es de una sola ejecución: `npm ci && npm run build && npm run migrate`; termina con 0                           |
 | `backend-1`        | `node:22`           | 172.28.0.11                       | — (sin publicar)                       | 384 MB                                                    | `preparar-backend` terminó bien; `db` sana (**no** espera a `redis`: arranca sin él). Lee el build del volumen `backend-dist` y `node_modules` del volumen, de solo lectura | `GET /api/v1/salud/listo` cada 5 s (5 reintentos, `start_period` 60 s: arranque medido de unos 36 s en Windows) |
 | `backend-2`        | `node:22`           | 172.28.0.12                       | — (sin publicar)                       | 384 MB                                                    | Igual que `backend-1`                                                                                                                                                       | Igual que `backend-1`                                                                                           |
@@ -19,7 +19,9 @@ Describe lo que el entorno local garantiza a quien lo usa (desarrollo, demos, me
 | `frontend`         | `node:22`           | dinámica                          | `5173`                                 | 512 MB                                                    | `nginx` iniciado                                                                                                                                                            | —                                                                                                               |
 
 - **Variables comunes de las réplicas** (ancla `x-backend`): `.env`, más `DATABASE_URL_*` hacia
-  `db:5432`, `REDIS_URL=redis://redis:6379`, `PROXIES_CONFIABLES=172.28.0.10`,
+  `db:5432`, `REDIS_URL=redis://172.28.0.13:6379` (por IP: con Redis detenido, resolver el nombre `redis`
+  tarda 3–4 s en cada reconexión y llegó a demorar solicitudes 3–5 s; medido el 2026-10-24),
+  `PROXIES_CONFIABLES=172.28.0.10`,
   `NODE_ENV=production`, `NODE_OPTIONS=--max-old-space-size=256`, y además:
   - `CACHE_CATALOGO_ACTIVA=${CACHE_CATALOGO_ACTIVA:-true}`;
   - `PUBLICO_LIMITE_POR_MINUTO=${PUBLICO_LIMITE_POR_MINUTO:-120}`.
@@ -29,7 +31,8 @@ Describe lo que el entorno local garantiza a quien lo usa (desarrollo, demos, me
   límite por instancia; cuando Redis responde, el interruptor lo vuelve a usar (FR-019).
 - **Frontend:** `VITE_API_PROXY=http://nginx:80`.
 - **Subred:** si choca con otra red del equipo, se cambia en un solo lugar (`.env`:
-  `RED_SUBRED`, `IP_NGINX`, `IP_BACKEND_1`, `IP_BACKEND_2`) y `PROXIES_CONFIABLES` toma `IP_NGINX`.
+  `RED_SUBRED`, `IP_NGINX`, `IP_BACKEND_1`, `IP_BACKEND_2`, `IP_REDIS`) y `PROXIES_CONFIABLES` toma
+  `IP_NGINX`.
 
 ## 2. Comportamiento garantizado del balanceador
 

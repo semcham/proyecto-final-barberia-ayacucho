@@ -212,6 +212,64 @@ variables de la terminal desde la que se lanzó `npm run demo:caida`. Si `PUBLIC
 fijada ahí, la réplica vuelve con el límite de 120 y aparecen 429 (el script lo avisa). Fijarla en la misma
 terminal antes de lanzar la demostración.
 
+### 2026-10-24 · US5: medición de horarios libres (T050–T053; PR01, SC-001)
+
+**Condiciones.** Mismo equipo (Windows 11, 8 GB de RAM, 8 procesadores lógicos); Docker Desktop 29.8 con
+3,71 GB y 8 CPU asignados. Antes de medir se cerraron el fondo animado y Chrome y se detuvo el indexador de
+Windows: carga de base de la CPU de un 27 % en promedio (VS Code, un proceso `chrome` en segundo plano y el
+propio muestreo). Entorno de Compose sin el frontend, con `PUBLICO_LIMITE_POR_MINUTO=100000`.
+
+**Método.** `npm run medir:horarios` (§4.3): barbería con 5 barberos y 60 citas en el día medido, 2 consultas de
+calentamiento, 10 rondas de 50 consultas simultáneas a `GET /publico/{slug}/horarios` por Nginx (500 por
+corrida). B y D con precarga del catálogo (los horarios usan `fuenteDelDia`: la entrada en caché más 3 consultas
+de ocupación); A y C sin precarga y con la caché desactivada (`fuenteCompleta`: 6 consultas en una transacción,
+más la de M01). Por eso A y C no equivalen exactamente a la medición preliminar de 002 (T133), que hacía 2
+lecturas de M01. "En frío" = primera corrida justo después de recrear las réplicas.
+
+| Variante                  | Corrida                 | p50 (ms) | **p95 (ms)** | Máximo (ms) | 5xx | Reparto        |
+| ------------------------- | ----------------------- | -------- | ------------ | ----------- | --- | -------------- |
+| A · 1 réplica, sin caché  | 1                       | 347      | **626**      | 1 343       | 0 % | backend-1: 500 |
+| A · 1 réplica, sin caché  | 2                       | 306      | **477**      | 633         | 0 % | backend-1: 500 |
+| B · 1 réplica, con caché  | 1                       | 309      | **670**      | 829         | 0 % | backend-1: 500 |
+| B · 1 réplica, con caché  | 2                       | 285      | **613**      | 1 157       | 0 % | backend-1: 500 |
+| C · 2 réplicas, sin caché | 1 (en frío)             | 390      | **828**      | 1 005       | 0 % | 250 / 250      |
+| C · 2 réplicas, sin caché | 2                       | 233      | **352**      | 394         | 0 % | 250 / 250      |
+| D · 2 réplicas, con caché | 1 (en frío)             | 265      | **831**      | 967         | 0 % | 250 / 250      |
+| D · 2 réplicas, con caché | 2                       | 183      | **288**      | 378         | 0 % | 250 / 250      |
+| D · 2 réplicas, con caché | 3 (en frío, repetición) | 279      | **765**      | 908         | 0 % | 250 / 250      |
+| D · 2 réplicas, con caché | 4 (repetición)          | 183      | **273**      | 336         | 0 % | 250 / 250      |
+
+Ningún error de red ni 429 en ninguna corrida.
+
+**Resultado frente a SC-001 (p95 ≤ 800 ms con 2 réplicas y caché).** En caliente se cumple con holgura: p95 de
+288 y 273 ms. La primera corrida en frío lo superó una vez (831 ms) y otra quedó justo por debajo (765 ms).
+Para comprobarlo se repitió D desde cero (corridas 3 y 4).
+
+**Causa probable del exceso en frío:** el arranque de las réplicas (compilación JIT de Node y apertura de las
+conexiones de los pools durante la primera ráfaga de 50 consultas simultáneas), no el cálculo de horarios. Lo
+indica que C en frío dio lo mismo sin caché (828 ms) y que, en caliente, C y D bajan a 273–352 ms. Con una
+sola réplica (A y B) la caché del catálogo casi no cambia los horarios: se ahorran 3 de las 6 consultas, y la
+ocupación del día se sigue leyendo vigente.
+
+**T052 (caché de horarios calculados, FR-013b): no aplicada.** La caché de horarios no actúa sobre el
+arranque en frío, y en caliente la variante D ya cumple la meta con un margen de unos 500 ms. Si se quisiera
+cubrir también la primera ráfaga tras un despliegue, lo indicado sería un calentamiento de las réplicas
+antes de recibir tráfico, no FR-013b.
+
+**Demostraciones de caída (T051)** con el script final (`demo:caida`, que ya usa `scripts/estadisticas.ts`):
+
+| Objetivo                         | Resultado                                                                                                                                                                                                                                                           |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--objetivo replica`             | 0 errores en 1 019 solicitudes (0 en la transición); `backend-2` dejó de recibir tráfico 0,9 s después de detenerlo y volvió 10,7 s después de iniciarlo; p95 durante la caída, 26 ms                                                                               |
+| `--objetivo redis` (antes)       | **1 error en 1 017** (una solicitud de horarios a `backend-2` cortada a los 5 s, 499 en Nginx; otra tardó 3,3 s). 20 reservas sin duplicados                                                                                                                        |
+| `--objetivo redis` (después, ×2) | **0 errores** en 1 021 y 1 020 solicitudes; ninguna por encima de 0,5 s en Nginx; p95 durante la caída, 28–29 ms; 20 reservas aceptadas, 20 reintentos con la misma cita, 0 solapadas; una `CACHE_NO_DISPONIBLE` y una `CACHE_RECUPERADA` por réplica en cada caída |
+
+**Ajuste que salió de esta verificación** (aplicado en `docker-compose.yml`, `.env.example` y
+[contracts/entorno-compose.md](contracts/entorno-compose.md)): **las réplicas llegan a Redis por IP fija**
+(`IP_REDIS`, 172.28.0.13), igual que Nginx a las réplicas. Con Redis detenido, resolver el nombre `redis` dentro
+de la red tardaba 3–4 s y terminaba en `ENOTFOUND` (el DNS de Docker reenvía la consulta al del equipo), mientras
+que `db` resolvía en 25 ms; esas esperas en cada reconexión de ioredis eran la causa del error de la tabla.
+
 ### Pendiente (fuera del alcance de 006)
 
 - **EQ-02 / PR02 · carga de reservas** (20 por segundo durante 5 min, p95 ≤ 1 500 ms): no se mide en

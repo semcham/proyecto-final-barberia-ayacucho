@@ -27,6 +27,7 @@ import { performance } from 'node:perf_hooks';
 import { parseArgs } from 'node:util';
 import argon2 from 'argon2';
 import { Pool } from 'pg';
+import { repartoPorInstancia, resumenTiempos } from './estadisticas';
 
 const { values: opciones } = parseArgs({
   options: {
@@ -65,12 +66,6 @@ function fechaLima(dias: number): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Lima' }).format(
     new Date(Date.now() + dias * 86_400_000),
   );
-}
-
-function percentil(ordenados: number[], p: number): number | null {
-  if (ordenados.length === 0) return null;
-  const indice = Math.min(ordenados.length - 1, Math.ceil((p / 100) * ordenados.length) - 1);
-  return Math.round(ordenados[Math.max(0, indice)]);
 }
 
 const esperar = (ms: number) => new Promise((resolver) => setTimeout(resolver, ms));
@@ -290,9 +285,12 @@ function resumir(muestras: Muestra[], paradaReal: number | null, arranqueReal: n
     .sort((a, b) => a - b)
     .map((s) => {
       const lista = porSegundo.get(s) ?? [];
-      const reparto: Record<string, number> = {};
-      for (const m of lista) reparto[m.instancia ?? 'ninguna'] = (reparto[m.instancia ?? 'ninguna'] ?? 0) + 1;
-      return { segundo: s, solicitudes: lista.length, errores: lista.filter(esError).length, reparto };
+      return {
+        segundo: s,
+        solicitudes: lista.length,
+        errores: lista.filter(esError).length,
+        reparto: repartoPorInstancia(lista.map((m) => m.instancia)),
+      };
     });
 
   const parada = paradaReal ?? PARADA_S;
@@ -301,11 +299,8 @@ function resumir(muestras: Muestra[], paradaReal: number | null, arranqueReal: n
   const ultimaAntes = deBackend2.filter((m) => m.t >= parada && m.t < arranque).at(-1);
   const primeraDespues = deBackend2.find((m) => m.t >= arranque);
   const transicion = muestras.filter((m) => m.t >= parada && m.t < parada + TRANSICION_S);
-  const durante = muestras
-    .filter((m) => m.t >= parada && m.t < arranque && !esError(m))
-    .map((m) => m.ms)
-    .sort((a, b) => a - b);
-  const todas = muestras.map((m) => m.ms).sort((a, b) => a - b);
+  const durante = muestras.filter((m) => m.t >= parada && m.t < arranque && !esError(m)).map((m) => m.ms);
+  const todas = muestras.map((m) => m.ms);
   const total = muestras.length;
   return {
     objetivo: OBJETIVO,
@@ -329,8 +324,8 @@ function resumir(muestras: Muestra[], paradaReal: number | null, arranqueReal: n
       OBJETIVO === 'replica' ? Number(((ultimaAntes?.t ?? parada) - parada).toFixed(1)) : null,
     reincorporacion_s:
       OBJETIVO === 'replica' && primeraDespues ? Number((primeraDespues.t - arranque).toFixed(1)) : null,
-    p95_durante_caida_ms: percentil(durante, 95),
-    p95_total_ms: percentil(todas, 95),
+    p95_durante_caida_ms: resumenTiempos(durante).p95_ms,
+    p95_total_ms: resumenTiempos(todas).p95_ms,
     por_segundo: segundos,
   };
 }
@@ -384,9 +379,7 @@ async function principal(): Promise<void> {
       if (Math.floor(t) > ultimoInforme) {
         ultimoInforme = Math.floor(t);
         const previas = muestras.filter((m) => Math.floor(m.t) === ultimoInforme - 1);
-        const reparto: Record<string, number> = {};
-        for (const m of previas)
-          reparto[m.instancia ?? 'ninguna'] = (reparto[m.instancia ?? 'ninguna'] ?? 0) + 1;
+        const reparto = repartoPorInstancia(previas.map((m) => m.instancia));
         const errores = previas.filter((m) => m.estado === 0 || m.estado >= 500).length;
         console.log(
           `t=${ultimoInforme - 1}s solicitudes=${previas.length} errores=${errores} ${JSON.stringify(reparto)}`,
