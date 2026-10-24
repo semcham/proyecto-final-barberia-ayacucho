@@ -1,6 +1,7 @@
-import { Controller, Get, Req } from '@nestjs/common';
-import type { Request } from 'express';
+import { Controller, Get, Post, Req, Res } from '@nestjs/common';
+import type { Request, Response } from 'express';
 import { Publica } from '../../../src/host/solicitud';
+import { Configuracion } from '../../../src/shared';
 import { type AppDePrueba, crearApp } from '../../helpers/app';
 import { sembrarBarberia } from '../../helpers/fixtures';
 import { iniciarNginx, type NginxDePrueba } from '../../helpers/nginx';
@@ -39,6 +40,36 @@ class IpDePruebaController {
   }
 }
 
+/**
+ * Ruta solo de prueba (T065): `backend-1` corta la conexión a mitad de la solicitud, sin responder (como una
+ * réplica que cae mientras atiende); `backend-2` responde. No hace falta detener una instancia, que es lo que
+ * el túnel de Testcontainers no reproduce bien (ver arriba).
+ */
+@Controller('prueba-corte')
+class CorteDePruebaController {
+  constructor(private readonly configuracion: Configuracion) {}
+
+  @Get()
+  @Publica()
+  leer(@Req() solicitud: Request, @Res() respuesta: Response) {
+    this.responder(solicitud, respuesta);
+  }
+
+  @Post()
+  @Publica()
+  escribir(@Req() solicitud: Request, @Res() respuesta: Response) {
+    this.responder(solicitud, respuesta);
+  }
+
+  private responder(solicitud: Request, respuesta: Response) {
+    if (this.configuracion.instanciaId === 'backend-1') {
+      setTimeout(() => solicitud.socket.destroy(), 300);
+      return;
+    }
+    respuesta.json({ instancia: this.configuracion.instanciaId });
+  }
+}
+
 describe('Balanceador: Nginx delante de dos instancias (US1)', () => {
   let instancias: [AppDePrueba, AppDePrueba];
   let nginx: NginxDePrueba;
@@ -46,7 +77,7 @@ describe('Balanceador: Nginx delante de dos instancias (US1)', () => {
   const levantar = (indice: 0 | 1) =>
     crearApp({
       escuchar: true,
-      controladoresExtra: [IpDePruebaController],
+      controladoresExtra: [IpDePruebaController, CorteDePruebaController],
       entorno: { INSTANCIA_ID: `backend-${indice + 1}`, PROXIES_CONFIABLES: 'loopback' },
     });
 
@@ -173,5 +204,40 @@ describe('Balanceador: Nginx delante de dos instancias (US1)', () => {
       codigos409: ['HORARIO_NO_DISPONIBLE'],
     });
     expect(activas).toBe(1);
+  });
+
+  // Va al final: los cortes cuentan como fallos de backend-1 para max_fails (3 en 10 s).
+  it('réplica que cae a mitad de una solicitud (T065): un GET se reintenta en la otra y da 200; un POST no se reenvía', async () => {
+    const lecturas = [];
+    for (let i = 0; i < 2; i += 1) lecturas.push(await porNginx('/prueba-corte'));
+    for (const lectura of lecturas) {
+      expect(lectura.status).toBe(200);
+      expect(lectura.headers.get('x-instancia')).toBe('backend-2');
+    }
+
+    const escrituras = [];
+    for (let i = 0; i < 2; i += 1) {
+      const respuesta = await porNginx('/prueba-corte', { method: 'POST' });
+      escrituras.push({
+        estado: respuesta.status,
+        cuerpo: await respuesta.text(),
+        instancia: respuesta.headers.get('x-instancia'),
+      });
+    }
+    // Un POST que llegó a backend-1 no se reintenta (proxy_next_upstream sin non_idempotent): 503 propio.
+    const atendida = (e: { estado: number }) => e.estado >= 200 && e.estado < 300; // Nest responde 201 a un POST
+    const cortadas = escrituras.filter((e) => !atendida(e));
+    expect(cortadas.length).toBeGreaterThanOrEqual(1);
+    for (const cortada of cortadas) {
+      expect(cortada.estado).toBe(503);
+      expect(JSON.parse(cortada.cuerpo).codigo).toBe('SERVICIO_NO_DISPONIBLE');
+    }
+    for (const e of escrituras.filter(atendida)) expect(e.instancia).toBe('backend-2');
+
+    // El registro de Nginx muestra el reintento: la lectura pasó por las dos réplicas.
+    const registros = await nginx.registros();
+    expect(registros).toMatch(
+      /GET \/api\/v1\/prueba-corte .*upstream=[^ ]+:\d+, [^ ]+:\d+ estado_upstream=502, 200/,
+    );
   });
 });

@@ -367,6 +367,39 @@ describe('Caché compartida del catálogo público (dos instancias)', () => {
     );
   });
 
+  it('ráfaga tras una invalidación (T066, caso límite): 50 visitas simultáneas dan 0 × 5xx y una sola entrada con el dato nuevo', async () => {
+    const c = await contexto();
+    await catalogo(b, c.e.barberia.slug);
+    await a.agente
+      .patch(`/api/v1/servicios/${c.e.servicioId}`)
+      .set(con(c.token))
+      .send({ precio: '44.00' })
+      .expect(200);
+    expect(await redis.claves(claveDe(c.e))).toEqual([]); // recién invalidada
+
+    // Leer varias veces de la base en ese instante es aceptable (spec.md, casos límite).
+    const respuestas = await Promise.all(
+      Array.from({ length: 50 }, (_, i) =>
+        (i % 2 === 0 ? a : b).agente.get(`/api/v1/publico/${c.e.barberia.slug}`),
+      ),
+    );
+    expect(respuestas.filter((r) => r.status >= 500)).toEqual([]);
+    expect(respuestas.every((r) => r.status === 200)).toBe(true);
+    expect(new Set(respuestas.map((r) => JSON.stringify(r.body))).size).toBe(1);
+    expect(respuestas[0].body.servicios.find((s: { id: string }) => s.id === c.e.servicioId).precio).toBe(
+      '44.00',
+    );
+
+    expect(await redis.claves(`bp:v1:t:${c.e.barberia.tenantId}:*`)).toEqual(
+      expect.arrayContaining([claveDe(c.e)]),
+    );
+    expect((await redis.claves(`bp:v1:t:${c.e.barberia.tenantId}:catalogo-publico`)).length).toBe(1);
+    const sobre = JSON.parse((await redis.cliente().get(claveDe(c.e))) as string);
+    const generacion = Number(await redis.cliente().get(`${claveDe(c.e)}:gen`));
+    expect(sobre.d.generacion).toBe(generacion);
+    expect(sobre.d.servicios.find((s: { id: string }) => s.id === c.e.servicioId).precio).toBe('44.00');
+  });
+
   it('TTL: con CACHE_CATALOGO_TTL_SEGUNDOS=10 la clave vive 10 s o menos', async () => {
     const corta = await crearApp({ entorno: { CACHE_CATALOGO_TTL_SEGUNDOS: '10' } });
     try {

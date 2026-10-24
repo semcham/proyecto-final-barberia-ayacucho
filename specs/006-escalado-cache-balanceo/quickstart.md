@@ -270,6 +270,45 @@ antes de recibir tráfico, no FR-013b.
 de la red tardaba 3–4 s y terminaba en `ENOTFOUND` (el DNS de Docker reenvía la consulta al del equipo), mientras
 que `db` resolvía en 25 ms; esas esperas en cada reconexión de ioredis eran la causa del error de la tabla.
 
+### 2026-10-24 · Cierre (T062–T066)
+
+**Suite completa (T062)**, en el equipo de desarrollo, el backend y luego el frontend (un solo proceso de
+Vitest), sin repetir ninguna prueba:
+
+| Parte    | Comprobación                                     | Resultado                             |
+| -------- | ------------------------------------------------ | ------------------------------------- |
+| Backend  | `prettier --check`, `lint`, `build`              | En verde                              |
+| Backend  | `npm test` (unitarias)                           | **392 de 392** (24 archivos)          |
+| Backend  | `npm run test:int` (integración, Testcontainers) | **880 de 880** (51 archivos, 6,8 min) |
+| Backend  | `npm run test:arch` (PR14)                       | **16 de 16**                          |
+| Frontend | `prettier --check`, `lint`, `build`              | En verde                              |
+| Frontend | `vitest run --maxWorkers=1 --minWorkers=1`       | **81 de 81** (14 archivos)            |
+
+**Recorrido manual de §3 (T063)** con el entorno real y la configuración normal (límites sin subir), por HTTP
+con un script temporal; sin navegador, porque no hay uno instalado y no se descarga. El aviso en la interfaz
+ante el 503 lo cubre la prueba `frontend/test/api/servicio-no-disponible.spec.tsx`.
+
+| Paso                  | Resultado                                                                                                                                                      |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1. Reparto            | 6 solicitudes: `backend-1`, `backend-2`, alternadas                                                                                                            |
+| 2. Caché del catálogo | Tras dos visitas (una por Vite): `bp:v1:t:{uuid}:catalogo-publico` y su `:gen`; ninguna clave con el `slug`                                                    |
+| 3. Invalidación       | Precio cambiado por el propietario: las 6 recargas siguientes, por ambas réplicas, muestran el precio nuevo                                                    |
+| 4. Cambio de enlace   | El enlace nuevo responde 200 y el anterior, 404 `BARBERIA_NO_DISPONIBLE`, desde la primera visita                                                              |
+| 5. IP falsa           | Registro de la barbería con `X-Forwarded-For: 203.0.113.9`: la auditoría guardó `172.28.0.1` (la IP que ve Nginx) en `BARBERIA_REGISTRADA` y `ENLACE_CAMBIADO` |
+| 6. Sin réplicas       | Con las dos detenidas: 503 `SERVICIO_NO_DISPONIBLE`, `Retry-After: 5` y JSON en 2,9 s por Nginx y 2,2 s por Vite; con `up -d --no-deps` vuelve a responder 200 |
+
+Lo sembrado se borró al terminar.
+
+**Pruebas opcionales:**
+
+- **T065, hecha:** en `balanceador.spec.ts`, una réplica corta la conexión a mitad de la solicitud. El GET se
+  reintenta en la otra y da 200; el registro de Nginx muestra los dos destinos (`502, 200`). Un POST no se
+  reenvía y recibe el 503 propio. Se probó sin detener la instancia, que es lo que el túnel de
+  Testcontainers no reproduce bien (R15).
+- **T066, hecha:** en `cache-catalogo.spec.ts`, 50 visitas simultáneas justo después de una invalidación,
+  repartidas en las dos instancias: 0 × 5xx, las 50 respuestas iguales y con el dato nuevo, y una sola entrada
+  en Redis con la generación vigente.
+
 ### Pendiente (fuera del alcance de 006)
 
 - **EQ-02 / PR02 · carga de reservas** (20 por segundo durante 5 min, p95 ≤ 1 500 ms): no se mide en

@@ -1,6 +1,6 @@
 # Tecnologías
 
-Principio: **no se elige por popularidad**, sino por criterios (costo, curva de aprendizaje, gratuidad, integración con IA, mantenibilidad, compatibilidad con SaaS y con el estilo). Las versiones exactas están fijadas en los `package.json` de `tecnologia/plataforma-barberias/` (sección 5). Estado: el stack de la funcionalidad 001 está **implementado y probado en local** (backend, frontend y PostgreSQL); Redis, AWS, pagos, IA, correo y WhatsApp siguen **planificados**.
+Principio: **no se elige por popularidad**, sino por criterios (costo, curva de aprendizaje, gratuidad, integración con IA, mantenibilidad, compatibilidad con SaaS y con el estilo). Las versiones exactas están fijadas en los `package.json` de `tecnologia/plataforma-barberias/` (sección 5). Estado: el stack de la funcionalidad 001 está **implementado y probado en local** (backend, frontend y PostgreSQL); desde la 006, también **Redis y Nginx en local** con Docker Compose (sección 5.3). AWS, pagos, IA, correo y WhatsApp siguen **planificados**.
 
 ## 1. Criterios de evaluación
 
@@ -78,6 +78,32 @@ Fuente: `specs/001-registro-acceso-barberia/research.md`. Versiones exactas (sin
 | Entorno local                 | Docker Compose con `postgres:16`; `tsx` para ejecutar las migraciones; `VITE_SONDEO` para que Vite detecte cambios en el volumen montado (Windows y macOS) | Reproducir el entorno                                                                                          | R20      |
 
 Esta funcionalidad **no** levanta Redis: no hay lecturas que cachear.
+
+### 5.3 Funcionalidad 006 (caché compartida, límites compartidos y balanceo local)
+
+Fuente: `specs/006-escalado-cache-balanceo/research.md`. Decisiones: ADR-029 (caché compartida con claves por barbería) y ADR-030 (balanceo local como representación de ADR-006).
+
+| Capa                          | Librería, imagen o herramienta (versión fijada)                                | Licencia                    | Para qué                                                                                                   | Decisión      |
+| ----------------------------- | ------------------------------------------------------------------------------ | --------------------------- | ---------------------------------------------------------------------------------------------------------- | ------------- |
+| Cliente de Redis              | `ioredis` **5.4.2**                                                            | MIT                         | Caché del catálogo público y contadores del límite por IP; tiempo límite de 100 ms por operación, sin cola | R05           |
+| Límite general de solicitudes | `@nestjs/throttler` 6.7 con almacenamiento propio (`AlmacenLimitesCompartido`) | MIT                         | Ahora **compartido entre réplicas** en Redis, con respaldo en memoria por instancia si Redis no responde   | R09           |
+| Balanceador local             | Imagen `nginx:1.27-alpine`                                                     | BSD de 2 cláusulas (Nginx)  | Reparto por turnos, salud pasiva, IP real del cliente y 503 `SERVICIO_NO_DISPONIBLE`                       | R01, R02, R04 |
+| Caché local                   | Imagen `redis:7.4-alpine`, sin persistencia (`--save ""`, `--appendonly no`)   | RSALv2 / SSPLv1 (Redis 7.4) | Datos tolerantes a pérdida (principio VIII); nunca fuente de verdad                                        | R12           |
+| Pruebas                       | Testcontainers 12 (`GenericContainer` de Redis y de Nginx)                     | MIT                         | Dos instancias en proceso sobre el mismo Redis; Nginx delante de ellas                                     | R15           |
+
+La licencia de Redis 7.4 (RSALv2 o SSPLv1) permite usarlo como caché interna de la propia aplicación, que es este caso; no permite ofrecer Redis como servicio a terceros. En la nube se usaría ElastiCache, que lo resuelve el proveedor.
+
+**Límites de memoria por contenedor** (`docker-compose.yml`; se recomienda asignar **3 GB** a Docker):
+
+| Contenedor         | Límite | Uso medido (2026-10-22 y 2026-10-24) |
+| ------------------ | ------ | ------------------------------------ |
+| `db` (PostgreSQL)  | 512 MB | 23–127 MB                            |
+| `redis`            | 64 MB  | 4–11 MB (`maxmemory 48mb`)           |
+| `preparar-backend` | 1 GB   | Solo mientras compila; luego termina |
+| `backend-1`        | 384 MB | 40–66 MB                             |
+| `backend-2`        | 384 MB | 40–66 MB                             |
+| `nginx`            | 32 MB  | 3–5 MB                               |
+| `frontend` (Vite)  | 512 MB | 136–149 MB                           |
 
 ### 5.1 Interfaz: criterios y rendimiento
 

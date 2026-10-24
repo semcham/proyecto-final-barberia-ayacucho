@@ -1,5 +1,5 @@
 ---
-description: 'Lista de tareas de la funcionalidad 006: escalabilidad y rendimiento de la plataforma'
+description: "Lista de tareas de la funcionalidad 006: escalabilidad y rendimiento de la plataforma"
 ---
 
 # Tasks: Escalabilidad y rendimiento de la plataforma
@@ -451,36 +451,36 @@ obtener la tabla registrada.
 
 **Purpose**: documentación exigida por ADR-029 y ADR-030 (principio XI), suite completa y limpieza.
 
-- [ ] T054 [P] Actualizar `docs/02-arquitectura-software/despliegue-y-escalabilidad.md` con el entorno escalado local (diagrama Mermaid: Nginx, dos réplicas, Redis y PostgreSQL), la tabla de equivalencias con la nube de [research.md](research.md) R16 y la aclaración de que no es alta disponibilidad (FR-028).
-- [ ] T055 [P] Actualizar `docs/02-arquitectura-software/tecnologias.md`:
+- [x] T054 [P] Actualizar `docs/02-arquitectura-software/despliegue-y-escalabilidad.md` con el entorno escalado local (diagrama Mermaid: Nginx, dos réplicas, Redis y PostgreSQL), la tabla de equivalencias con la nube de [research.md](research.md) R16 y la aclaración de que no es alta disponibilidad (FR-028).
+- [x] T055 [P] Actualizar `docs/02-arquitectura-software/tecnologias.md`:
   - `ioredis` con versión exacta y licencia MIT;
   - imágenes `nginx:1.27-alpine` y `redis:7.4-alpine`;
   - límites de memoria por contenedor.
-- [ ] T056 [P] Actualizar `docs/02-arquitectura-software/api-rest.md` con `GET /salud/listo`, la respuesta 503 `SERVICIO_NO_DISPONIBLE` del balanceador y el encabezado `X-Instancia`.
-- [ ] T057 [P] Actualizar `docs/02-arquitectura-software/estrategia-de-cache.md`:
+- [x] T056 [P] Actualizar `docs/02-arquitectura-software/api-rest.md` con `GET /salud/listo`, la respuesta 503 `SERVICIO_NO_DISPONIBLE` del balanceador y el encabezado `X-Instancia`.
+- [x] T057 [P] Actualizar `docs/02-arquitectura-software/estrategia-de-cache.md`:
   - reemplazar la tabla de la sección 2 por lo implementado (claves `bp:v1:` y `rl:v1:`, TTL y matriz);
   - el comportamiento sin Redis de la sección 4, con el respaldo por instancia **con los mismos valores** (en lugar de "más estrictos");
   - quitar la nota provisional de la sección 1.
-- [ ] T058 [P] Actualizar `tecnologia/plataforma-barberias/README.md`:
+- [x] T058 [P] Actualizar `tecnologia/plataforma-barberias/README.md`:
   - servicios de Compose y puertos (la API por Nginx en el 3000);
   - cómo aplicar un cambio de código con el entorno escalado;
   - ejecución local sin Docker (Redis opcional);
   - que las réplicas arrancan y funcionan sin Redis, y lo vuelven a usar cuando responde;
   - variables nuevas, memoria recomendada para Docker (3 GB), `demo:caida`, `medir:horarios` con opciones, y ADR-029 y ADR-030.
-- [ ] T059 [P] Actualizar `docs/05-gestion/04-pruebas.md`:
+- [x] T059 [P] Actualizar `docs/05-gestion/04-pruebas.md`:
   - PR01, PR04, PR05 y PR09 (caché) con su estado y resultado;
   - PR02 y PR03 como pendientes.
-- [ ] T060 Actualizar `docs/trazabilidad.md`:
+- [x] T060 Actualizar `docs/trazabilidad.md`:
   - fila de 006 con el estado real y los números de la suite;
   - nueva subsección con los componentes de 006 y su evidencia;
   - fila de "Rendimiento de horarios libres" con el resultado oficial.
-- [ ] T061 Actualizar `docs/05-gestion/02-backlog-y-sprints.md`: 006 implementada, líneas de corte aplicadas si se usaron, y ADR-029 y ADR-030 marcados como Aceptados en la sección 3.3.
-- [ ] T062 Ejecutar la suite completa y registrar los totales en la sección 6 del quickstart:
+- [x] T061 Actualizar `docs/05-gestion/02-backlog-y-sprints.md`: 006 implementada, líneas de corte aplicadas si se usaron, y ADR-029 y ADR-030 marcados como Aceptados en la sección 3.3.
+- [x] T062 Ejecutar la suite completa y registrar los totales en la sección 6 del quickstart:
   - **backend:** `npx prettier --check .`, `npm run lint`, `npm run build`, `npm test`, `npm run test:int` y `npm run test:arch`;
   - **frontend:** `npx prettier --check .`, `npm run lint`, `npm run build` y `npx vitest run --maxWorkers=1 --minWorkers=1`.
   - Si una prueba de tiempos falla por la carga del equipo, repetirla sola y anotarlo.
-- [ ] T063 Recorrido manual de [quickstart.md](quickstart.md) §3 con el entorno real (reparto, claves en Redis, invalidación, cambio de enlace, IP falsa y sin réplicas) y anotar el resultado.
-- [ ] T064 Limpieza:
+- [x] T063 Recorrido manual de [quickstart.md](quickstart.md) §3 con el entorno real (reparto, claves en Redis, invalidación, cambio de enlace, IP falsa y sin réplicas) y anotar el resultado.
+- [x] T064 Limpieza:
   - borrar `tmp/` (resultados, caché de npm);
   - `docker compose down` o dejar el entorno según lo acordado;
   - comprobar que no quedaron contenedores de Testcontainers;
@@ -491,8 +491,8 @@ obtener la tabla registrada.
 Casos límite de la especificación que el análisis dejó como opcionales. Si se hacen, se agregan a
 las suites indicadas; si no, se dejan anotadas como no hechas en la sección 6 del quickstart.
 
-- [ ] T065 [P] _(Opcional)_ En `tecnologia/plataforma-barberias/backend/test/integration/escalado/balanceador.spec.ts`: un `GET` lento hacia la réplica que se cierra a mitad de la solicitud se reintenta en la otra y termina en 200 (caso límite "Instancia que cae a mitad de una solicitud"; `proxy_next_upstream`).
-- [ ] T066 [P] _(Opcional)_ En `tecnologia/plataforma-barberias/backend/test/integration/escalado/cache-catalogo.spec.ts`: 50 visitas simultáneas al catálogo justo después de una invalidación dan 0 × 5xx y la entrada queda guardada una sola vez (caso límite "Ráfaga sobre un catálogo recién invalidado").
+- [x] T065 [P] _(Opcional)_ En `tecnologia/plataforma-barberias/backend/test/integration/escalado/balanceador.spec.ts`: un `GET` lento hacia la réplica que se cierra a mitad de la solicitud se reintenta en la otra y termina en 200 (caso límite "Instancia que cae a mitad de una solicitud"; `proxy_next_upstream`).
+- [x] T066 [P] _(Opcional)_ En `tecnologia/plataforma-barberias/backend/test/integration/escalado/cache-catalogo.spec.ts`: 50 visitas simultáneas al catálogo justo después de una invalidación dan 0 × 5xx y la entrada queda guardada una sola vez (caso límite "Ráfaga sobre un catálogo recién invalidado").
 
 ---
 

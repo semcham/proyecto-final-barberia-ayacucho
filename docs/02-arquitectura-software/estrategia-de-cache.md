@@ -8,49 +8,62 @@ Redis es una **caché selectiva**. **Nunca** es la fuente de verdad de reservas,
 
 Desde la constitución 1.1.0 (principio VIII), Redis también puede guardar **contadores no críticos**: los del límite general de solicitudes, tolerantes a pérdida. Los contadores de seguridad o de costo (intentos de inicio de sesión, cuota de IA) y todo estado de seguridad (sesiones, revocación) se quedan en PostgreSQL. Sin Redis, el límite general se aplica por instancia. Decisión detallada: [ADR-029](../01-analisis-de-sistema/07-decisiones-arquitectonicas.md#adr-029-caché-compartida-con-claves-por-barbería-y-límite-general-compartido) (Aceptado el 2026-10-19, funcionalidad 006).
 
-> **Diseño de la funcionalidad 006 (2026-10-18).** La tabla de la sección 2 es la propuesta original. Lo que se implementa es más acotado. Se guarda solo el catálogo público por barbería, en `bp:v1:t:{tenantId}:catalogo-publico`, por 120 s, con un contador de generación para la carrera entre lectura e invalidación. No se guarda nada por `slug`: el enlace y los datos de la barbería se leen en cada solicitud. Los horarios calculados solo se guardan si la medición lo exige (30 s). Los contadores del límite general usan `rl:v1:{hash}` por IP, con respaldo por instancia. Las claves y la matriz de invalidación están en [`specs/006-escalado-cache-balanceo/contracts/cache-claves.md`](../../specs/006-escalado-cache-balanceo/contracts/cache-claves.md). Servicios, configuración y plan del tenant no se guardan por separado en esta funcionalidad.
+## 2. Qué se cachea y qué no (implementado en la funcionalidad 006)
 
-## 2. Qué se cachea y qué no
+Contrato completo: [`specs/006-escalado-cache-balanceo/contracts/cache-claves.md`](../../specs/006-escalado-cache-balanceo/contracts/cache-claves.md). Todas las claves las construye una sola fábrica (`ClavesCache` en M06), que exige el `TenantId`: no se puede crear una clave de datos sin tenant ni derivada del `slug`. El prefijo lleva la versión del formato (`v1`): cambiarlo deja inalcanzable lo anterior.
 
-| Dato                                                       | ¿Se cachea? | Clave (con tenant)                                                      | TTL propuesto | Invalidación                                                                              |
-| ---------------------------------------------------------- | ----------- | ----------------------------------------------------------------------- | ------------- | ----------------------------------------------------------------------------------------- |
-| Catálogo público de la barbería                            | Sí          | `t:{tenantId}:catalog`                                                  | 5 min         | Al crear/editar servicios o barberos                                                      |
-| Servicios y precios                                        | Sí          | `t:{tenantId}:services`                                                 | 5 min         | Al modificar servicios                                                                    |
-| Configuración y horarios de la barbería                    | Sí          | `t:{tenantId}:config`                                                   | 5 min         | Al modificar la configuración                                                             |
-| Plan y límites del tenant                                  | Sí          | `t:{tenantId}:plan`                                                     | 60 s          | Al cambiar el estado de la suscripción                                                    |
-| Rango de horarios libres calculado (solo para mostrar)     | Opcional    | `t:{tenantId}:slots:{barberId}:{fecha}`                                 | ≤ 30 s        | Al crear/cancelar/reprogramar cita                                                        |
-| **Disponibilidad definitiva**                              | **No**      | —                                                                       | —             | Se verifica en PostgreSQL                                                                 |
-| Citas, pagos, suscripciones (estado)                       | **No**      | —                                                                       | —             | PostgreSQL es la fuente                                                                   |
-| Tokens revocados / sesiones cerradas                       | **No**      | —                                                                       | —             | Estado de seguridad: se verifica en PostgreSQL en cada solicitud (funcionalidad 001, R09) |
-| Contadores del límite general de solicitudes (no críticos) | Sí          | `rl:{ip}:{ruta}`; `rl:t:{tenantId}:u:{userId}:{ruta}` si es por usuario | 1 min         | Expiración                                                                                |
-| Intentos de inicio de sesión y cuota de IA                 | **No**      | —                                                                       | —             | Contadores de seguridad y de costo: en PostgreSQL                                         |
+| Dato                                                                | ¿Se cachea?          | Clave                                                 | TTL                              | Invalidación                                                                                                    |
+| ------------------------------------------------------------------- | -------------------- | ----------------------------------------------------- | -------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Catálogo público: horario de atención, servicios y barberos activos | Sí                   | `bp:v1:t:{tenantId}:catalogo-publico`                 | 120 s (configurable de 10 a 300) | Tras confirmar cada cambio de la matriz (abajo); generación en `…:catalogo-publico:gen` (24 h)                  |
+| Datos de la barbería y su enlace (`slug`)                           | **No**               | —                                                     | —                                | Se leen en cada solicitud, en una transacción de M01: un enlace cambiado no responde nunca                      |
+| Horarios libres calculados (FR-013b)                                | **No** (desactivado) | `bp:v1:t:{tenantId}:horarios:g{gen}:…` si se activara | 30 s                             | No aplicado: la medición de 006 cumplió la meta sin él. Los horarios leen siempre vigentes la ocupación del día |
+| Contadores del límite general por IP (no críticos)                  | Sí                   | `rl:v1:{hash}` (la clave del guard, sin tenant)       | La ventana del límite (60 s)     | Expiración; compartidos entre réplicas                                                                          |
+| **Disponibilidad definitiva**                                       | **No**               | —                                                     | —                                | Se verifica en PostgreSQL                                                                                       |
+| Citas, pagos, suscripciones (estado)                                | **No**               | —                                                     | —                                | PostgreSQL es la fuente                                                                                         |
+| Tokens revocados / sesiones cerradas                                | **No**               | —                                                     | —                                | Estado de seguridad: se verifica en PostgreSQL en cada solicitud (funcionalidad 001, R09)                       |
+| Intentos de inicio de sesión y cuota de IA                          | **No**               | —                                                     | —                                | Contadores de seguridad y de costo: en PostgreSQL                                                               |
+| Plan, configuración y servicios por separado                        | **No** en 006        | —                                                     | —                                | Sin necesidad medida                                                                                            |
 
-Todas las claves de datos de negocio **incluyen el tenant** para evitar mezclas.
+La entrada del catálogo tiene una **lista cerrada de campos** (columnas públicas de ADR-021): nunca datos de clientes, contacto o cuenta del personal, motivos de bloqueo, citas ni disponibilidad semanal. Lo comprueba la prueba PR09 de la caché (`aislamiento-cache`).
+
+**Matriz de invalidación del catálogo** (después del COMMIT, con `UnitOfWork.alConfirmar`):
+
+| Invalida el catálogo                                                                                                                    | No lo invalida (el dato no está en la entrada)                                       |
+| --------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| `CrearServicio`, `ActualizarServicio`, `CrearBarbero`, `ActualizarBarbero` (incluido el usuario vinculado), `ReemplazarHorarioAtencion` | Disponibilidad semanal, bloqueos, citas y sus estados, datos y enlace de la barbería |
+
+Todas las claves de datos de negocio **incluyen el tenant** para evitar mezclas. Los contadores del límite general no son datos de una barbería: son contadores por IP regulados por el principio VIII (interpretación registrada en ADR-029).
 
 ## 3. Patrón de lectura y escritura
 
-- **Lectura (cache-aside):** buscar en Redis → si no está, leer de PostgreSQL → guardar con TTL.
-- **Escritura:** primero PostgreSQL; luego **invalidar** la clave (no actualizar la caché con el nuevo valor para evitar condiciones de carrera).
+- **Lectura (cache-aside con generación):** buscar en Redis → si no está, leer la generación → leer de PostgreSQL → guardar **solo si la generación no cambió** (script Lua atómico). Así, si un cambio se confirma entre la lectura y el guardado, la entrada vieja no se guarda (R08 de 006).
+- **Escritura:** primero PostgreSQL; **después del COMMIT**, subir la generación y borrar la clave en una sola operación (no se actualiza la caché con el nuevo valor). Si la transacción se revierte, no se invalida nada.
+- **Horarios libres:** usan la entrada del catálogo si ya existe (sin llenarla) y leen de PostgreSQL la ocupación del día; sin entrada, lo leen todo en una transacción.
 - **Reserva:** nunca se confía en el cálculo en caché; la inserción con la restricción de exclusión es la garantía.
 
 ## 4. Comportamiento si Redis cae (EQ-05)
 
-| Función                              | Comportamiento                                                               |
-| ------------------------------------ | ---------------------------------------------------------------------------- |
-| Lecturas de catálogo y configuración | Se leen de PostgreSQL (más lentas)                                           |
-| Reservas                             | Funcionan igual y siguen siendo correctas                                    |
-| Límite de solicitudes                | Se usa un límite local por instancia con valores más estrictos (degradación) |
-| Alerta                               | Se emite una alerta; el adaptador de caché abre su circuit breaker           |
+Probado en CI (PR05, `redis-caido`) y con el entorno real (`npm run demo:caida -- --objetivo redis`).
+
+| Función                           | Comportamiento                                                                                                                                                                |
+| --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Lecturas del catálogo y horarios  | Se leen de PostgreSQL, con los mismos datos. Cada operación con Redis tiene un tiempo límite de 100 ms; tras 5 fallos seguidos el interruptor deja de usar Redis durante 10 s |
+| Reservas, cancelaciones y estados | Funcionan igual y siguen siendo correctas; la doble reserva sigue rechazada por PostgreSQL                                                                                    |
+| Cambios del catálogo              | Se guardan; la invalidación se omite y la entrada vieja que pudiera quedar vence con su TTL (120 s como máximo)                                                               |
+| Límite de solicitudes             | Cada instancia lo aplica en memoria **con los mismos valores** (con dos réplicas, una IP puede llegar al doble hasta que Redis vuelve)                                        |
+| Alerta                            | Una sola línea `CACHE_NO_DISPONIBLE` por caída y por réplica, y `CACHE_RECUPERADA` al volver; nunca una por solicitud                                                         |
+| Recuperación                      | Sin reiniciar: pasada la pausa, una operación de prueba y, si responde, se vuelve a usar Redis                                                                                |
+| Arranque sin Redis                | Las réplicas arrancan, quedan listas (`/salud/listo` no mira Redis) y funcionan sin caché                                                                                     |
 
 ## 5. Riesgos y mitigaciones
 
-| Riesgo                                                    | Mitigación                                                                            |
-| --------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| Datos desactualizados                                     | TTL corto; invalidación al escribir; la disponibilidad definitiva no sale de la caché |
-| Mezcla de tenants por clave mal construida                | Constructor único de claves en el adaptador; prueba PR09 incluye caché                |
-| Condición de carrera "lectura → escritura → invalidación" | Invalidar después de confirmar la transacción; TTL como red de seguridad              |
-| Fuga de datos personales en Redis                         | No se guardan datos personales de clientes en caché                                   |
-| Dependencia excesiva                                      | Si Redis cae, la plataforma sigue funcionando (PR05)                                  |
+| Riesgo                                                    | Mitigación                                                                                      |
+| --------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| Datos desactualizados                                     | TTL corto; invalidación al escribir; la disponibilidad definitiva no sale de la caché           |
+| Mezcla de tenants por clave mal construida                | Constructor único de claves en el adaptador; prueba PR09 incluye caché                          |
+| Condición de carrera "lectura → escritura → invalidación" | Invalidar después de confirmar; guardado condicionado por generación; TTL como red de seguridad |
+| Fuga de datos personales en Redis                         | No se guardan datos personales de clientes en caché                                             |
+| Dependencia excesiva                                      | Si Redis cae, la plataforma sigue funcionando (PR05)                                            |
 
 ## 6. Cómo se evitan condiciones de carrera en las reservas
 
