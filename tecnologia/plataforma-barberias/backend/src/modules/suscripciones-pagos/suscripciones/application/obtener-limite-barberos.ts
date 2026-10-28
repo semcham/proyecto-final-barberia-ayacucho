@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { TenantContext, type TenantId } from '../../../../shared';
-import { SuscripcionRepository } from './ports/suscripcion-repository';
+import { PlanVigente } from './plan-vigente';
 
 /**
  * T024 · Máximo de barberos activos del catálogo que permite el plan (FR-012 de 002, research R13).
@@ -11,7 +11,7 @@ import { SuscripcionRepository } from './ports/suscripcion-repository';
 @Injectable()
 export class ObtenerLimiteBarberos {
   constructor(
-    private readonly suscripciones: SuscripcionRepository,
+    private readonly planVigente: PlanVigente,
     private readonly tenantContext: TenantContext,
   ) {}
 
@@ -19,7 +19,7 @@ export class ObtenerLimiteBarberos {
     if (!this.tenantContext.actual().equals(tenantId)) {
       throw new Error('El límite de barberos debe consultarse dentro de la transacción del mismo tenant');
     }
-    const plan = await this.suscripciones.planDelTenant({ bloquear: true });
+    const plan = await this.planVigente.delTenant({ bloquear: true });
     if (!plan) throw new Error('La barbería no tiene una suscripción');
     return plan.maxBarberos;
   }

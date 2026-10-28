@@ -5,7 +5,7 @@ import addFormats from 'ajv-formats';
 import { parse } from 'yaml';
 
 // Validación de respuestas HTTP contra los contratos OpenAPI de las funcionalidades:
-// specs/001-registro-acceso-barberia/contracts/openapi.yaml y specs/002-catalogo-citas-cliente/contracts/openapi.yaml.
+// specs/001-registro-acceso-barberia, specs/002-catalogo-citas-cliente y specs/003-suscripciones-pagos\n// (contracts/openapi.yaml de cada una).
 
 const CONTRATOS = {
   '001': join(
@@ -32,6 +32,18 @@ const CONTRATOS = {
     'contracts',
     'openapi.yaml',
   ),
+  '003': join(
+    __dirname,
+    '..',
+    '..',
+    '..',
+    '..',
+    '..',
+    'specs',
+    '003-suscripciones-pagos',
+    'contracts',
+    'openapi.yaml',
+  ),
 } as const;
 
 type Contrato = keyof typeof CONTRATOS;
@@ -43,7 +55,7 @@ interface Referencia {
 
 interface DocumentoOpenApi {
   paths: Record<string, Record<string, { responses: Record<string, Referencia> }>>;
-  components: { responses: Record<string, Referencia>; schemas: Record<string, object> };
+  components: { responses?: Record<string, Referencia>; schemas: Record<string, object> };
 }
 
 interface Validador {
@@ -79,7 +91,7 @@ function respuestaDelContrato(
   if (!respuesta)
     throw new Error(`El contrato no define la respuesta ${estado} de ${metodo.toUpperCase()} ${ruta}`);
   if (respuesta.$ref) {
-    respuesta = documento.components.responses[respuesta.$ref.split('/').pop() as string];
+    respuesta = (documento.components.responses ?? {})[respuesta.$ref.split('/').pop() as string];
   }
   return respuesta;
 }
@@ -122,4 +134,14 @@ export function erroresDeContrato002(
   cuerpo: unknown,
 ): string[] {
   return erroresDeContrato(ruta, metodo, estado, cuerpo, '002');
+}
+
+/** Igual que `erroresDeContrato`, contra el contrato de la funcionalidad 003. */
+export function erroresDeContrato003(
+  ruta: string,
+  metodo: string,
+  estado: number,
+  cuerpo: unknown,
+): string[] {
+  return erroresDeContrato(ruta, metodo, estado, cuerpo, '003');
 }

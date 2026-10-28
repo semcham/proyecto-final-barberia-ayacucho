@@ -135,7 +135,9 @@ services:
   pasarela-simulada:
     image: node:22
     working_dir: /srv
-    command: npx --no-install tsx simulador-pagos/servidor.ts
+    # Un solo proceso de Node con el cargador de tsx: con `npx tsx` quedaban tres procesos de Node (npm exec, el
+    # lanzador de tsx y el servidor) y el contenedor rozaba sus 64 MB (medido el 2026-10-28).
+    command: node --import tsx simulador-pagos/servidor.ts
     environment:
       PUERTO: "3100"
       PAGOS_LLAVE_SECRETA: ${PAGOS_LLAVE_SECRETA:-sk_simulador_dev}

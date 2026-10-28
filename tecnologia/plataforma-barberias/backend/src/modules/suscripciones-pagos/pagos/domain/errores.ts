@@ -75,3 +75,12 @@ export class TransicionDePagoInvalida extends ErrorDeAplicacion {
     super(`Un pago ${estado} no admite ${orden}`, [{ estado, orden }]);
   }
 }
+
+/** El plan no existe, no está activo o no se puede contratar (el de prueba). 422. */
+export class PlanNoContratable extends ErrorDeAplicacion {
+  readonly codigo = 'PLAN_NO_CONTRATABLE';
+
+  constructor() {
+    super('Ese plan no se puede contratar');
+  }
+}

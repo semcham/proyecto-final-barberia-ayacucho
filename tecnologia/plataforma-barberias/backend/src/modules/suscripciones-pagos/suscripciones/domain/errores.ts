@@ -34,3 +34,21 @@ export class SuscripcionNoPermite extends ErrorDeAplicacion {
     );
   }
 }
+
+/** El recurso no existe en la barbería del token (también si es de otra barbería: 404, PR09). */
+export class NoEncontrado extends ErrorDeAplicacion {
+  readonly codigo = 'NO_ENCONTRADO';
+
+  constructor() {
+    super('No se encontró el recurso solicitado.');
+  }
+}
+
+/** El rol no permite la operación (matriz de contracts/rbac.md de 003). 403. */
+export class AccesoDenegado extends ErrorDeAplicacion {
+  readonly codigo = 'ACCESO_DENEGADO';
+
+  constructor() {
+    super('No tienes permiso para realizar esta operación.');
+  }
+}

@@ -47,14 +47,15 @@ Tracking).
 
 Opcionales, que no se instalan sin aprobación: `qrcode` (MIT), para el QR del TOTP.
 
-**Storage**: PostgreSQL 16, con las migraciones `0014` a `0017`:
+**Storage**: PostgreSQL 16, con las migraciones `0014` a `0018`:
 
-| Migración | Contenido                                                                         |
-| --------- | --------------------------------------------------------------------------------- |
-| `0014`    | Planes y suscripción                                                              |
-| `0015`    | Pagos, períodos, comprobantes y eventos                                           |
-| `0016`    | Rol `barberias_plataforma`, identidad del administrador y tablas de la plataforma |
-| `0017`    | Ejecutor de tareas                                                                |
+| Migración | Contenido                                                                                   |
+| --------- | ------------------------------------------------------------------------------------------- |
+| `0014`    | Planes y suscripción                                                                        |
+| `0015`    | Pagos, períodos, comprobantes y eventos                                                     |
+| `0016`    | Rol `barberias_plataforma`, identidad del administrador y tablas de la plataforma           |
+| `0017`    | Ejecutor de tareas                                                                          |
+| `0018`    | URL de la página del proveedor en el pago (al implementar US1: reutilizar el mismo intento) |
 
 Los comprobantes se guardan en `bytea` con RLS detrás del puerto `AlmacenComprobantes` (ADR-023).
 Redis no guarda nada de 003 (principio VIII).

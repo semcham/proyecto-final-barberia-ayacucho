@@ -83,7 +83,7 @@ El backend y el frontend se ejecutan por separado, nunca a la vez.
   - Documentar en `README.md` el SQL para bases ya existentes, como se hizo con `barberias_publico`.
 - [x] T004 [P] Backend: en `docker-compose.yml`, agregar el servicio `pasarela-simulada`.
   - Imagen `node:22`, con los volúmenes del build y de `node_modules` de solo lectura (como las réplicas).
-  - Comando `npx --no-install tsx simulador-pagos/servidor.ts`, IP fija `${IP_SIMULADOR:-172.28.0.14}`, puerto `3100:3100` y 64 MB.
+  - Comando `node --import tsx simulador-pagos/servidor.ts` (un solo proceso de Node; con `npx` el contenedor rozaba los 64 MB), IP fija `${IP_SIMULADOR:-172.28.0.14}`, puerto `3100:3100` y 64 MB.
   - Agregar a `x-backend-entorno`: `DATABASE_URL_PLATAFORMA`, `PAGOS_URL_BASE=http://${IP_SIMULADOR:-172.28.0.14}:3100` y `PAGOS_URL_NOTIFICACIONES=http://nginx/api/v1/pagos/notificaciones`.
   - Agregar `IP_SIMULADOR` a `.env.example`.
   - Actualizar `specs/006-escalado-cache-balanceo/contracts/entorno-compose.md` §1 con la fila nueva.
@@ -244,8 +244,8 @@ con un solo período.
 
 ### Tests for User Story 1 ⚠️
 
-- [ ] T033 [P] [US1] Backend: en `backend/test/helpers/contrato.ts`, agregar `erroresDeContrato003`, que carga `specs/003-suscripciones-pagos/contracts/openapi.yaml`. Crear `backend/test/contract/suscripcion.contract.spec.ts`: `GET /planes`, `GET /suscripcion`, `GET /suscripcion/estado-operativo`, `POST /suscripcion/pagos` (201, 200, 409, 422 y 503) y `GET /suscripcion/pagos/{id}` validan contra el esquema; `estado-operativo` con BARBERO o CLIENTE solo trae `aceptaReservas` y el mensaje, sin el estado de la suscripción (FR-039).
-- [ ] T034 [P] [US1] Backend: en `backend/test/integration/pagos/iniciar-pago.spec.ts`, probar:
+- [x] T033 [P] [US1] Backend: en `backend/test/helpers/contrato.ts`, agregar `erroresDeContrato003`, que carga `specs/003-suscripciones-pagos/contracts/openapi.yaml`. Crear `backend/test/contract/suscripcion.contract.spec.ts`: `GET /planes`, `GET /suscripcion`, `GET /suscripcion/estado-operativo`, `POST /suscripcion/pagos` (201, 200, 409, 422 y 503) y `GET /suscripcion/pagos/{id}` validan contra el esquema; `estado-operativo` con BARBERO o CLIENTE solo trae `aceptaReservas` y el mensaje, sin el estado de la suscripción (FR-039).
+- [x] T034 [P] [US1] Backend: en `backend/test/integration/pagos/iniciar-pago.spec.ts`, probar:
   - el pago queda `PENDIENTE` con el importe del plan;
   - dos `POST` simultáneos iguales dejan **una** fila y la misma respuesta;
   - otro plan anula el pago anterior y lo cancela en el simulador;
@@ -256,7 +256,7 @@ con un solo período.
   - el mismo intento con la sesión de pago vencida (`checkout_url_expires_at` pasado) anula el pago anterior, intenta cancelarlo en el simulador y crea uno nuevo con otra `urlPago` (H3);
   - con un comprobante `EN_REVISION`, iniciar otro pago, de cualquier plan o medio, responde 409 `COMPROBANTE_YA_EN_REVISION` y no anula nada (H4);
   - el pago guarda en `covers_after` la cobertura vigente al iniciarlo.
-- [ ] T035 [P] [US1] Backend: **PR17** en `backend/test/integration/pagos/notificaciones.spec.ts`, con el simulador:
+- [x] T035 [P] [US1] Backend: **PR17** en `backend/test/integration/pagos/notificaciones.spec.ts`, con el simulador:
   - notificación válida: el pago queda aprobado y el período empieza al terminar la prueba (escenario 6);
   - **10 repetidas**: 1 período, 1 transición y 9 respuestas 200 sin efecto;
   - firma inválida, ausente o con `t` vencido: 401, sin filas, y una línea resumida `PAGO_NOTIFICACION_RECHAZADA` sin el cuerpo;
@@ -271,27 +271,27 @@ con un solo período.
   - el reenvío legítimo días después, con `t` nuevo y el mismo `evento_id`: 200 sin efecto;
   - más de `PAGOS_NOTIFICACIONES_LIMITE_POR_MINUTO` solicitudes por minuto desde una IP (600 por defecto; la prueba lo baja a 5) responden 429 (FR-013a);
   - el p95 de 50 notificaciones válidas queda por debajo de 300 ms y ninguna supera 1 s (FR-018).
-- [ ] T036 [P] [US1] Backend: **PR09** en `backend/test/integration/aislamiento/aislamiento-pagos.spec.ts`. Con las barberías A y B, pagos, períodos y eventos de ambas:
+- [x] T036 [P] [US1] Backend: **PR09** en `backend/test/integration/aislamiento/aislamiento-pagos.spec.ts`. Con las barberías A y B, pagos, períodos y eventos de ambas:
   - el propietario de A recibe 404 en el pago de B;
   - `GET /suscripcion` solo muestra la suya;
   - por SQL con `barberias_app` y el tenant de A, no aparece ninguna fila de B en `payment`, `subscription_period` ni `subscription`;
   - una notificación de un pago de B nunca modifica a A.
-- [ ] T037 [P] [US1] Backend: **PR06** en `backend/test/integration/pagos/proveedor-caido.spec.ts`:
+- [x] T037 [P] [US1] Backend: **PR06** en `backend/test/integration/pagos/proveedor-caido.spec.ts`:
   - con el modo `caido`: 503 `PAGO_EN_LINEA_NO_DISPONIBLE` en 3 s o menos, con la alternativa de transferencia en los detalles, y el pago `ANULADO`;
   - con el modo `colgado`: tiempo límite de 2 s y el mismo resultado;
   - tras 5 fallos en 60 s, el circuito se abre y la respuesta llega en menos de 100 ms;
   - durante la caída, una reserva y `GET /publico/{slug}` siguen respondiendo.
-- [ ] T038 [P] [US1] Backend: en `backend/test/integration/pagos/canarios.spec.ts` (SC-010), con la llave secreta, el secreto de firma y un teléfono de pagador enviado por el simulador como datos canario, comprobar que ninguno aparece en los registros capturados, en `audit_log`, en `provider_event` ni en las respuestas de error.
-- [ ] T039 [P] [US1] Backend: **PR08**. Crear `backend/test/contract/rbac-003.spec.ts`, que lee `specs/003-suscripciones-pagos/contracts/rbac.md` y recorre las filas de una lista `IMPLEMENTADAS` (cada fase agrega las suyas). En US1: `GET /planes`, `GET /suscripcion`, `GET /suscripcion/estado-operativo`, `POST /suscripcion/pagos`, `GET /suscripcion/pagos/{id}` y `POST /pagos/notificaciones`. Cada celda se prueba con PROPIETARIO, BARBERO, CLIENTE, el token de plataforma y sin token.
-- [ ] T040 [P] [US1] Backend: en `backend/test/integration/pagos/conciliacion.spec.ts` (principio V, en P1), probar:
+- [x] T038 [P] [US1] Backend: en `backend/test/integration/pagos/canarios.spec.ts` (SC-010), con la llave secreta, el secreto de firma y un teléfono de pagador enviado por el simulador como datos canario, comprobar que ninguno aparece en los registros capturados, en `audit_log`, en `provider_event` ni en las respuestas de error.
+- [x] T039 [P] [US1] Backend: **PR08**. Crear `backend/test/contract/rbac-003.spec.ts`, que lee `specs/003-suscripciones-pagos/contracts/rbac.md` y recorre las filas de una lista `IMPLEMENTADAS` (cada fase agrega las suyas). En US1: `GET /planes`, `GET /suscripcion`, `GET /suscripcion/estado-operativo`, `POST /suscripcion/pagos`, `GET /suscripcion/pagos/{id}` y `POST /pagos/notificaciones`. Cada celda se prueba con PROPIETARIO, BARBERO, CLIENTE, el token de plataforma y sin token.
+- [x] T040 [P] [US1] Backend: en `backend/test/integration/pagos/conciliacion.spec.ts` (principio V, en P1), probar:
   - un pago aprobado en el simulador sin notificación queda aprobado y con un solo período;
   - uno rechazado o expirado en el proveedor queda así;
   - uno pendiente de 24 h pasa a `EXPIRADO`, y una aprobación posterior se aplica o queda como duplicado si su período objetivo ya está tomado (FR-012a);
   - la conciliación y la notificación simultáneas producen un solo efecto;
   - con el proveedor caído durante la conciliación, no hay cambios y se reintenta en la siguiente corrida;
   - dos réplicas a la vez producen una sola consulta por pago (registro de solicitudes del simulador).
-- [ ] T041 [P] [US1] Backend: en `backend/test/integration/suscripciones/cobertura-derivada.spec.ts` (M2), comprobar que, tras la aprobación por notificación y por conciliación, `subscription.current_period_end` es igual al mayor `ends_at` de `subscription_period` de esa suscripción, y que una transacción que falla a mitad no deja los dos valores distintos. US2, US3 y US5 agregan sus casos (vencimiento, revisión del comprobante y activación manual).
-- [ ] T042 [P] [US1] Frontend: en `frontend/test/pages/suscripcion.spec.tsx`, con MSW, probar:
+- [x] T041 [P] [US1] Backend: en `backend/test/integration/suscripciones/cobertura-derivada.spec.ts` (M2), comprobar que, tras la aprobación por notificación y por conciliación, `subscription.current_period_end` es igual al mayor `ends_at` de `subscription_period` de esa suscripción, y que una transacción que falla a mitad no deja los dos valores distintos. US2, US3 y US5 agregan sus casos (vencimiento, revisión del comprobante y activación manual).
+- [x] T042 [P] [US1] Frontend: en `frontend/test/pages/suscripcion.spec.tsx`, con MSW, probar:
   - estado "En prueba" con fechas y días;
   - los planes con su precio;
   - "Pagar con Yape" redirige a `urlPago`;
@@ -301,26 +301,26 @@ con un solo período.
 
 ### Implementation for User Story 1
 
-- [ ] T043 [US1] Backend: repositorios de pagos en `backend/src/modules/suscripciones-pagos/pagos/infrastructure/`:
+- [x] T043 [US1] Backend: repositorios de pagos en `backend/src/modules/suscripciones-pagos/pagos/infrastructure/`:
   - el pago, que traduce el índice de pago abierto a "ya existe" y devuelve la fila existente;
   - `provider_event`, solo `INSERT … ON CONFLICT DO NOTHING` con el `effect` ya calculado (el rol de la aplicación no lee ni actualiza la tabla); devuelve si se insertó;
   - `plataforma/pago-por-referencia.ts`, con la búsqueda exacta por `provider_reference` mediante `LecturaPlataforma` (ADR-031).
-- [ ] T044 [US1] Backend: casos de uso en `backend/src/modules/suscripciones-pagos/suscripciones/application/`: `ListarPlanes` (públicos y activos, con los medios disponibles según `limitesYape`), `ConsultarSuscripcion` (FR-001: estado, fechas, días, próximo período, pago abierto y avisos) y `ConsultarEstadoOperativo` (al propietario, el estado y el motivo; al barbero y al cliente, solo `aceptaReservas` y el mensaje: FR-039, M8).
-- [ ] T045 [US1] Backend: casos de uso en `backend/src/modules/suscripciones-pagos/pagos/application/`:
+- [x] T044 [US1] Backend: casos de uso en `backend/src/modules/suscripciones-pagos/suscripciones/application/`: `ListarPlanes` (públicos y activos, con los medios disponibles según `limitesYape`), `ConsultarSuscripcion` (FR-001: estado, fechas, días, próximo período, pago abierto y avisos) y `ConsultarEstadoOperativo` (al propietario, el estado y el motivo; al barbero y al cliente, solo `aceptaReservas` y el mensaje: FR-039, M8).
+- [x] T045 [US1] Backend: casos de uso en `backend/src/modules/suscripciones-pagos/pagos/application/`:
   - `IniciarPago`: Yape, con un solo pago abierto, `covers_after` fijado al insertar, reutilización solo si la sesión de pago sigue vigente (si venció, se anula, se intenta cancelar y se crea otra), anulación al cambiar de plan o de medio salvo con un comprobante `EN_REVISION` (409 `COMPROBANTE_YA_EN_REVISION`), el rechazo del pago adelantado, `crearSesionDePago` tras insertar y `ANULADO` si el proveedor falla;
   - `AplicarResultadoDelProveedor`: función única con el pago y la suscripción bloqueados, la transición del pago, el período por FR-004 (`DUPLICADO` si el período objetivo de `covers_after` ya está tomado o si se excede el tope de un período por adelantado), `current_period_end` actualizado en la misma transacción, la marca de revisión y la auditoría `PAGO_APROBADO`. Hace pasar T041;
   - `RecibirNotificacion`: verificar, buscar el tenant por la vía de la plataforma y aplicar en **una** transacción con ese tenant: bloquear el pago, calcular el efecto, insertar el evento y, si se insertó, aplicar; si no, revertir y responder 200.
-- [ ] T046 [US1] Backend: crear la tarea `conciliar-pagos` en `backend/src/modules/suscripciones-pagos/pagos/application/conciliar-pagos.ts` (pendientes de más de 10 min, por la lectura de plataforma, con `consultarPago` y `AplicarResultadoDelProveedor`, y la expiración a las 24 h). Registrarla en `backend/src/host/tareas.ts`. Hace pasar T040.
-- [ ] T047 [US1] Backend: en `backend/src/modules/suscripciones-pagos/suscripciones/application/obtener-limite-barberos.ts` y `obtener-limite-usuarios.ts`, usar el **plan del período vigente** (R04, FR-005). Las pruebas de límites de 001 y 002 deben seguir en verde. Agregar `backend/test/integration/suscripciones/plan-menor.spec.ts` (FR-005a, M3): con un período vigente de un plan con límites menores que los usuarios y barberos activos, nada se desactiva solo; crear o reactivar un usuario o un barbero por encima del límite se rechaza con el error de límite existente, y desactivar sigue permitido.
-- [ ] T048 [US1] Backend: crear la matriz de permisos de M03 en `backend/src/modules/suscripciones-pagos/suscripciones/domain/permisos.ts`, con `VER_PLANES`, `VER_SUSCRIPCION`, `VER_ESTADO_OPERATIVO` y `PAGAR_SUSCRIPCION` según `contracts/rbac.md`, exportada por `index.ts`. Sumarla a `rolPermiteOperacion` en `backend/src/host/roles.guard.ts`.
-- [ ] T049 [US1] Backend: controladores en `backend/src/modules/suscripciones-pagos/suscripciones/presentation/`:
+- [x] T046 [US1] Backend: crear la tarea `conciliar-pagos` en `backend/src/modules/suscripciones-pagos/pagos/application/conciliar-pagos.ts` (pendientes de más de 10 min, por la lectura de plataforma, con `consultarPago` y `AplicarResultadoDelProveedor`, y la expiración a las 24 h). Registrarla en `backend/src/host/tareas.ts`. Hace pasar T040.
+- [x] T047 [US1] Backend: en `backend/src/modules/suscripciones-pagos/suscripciones/application/obtener-limite-barberos.ts` y `obtener-limite-usuarios.ts`, usar el **plan del período vigente** (R04, FR-005). Las pruebas de límites de 001 y 002 deben seguir en verde. Agregar `backend/test/integration/suscripciones/plan-menor.spec.ts` (FR-005a, M3): con un período vigente de un plan con límites menores que los usuarios y barberos activos, nada se desactiva solo; crear o reactivar un usuario o un barbero por encima del límite se rechaza con el error de límite existente, y desactivar sigue permitido.
+- [x] T048 [US1] Backend: crear la matriz de permisos de M03 en `backend/src/modules/suscripciones-pagos/suscripciones/domain/permisos.ts`, con `VER_PLANES`, `VER_SUSCRIPCION`, `VER_ESTADO_OPERATIVO` y `PAGAR_SUSCRIPCION` según `contracts/rbac.md`, exportada por `index.ts`. Sumarla a `rolPermiteOperacion` en `backend/src/host/roles.guard.ts`.
+- [x] T049 [US1] Backend: controladores en `backend/src/modules/suscripciones-pagos/suscripciones/presentation/`:
   - `suscripcion.controller.ts`: `/planes`, `/suscripcion`, `/suscripcion/estado-operativo`, `POST /suscripcion/pagos` y `GET /suscripcion/pagos/:id`;
   - `notificaciones.controller.ts`: `@Publica()`, límite propio por IP de `PAGOS_NOTIFICACIONES_LIMITE_POR_MINUTO` (600 por defecto, configurable) y cuerpo crudo de hasta 16 KB.
 
   Configurar el cuerpo crudo de `/pagos/notificaciones` en `configurarApp`, en `backend/src/main.ts`. Hace pasar T033 a T039.
 
-- [ ] T050 [P] [US1] Frontend: crear `frontend/src/api/suscripcion.ts`, con los tipos de `contracts/openapi.yaml` y las funciones `planes`, `suscripcion`, `estadoOperativo`, `iniciarPago` y `pago(id)`, y el código `PAGO_EN_LINEA_NO_DISPONIBLE` en `frontend/src/api/client.ts`.
-- [ ] T051 [US1] Frontend: crear `frontend/src/pages/panel/Suscripcion.tsx`, con carga diferida:
+- [x] T050 [P] [US1] Frontend: crear `frontend/src/api/suscripcion.ts`, con los tipos de `contracts/openapi.yaml` y las funciones `planes`, `suscripcion`, `estadoOperativo`, `iniciarPago` y `pago(id)`, y el código `PAGO_EN_LINEA_NO_DISPONIBLE` en `frontend/src/api/client.ts`.
+- [x] T051 [US1] Frontend: crear `frontend/src/pages/panel/Suscripcion.tsx`, con carga diferida:
   - estado, fechas, límites y avisos;
   - elegir plan, con el aviso FR-005a;
   - "Pagar con Yape", que redirige;

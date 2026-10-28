@@ -1,7 +1,7 @@
 # Data Model: Suscripciones y pagos (003)
 
 **Fecha**: 2026-10-24 (corregido tras el análisis de consistencia) · Decisiones en
-[research.md](research.md) · Migraciones nuevas `0014` a `0017` · Constitución 1.3.1
+[research.md](research.md) · Migraciones nuevas `0014` a `0018` · Constitución 1.3.1
 
 Convenciones de 001 y 002:
 
@@ -55,6 +55,7 @@ cada operación de pago, de vencimiento, de reactivación y de activación manua
 | `review_resolved_at`, `review_note`      | timestamptz, varchar(300) | Resolución de la marca                                                                                                                                                                                                                                   |
 | `provider_reference`                     | varchar(80) NULL          | **`UNIQUE`** global (la referencia del proveedor no se repite)                                                                                                                                                                                           |
 | `checkout_url_expires_at`                | timestamptz NULL          | Vida de la sesión del proveedor. Un pago `PENDIENTE` se reutiliza solo si es posterior a ahora (FR-012, H3)                                                                                                                                              |
+| `checkout_url`                           | varchar(500) NULL         | Página alojada del proveedor (migración 0018): solo Yape, junto con `checkout_url_expires_at`. Permite devolver el mismo pago y la misma URL al repetir el intento con la sesión vigente (FR-012). La plataforma no la lee                               |
 | `transfer_reference`                     | varchar(32) NULL          | `SUS-…` (R05); `UNIQUE`                                                                                                                                                                                                                                  |
 | `bank_operation_number`                  | varchar(40) NULL          | Normalizado y completo. Solo lo lee el rol de la aplicación, con el tenant fijado. **`UNIQUE` global `WHERE status = 'APROBADO'`** (FR-022b)                                                                                                             |
 | `bank_operation_last4`                   | char(4) NULL              | Últimos 4 caracteres, para listados y para la plataforma (H2)                                                                                                                                                                                            |

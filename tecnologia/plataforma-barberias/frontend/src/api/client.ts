@@ -20,7 +20,14 @@ type CodigoError002 =
   | 'TRANSICION_INVALIDA';
 /** Código del balanceador cuando ninguna réplica responde (contrato de 006, ADR-030). */
 type CodigoError006 = 'SERVICIO_NO_DISPONIBLE';
-export type CodigoError = CuerpoError['codigo'] | CodigoError002 | CodigoError006;
+/** Códigos de la funcionalidad 003 (specs/003-suscripciones-pagos/contracts/openapi.yaml). */
+type CodigoError003 =
+  | 'PAGO_EN_LINEA_NO_DISPONIBLE'
+  | 'PAGO_ADELANTADO_NO_PERMITIDO'
+  | 'COMPROBANTE_YA_EN_REVISION'
+  | 'MEDIO_NO_DISPONIBLE_PARA_EL_PLAN'
+  | 'PLAN_NO_CONTRATABLE';
+export type CodigoError = CuerpoError['codigo'] | CodigoError002 | CodigoError006 | CodigoError003;
 
 const BASE = '/api/v1';
 

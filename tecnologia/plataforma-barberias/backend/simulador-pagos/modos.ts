@@ -44,7 +44,8 @@ export function leerModo(cuerpo: unknown): Modo {
   }
   return {
     modo: modo as NombreModo,
-    retardoMs: enteroOpcional(retardoMs, 600_000),
+    // Hasta una hora: el recorrido del quickstart usa aprobar_despues con 15 minutos (900000).
+    retardoMs: enteroOpcional(retardoMs, 3_600_000),
     veces: enteroOpcional(veces, 100),
     duracionMs: enteroOpcional(duracionMs, 3_600_000),
   };

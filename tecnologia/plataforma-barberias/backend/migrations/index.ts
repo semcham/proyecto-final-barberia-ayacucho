@@ -16,6 +16,7 @@ import * as m0014 from './0014_planes_y_suscripcion';
 import * as m0015 from './0015_pagos';
 import * as m0016 from './0016_plataforma';
 import * as m0017 from './0017_tareas';
+import * as m0018 from './0018_url_de_pago';
 
 // Registro explícito de migraciones, en orden. Cada historia agrega aquí las suyas.
 // (Un proveedor estático evita depender de importaciones dinámicas de archivos .ts.)
@@ -37,6 +38,7 @@ const MIGRACIONES: Record<string, Migration> = {
   '0015_pagos': m0015,
   '0016_plataforma': m0016,
   '0017_tareas': m0017,
+  '0018_url_de_pago': m0018,
 };
 
 /** Nombre de la última migración que conoce el código (GET /salud/listo, 006). */

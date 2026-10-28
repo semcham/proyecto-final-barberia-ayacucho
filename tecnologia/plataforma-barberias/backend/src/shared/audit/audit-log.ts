@@ -26,13 +26,21 @@ export type AccionAuditada =
   | 'CAMBIO_CON_CONFLICTO'
   | 'CITA_RESERVADA'
   | 'CITA_CANCELADA'
-  | 'CITA_ESTADO_CAMBIADO';
+  | 'CITA_ESTADO_CAMBIADO'
+  // Funcionalidad 003 (FR-031, FR-037).
+  | 'PAGO_INICIADO'
+  | 'PAGO_APROBADO'
+  | 'SUSCRIPCION_ACTIVADA'
+  | 'SUSCRIPCION_EN_GRACIA'
+  | 'SUSCRIPCION_VENCIDA';
 
 export interface EntradaAuditoria {
   accion: AccionAuditada;
   actorId: string | null;
   recurso?: string;
   resultado: 'PERMITIDO' | 'DENEGADO';
+  /** Fecha que le correspondía a la acción (transiciones automáticas, FR-031); por defecto, ahora. */
+  en?: Date;
 }
 
 /** Puerto de auditoría de acciones sensibles (R17, EQ-13). El tenant sale siempre del contexto. */
@@ -75,6 +83,7 @@ export class KyselyAuditLog extends AuditLog {
         result: entrada.resultado,
         ip: solicitud.ip ?? null,
         correlation_id: solicitud.correlationId?.slice(0, 64) ?? null,
+        ...(entrada.en ? { at: entrada.en } : {}),
       })
       .execute();
   }

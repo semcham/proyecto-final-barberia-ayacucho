@@ -287,6 +287,8 @@ export interface PaymentTable {
   review_note: TextoNulo;
   provider_reference: TextoNulo;
   checkout_url_expires_at: FechaNula;
+  /** Página alojada del proveedor (migración 0018): solo Yape. */
+  checkout_url: TextoNulo;
   transfer_reference: TextoNulo;
   /** Solo lo lee el rol de la aplicación con el tenant fijado (H2). */
   bank_operation_number: TextoNulo;

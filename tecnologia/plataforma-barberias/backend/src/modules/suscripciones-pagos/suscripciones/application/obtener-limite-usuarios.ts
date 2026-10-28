@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { TenantContext, type TenantId } from '../../../../shared';
-import { SuscripcionRepository } from './ports/suscripcion-repository';
+import { PlanVigente } from './plan-vigente';
 
 /**
  * Máximo de usuarios del personal que permite el plan de la barbería (FR-020). Participa en la
@@ -11,7 +11,7 @@ import { SuscripcionRepository } from './ports/suscripcion-repository';
 @Injectable()
 export class ObtenerLimiteUsuarios {
   constructor(
-    private readonly suscripciones: SuscripcionRepository,
+    private readonly planVigente: PlanVigente,
     private readonly tenantContext: TenantContext,
   ) {}
 
@@ -19,7 +19,7 @@ export class ObtenerLimiteUsuarios {
     if (!this.tenantContext.actual().equals(tenantId)) {
       throw new Error('El límite de usuarios debe consultarse dentro de la transacción del mismo tenant');
     }
-    const plan = await this.suscripciones.planDelTenant({ bloquear: opciones.bloquear });
+    const plan = await this.planVigente.delTenant({ bloquear: opciones.bloquear });
     if (!plan) throw new Error('La barbería no tiene una suscripción');
     return plan.maxUsuarios;
   }

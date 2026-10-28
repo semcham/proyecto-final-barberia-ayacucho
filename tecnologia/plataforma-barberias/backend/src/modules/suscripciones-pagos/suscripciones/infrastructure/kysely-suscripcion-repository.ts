@@ -151,7 +151,8 @@ export class KyselySuscripcionRepository extends SuscripcionRepository {
         'suspension_reason',
       ])
       .where('tenant_id', '=', this.tenantContext.actual().valor);
-    if (opciones.bloquear) consulta = consulta.forUpdate();
+    // Solo la fila de la suscripción, hasta que termine la transacción.
+    if (opciones.bloquear) consulta = consulta.forUpdate('subscription');
     const fila = await consulta.executeTakeFirst();
     return fila
       ? Suscripcion.reconstruir({

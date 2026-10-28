@@ -148,3 +148,39 @@ function ordenDeLaPlataforma(
 export function transicionDePago(pago: PagoActual, evento: EventoPago): TransicionDePago {
   return evento.tipo === 'PROVEEDOR' ? eventoDelProveedor(pago, evento) : ordenDeLaPlataforma(pago, evento);
 }
+
+/** Un pago tal como lo guarda la plataforma (data-model.md §1.2). Importes en céntimos enteros. */
+export interface Pago {
+  id: string;
+  tenantId: string;
+  suscripcionId: string;
+  planId: string;
+  importeCentimos: number;
+  moneda: string;
+  metodo: MetodoPago;
+  estado: EstadoPago;
+  /** Período objetivo (covers_after): la cobertura vigente al iniciar el pago (H1). */
+  cubreDesde: Date;
+  marca: MarcaRevision | null;
+  referenciaProveedor: string | null;
+  urlPago: string | null;
+  sesionExpiraEn: Date | null;
+  numeroOperacionFinal: string | null;
+  motivoRechazo: string | null;
+  creadoPor: string;
+  creadoEn: Date;
+  aprobadoEn: Date | null;
+  cerradoEn: Date | null;
+}
+
+/** El pago abierto se reutiliza solo si es el mismo intento y su sesión de pago sigue vigente (FR-012, H3). */
+export function esReutilizable(pago: Pago, planId: string, metodo: MetodoPago, ahora: Date): boolean {
+  return (
+    pago.estado === 'PENDIENTE' &&
+    pago.metodo === metodo &&
+    pago.planId === planId &&
+    pago.urlPago !== null &&
+    pago.sesionExpiraEn !== null &&
+    pago.sesionExpiraEn.getTime() > ahora.getTime()
+  );
+}

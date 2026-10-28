@@ -28,6 +28,8 @@ const MisCitas = lazy(() => import('./pages/cliente/MisCitas'));
 const Clientes = lazy(() => import('./pages/panel/Clientes'));
 const RegistroCliente = lazy(() => import('./pages/publico/RegistroCliente'));
 const IngresarBarberia = lazy(() => import('./pages/publico/IngresarBarberia'));
+// Funcionalidad 003 (T051).
+const Suscripcion = lazy(() => import('./pages/panel/Suscripcion'));
 const ReservarProtegida = lazy(() =>
   import('./pages/publico/Reservar').then((m) => ({ default: m.ReservarProtegida })),
 );
@@ -131,6 +133,14 @@ export function RutasApp() {
               element={
                 <RutaProtegida roles={['PROPIETARIO']}>
                   <Usuarios />
+                </RutaProtegida>
+              }
+            />
+            <Route
+              path="suscripcion"
+              element={
+                <RutaProtegida roles={['PROPIETARIO']}>
+                  <Suscripcion />
                 </RutaProtegida>
               }
             />

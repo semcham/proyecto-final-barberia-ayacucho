@@ -25,6 +25,8 @@ const DESTINOS: Destino[] = [
   { a: '/app/clientes', etiqueta: 'Clientes', icono: 'celular', roles: ['PROPIETARIO'] },
   { a: '/app/barberia', etiqueta: 'Barbería', icono: 'tienda', roles: ['PROPIETARIO'] },
   { a: '/app/usuarios', etiqueta: 'Usuarios', icono: 'usuarios', roles: ['PROPIETARIO'] },
+  // Funcionalidad 003 (T051).
+  { a: '/app/suscripcion', etiqueta: 'Suscripción', icono: 'dinero', roles: ['PROPIETARIO'] },
 ];
 
 const PROXIMAMENTE: { etiqueta: string; icono: NombreIcono }[] = [{ etiqueta: 'Ingresos', icono: 'dinero' }];

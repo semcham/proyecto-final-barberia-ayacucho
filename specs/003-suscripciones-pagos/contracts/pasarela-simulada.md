@@ -76,7 +76,7 @@ X-Firma: t=1793001234,v1=5f2b…(hex)
 Servicio `pasarela-simulada`:
 
 - imagen `node:22`, con el volumen de `node_modules` del backend;
-- comando `npx tsx simulador-pagos/servidor.ts`;
+- comando `node --import tsx simulador-pagos/servidor.ts` (un solo proceso de Node; con `npx tsx` eran tres y el contenedor rozaba los 64 MB);
 - puerto 3100;
 - 64 MB de memoria;
 - IP fija en la red `plataforma`.

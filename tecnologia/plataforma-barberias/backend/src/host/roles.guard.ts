@@ -13,6 +13,11 @@ import {
   type OperacionCatalogoCitas,
   PermisosCatalogoCitas,
 } from '../modules/catalogo-citas';
+import {
+  OPERACIONES_SUSCRIPCIONES,
+  type OperacionSuscripciones,
+  PermisosSuscripciones,
+} from '../modules/suscripciones-pagos';
 import { AuditLog, TenantId } from '../shared';
 import { CLAVE_OPERACION, type SolicitudConActor } from './solicitud';
 
@@ -20,7 +25,7 @@ import { CLAVE_OPERACION, type SolicitudConActor } from './solicitud';
 export { Operacion } from './solicitud';
 
 /**
- * Permiso de un rol para una operación de la matriz de M01 o de M02 (T033). Una operación que no está en
+ * Permiso de un rol para una operación de la matriz de M01, de M02 o de M03 (T033; T048 de 003). Una operación que no está en
  * ninguna matriz es un error de programación: se rechaza.
  */
 export function rolPermiteOperacion(rol: CodigoRol, operacion: string): boolean {
@@ -29,6 +34,9 @@ export function rolPermiteOperacion(rol: CodigoRol, operacion: string): boolean 
   }
   if ((OPERACIONES_CATALOGO_CITAS as readonly string[]).includes(operacion)) {
     return PermisosCatalogoCitas.permite(rol, operacion as OperacionCatalogoCitas);
+  }
+  if ((OPERACIONES_SUSCRIPCIONES as readonly string[]).includes(operacion)) {
+    return PermisosSuscripciones.permite(rol, operacion as OperacionSuscripciones);
   }
   throw new Error(`Operación desconocida en @Operacion: ${operacion}`);
 }

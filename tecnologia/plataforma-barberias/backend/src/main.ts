@@ -7,6 +7,8 @@ import { middlewareContextoSolicitud } from './host/contexto-solicitud';
 import { crearValidationPipe, RechazarCaracteresDeControl } from './host/validacion';
 import { Configuracion, TenantContext } from './shared';
 
+const RUTA_NOTIFICACIONES = '/api/v1/pagos/notificaciones';
+
 /**
  * Configuración HTTP común a la aplicación real y a las pruebas (T046). La aplicación debe crearse con
  * `bodyParser: false` para que aquí se fije el límite de 16 KB.
@@ -29,7 +31,14 @@ export function configurarApp(app: NestExpressApplication): void {
       },
     );
   }
-  app.useBodyParser('json', { limit: '16kb' });
+  // 003 (FR-013): la firma del proveedor se verifica sobre el cuerpo crudo, así que el parser lo conserva para
+  // la ruta de notificaciones (y solo para ella). El límite de 16 KB es el mismo para todas las rutas.
+  app.useBodyParser('json', {
+    limit: '16kb',
+    verify: (solicitud: { url?: string; cuerpoCrudo?: Buffer }, _respuesta: unknown, cuerpo: Buffer) => {
+      if (solicitud.url?.startsWith(RUTA_NOTIFICACIONES)) solicitud.cuerpoCrudo = Buffer.from(cuerpo);
+    },
+  } as Parameters<NestExpressApplication['useBodyParser']>[1]);
   app.use(cookieParser());
   // Después del parser del cuerpo (ver middlewareContextoSolicitud).
   app.use(middlewareContextoSolicitud(app.get(TenantContext)));

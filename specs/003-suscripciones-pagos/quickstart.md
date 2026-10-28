@@ -45,7 +45,7 @@ Requisitos: el entorno de 006 en marcha y una barbería registrada en prueba gra
    - Repetirlo cerrando la pestaña antes de volver: el resultado es el mismo (lo confirmó la
      notificación, no el navegador).
 3. **Notificación repetida y firma inválida** (PR17).
-   - **Acción:** `npm run simulador:modo -- duplicar 10` y pagar otra vez (período siguiente).
+   - **Acción:** `npm run simulador:modo -- duplicar 10` y pagar con **otra** barbería (la del paso 2 ya pagó el período siguiente, y el máximo es uno por adelantado).
    - **Esperado:** 1 período nuevo, 1 pago aprobado, 9 notificaciones respondidas como repetidas.
    - **Acción:** con `firma_invalida`, el pago queda pendiente.
    - **Esperado:** `docker compose logs` muestra una línea `PAGO_NOTIFICACION_RECHAZADA` por intento,

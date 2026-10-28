@@ -12,7 +12,7 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "test": "vitest run",
-    "gen:api": "openapi-typescript ../../../specs/001-registro-acceso-barberia/contracts/openapi.yaml -o src/api/schema.d.ts && openapi-typescript ../../../specs/002-catalogo-citas-cliente/contracts/openapi.yaml -o src/api/schema-002.d.ts"
+    "gen:api": "openapi-typescript ../../../specs/001-registro-acceso-barberia/contracts/openapi.yaml -o src/api/schema.d.ts && openapi-typescript ../../../specs/002-catalogo-citas-cliente/contracts/openapi.yaml -o src/api/schema-002.d.ts && openapi-typescript ../../../specs/003-suscripciones-pagos/contracts/openapi.yaml -o src/api/schema-003.d.ts"
   },
   "dependencies": {
     "@fontsource-variable/fraunces": "5.3.0",

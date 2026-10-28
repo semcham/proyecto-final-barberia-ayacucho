@@ -1,3 +1,4 @@
+import { ESTADO_POR_CODIGO } from '../../../src/host/error.filter';
 import { SuscripcionesApi, SuscripcionNoPermite } from '../../../src/modules/suscripciones-pagos';
 import { TenantId, UnitOfWork } from '../../../src/shared';
 import { type AppDePrueba, crearApp } from '../../helpers/app';
@@ -76,8 +77,7 @@ describe('SuscripcionesApi: restricciones por estado (T032)', () => {
     });
   });
 
-  it('una respuesta 403 de SUSCRIPCION_NO_PERMITE está en el mapa de errores del host', async () => {
-    const { ESTADO_POR_CODIGO } = await import('../../../src/host/error.filter');
+  it('una respuesta 403 de SUSCRIPCION_NO_PERMITE está en el mapa de errores del host', () => {
     expect(ESTADO_POR_CODIGO.SUSCRIPCION_NO_PERMITE).toBe(403);
   });
 });
