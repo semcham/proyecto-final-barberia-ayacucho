@@ -4,7 +4,7 @@ import type { Clock } from '../clock/clock';
 import type { Configuracion } from '../config/configuracion';
 import { CacheCompartida, type Conteo } from './cache-compartida';
 import type { ClaveCache, ClaveContador, ClaveGeneracion } from './claves-cache';
-import { Interruptor } from './interruptor';
+import { Interruptor } from '../resiliencia/interruptor';
 
 /** Versión del sobre con que el adaptador guarda cada valor; otra versión se trata como ausente (FR-015). */
 const VERSION_SOBRE = 1;

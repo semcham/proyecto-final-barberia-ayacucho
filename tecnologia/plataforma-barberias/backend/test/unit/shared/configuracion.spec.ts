@@ -10,6 +10,11 @@ const MINIMAS: Record<string, string> = {
   JWT_ACTIVE_KID: 'k1',
   JWT_ISSUER: 'emisor',
   JWT_AUDIENCE: 'audiencia',
+  DATABASE_URL_PLATAFORMA: 'postgres://plataforma@localhost/db',
+  PLATAFORMA_LLAVE_TOTP: Buffer.alloc(32, 7).toString('base64'),
+  PAGOS_URL_BASE: 'http://localhost:3100',
+  PAGOS_LLAVE_SECRETA: 'sk_prueba_123',
+  PAGOS_SECRETO_FIRMA: 'whsec_prueba_0123456789',
 };
 
 describe('Configuracion: período de gracia de la renovación', () => {
@@ -123,7 +128,7 @@ describe('Configuracion: caché compartida, balanceo y pools', () => {
     });
     expect(configuracion.proxiesConfiables).toEqual(['loopback']);
     expect(configuracion.instanciaId).toBeUndefined();
-    expect(configuracion.pools).toEqual({ appMax: 10, publicoMax: 10 });
+    expect(configuracion.pools).toEqual({ appMax: 10, publicoMax: 10, plataformaMax: 4 });
   });
 
   it('una variable vacía equivale a no definida', () => {
@@ -204,5 +209,150 @@ describe('Configuracion: caché compartida, balanceo y pools', () => {
   it.each(['Backend 1', 'a'.repeat(33), '<script>'])('rechaza INSTANCIA_ID=%s', (valor) => {
     process.env.INSTANCIA_ID = valor;
     expect(() => new Configuracion()).toThrow(/INSTANCIA_ID/);
+  });
+});
+
+// T002 de 003 · Pagos, plataforma y tareas (ADR-022, ADR-024, ADR-031): valores por defecto, errores claros
+// al iniciar y ningún secreto en los mensajes.
+describe('Configuracion: pagos, plataforma y tareas (003)', () => {
+  const original = { ...process.env };
+  const OPCIONALES = [
+    'PAGOS_PROVEEDOR',
+    'PAGOS_LLAVE_PUBLICA',
+    'PAGOS_URL_RETORNO',
+    'PAGOS_TIEMPO_LIMITE_MS',
+    'PAGOS_NOTIFICACIONES_LIMITE_POR_MINUTO',
+    'PAGOS_CUENTA_BANCO',
+    'PAGOS_CUENTA_TITULAR',
+    'PAGOS_CUENTA_NUMERO',
+    'PAGOS_CUENTA_CCI',
+    'TAREAS_ACTIVAS',
+    'TAREAS_INTERVALO_MS',
+    'DB_POOL_PLATAFORMA_MAX',
+    'FRONTEND_BASE_URL',
+  ];
+
+  beforeEach(() => {
+    process.env = { ...original, ...MINIMAS };
+    for (const variable of OPCIONALES) delete process.env[variable];
+  });
+
+  afterAll(() => {
+    process.env = original;
+  });
+
+  /** Mensaje del error que lanza el constructor con el entorno actual. */
+  function errorAlIniciar(): string {
+    try {
+      new Configuracion();
+    } catch (error) {
+      return (error as Error).message;
+    }
+    throw new Error('Se esperaba un error al iniciar');
+  }
+
+  it('valores por defecto', () => {
+    const { pagos, plataforma, tareas } = new Configuracion();
+    expect(pagos).toEqual({
+      proveedor: 'simulado',
+      urlBase: 'http://localhost:3100',
+      llavePublica: undefined,
+      llaveSecreta: 'sk_prueba_123',
+      secretoFirma: 'whsec_prueba_0123456789',
+      urlRetorno: 'http://localhost:5173/app/suscripcion',
+      tiempoLimiteMs: 2000,
+      notificacionesPorMinuto: 600,
+      cuenta: { banco: undefined, titular: undefined, numero: undefined, cci: undefined },
+    });
+    expect(plataforma.databaseUrl).toBe('postgres://plataforma@localhost/db');
+    expect(plataforma.llaveTotp).toEqual(Buffer.alloc(32, 7));
+    expect(tareas).toEqual({ activas: true, intervaloMs: 300_000 });
+  });
+
+  it.each([
+    'PAGOS_URL_BASE',
+    'PAGOS_LLAVE_SECRETA',
+    'PAGOS_SECRETO_FIRMA',
+    'DATABASE_URL_PLATAFORMA',
+    'PLATAFORMA_LLAVE_TOTP',
+  ])('exige %s', (variable) => {
+    delete process.env[variable];
+    expect(errorAlIniciar()).toContain(variable);
+  });
+
+  it.each(['simulado', 'culqi'])('acepta PAGOS_PROVEEDOR=%s', (valor) => {
+    process.env.PAGOS_PROVEEDOR = valor;
+    expect(new Configuracion().pagos.proveedor).toBe(valor);
+  });
+
+  it.each(['Culqi', 'stripe', 'real'])('rechaza PAGOS_PROVEEDOR=%s', (valor) => {
+    process.env.PAGOS_PROVEEDOR = valor;
+    expect(errorAlIniciar()).toContain('PAGOS_PROVEEDOR');
+  });
+
+  it.each([
+    ['PAGOS_URL_BASE', 'ftp://pasarela'],
+    ['PAGOS_URL_BASE', 'pasarela:3100'],
+    ['PAGOS_URL_RETORNO', 'javascript:alert(1)'],
+  ])('rechaza %s=%s', (variable, valor) => {
+    process.env[variable] = valor;
+    expect(errorAlIniciar()).toContain(variable);
+  });
+
+  it('quita la barra final de la URL de la pasarela', () => {
+    process.env.PAGOS_URL_BASE = 'https://api.pasarela.pe/';
+    expect(new Configuracion().pagos.urlBase).toBe('https://api.pasarela.pe');
+  });
+
+  it('el retorno por defecto sigue a FRONTEND_BASE_URL', () => {
+    process.env.FRONTEND_BASE_URL = 'https://barberias.pe';
+    expect(new Configuracion().pagos.urlRetorno).toBe('https://barberias.pe/app/suscripcion');
+  });
+
+  it.each([
+    ['PAGOS_TIEMPO_LIMITE_MS', ['100', '10000'], ['99', '10001', '2.5']],
+    ['PAGOS_NOTIFICACIONES_LIMITE_POR_MINUTO', ['1', '100000'], ['0', '100001']],
+    ['TAREAS_INTERVALO_MS', ['10000', '86400000'], ['9999', 'cinco']],
+    ['DB_POOL_PLATAFORMA_MAX', ['2', '20'], ['1', '21']],
+  ])('%s: rango', (variable, validos, invalidos) => {
+    for (const valor of validos) {
+      process.env[variable] = valor;
+      expect(() => new Configuracion()).not.toThrow();
+    }
+    for (const valor of invalidos) {
+      process.env[variable] = valor;
+      expect(errorAlIniciar()).toContain(variable);
+    }
+  });
+
+  it('TAREAS_ACTIVAS solo acepta true o false', () => {
+    process.env.TAREAS_ACTIVAS = 'false';
+    expect(new Configuracion().tareas.activas).toBe(false);
+    process.env.TAREAS_ACTIVAS = 'no';
+    expect(errorAlIniciar()).toContain('TAREAS_ACTIVAS');
+  });
+
+  it.each([
+    ['vacía', ''],
+    ['de 16 bytes', Buffer.alloc(16, 1).toString('base64')],
+    ['de 33 bytes', Buffer.alloc(33, 1).toString('base64')],
+    ['que no es base64', 'llave-secreta-que-no-es-base64-!!'],
+  ])('rechaza una PLATAFORMA_LLAVE_TOTP %s, sin mostrarla', (_caso, valor) => {
+    process.env.PLATAFORMA_LLAVE_TOTP = valor;
+    const mensaje = errorAlIniciar();
+    expect(mensaje).toContain('PLATAFORMA_LLAVE_TOTP');
+    if (valor) expect(mensaje).not.toContain(valor);
+  });
+
+  it('un secreto corto se rechaza sin mostrarlo', () => {
+    process.env.PAGOS_SECRETO_FIRMA = 'corto-123';
+    const mensaje = errorAlIniciar();
+    expect(mensaje).toContain('PAGOS_SECRETO_FIRMA');
+    expect(mensaje).not.toContain('corto-123');
+    process.env.PAGOS_SECRETO_FIRMA = MINIMAS.PAGOS_SECRETO_FIRMA;
+    process.env.PAGOS_LLAVE_SECRETA = 'sk_1';
+    const otro = errorAlIniciar();
+    expect(otro).toContain('PAGOS_LLAVE_SECRETA');
+    expect(otro).not.toContain('sk_1');
   });
 });

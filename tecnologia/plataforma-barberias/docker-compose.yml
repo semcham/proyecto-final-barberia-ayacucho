@@ -51,6 +51,15 @@ x-backend-entorno: &backend-entorno
   DATABASE_URL_APP: postgres://barberias_app:barberias_app_dev@db:5432/barberias
   DATABASE_URL_OWNER: postgres://barberias_owner:barberias_owner_dev@db:5432/barberias
   DATABASE_URL_PUBLICO: postgres://barberias_publico:barberias_publico_dev@db:5432/barberias
+  # 003 (ADR-031): lecturas entre barberías con el rol de solo lectura de la plataforma.
+  DATABASE_URL_PLATAFORMA: postgres://barberias_plataforma:barberias_plataforma_dev@db:5432/barberias
+  # 003 (ADR-022): pasarela simulada por IP fija, como Redis. Los secretos toman el valor de .env y, si falta,
+  # uno SOLO de desarrollo (los mismos que usa el servicio pasarela-simulada).
+  PAGOS_PROVEEDOR: ${PAGOS_PROVEEDOR:-simulado}
+  PAGOS_URL_BASE: http://${IP_SIMULADOR:-172.28.0.14}:3100
+  PAGOS_LLAVE_SECRETA: ${PAGOS_LLAVE_SECRETA:-sk_simulador_dev}
+  PAGOS_SECRETO_FIRMA: ${PAGOS_SECRETO_FIRMA:-whsec_simulador_dev_0123456789}
+  PLATAFORMA_LLAVE_TOTP: ${PLATAFORMA_LLAVE_TOTP:-lbHKxTk+JozFdW/boiab5TEu+/KwibmslHzqGFOZxZY=}
   # Por IP fija, no por nombre: con Redis detenido, resolver "redis" tarda 3–4 s (ENOTFOUND tras consultar
   # el DNS del equipo) en cada reconexión, y esas esperas llegaron a demorar solicitudes 3–5 s (2026-10-24).
   REDIS_URL: redis://${IP_REDIS:-172.28.0.13}:6379
@@ -114,6 +123,38 @@ services:
     networks:
       plataforma:
         ipv4_address: ${IP_REDIS:-172.28.0.13}
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+
+  # Pasarela de pagos simulada (003, ADR-022; contrato en specs/003-suscripciones-pagos/contracts/
+  # pasarela-simulada.md). Herramienta de desarrollo y pruebas: NUNCA se despliega en producción. Lee solo
+  # su carpeta de código y las dependencias del volumen que llena preparar-backend, ambos de solo lectura.
+  # Notifica a la API por Nginx, como lo haría un proveedor real.
+  pasarela-simulada:
+    image: node:22
+    working_dir: /srv
+    command: npx --no-install tsx simulador-pagos/servidor.ts
+    environment:
+      PUERTO: "3100"
+      PAGOS_LLAVE_SECRETA: ${PAGOS_LLAVE_SECRETA:-sk_simulador_dev}
+      PAGOS_SECRETO_FIRMA: ${PAGOS_SECRETO_FIRMA:-whsec_simulador_dev_0123456789}
+      SIMULADOR_TOKEN_CONTROL: ${SIMULADOR_TOKEN_CONTROL:-control_simulador_dev}
+      PAGOS_URL_NOTIFICACIONES: http://nginx/api/v1/pagos/notificaciones
+      NODE_OPTIONS: --max-old-space-size=32
+    volumes:
+      - ./backend/simulador-pagos:/srv/simulador-pagos:ro
+      - backend-node-modules:/srv/node_modules:ro
+    ports:
+      - "3100:3100"
+    depends_on:
+      preparar-backend:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    networks:
+      plataforma:
+        ipv4_address: ${IP_SIMULADOR:-172.28.0.14}
     deploy:
       resources:
         limits:

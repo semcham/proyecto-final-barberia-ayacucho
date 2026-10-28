@@ -99,6 +99,49 @@ function identificador(nombre: string): string | undefined {
   return valor;
 }
 
+function urlHttp(nombre: string, valor: string): string {
+  let url: URL;
+  try {
+    url = new URL(valor);
+  } catch {
+    throw new Error(`La variable de entorno ${nombre} debe ser una URL http:// o https://`);
+  }
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+    throw new Error(`La variable de entorno ${nombre} debe ser una URL http:// o https://`);
+  }
+  return valor.replace(/\/+$/, '');
+}
+
+/** Secreto obligatorio con un largo mínimo. El mensaje de error nunca incluye el valor. */
+function secreto(nombre: string, largoMinimo: number): string {
+  const valor = requerida(nombre);
+  if (valor.length < largoMinimo) {
+    throw new Error(`La variable de entorno ${nombre} debe tener al menos ${largoMinimo} caracteres`);
+  }
+  return valor;
+}
+
+const PROVEEDORES_DE_PAGO = ['simulado', 'culqi'] as const;
+export type ProveedorDePago = (typeof PROVEEDORES_DE_PAGO)[number];
+
+function proveedorDePago(nombre: string): ProveedorDePago {
+  const valor = opcional(nombre) ?? 'simulado';
+  if (!(PROVEEDORES_DE_PAGO as readonly string[]).includes(valor)) {
+    throw new Error(`La variable de entorno ${nombre} debe ser ${PROVEEDORES_DE_PAGO.join(' o ')}`);
+  }
+  return valor as ProveedorDePago;
+}
+
+/** Llave AES-256 en base64: exactamente 32 bytes. El mensaje de error nunca incluye el valor. */
+function llave32Bytes(nombre: string): Buffer {
+  const valor = requerida(nombre).trim();
+  const bytes = /^[A-Za-z0-9+/]+={0,2}$/.test(valor) ? Buffer.from(valor, 'base64') : Buffer.alloc(0);
+  if (bytes.length !== 32) {
+    throw new Error(`La variable de entorno ${nombre} debe ser una llave de 32 bytes en base64`);
+  }
+  return bytes;
+}
+
 // Los PEM pueden venir en una sola línea con "\n" literales (formato de .env).
 function pem(valor: string): string {
   return valor.replace(/\\n/g, '\n');
@@ -164,5 +207,41 @@ export class Configuracion {
   readonly pools = {
     appMax: enteroEnRango('DB_POOL_APP_MAX', 10, 2, 50),
     publicoMax: enteroEnRango('DB_POOL_PUBLICO_MAX', 10, 2, 50),
+    plataformaMax: enteroEnRango('DB_POOL_PLATAFORMA_MAX', 4, 2, 20),
+  };
+  /** Pasarela de pagos detrás de PaymentGateway (ADR-022): se cambia por configuración, no por código. */
+  readonly pagos = {
+    proveedor: proveedorDePago('PAGOS_PROVEEDOR'),
+    urlBase: urlHttp('PAGOS_URL_BASE', requerida('PAGOS_URL_BASE')),
+    llavePublica: opcional('PAGOS_LLAVE_PUBLICA'),
+    llaveSecreta: secreto('PAGOS_LLAVE_SECRETA', 8),
+    /** Secreto HMAC-SHA256 de las notificaciones firmadas (FR-013). */
+    secretoFirma: secreto('PAGOS_SECRETO_FIRMA', 16),
+    urlRetorno: urlHttp(
+      'PAGOS_URL_RETORNO',
+      opcional('PAGOS_URL_RETORNO') ?? `${this.frontendBaseUrl}/app/suscripcion`,
+    ),
+    tiempoLimiteMs: enteroEnRango('PAGOS_TIEMPO_LIMITE_MS', 2000, 100, 10_000),
+    /** Límite propio del punto de notificaciones por IP y minuto (FR-013a). */
+    notificacionesPorMinuto: enteroEnRango('PAGOS_NOTIFICACIONES_LIMITE_POR_MINUTO', 600, 1, 100_000),
+    /** Cuenta a la que se transfiere (FR-019); se usa con el medio TRANSFERENCIA. */
+    cuenta: {
+      banco: opcional('PAGOS_CUENTA_BANCO'),
+      titular: opcional('PAGOS_CUENTA_TITULAR'),
+      numero: opcional('PAGOS_CUENTA_NUMERO'),
+      cci: opcional('PAGOS_CUENTA_CCI'),
+    },
+  };
+  /** Operaciones de la plataforma (ADR-031). */
+  readonly plataforma = {
+    /** Rol barberias_plataforma: lecturas entre barberías, solo lectura. */
+    databaseUrl: requerida('DATABASE_URL_PLATAFORMA'),
+    /** Llave AES-256-GCM de los secretos TOTP del administrador (R07). */
+    llaveTotp: llave32Bytes('PLATAFORMA_LLAVE_TOTP'),
+  };
+  /** Tareas programadas (ADR-024). */
+  readonly tareas = {
+    activas: booleano('TAREAS_ACTIVAS', true),
+    intervaloMs: enteroEnRango('TAREAS_INTERVALO_MS', 300_000, 10_000, 86_400_000),
   };
 }

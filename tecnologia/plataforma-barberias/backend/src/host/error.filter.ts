@@ -36,6 +36,14 @@ export const ESTADO_POR_CODIGO: Record<string, number> = {
   IDEMPOTENCIA_CONFLICTO: 422,
   TRANSICION_INVALIDA: 422,
   FUERA_DEL_HORARIO_DE_ATENCION: 422,
+  // Funcionalidad 003 (specs/003-suscripciones-pagos/contracts/openapi.yaml).
+  PAGO_ADELANTADO_NO_PERMITIDO: 409,
+  COMPROBANTE_YA_EN_REVISION: 409,
+  PAGO_YA_REVISADO: 409,
+  NUMERO_OPERACION_YA_APROBADO: 409,
+  MEDIO_NO_DISPONIBLE_PARA_EL_PLAN: 422,
+  IMPORTE_DISTINTO: 422,
+  PAGO_EN_LINEA_NO_DISPONIBLE: 503,
 };
 
 function desdeHttp(estado: number): CuerpoError {

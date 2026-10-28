@@ -69,25 +69,25 @@ El backend y el frontend se ejecutan por separado, nunca a la vez.
 
 **Purpose**: configuración y entorno, sin lógica todavía.
 
-- [ ] T001 [P] Backend: agregar a `.env.example` las variables de 003, con sus comentarios. No tocar el `.env` del usuario.
+- [x] T001 [P] Backend: agregar a `.env.example` las variables de 003, con sus comentarios. No tocar el `.env` del usuario.
   - **Pagos:** `PAGOS_PROVEEDOR=simulado`, `PAGOS_URL_BASE`, `PAGOS_LLAVE_PUBLICA`, `PAGOS_LLAVE_SECRETA`, `PAGOS_SECRETO_FIRMA`, `PAGOS_URL_RETORNO`, `PAGOS_URL_NOTIFICACIONES`, `PAGOS_TIEMPO_LIMITE_MS=2000`, `PAGOS_NOTIFICACIONES_LIMITE_POR_MINUTO=600` y `PAGOS_CUENTA_BANCO`, `PAGOS_CUENTA_TITULAR`, `PAGOS_CUENTA_NUMERO`, `PAGOS_CUENTA_CCI`.
   - **Plataforma:** `PLATAFORMA_LLAVE_TOTP` (32 bytes en base64) y `DATABASE_URL_PLATAFORMA`.
   - **Simulador:** `SIMULADOR_TOKEN_CONTROL`.
   - **Tareas:** `TAREAS_ACTIVAS=true` y `TAREAS_INTERVALO_MS=300000`.
-- [ ] T002 Backend: ampliar `backend/src/shared/config/configuracion.ts` con las secciones `pagos` (proveedor `simulado` o `culqi`, URL, llaves, tiempo límite, límite de notificaciones por minuto y cuenta bancaria), `plataforma` (llave TOTP de 32 bytes decodificada y URL de base) y `tareas` (activas e intervalo, mínimo 10 000 ms).
+- [x] T002 Backend: ampliar `backend/src/shared/config/configuracion.ts` con las secciones `pagos` (proveedor `simulado` o `culqi`, URL, llaves, tiempo límite, límite de notificaciones por minuto y cuenta bancaria), `plataforma` (llave TOTP de 32 bytes decodificada y URL de base) y `tareas` (activas e intervalo, mínimo 10 000 ms).
   - Si un valor es inválido, el arranque falla con un mensaje claro.
   - Ningún secreto aparece en los mensajes.
   - Casos nuevos en `backend/test/unit/shared/configuracion.spec.ts`.
-- [ ] T003 [P] Backend: crear el rol `barberias_plataforma` (`LOGIN NOBYPASSRLS NOINHERIT`, contraseña de desarrollo) en `db/init/01-roles.sql`.
+- [x] T003 [P] Backend: crear el rol `barberias_plataforma` (`LOGIN NOBYPASSRLS NOINHERIT`, contraseña de desarrollo) en `db/init/01-roles.sql`.
   - Agregar la creación en las pruebas, en `backend/test/helpers/test-db.ts`, junto a `barberias_publico`, con `TEST_DB_PLATAFORMA_URL`.
   - Documentar en `README.md` el SQL para bases ya existentes, como se hizo con `barberias_publico`.
-- [ ] T004 [P] Backend: en `docker-compose.yml`, agregar el servicio `pasarela-simulada`.
+- [x] T004 [P] Backend: en `docker-compose.yml`, agregar el servicio `pasarela-simulada`.
   - Imagen `node:22`, con los volúmenes del build y de `node_modules` de solo lectura (como las réplicas).
   - Comando `npx --no-install tsx simulador-pagos/servidor.ts`, IP fija `${IP_SIMULADOR:-172.28.0.14}`, puerto `3100:3100` y 64 MB.
   - Agregar a `x-backend-entorno`: `DATABASE_URL_PLATAFORMA`, `PAGOS_URL_BASE=http://${IP_SIMULADOR:-172.28.0.14}:3100` y `PAGOS_URL_NOTIFICACIONES=http://nginx/api/v1/pagos/notificaciones`.
   - Agregar `IP_SIMULADOR` a `.env.example`.
   - Actualizar `specs/006-escalado-cache-balanceo/contracts/entorno-compose.md` §1 con la fila nueva.
-- [ ] T005 [P] Backend: en `backend/package.json`, agregar los scripts `"simulador": "tsx simulador-pagos/servidor.ts"`, `"simulador:modo": "tsx scripts/simulador-modo.ts"`, `"plataforma:crear-admin": "tsx scripts/crear-admin-plataforma.ts"` y `"demo:vencimiento": "tsx scripts/demo-vencimiento.ts"`.
+- [x] T005 [P] Backend: en `backend/package.json`, agregar los scripts `"simulador": "tsx simulador-pagos/servidor.ts"`, `"simulador:modo": "tsx scripts/simulador-modo.ts"`, `"plataforma:crear-admin": "tsx scripts/crear-admin-plataforma.ts"` y `"demo:vencimiento": "tsx scripts/demo-vencimiento.ts"`.
   - Incluir `simulador-pagos/` en `backend/tsconfig.json` (revisión de tipos y lint), sin dependencias nuevas.
 
 ---
@@ -104,35 +104,35 @@ detecta las violaciones nuevas.
 
 ### Tests for Base ⚠️
 
-- [ ] T006 [P] Backend: en `backend/test/unit/shared/interruptor.spec.ts` (se mueve con el interruptor), probar la ventana opcional `ventanaMs`: 5 fallos dentro de 60 s abren el circuito, y 5 fallos repartidos en más tiempo no. Mantener los casos de 006.
-- [ ] T007 [P] Backend: en `backend/test/unit/shared/ejecutor-tareas.spec.ts`, con candado y reloj falsos, probar:
+- [x] T006 [P] Backend: en `backend/test/unit/shared/interruptor.spec.ts` (se mueve con el interruptor), probar la ventana opcional `ventanaMs`: 5 fallos dentro de 60 s abren el circuito, y 5 fallos repartidos en más tiempo no. Mantener los casos de 006.
+- [x] T007 [P] Backend: en `backend/test/unit/shared/ejecutor-tareas.spec.ts`, con candado y reloj falsos, probar:
   - la tarea no corre si el candado está tomado;
   - un error en un elemento no detiene el resto;
   - cada corrida se registra con los procesados y los fallidos;
   - el desfase queda entre 0 y 30 s;
   - con `TAREAS_ACTIVAS=false` no se programa nada.
-- [ ] T008 [P] Backend: **PR25** en `backend/test/unit/suscripciones/estado-suscripcion.spec.ts`. Todas las transiciones de [data-model.md](data-model.md) §2, incluidas las inválidas, la reactivación recalculada por fechas y el pago durante la prueba (sigue en TRIAL hasta que termina).
-- [ ] T009 [P] Backend: **PR25** en `backend/test/unit/suscripciones/periodos.spec.ts`. Casos:
+- [x] T008 [P] Backend: **PR25** en `backend/test/unit/suscripciones/estado-suscripcion.spec.ts`. Todas las transiciones de [data-model.md](data-model.md) §2, incluidas las inválidas, la reactivación recalculada por fechas y el pago durante la prueba (sigue en TRIAL hasta que termina).
+- [x] T009 [P] Backend: **PR25** en `backend/test/unit/suscripciones/periodos.spec.ts`. Casos:
   - un mes calendario con ajuste al fin de mes (31 de enero → 28 o 29 de febrero);
   - el inicio al terminar la prueba o el período vigente;
   - en gracia, el inicio al final del período vencido (P2: A, escenario 8 de US2);
   - vencida, el inicio al aprobarse;
   - el rechazo de más de un período por adelantado;
   - el plan del período vigente.
-- [ ] T010 [P] Backend: **PR25** en `backend/test/unit/suscripciones/politica-de-operacion.spec.ts`. La prueba **lee** la tabla §1 de `specs/003-suscripciones-pagos/contracts/restricciones-estado.md` y comprueba cada celda; una acción sin fila hace fallar la prueba.
-- [ ] T011 [P] Backend: **PR25** en `backend/test/unit/pagos/pago.spec.ts`. La máquina de estados del pago de [data-model.md](data-model.md) §3, celda por celda:
+- [x] T010 [P] Backend: **PR25** en `backend/test/unit/suscripciones/politica-de-operacion.spec.ts`. La prueba **lee** la tabla §1 de `specs/003-suscripciones-pagos/contracts/restricciones-estado.md` y comprueba cada celda; una acción sin fila hace fallar la prueba.
+- [x] T011 [P] Backend: **PR25** en `backend/test/unit/pagos/pago.spec.ts`. La máquina de estados del pago de [data-model.md](data-model.md) §3, celda por celda:
   - `ANULADO` y `EXPIRADO` pasan a `APROBADO`;
   - un `APROBADO` atrasado tras un `RECHAZADO` deja la marca;
   - los eventos atrasados no tienen efecto;
   - `DUPLICADO`, `IMPORTE_DISTINTO`, `APROBADO_TRAS_RECHAZO` y `DEVOLUCION` son marcas de revisión, no estados (equivalencia de la entidad Pago de la especificación).
-- [ ] T012 [P] Backend: **PR09** en `backend/test/integration/aislamiento/lectura-plataforma.spec.ts`. Comprobar, como en `lectura-publica.spec.ts`:
+- [x] T012 [P] Backend: **PR09** en `backend/test/integration/aislamiento/lectura-plataforma.spec.ts`. Comprobar, como en `lectura-publica.spec.ts`:
   - `barberias_plataforma` tiene exactamente los permisos por columna de data-model §4;
   - no tiene `BYPASSRLS` ni objetos propios, ni `EXECUTE` sobre las funciones de ADR-015;
   - leer citas, clientes, catálogo, `user_account`, `auth_session` o `payment_receipt_file` da "permission denied";
   - no tiene `INSERT`, `UPDATE` ni `DELETE` sobre ninguna tabla, de barbería ni de la plataforma, y todas sus transacciones son `READ ONLY`;
   - no puede leer `payment.bank_operation_number`, solo `bank_operation_last4` y `bank_operation_hash`;
   - `barberias_app` solo puede insertar en `provider_event` (un `SELECT` da "permission denied"), no tiene ningún permiso sobre `platform_admin`, y tiene exactamente `SELECT`, `INSERT` y `UPDATE` sobre `platform_session` y `platform_challenge`, `INSERT` en `platform_audit_log` e `INSERT` y `UPDATE` en `scheduled_job_run` (constitución 1.3.1).
-- [ ] T013 [P] Backend: **PR20** en `backend/test/contract/payment-gateway.contract.ts`, una función `probarContratoDePasarela(fabrica)` que comprueba:
+- [x] T013 [P] Backend: **PR20** en `backend/test/contract/payment-gateway.contract.ts`, una función `probarContratoDePasarela(fabrica)` que comprueba:
   - crear y consultar;
   - aprobar y rechazar;
   - cancelar una sesión pendiente;
@@ -142,12 +142,12 @@ detecta las violaciones nuevas.
 
   Ejecutarla en `backend/test/integration/pagos/gateway-simulado.spec.ts`, siempre, y en `backend/test/integration/pagos/gateway-sandbox.spec.ts`, solo con `PAGOS_SANDBOX_*` definidas; si no, `describe.skip` con un mensaje.
 
-- [ ] T014 [P] Backend: en `backend/test/integration/pagos/simulador.spec.ts`, probar cada modo de `specs/003-suscripciones-pagos/contracts/pasarela-simulada.md` §3 contra el simulador iniciado dentro del proceso (`lento`, `caido`, `colgado`, `duplicar`, `firma_invalida`, `sin_firma`, `fuera_de_orden`, `importe_distinto`, `aprobar_despues`, `rechazar` y la devolución), y que las rutas `/control/*` exigen `X-Control`.
-- [ ] T015 [P] Backend: **PR14**. En `backend/test/architecture/reglas.spec.ts`, agregar casos y fixtures en `backend/test/architecture/fixture/` para las reglas nuevas:
+- [x] T014 [P] Backend: en `backend/test/integration/pagos/simulador.spec.ts`, probar cada modo de `specs/003-suscripciones-pagos/contracts/pasarela-simulada.md` §3 contra el simulador iniciado dentro del proceso (`lento`, `caido`, `colgado`, `duplicar`, `firma_invalida`, `sin_firma`, `fuera_de_orden`, `importe_distinto`, `aprobar_despues`, `rechazar` y la devolución), y que las rutas `/control/*` exigen `X-Control`.
+- [x] T015 [P] Backend: **PR14**. En `backend/test/architecture/reglas.spec.ts`, agregar casos y fixtures en `backend/test/architecture/fixture/` para las reglas nuevas:
   - `lectura-plataforma-confinada`: solo `*/infrastructure/plataforma/` de M03 y de M01 (`barberias` e `identidad`) importan `shared/lectura-plataforma.ts`;
   - `pasarela-solo-por-puerto`: solo `suscripciones-pagos/pagos/infrastructure/` importa los adaptadores de pasarela, y `application` y `domain` no usan `fetch` ni `node:http`;
   - `simulador-fuera-del-monolito`: nada en `src/` importa `simulador-pagos/`.
-- [ ] T016 [P] Backend: en `backend/test/integration/host/token-plataforma.spec.ts`, con una ruta de prueba `@Plataforma()` y un ayudante `tokenPlataformaPara(adminId)` en `backend/test/helpers/sesiones.ts`, probar:
+- [x] T016 [P] Backend: en `backend/test/integration/host/token-plataforma.spec.ts`, con una ruta de prueba `@Plataforma()` y un ayudante `tokenPlataformaPara(adminId)` en `backend/test/helpers/sesiones.ts`, probar:
   - el token de plataforma sirve solo en rutas `@Plataforma()`;
   - en rutas de barbería (p. ej. `GET /agenda`) responde 401;
   - un token de barbería en una ruta `@Plataforma()` responde 401;
@@ -155,24 +155,24 @@ detecta las violaciones nuevas.
 
 ### Implementation for Base
 
-- [ ] T017 Backend: crear la migración `backend/migrations/0014_planes_y_suscripcion.ts`:
+- [x] T017 Backend: crear la migración `backend/migrations/0014_planes_y_suscripcion.ts`:
   - columnas nuevas de `plan` y siembra de BASICO (4900, 3 y 3) y PRO (8900, 8 y 8), públicos; TRIAL no público;
   - columnas nuevas de `subscription` y `GRANT UPDATE` por columna a `barberias_app` (data-model §1.1);
   - `down` reversible.
-- [ ] T018 Backend: crear la migración `backend/migrations/0015_pagos.ts`, según data-model §1.2:
+- [x] T018 Backend: crear la migración `backend/migrations/0015_pagos.ts`, según data-model §1.2:
   - las tablas `subscription_period` (con `EXCLUDE USING gist` y `UNIQUE (payment_id)`), `payment` (con `covers_after`, `bank_operation_last4` y `bank_operation_hash`; índices únicos parciales de pago abierto y de número de operación aprobado, `UNIQUE` de `provider_reference` y de `transfer_reference`), `payment_receipt`, `payment_receipt_file` (`STORAGE EXTERNAL`), `receipt_upload_counter` y `provider_event`;
   - `rlsPorTenant()` en las tablas con tenant;
   - los permisos de `barberias_app` por columna, y en `provider_event` solo `INSERT`, sin `SELECT` (C1).
-- [ ] T019 Backend: crear la migración `backend/migrations/0016_plataforma.ts`:
+- [x] T019 Backend: crear la migración `backend/migrations/0016_plataforma.ts`:
   - permisos por columna y políticas `FOR SELECT TO barberias_plataforma USING (true)` en `tenant`, `plan`, `subscription`, `subscription_period`, `payment` y `provider_event`;
   - sin vista: el rol lee `bank_operation_last4` y `bank_operation_hash` por columna, nunca `bank_operation_number` (las repeticiones se detectan comparando el hash);
   - las tablas globales `platform_admin`, `platform_session` (con `totp_step` y `UNIQUE (admin_id, totp_step)`), `platform_challenge` (con `used_recovery_index` y `UNIQUE (admin_id, used_recovery_index)`) y `platform_audit_log`. El rol de la aplicación escribe `platform_session`, `platform_challenge` y `platform_audit_log` y no tiene permiso sobre `platform_admin`; `barberias_plataforma` solo las lee;
   - `GRANT UPDATE (status) ON tenant TO barberias_app`, para suspender y reactivar (H5);
   - según data-model §1.3 y §4.
-- [ ] T020 Backend: crear la migración `backend/migrations/0017_tareas.ts` (`scheduled_job_run`, con `INSERT` y `UPDATE` para `barberias_app` y solo `SELECT` para `barberias_plataforma`). Registrar `0014` a `0017` en `backend/migrations/index.ts`; `ULTIMA_MIGRACION` y `/salud/listo` lo siguen solos.
-- [ ] T021 Backend: crear `backend/src/shared/persistence/lectura-plataforma.ts` (pool propio con `DATABASE_URL_PLATAFORMA` y solo `ejecutarLectura`, en `READ ONLY`; no ofrece escrituras) y la entrada confinada `backend/src/shared/lectura-plataforma.ts`. Registrar el cierre del pool en `backend/src/shared/shared.module.ts`. Hace pasar T012.
-- [ ] T022 [P] Backend: mover `backend/src/shared/cache/interruptor.ts` a `backend/src/shared/resiliencia/interruptor.ts`, con la ventana opcional, y exportarlo en `backend/src/shared/index.ts`. Actualizar los imports del adaptador de Redis. Hace pasar T006 y las pruebas de 006.
-- [ ] T023 Backend: crear `backend/src/shared/tareas/ejecutor-tareas.ts` (ADR-024), en M06 y sin reglas de negocio:
+- [x] T020 Backend: crear la migración `backend/migrations/0017_tareas.ts` (`scheduled_job_run`, con `INSERT`, `UPDATE` de fin y conteos y `SELECT` solo de `id` para `barberias_app` —el `UPDATE ... WHERE id` lo exige— y solo `SELECT` para `barberias_plataforma`). Registrar `0014` a `0017` en `backend/migrations/index.ts`; `ULTIMA_MIGRACION` y `/salud/listo` lo siguen solos.
+- [x] T021 Backend: crear `backend/src/shared/persistence/lectura-plataforma.ts` (pool propio con `DATABASE_URL_PLATAFORMA` y solo `ejecutarLectura`, en `READ ONLY`; no ofrece escrituras) y la entrada confinada `backend/src/shared/lectura-plataforma.ts`. Registrar el cierre del pool en `backend/src/shared/shared.module.ts`. Hace pasar T012.
+- [x] T022 [P] Backend: mover `backend/src/shared/cache/interruptor.ts` a `backend/src/shared/resiliencia/interruptor.ts`, con la ventana opcional, y exportarlo en `backend/src/shared/index.ts`. Actualizar los imports del adaptador de Redis. Hace pasar T006 y las pruebas de 006.
+- [x] T023 Backend: crear `backend/src/shared/tareas/ejecutor-tareas.ts` (ADR-024), en M06 y sin reglas de negocio:
   - registro de tareas por nombre;
   - `pg_try_advisory_lock(hashtext(nombre))` en una conexión propia que se libera al terminar;
   - intervalo con desfase;
@@ -182,7 +182,7 @@ detecta las violaciones nuevas.
 
   Agregar `backend/src/host/tareas.ts`, que registra las tareas de los módulos (vacío por ahora), y su proveedor en `app.module.ts`. Hace pasar T007.
 
-- [ ] T024 Backend: dominio de M03 en `backend/src/modules/suscripciones-pagos/suscripciones/domain/`:
+- [x] T024 Backend: dominio de M03 en `backend/src/modules/suscripciones-pagos/suscripciones/domain/`:
   - `estado-suscripcion.ts`, con la máquina de estados;
   - `periodo.ts`, con el cálculo de períodos (mes calendario y reglas de FR-004);
   - `politica-de-operacion.ts`, con la tabla de restricciones;
@@ -190,10 +190,10 @@ detecta las violaciones nuevas.
 
   Ampliar `suscripcion.ts` (plan vigente por período). Hace pasar T008, T009 y T010.
 
-- [ ] T025 Backend: repositorios de M03 en `backend/src/modules/suscripciones-pagos/suscripciones/infrastructure/` (Kysely y RLS): la suscripción con `FOR UPDATE`, los períodos (insertar y traducir la violación de `EXCLUDE` o `UNIQUE` a "ya cubierto"; `subscription.current_period_end` se actualiza en la misma transacción que el período, M2) y los planes públicos. Están en la Base porque los usan US1 y US2 (M1).
-- [ ] T026 Backend: dominio del pago en `backend/src/modules/suscripciones-pagos/pagos/domain/pago.ts` (estados, transiciones, marcas de revisión e importe en céntimos) y `errores.ts` (`PagoAdelantadoNoPermitido`, `MedioNoDisponible`, `PagoEnLineaNoDisponible`, `PagoYaRevisado`, `NumeroOperacionYaAprobado` e `ImporteDistinto`). Hace pasar T011.
-- [ ] T027 Backend: crear el puerto `backend/src/modules/suscripciones-pagos/pagos/application/ports/payment-gateway.ts` con los tipos y errores (`ProveedorNoDisponible`, `FirmaInvalida` y `PagoDesconocido`) del contrato §1, sin tipos del proveedor.
-- [ ] T028 [P] Backend: crear el simulador en `backend/simulador-pagos/`:
+- [x] T025 Backend: repositorios de M03 en `backend/src/modules/suscripciones-pagos/suscripciones/infrastructure/` (Kysely y RLS): la suscripción con `FOR UPDATE`, los períodos (insertar y traducir la violación de `EXCLUDE` o `UNIQUE` a "ya cubierto"; `subscription.current_period_end` se actualiza en la misma transacción que el período, M2) y los planes públicos. Están en la Base porque los usan US1 y US2 (M1).
+- [x] T026 Backend: dominio del pago en `backend/src/modules/suscripciones-pagos/pagos/domain/pago.ts` (estados, transiciones, marcas de revisión e importe en céntimos) y `errores.ts` (`PagoAdelantadoNoPermitido`, `MedioNoDisponible`, `PagoEnLineaNoDisponible`, `PagoYaRevisado`, `NumeroOperacionYaAprobado` e `ImporteDistinto`). Hace pasar T011.
+- [x] T027 Backend: crear el puerto `backend/src/modules/suscripciones-pagos/pagos/application/ports/payment-gateway.ts` con los tipos y errores (`ProveedorNoDisponible`, `FirmaInvalida` y `PagoDesconocido`) del contrato §1, sin tipos del proveedor.
+- [x] T028 [P] Backend: crear el simulador en `backend/simulador-pagos/`:
   - `servidor.ts`, con `iniciarSimulador({ puerto, secretoFirma, llaveSecreta, tokenControl, urlNotificaciones })`, que devuelve `{ url, cerrar, cambiarModo }`, y arranque por línea de comandos;
   - `estado.ts`, con las sesiones en memoria;
   - `firma.ts`, con el HMAC-SHA256 `t.cuerpo`;
@@ -202,7 +202,7 @@ detecta las violaciones nuevas.
 
   Solo `node:http`, `node:crypto` y `fetch`, con reintentos de notificación (5, con espera de 1 a 16 s). Hace pasar T014.
 
-- [ ] T029 Backend: crear `backend/src/modules/suscripciones-pagos/pagos/infrastructure/pasarela-simulada.adapter.ts`:
+- [x] T029 Backend: crear `backend/src/modules/suscripciones-pagos/pagos/infrastructure/pasarela-simulada.adapter.ts`:
   - `fetch` con `AbortSignal.timeout(PAGOS_TIEMPO_LIMITE_MS)`;
   - interruptor de M06 (5 fallos en 60 s, 30 s abierto);
   - `verificarNotificacion` con `timingSafeEqual`, ±5 min y descarte de los datos del pagador;
@@ -210,15 +210,15 @@ detecta las violaciones nuevas.
 
   Crear la fábrica que elige el adaptador por `PAGOS_PROVEEDOR` (`culqi` lanza "adaptador no disponible" hasta que exista; línea de corte R15) en `suscripciones-pagos.module.ts`. Agregar el ayudante `backend/test/helpers/simulador.ts`, que lo inicia en el proceso y fija las variables. Hace pasar T013.
 
-- [ ] T030 Backend: token de plataforma:
+- [x] T030 Backend: token de plataforma:
   - `JoseTokenSigner` (`backend/src/modules/acceso-barberias/identidad/infrastructure/jose-token-signer.ts`) firma y verifica `aud: "plataforma"` sin `tid`, sin aceptar nunca un token de barbería como de plataforma ni al revés;
   - el decorador `@Plataforma()` va en `backend/src/host/solicitud.ts`;
   - `AuthGuard` (`backend/src/host/auth.guard.ts`) acepta el token de plataforma solo en rutas `@Plataforma()`, sin fijar el tenant, deja en la solicitud el actor `{ adminId, rol: 'ADMIN_PLATAFORMA', sesionId }` y rechaza en las demás.
 
   Hace pasar T016.
 
-- [ ] T031 Backend: implementar en `backend/.dependency-cruiser.cjs` las reglas `lectura-plataforma-confinada`, `pasarela-solo-por-puerto` y `simulador-fuera-del-monolito`, y ajustar `m06-solo-por-interfaz-publica` para permitir `shared/lectura-plataforma.ts`. Hace pasar T015.
-- [ ] T032 Backend: en `backend/src/modules/suscripciones-pagos/suscripciones-api.ts`, agregar `exigirOperacion(tenantId, accion)` y `estadoOperativo(tenantId)`. Leen la suscripción en la transacción del llamador, con RLS, y todavía no tienen llamadores. Exportar `SuscripcionNoPermite` y el tipo `AccionSuscripcion` en `backend/src/modules/suscripciones-pagos/index.ts`.
+- [x] T031 Backend: implementar en `backend/.dependency-cruiser.cjs` las reglas `lectura-plataforma-confinada`, `pasarela-solo-por-puerto` y `simulador-fuera-del-monolito`, y ajustar `m06-solo-por-interfaz-publica` para permitir `shared/lectura-plataforma.ts`. Hace pasar T015.
+- [x] T032 Backend: en `backend/src/modules/suscripciones-pagos/suscripciones-api.ts`, agregar `exigirOperacion(tenantId, accion)` y `estadoOperativo(tenantId)`. Leen la suscripción en la transacción del llamador, con RLS, y todavía no tienen llamadores. Exportar `SuscripcionNoPermite` y el tipo `AccionSuscripcion` en `backend/src/modules/suscripciones-pagos/index.ts`.
 
 **Checkpoint (Base)**: CI en verde, con el backend completo. Hay que comprobar:
 

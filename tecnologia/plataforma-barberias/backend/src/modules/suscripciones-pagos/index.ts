@@ -2,3 +2,6 @@
 export { SuscripcionesPagosModule } from './suscripciones-pagos.module';
 export { SuscripcionesApi } from './suscripciones-api';
 export type { ResumenSuscripcion } from './suscripciones/application/iniciar-prueba-gratuita';
+export { SuscripcionNoPermite } from './suscripciones/domain/errores';
+export { ACCIONES_SUSCRIPCION, type AccionSuscripcion } from './suscripciones/domain/accion-suscripcion';
+export type { EstadoOperativo } from './suscripciones/application/exigir-operacion';

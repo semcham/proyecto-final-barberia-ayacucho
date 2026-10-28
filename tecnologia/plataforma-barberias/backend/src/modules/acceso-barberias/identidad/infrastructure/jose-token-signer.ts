@@ -4,10 +4,21 @@ import { importPKCS8, importSPKI, jwtVerify, type KeyLike, SignJWT } from 'jose'
 import { Configuracion } from '../../../../shared';
 import { NoAutenticado } from '../domain/errores';
 import { CODIGOS_ROL, type CodigoRol } from '../domain/rol';
-import { type ReclamacionesAcceso, type TokenFirmado, TokenSigner } from '../application/ports/token-signer';
+import {
+  type ReclamacionesAcceso,
+  type ReclamacionesPlataforma,
+  type TokenFirmado,
+  TokenSigner,
+} from '../application/ports/token-signer';
 
 const ALGORITMO = 'ES256';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+/** Audiencia del token del administrador de la plataforma (ADR-031): distinta de la de las barberías. */
+export const AUDIENCIA_PLATAFORMA = 'plataforma';
+const ROL_PLATAFORMA = 'ADMIN_PLATAFORMA';
+/** Vida del token de acceso del administrador (R07): 10 minutos, con renovación. */
+const VIDA_PLATAFORMA_SEGUNDOS = 600;
 
 /**
  * JWT ES256 con `kid` (R07): firma con la clave activa y verifica con cualquiera de las públicas
@@ -20,6 +31,52 @@ export class JoseTokenSigner extends TokenSigner {
 
   constructor(private readonly configuracion: Configuracion) {
     super();
+    // Si las dos audiencias coincidieran, un token de una vía serviría en la otra.
+    if (configuracion.jwt.audiencia === AUDIENCIA_PLATAFORMA) {
+      throw new Error(
+        `JWT_AUDIENCE no puede ser "${AUDIENCIA_PLATAFORMA}": es la audiencia de la plataforma`,
+      );
+    }
+  }
+
+  async firmarPlataforma(reclamaciones: ReclamacionesPlataforma): Promise<TokenFirmado> {
+    const { kidActivo, emisor, clavePrivada } = this.configuracion.jwt;
+    this.clavePrivada ??= importPKCS8(clavePrivada, ALGORITMO);
+    const token = await new SignJWT({ rol: ROL_PLATAFORMA, sid: reclamaciones.sid })
+      .setProtectedHeader({ alg: ALGORITMO, kid: kidActivo, typ: 'JWT' })
+      .setSubject(reclamaciones.sub)
+      .setIssuer(emisor)
+      .setAudience(AUDIENCIA_PLATAFORMA)
+      .setIssuedAt()
+      .setExpirationTime(`${VIDA_PLATAFORMA_SEGUNDOS}s`)
+      .setJti(randomUUID())
+      .sign(await this.clavePrivada);
+    return { token, expiraEnSegundos: VIDA_PLATAFORMA_SEGUNDOS };
+  }
+
+  async verificarPlataforma(token: string): Promise<ReclamacionesPlataforma> {
+    try {
+      const { payload } = await jwtVerify(token, (encabezado) => this.clavePublica(encabezado.kid), {
+        algorithms: [ALGORITMO],
+        issuer: this.configuracion.jwt.emisor,
+        audience: AUDIENCIA_PLATAFORMA,
+        requiredClaims: ['sub', 'exp', 'iat', 'jti'],
+      });
+      const { sub, sid, rol, tid } = payload as Record<string, unknown>;
+      if (
+        tid !== undefined ||
+        rol !== ROL_PLATAFORMA ||
+        typeof sub !== 'string' ||
+        !UUID.test(sub) ||
+        typeof sid !== 'string' ||
+        !UUID.test(sid)
+      ) {
+        throw new NoAutenticado();
+      }
+      return { sub, sid };
+    } catch {
+      throw new NoAutenticado();
+    }
   }
 
   async firmar(reclamaciones: ReclamacionesAcceso): Promise<TokenFirmado> {

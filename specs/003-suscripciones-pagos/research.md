@@ -134,7 +134,7 @@ se pierden, igual que cuando un proveedor real "olvida" una sesión vencida.
    - bloqueo de la fila del pago (`FOR UPDATE`), que serializa los eventos del mismo pago;
    - cálculo de la transición según la máquina de [data-model.md](data-model.md) §3, y con ella del
      `effect` del evento;
-   - `INSERT` del evento, ya con su `effect`, con `ON CONFLICT (event_id) DO NOTHING`. El rol de la
+   - `INSERT` del evento, ya con su `effect`, con `ON CONFLICT DO NOTHING` (sin destino: `ON CONFLICT (event_id)` exigiría `SELECT` sobre `event_id`, comprobado al implementar la Base; `event_id` es la única clave única). El rol de la
      aplicación **solo puede insertar** en `provider_event`, sin leerla ni actualizarla (constitución
      1.3.1): la cantidad de filas insertadas dice si el evento era repetido; si es 0, la transacción
      se revierte y se responde 200 sin efecto;
@@ -420,7 +420,7 @@ Tareas de 003 (en M03, registradas en el ejecutor por el host):
 
 **Registro:** cada corrida se anota en `scheduled_job_run` (tarea, réplica, inicio, fin, procesados y
 errores). Es una tabla de la plataforma (constitución 1.3.1) con conteos, sin datos de barberías: la escribe
-el rol de la aplicación (`INSERT` y `UPDATE`) y la lee `barberias_plataforma`. Si una réplica se cae a mitad, el
+el rol de la aplicación (`INSERT`, `UPDATE` de fin y conteos, y `SELECT` solo de `id`, que exige el `UPDATE ... WHERE id`) y la lee `barberias_plataforma`. Si una réplica se cae a mitad, el
 candado se libera al cerrarse su conexión, y la siguiente corrida retoma lo pendiente (FR-032).
 
 **Alternativas descartadas:**

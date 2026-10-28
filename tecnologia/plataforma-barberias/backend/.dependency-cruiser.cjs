@@ -58,14 +58,63 @@ module.exports = {
     {
       name: 'm06-solo-por-interfaz-publica',
       comment:
-        'Los módulos importan M06 solo desde shared/index.ts o shared/nucleo.ts. Única entrada aparte: ' +
-        'shared/lectura-publica.ts, confinada por la regla lectura-publica-confinada (ADR-021).',
+        'Los módulos importan M06 solo desde shared/index.ts o shared/nucleo.ts. Entradas aparte: ' +
+        'shared/lectura-publica.ts (ADR-021) y shared/lectura-plataforma.ts (ADR-031), cada una confinada ' +
+        'por su propia regla.',
       severity: 'error',
       from: { path: '(^|/)src/modules/' },
       to: {
         path: '(^|/)src/shared/',
-        pathNot: ['(^|/)src/shared/(index|nucleo)\\.ts$', '(^|/)src/shared/lectura-publica\\.ts$'],
+        pathNot: [
+          '(^|/)src/shared/(index|nucleo)\\.ts$',
+          '(^|/)src/shared/lectura-publica\\.ts$',
+          '(^|/)src/shared/lectura-plataforma\\.ts$',
+        ],
       },
+    },
+    {
+      name: 'lectura-plataforma-confinada',
+      comment:
+        'El pool de barberias_plataforma (shared/lectura-plataforma.ts, ADR-031) solo lo usan las carpetas ' +
+        'infrastructure/plataforma/ de M03 y de M01 (barberias e identidad).',
+      severity: 'error',
+      from: {
+        path: '(^|/)src/',
+        pathNot: [
+          '(^|/)src/modules/suscripciones-pagos/[^/]+/infrastructure/plataforma/',
+          '(^|/)src/modules/acceso-barberias/(barberias|identidad)/infrastructure/plataforma/',
+        ],
+      },
+      to: { path: '(^|/)src/shared/lectura-plataforma\\.ts$' },
+    },
+    {
+      name: 'pasarela-solo-por-puerto',
+      comment:
+        'Solo pagos/infrastructure/ de M03 importa los adaptadores de la pasarela; el resto usa el puerto ' +
+        'PaymentGateway (principio V, ADR-022).',
+      severity: 'error',
+      from: { path: '(^|/)src/', pathNot: '(^|/)src/modules/suscripciones-pagos/pagos/infrastructure/' },
+      to: {
+        path: '(^|/)src/modules/suscripciones-pagos/pagos/infrastructure/pasarela-[^/]+\\.adapter\\.ts$',
+      },
+    },
+    {
+      name: 'pasarela-solo-por-puerto',
+      comment:
+        'Las capas de aplicación y de dominio no hablan HTTP (node:http, node:https): el proveedor se alcanza ' +
+        'por el puerto (principio V). El uso de fetch lo revisa test/architecture/reglas.spec.ts.',
+      severity: 'error',
+      from: { path: '(^|/)src/modules/[^/]+/[^/]+/(application|domain)/' },
+      to: { dependencyTypes: ['core'], path: '^(node:)?(http|https|http2|net|tls)$' },
+    },
+    {
+      name: 'simulador-fuera-del-monolito',
+      comment:
+        'El simulador de la pasarela (simulador-pagos/) es una herramienta de desarrollo y pruebas: ningún ' +
+        'archivo de src/ lo importa, así nunca llega a producción (ADR-022, R02).',
+      severity: 'error',
+      from: { path: '(^|/)src/' },
+      to: { path: '(^|/)simulador-pagos/' },
     },
     {
       name: 'lectura-publica-confinada',

@@ -34,6 +34,14 @@ BEGIN
     CREATE ROLE barberias_publico LOGIN PASSWORD 'barberias_publico_dev'
       NOSUPERUSER NOBYPASSRLS NOINHERIT NOCREATEDB NOCREATEROLE;
   END IF;
+
+  -- Operaciones de la plataforma (ADR-031, constitución 1.3.1): lecturas entre barberías SIN BYPASSRLS,
+  -- solo SELECT por columna (migración 0016), sin ningún INSERT, UPDATE ni DELETE y en transacciones de
+  -- solo lectura. Contraseña SOLO para desarrollo.
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'barberias_plataforma') THEN
+    CREATE ROLE barberias_plataforma LOGIN PASSWORD 'barberias_plataforma_dev'
+      NOSUPERUSER NOBYPASSRLS NOINHERIT NOCREATEDB NOCREATEROLE;
+  END IF;
 END
 $$;
 
@@ -47,10 +55,12 @@ BEGIN
   EXECUTE format('REVOKE ALL ON DATABASE %I FROM PUBLIC', current_database());
   EXECUTE format('GRANT CONNECT ON DATABASE %I TO barberias_app', current_database());
   EXECUTE format('GRANT CONNECT ON DATABASE %I TO barberias_publico', current_database());
+  EXECUTE format('GRANT CONNECT ON DATABASE %I TO barberias_plataforma', current_database());
 END
 $$;
 
--- barberias_app y barberias_publico no reciben privilegios por defecto: cada migración concede solo lo necesario.
+-- barberias_app, barberias_publico y barberias_plataforma no reciben privilegios por defecto: cada migración concede solo lo necesario.
 REVOKE CREATE ON SCHEMA public FROM PUBLIC;
 GRANT USAGE ON SCHEMA public TO barberias_app;
 GRANT USAGE ON SCHEMA public TO barberias_publico;
+GRANT USAGE ON SCHEMA public TO barberias_plataforma;

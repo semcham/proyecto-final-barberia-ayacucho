@@ -89,17 +89,76 @@ export async function sembrarUsuario(opciones: {
 }
 
 /** Requiere la migración de suscripciones (US1). */
-export async function sembrarSuscripcion(opciones: { tenantId: string; trialEndsAt: Date }): Promise<void> {
+export async function sembrarSuscripcion(opciones: {
+  tenantId: string;
+  trialEndsAt: Date;
+}): Promise<{ suscripcionId: string }> {
   const seed = poolDe('seed');
   const { rows } = await seed.query<{ existe: boolean }>(
     "SELECT to_regclass('public.subscription') IS NOT NULL AS existe",
   );
   if (!rows[0]?.existe) throw new Error('La tabla subscription aún no existe (migración de US1)');
+  const suscripcionId = uuidv7();
   await seed.query(
-    `INSERT INTO subscription (id, tenant_id, plan_id, status, started_at, trial_ends_at)
-     SELECT $1, $2, p.id, 'TRIAL', now(), $3 FROM plan p WHERE p.code = 'TRIAL'`,
-    [uuidv7(), opciones.tenantId, opciones.trialEndsAt],
+    // current_period_end es la copia derivada de la cobertura (003, M2): sin períodos, el fin de la prueba.
+    `INSERT INTO subscription (id, tenant_id, plan_id, status, started_at, trial_ends_at, current_period_end)
+     SELECT $1, $2, p.id, 'TRIAL', now(), $3, $3 FROM plan p WHERE p.code = 'TRIAL'`,
+    [suscripcionId, opciones.tenantId, opciones.trialEndsAt],
   );
+  return { suscripcionId };
+}
+
+export type EstadoPagoSembrado =
+  'PENDIENTE' | 'ESPERANDO_COMPROBANTE' | 'EN_REVISION' | 'APROBADO' | 'RECHAZADO' | 'ANULADO' | 'EXPIRADO';
+
+/**
+ * Pago de 003 sembrado con el superusuario (sin RLS), con los datos que exige su medio: referencia del
+ * proveedor (YAPE) o referencia SUS-… y número de operación (TRANSFERENCIA). Plan BASICO por defecto.
+ */
+export async function sembrarPago(opciones: {
+  tenantId: string;
+  suscripcionId: string;
+  metodo?: 'YAPE' | 'TRANSFERENCIA';
+  estado?: EstadoPagoSembrado;
+  plan?: 'BASICO' | 'PRO';
+  importeCentimos?: number;
+  numeroOperacion?: string;
+  cubreDesde?: Date;
+}): Promise<{ pagoId: string; referencia: string }> {
+  const metodo = opciones.metodo ?? 'YAPE';
+  const estado = opciones.estado ?? (metodo === 'YAPE' ? 'PENDIENTE' : 'ESPERANDO_COMPROBANTE');
+  const pagoId = uuidv7();
+  const sufijo = pagoId.replace(/-/g, '').slice(-12).toUpperCase();
+  const referencia = metodo === 'YAPE' ? `ses_${pagoId}` : `SUS-${sufijo}`;
+  const abierto = ['PENDIENTE', 'ESPERANDO_COMPROBANTE', 'EN_REVISION'].includes(estado);
+  const conNumero =
+    metodo === 'TRANSFERENCIA' && (estado !== 'ESPERANDO_COMPROBANTE' || opciones.numeroOperacion);
+  await poolDe('seed').query(
+    `INSERT INTO payment (id, tenant_id, subscription_id, plan_id, amount_cents, method, status, covers_after,
+                          provider_reference, transfer_reference, bank_operation_number, transfer_date,
+                          rejection_reason, created_by, approved_at, closed_at)
+     SELECT $1, $2, $3, p.id, COALESCE($4, p.price_cents), $5, $6, $7, $8, $9, $10, $11, $12, $1,
+            CASE WHEN $15 THEN now() END, CASE WHEN $13 THEN NULL ELSE now() END
+       FROM plan p WHERE p.code = $14`,
+    [
+      pagoId,
+      opciones.tenantId,
+      opciones.suscripcionId,
+      opciones.importeCentimos ?? null,
+      metodo,
+      estado,
+      opciones.cubreDesde ?? new Date(),
+      metodo === 'YAPE' ? referencia : null,
+      metodo === 'TRANSFERENCIA' ? referencia : null,
+      conNumero ? (opciones.numeroOperacion ?? `OP${sufijo}`) : null,
+      conNumero ? new Date().toISOString().slice(0, 10) : null,
+      metodo === 'TRANSFERENCIA' && estado === 'RECHAZADO' ? 'Comprobante ilegible' : null,
+      abierto,
+      opciones.plan ?? 'BASICO',
+      estado === 'APROBADO',
+    ],
+  );
+  return { pagoId, referencia };
 }
 
 export interface SesionSembrada {

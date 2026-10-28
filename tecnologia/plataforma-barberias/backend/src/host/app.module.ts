@@ -8,6 +8,7 @@ import { AuthGuard } from './auth.guard';
 import { ErrorFilter } from './error.filter';
 import { RolesGuard } from './roles.guard';
 import { SaludController } from './salud.controller';
+import { TareasProgramadas } from './tareas';
 import { TenantHeaderInterceptor } from './tenant-header.interceptor';
 
 /**
@@ -37,6 +38,7 @@ import { TenantHeaderInterceptor } from './tenant-header.interceptor';
     { provide: APP_GUARD, useClass: RolesGuard },
     { provide: APP_INTERCEPTOR, useClass: TenantHeaderInterceptor },
     { provide: APP_FILTER, useClass: ErrorFilter },
+    TareasProgramadas,
   ],
 })
 export class AppModule {}

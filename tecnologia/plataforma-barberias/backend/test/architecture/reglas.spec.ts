@@ -48,6 +48,10 @@ describe('Reglas de arquitectura (PR14)', () => {
       'lectura-publica-confinada',
       // Funcionalidad 006 (T015).
       'redis-confinado',
+      // Funcionalidad 003 (T015).
+      'lectura-plataforma-confinada',
+      'pasarela-solo-por-puerto',
+      'simulador-fuera-del-monolito',
     ])('%s', (regla) => {
       expect(salida).toContain(regla);
     });
@@ -65,5 +69,37 @@ describe('Reglas de arquitectura (PR14)', () => {
       const lineas = salida.split(/\r?\n/);
       expect(lineas.some((l) => l.includes('redis-confinado') && l.includes('usa-redis.ts'))).toBe(true);
     });
+
+    it('cada violación de 003 se atribuye a su archivo del fixture, y el uso permitido no se señala', () => {
+      const lineas = salida.split(/\r?\n/);
+      const enLinea = (regla: string, archivo: string) =>
+        lineas.some((linea) => linea.includes(regla) && linea.includes(archivo));
+      expect(enLinea('lectura-plataforma-confinada', 'usa-lectura-plataforma.ts')).toBe(true);
+      expect(enLinea('lectura-plataforma-confinada', 'lectura-permitida.ts')).toBe(false);
+      expect(enLinea('pasarela-solo-por-puerto', 'usa-adaptador.ts')).toBe(true);
+      expect(enLinea('pasarela-solo-por-puerto', 'usa-http.ts')).toBe(true);
+      expect(enLinea('simulador-fuera-del-monolito', 'usa-simulador.ts')).toBe(true);
+    });
+  });
+});
+
+// T015 de 003 · La capa de aplicación y la de dominio no llaman a fetch: el proveedor solo se alcanza por el
+// puerto PaymentGateway (principio V). fetch es global, así que dependency-cruiser no lo ve: se busca en el
+// texto fuente.
+describe('Sin fetch fuera de la infraestructura (PR14, 003)', () => {
+  const { readdirSync, readFileSync } = jest.requireActual<typeof import('node:fs')>('node:fs');
+
+  function archivosDe(carpeta: string): string[] {
+    return readdirSync(carpeta, { withFileTypes: true }).flatMap((entrada) => {
+      const ruta = join(carpeta, entrada.name);
+      return entrada.isDirectory() ? archivosDe(ruta) : ruta.endsWith('.ts') ? [ruta] : [];
+    });
+  }
+
+  it('ningún archivo de application/ ni de domain/ usa fetch', () => {
+    const conFetch = archivosDe(join(RAIZ, 'src', 'modules'))
+      .filter((ruta) => /[\\/](application|domain)[\\/]/.test(ruta))
+      .filter((ruta) => /(^|[^.\w])fetch\s*\(/.test(readFileSync(ruta, 'utf8')));
+    expect(conFetch).toEqual([]);
   });
 });

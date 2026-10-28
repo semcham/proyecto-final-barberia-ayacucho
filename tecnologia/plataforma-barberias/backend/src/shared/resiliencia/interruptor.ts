@@ -7,6 +7,11 @@ export interface OpcionesInterruptor {
   fallosParaAbrir: number;
   /** Tiempo abierto antes de dejar pasar una prueba (R06: 10 s). */
   pausaMs: number;
+  /**
+   * Ventana opcional (R13 de 003, pasarela de pagos: 60 s): solo cuentan los fallos seguidos ocurridos en
+   * los últimos `ventanaMs`. Sin ventana, cuentan todos los fallos seguidos (caché, 006).
+   */
+  ventanaMs?: number;
   reloj: Clock;
   /** Se llama una vez por caída, al pasar de cerrado a abierto. */
   alAbrir?: () => void;
@@ -15,17 +20,20 @@ export interface OpcionesInterruptor {
 }
 
 /**
- * Interruptor de circuito (R06 de 006, ADR-012) para la caché compartida. Sin dependencias, con el reloj
- * inyectado para probarlo sin infraestructura.
+ * Interruptor de circuito (R06 de 006, ADR-012; R13 de 003) para la caché compartida y la pasarela de pagos.
+ * Sin dependencias, con el reloj inyectado para probarlo sin infraestructura.
  *
- * - Cerrado: ejecuta la operación y cuenta los fallos seguidos; con `fallosParaAbrir`, se abre.
+ * - Cerrado: ejecuta la operación y cuenta los fallos seguidos (dentro de `ventanaMs`, si se indica); con
+ *   `fallosParaAbrir`, se abre.
  * - Abierto: durante `pausaMs` no llama a la operación y devuelve el respaldo al instante.
  * - Semiabierto: deja pasar una sola operación de prueba; si funciona se cierra, si falla se reabre.
  *
- * Nunca lanza: un fallo de la operación se convierte en el valor de respaldo.
+ * No lanza por sí mismo: un fallo de la operación se convierte en el respaldo, que puede devolver un valor
+ * (caché) o lanzar un error propio (pasarela: `ProveedorNoDisponible`).
  */
 export class Interruptor {
-  private fallosSeguidos = 0;
+  /** Instantes de los fallos seguidos que todavía cuentan. */
+  private fallos: number[] = [];
   private abiertoDesde: number | null = null;
   private pruebaEnCurso = false;
 
@@ -57,7 +65,7 @@ export class Interruptor {
 
   private exito(): void {
     const recuperado = this.abiertoDesde !== null;
-    this.fallosSeguidos = 0;
+    this.fallos = [];
     this.abiertoDesde = null;
     if (recuperado) this.opciones.alRecuperar?.();
   }
@@ -68,9 +76,13 @@ export class Interruptor {
       this.abiertoDesde = this.ahora();
       return;
     }
-    this.fallosSeguidos += 1;
-    if (this.fallosSeguidos >= this.opciones.fallosParaAbrir) {
-      this.abiertoDesde = this.ahora();
+    const ahora = this.ahora();
+    const { ventanaMs } = this.opciones;
+    this.fallos.push(ahora);
+    if (ventanaMs !== undefined) this.fallos = this.fallos.filter((instante) => ahora - instante < ventanaMs);
+    if (this.fallos.length >= this.opciones.fallosParaAbrir) {
+      this.abiertoDesde = ahora;
+      this.fallos = [];
       this.opciones.alAbrir?.();
     }
   }

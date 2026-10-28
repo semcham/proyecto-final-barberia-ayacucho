@@ -8,6 +8,7 @@ import {
   sembrarCita,
   sembrarCliente,
   sembrarDisponibilidad,
+  sembrarPago,
   sembrarHorarioAtencion,
   sembrarServicio,
   sembrarSesion,
@@ -23,6 +24,12 @@ const DIA_MS = 24 * 60 * 60 * 1000;
 /** Tablas globales con RLS que se leen sin tenant: tenant solo restringe el UPDATE (R15 de 002). */
 const RLS_CON_LECTURA_GLOBAL = ['tenant'];
 
+/**
+ * Tablas de la plataforma de 003 (constitución 1.3.1, principio III): no pertenecen a ninguna barbería ni
+ * guardan datos de negocio, así que no llevan RLS por barbería. Solo provider_event tiene una columna
+ * tenant_id (opcional: a qué barbería se aplicó el evento). Ninguna otra tabla puede saltarse RLS.
+ */
+const TABLAS_DE_LA_PLATAFORMA_CON_TENANT = ['provider_event'];
 interface CatalogoSembrado {
   servicioId: string;
   barberoId: string;
@@ -81,11 +88,39 @@ describe('PR09 · RLS en la base de datos', () => {
       );
       catalogo.set(tenantId, { servicioId, barberoId, clienteId, citaId });
       await sembrarSesion({ tenantId: barberia.tenantId, usuarioId: barberia.propietarioId });
-      await sembrarSuscripcion({
+      const finPrueba = new Date(Date.now() + 14 * DIA_MS);
+      const { suscripcionId } = await sembrarSuscripcion({
         tenantId: barberia.tenantId,
-        trialEndsAt: new Date(Date.now() + 14 * DIA_MS),
+        trialEndsAt: finPrueba,
       });
       const seed = poolDe('seed');
+      // 003: un pago aprobado con su período, un comprobante con su contenido y el contador diario.
+      const { pagoId } = await sembrarPago({
+        tenantId,
+        suscripcionId,
+        metodo: 'TRANSFERENCIA',
+        estado: 'APROBADO',
+        cubreDesde: finPrueba,
+      });
+      await seed.query(
+        `INSERT INTO subscription_period (id, tenant_id, subscription_id, payment_id, plan_id, starts_at, ends_at)
+         SELECT $1, $2, $3, $4, p.plan_id, $5, $5::timestamptz + interval '1 month' FROM payment p WHERE p.id = $4`,
+        [uuidv7(), tenantId, suscripcionId, pagoId, finPrueba],
+      );
+      const comprobanteId = uuidv7();
+      await seed.query(
+        `INSERT INTO payment_receipt (id, tenant_id, payment_id, content_type, size_bytes, sha256, uploaded_by)
+         VALUES ($1, $2, $3, 'image/png', 4, repeat('a', 64), $4)`,
+        [comprobanteId, tenantId, pagoId, barberia.propietarioId],
+      );
+      await seed.query(
+        `INSERT INTO payment_receipt_file (tenant_id, receipt_id, content) VALUES ($1, $2, '\\x89504e47')`,
+        [tenantId, comprobanteId],
+      );
+      await seed.query(
+        `INSERT INTO receipt_upload_counter (tenant_id, day, count) VALUES ($1, current_date, 1)`,
+        [tenantId],
+      );
       await seed.query(
         `INSERT INTO audit_log (id, tenant_id, actor_id, action, result) VALUES ($1, $2, $3, 'PRUEBA', 'PERMITIDO')`,
         [uuidv7(), barberia.tenantId, barberia.propietarioId],
@@ -121,7 +156,9 @@ describe('PR09 · RLS en la base de datos', () => {
 
   it('toda tabla con columna tenant_id tiene RLS activada y forzada', () => {
     expect(tablasConTenant.length).toBeGreaterThanOrEqual(6);
-    expect(tablasConTenant.filter((tabla) => !tablasConRls.includes(tabla))).toEqual([]);
+    expect(tablasConTenant.filter((tabla) => !tablasConRls.includes(tabla))).toEqual(
+      TABLAS_DE_LA_PLATAFORMA_CON_TENANT,
+    );
     // user_account no tiene tenant_id pero también tiene RLS (ADR-015).
     expect(tablasConRls).toContain('user_account');
   });
@@ -190,13 +227,24 @@ describe('PR09 · RLS en la base de datos', () => {
       expect(afectadas).toBe(0);
     });
 
-    it('barberias_app no puede cambiar el estado de una barbería (RF02, funcionalidad 003)', async () => {
-      await expect(
-        comoApp(
-          (cliente) => cliente.query("UPDATE tenant SET status = 'SUSPENDIDA' WHERE id = $1", [a.tenantId]),
-          a.tenantId,
-        ),
-      ).rejects.toThrow(/permission denied/);
+    it('barberias_app cambia el estado solo de la barbería de su transacción (RF02, FR-034 de 003, H5)', async () => {
+      // 003 concede UPDATE (status) para suspender y reactivar; la política tenant_edicion lo limita a la
+      // barbería fijada. Solo lo usan los casos de uso del administrador (US5).
+      const afectadas = await comoApp(async (cliente) => {
+        const sobreB = await cliente.query("UPDATE tenant SET status = 'SUSPENDIDA' WHERE id = $1", [
+          b.tenantId,
+        ]);
+        const sinFiltro = await cliente.query(
+          "UPDATE tenant SET status = status WHERE id <> $1 AND status = 'ACTIVA'",
+          [a.tenantId],
+        );
+        return [sobreB.rowCount, sinFiltro.rowCount];
+      }, a.tenantId);
+      expect(afectadas).toEqual([0, 0]);
+      const sinContexto = await comoApp(
+        async (cliente) => (await cliente.query("UPDATE tenant SET status = 'SUSPENDIDA'")).rowCount,
+      );
+      expect(sinContexto).toBe(0);
     });
   });
 
@@ -279,7 +327,8 @@ describe('PR09 · RLS en la base de datos', () => {
   it('(b) con el contexto de A no aparece ninguna fila de B, y sí las de A', async () => {
     const resultado = await comoApp(async (cliente) => {
       const filas: Record<string, { deA: number; deB: number }> = {};
-      for (const tabla of tablasConTenant) {
+      const porBarberia = tablasConTenant.filter((t) => !TABLAS_DE_LA_PLATAFORMA_CON_TENANT.includes(t));
+      for (const tabla of porBarberia) {
         const { rows } = await cliente.query<{ dea: number; deb: number }>(
           `SELECT count(*) FILTER (WHERE tenant_id = $1)::int AS dea, count(*) FILTER (WHERE tenant_id = $2)::int AS deb FROM ${tabla}`,
           [a.tenantId, b.tenantId],

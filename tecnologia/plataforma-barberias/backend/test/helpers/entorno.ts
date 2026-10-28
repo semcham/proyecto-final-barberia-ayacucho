@@ -9,6 +9,15 @@ export const KID_PRUEBAS = 'pruebas-1';
 
 process.env.DATABASE_URL_APP = process.env.TEST_DB_APP_URL;
 process.env.DATABASE_URL_PUBLICO = process.env.TEST_DB_PUBLICO_URL;
+process.env.DATABASE_URL_PLATAFORMA = process.env.TEST_DB_PLATAFORMA_URL;
+// 003: pasarela (el ayudante helpers/simulador.ts fija la URL real del simulador iniciado en el proceso),
+// llave de los secretos TOTP y tareas programadas apagadas: cada prueba las ejecuta con `ejecutarAhora`.
+process.env.PAGOS_PROVEEDOR = 'simulado';
+process.env.PAGOS_URL_BASE = 'http://127.0.0.1:9';
+process.env.PAGOS_LLAVE_SECRETA = 'sk_pruebas_integracion';
+process.env.PAGOS_SECRETO_FIRMA = 'whsec_pruebas_integracion_0123456789';
+process.env.PLATAFORMA_LLAVE_TOTP = Buffer.alloc(32, 42).toString('base64');
+process.env.TAREAS_ACTIVAS = 'false';
 process.env.JWT_PRIVATE_KEY = privateKey.export({ type: 'pkcs8', format: 'pem' }).toString();
 process.env.JWT_PUBLIC_KEYS = JSON.stringify({
   [KID_PRUEBAS]: publicKey.export({ type: 'spki', format: 'pem' }).toString(),

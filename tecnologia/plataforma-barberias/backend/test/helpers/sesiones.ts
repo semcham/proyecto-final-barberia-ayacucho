@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { JoseTokenSigner } from '../../src/modules/acceso-barberias/identidad/infrastructure/jose-token-signer';
 import { Configuracion } from '../../src/shared';
 import {
@@ -27,6 +28,22 @@ export async function tokenPara(
     sid: sesionId,
   });
   return token;
+}
+
+/**
+ * Token del administrador de la plataforma (003, ADR-031): aud "plataforma", sin tid. La sesión de
+ * plataforma en la base llega con el ingreso del administrador (fase 5); hasta entonces, el id de sesión es
+ * nuevo en cada llamada.
+ */
+export async function tokenPlataformaPara(
+  adminId: string,
+  sesionId: string = randomUUID(),
+): Promise<{ token: string; sesionId: string }> {
+  const { token } = await new JoseTokenSigner(new Configuracion()).firmarPlataforma({
+    sub: adminId,
+    sid: sesionId,
+  });
+  return { token, sesionId };
 }
 
 /**

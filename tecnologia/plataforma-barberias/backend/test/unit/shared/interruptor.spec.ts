@@ -1,8 +1,10 @@
 import { Clock } from '../../../src/shared/clock/clock';
-import { Interruptor } from '../../../src/shared/cache/interruptor';
+import { Interruptor } from '../../../src/shared/resiliencia/interruptor';
 
 // T005 · Interruptor de circuito de la caché (R06, FR-020): 5 fallos seguidos lo abren, durante la pausa
 // no se llama a la operación, luego deja pasar una prueba (semiabierto) y avisa una vez por caída.
+// T006 de 003 · Se mueve a shared/resiliencia/ (R13) y gana la ventana opcional `ventanaMs` para la
+// pasarela de pagos: 5 fallos dentro de 60 s lo abren por 30 s; 5 fallos repartidos en más tiempo, no.
 
 class RelojFalso extends Clock {
   private ms = Date.parse('2026-10-26T10:00:00Z');
@@ -117,5 +119,71 @@ describe('Interruptor', () => {
   it('un respaldo asíncrono también sirve', async () => {
     const { interruptor } = crear();
     await expect(interruptor.ejecutar(falla, () => Promise.resolve(null))).resolves.toBeNull();
+  });
+});
+
+describe('Interruptor con ventana de tiempo (pasarela de pagos, R13 de 003)', () => {
+  function conVentana() {
+    const reloj = new RelojFalso();
+    const avisos: string[] = [];
+    const interruptor = new Interruptor({
+      fallosParaAbrir: 5,
+      pausaMs: 30_000,
+      ventanaMs: 60_000,
+      reloj,
+      alAbrir: () => avisos.push('abierto'),
+    });
+    return { reloj, avisos, interruptor };
+  }
+
+  it('5 fallos dentro de 60 s lo abren por 30 s', async () => {
+    const { interruptor, reloj, avisos } = conVentana();
+    for (let i = 0; i < 5; i += 1) {
+      await interruptor.ejecutar(falla, respaldo);
+      reloj.avanzar(14_000);
+    }
+    expect(interruptor.estado).toBe('abierto');
+    expect(avisos).toEqual(['abierto']);
+    reloj.avanzar(30_000 - 14_000 - 1);
+    expect(interruptor.estado).toBe('abierto');
+    reloj.avanzar(1);
+    expect(interruptor.estado).toBe('semiabierto');
+  });
+
+  it('5 fallos repartidos en más de 60 s no lo abren', async () => {
+    const { interruptor, reloj, avisos } = conVentana();
+    for (let i = 0; i < 5; i += 1) {
+      await interruptor.ejecutar(falla, respaldo);
+      reloj.avanzar(15_001);
+    }
+    expect(interruptor.estado).toBe('cerrado');
+    expect(avisos).toEqual([]);
+  });
+
+  it('los fallos que salen de la ventana dejan de contar, aunque no haya éxitos', async () => {
+    const { interruptor, reloj } = conVentana();
+    await fallar(interruptor, 4);
+    reloj.avanzar(60_001);
+    await fallar(interruptor, 4);
+    expect(interruptor.estado).toBe('cerrado');
+    await fallar(interruptor, 1);
+    expect(interruptor.estado).toBe('abierto');
+  });
+
+  it('un éxito reinicia la cuenta también con ventana', async () => {
+    const { interruptor } = conVentana();
+    await fallar(interruptor, 4);
+    await interruptor.ejecutar(responde, respaldo);
+    await fallar(interruptor, 4);
+    expect(interruptor.estado).toBe('cerrado');
+  });
+
+  it('el respaldo puede lanzar un error propio (la pasarela no responde)', async () => {
+    const { interruptor } = conVentana();
+    await expect(
+      interruptor.ejecutar(falla, () => {
+        throw new Error('proveedor no disponible');
+      }),
+    ).rejects.toThrow('proveedor no disponible');
   });
 });

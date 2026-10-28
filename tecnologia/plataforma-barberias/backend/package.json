@@ -15,7 +15,11 @@
     "test:int": "jest --config jest.int.config.ts --runInBand",
     "test:arch": "depcruise src migrations --config .dependency-cruiser.cjs && jest --config jest.arch.config.ts",
     "medir:horarios": "tsx scripts/medir-horarios.ts",
-    "demo:caida": "tsx scripts/demo-caida.ts"
+    "demo:caida": "tsx scripts/demo-caida.ts",
+    "simulador": "tsx simulador-pagos/servidor.ts",
+    "simulador:modo": "tsx scripts/simulador-modo.ts",
+    "plataforma:crear-admin": "tsx scripts/crear-admin-plataforma.ts",
+    "demo:vencimiento": "tsx scripts/demo-vencimiento.ts"
   },
   "dependencies": {
     "@nestjs/common": "11.2.7",

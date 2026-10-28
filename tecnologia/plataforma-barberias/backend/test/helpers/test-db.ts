@@ -12,11 +12,12 @@ import { migrarHastaLaUltima } from '../../src/shared/persistence/migrate';
  * - Si existe TEST_DATABASE_ADMIN_URL (URL de un superusuario de un PostgreSQL 16 ya disponible),
  *   crea en él una base temporal y la elimina al terminar. Sirve en equipos sin Docker.
  *
- * Expone cuatro URL por variables de entorno para los workers de Jest:
+ * Expone cinco URL por variables de entorno para los workers de Jest:
  *   TEST_DB_APP_URL     → barberias_app (RLS activo; lo que usa la aplicación)
  *   TEST_DB_OWNER_URL   → barberias_owner (solo migraciones)
  *   TEST_DB_SEED_URL    → superusuario, SOLO en pruebas, para sembrar y comparar filas sin RLS (R04)
  *   TEST_DB_PUBLICO_URL → barberias_publico (lecturas públicas por enlace, ADR-021)
+ *   TEST_DB_PLATAFORMA_URL → barberias_plataforma (lecturas entre barberías, ADR-031)
  */
 
 const SCRIPT_ROLES = join(__dirname, '..', '..', '..', 'db', 'init', '01-roles.sql');
@@ -64,6 +65,11 @@ async function prepararRolesYMigraciones(urlSuperusuario: string): Promise<void>
     'barberias_publico',
     'barberias_publico_dev',
   );
+  process.env.TEST_DB_PLATAFORMA_URL = urlConCredenciales(
+    urlSuperusuario,
+    'barberias_plataforma',
+    'barberias_plataforma_dev',
+  );
 }
 
 export async function prepararBaseDePrueba(): Promise<void> {
@@ -98,12 +104,13 @@ export async function liberarBaseDePrueba(): Promise<void> {
 const pools = new Map<string, Pool>();
 
 /** Pool para una prueba. Cerrar todos con `cerrarPools()` en afterAll. */
-export function poolDe(rol: 'app' | 'owner' | 'seed' | 'publico', maxConexiones = 4): Pool {
+export function poolDe(rol: 'app' | 'owner' | 'seed' | 'publico' | 'plataforma', maxConexiones = 4): Pool {
   const variable = {
     app: 'TEST_DB_APP_URL',
     owner: 'TEST_DB_OWNER_URL',
     seed: 'TEST_DB_SEED_URL',
     publico: 'TEST_DB_PUBLICO_URL',
+    plataforma: 'TEST_DB_PLATAFORMA_URL',
   }[rol];
   const url = process.env[variable];
   if (!url)

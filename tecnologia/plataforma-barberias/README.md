@@ -157,6 +157,29 @@ solicitudes en memoria, sin alertas.
 
 Son los mismos pasos que ejecuta el CI ([`.github/workflows/plataforma-barberias.yml`](../../.github/workflows/plataforma-barberias.yml)).
 
+## Funcionalidad 003: suscripciones y pagos (en construcción)
+
+- **Rol `barberias_plataforma`** (ADR-031, lecturas entre barberías del administrador de la plataforma, de
+  las notificaciones de la pasarela y de las tareas programadas): `LOGIN NOBYPASSRLS`, sin privilegios por
+  defecto y **sin ninguna escritura**; la migración `0016` le concede `SELECT` solo sobre las columnas
+  permitidas. El contenedor de la base lo crea al iniciar **por primera vez** (`db/init/01-roles.sql`). En
+  una base que ya existía (volumen de datos anterior a 003), créalo una vez como superusuario **antes** de
+  migrar:
+
+  ```sql
+  CREATE ROLE barberias_plataforma LOGIN PASSWORD 'barberias_plataforma_dev'
+    NOSUPERUSER NOBYPASSRLS NOINHERIT NOCREATEDB NOCREATEROLE;
+  GRANT CONNECT ON DATABASE barberias TO barberias_plataforma;
+  GRANT USAGE ON SCHEMA public TO barberias_plataforma;
+  ```
+
+  Con Compose: `docker compose exec db psql -U postgres -d barberias` y pegar esas líneas. La contraseña
+  es solo de desarrollo.
+
+- **Variables nuevas** (`.env.example`): `PAGOS_*`, `PLATAFORMA_LLAVE_TOTP`, `DATABASE_URL_PLATAFORMA`,
+  `SIMULADOR_TOKEN_CONTROL`, `TAREAS_ACTIVAS` y `TAREAS_INTERVALO_MS`. Con Compose, `docker-compose.yml`
+  da valores de desarrollo a las que falten en `.env`.
+
 ## Referencias
 
 - Plan técnico: [plan de 001](../../specs/001-registro-acceso-barberia/plan.md) y

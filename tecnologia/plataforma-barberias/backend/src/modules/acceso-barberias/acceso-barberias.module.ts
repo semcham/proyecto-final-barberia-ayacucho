@@ -43,6 +43,7 @@ import { UsuarioRepository } from './identidad/application/ports/usuario-reposit
 import { RegenerarActivacion } from './identidad/application/regenerar-activacion';
 import { RenovarSesion } from './identidad/application/renovar-sesion';
 import { ValidarSolicitud } from './identidad/application/validar-solicitud';
+import { ValidarSolicitudPlataforma } from './identidad/application/validar-solicitud-plataforma';
 import { Argon2PasswordHasher } from './identidad/infrastructure/argon2-password-hasher';
 import { JoseTokenSigner } from './identidad/infrastructure/jose-token-signer';
 import { KyselyActivacionRepository } from './identidad/infrastructure/kysely-activacion-repository';
@@ -78,6 +79,7 @@ import { UsuariosController } from './identidad/presentation/usuarios.controller
     EmitirSesion,
     GenerarEnlaceActivacion,
     ValidarSolicitud,
+    ValidarSolicitudPlataforma,
     RegistrarBarberia,
     IniciarSesion,
     RenovarSesion,
@@ -106,6 +108,6 @@ import { UsuariosController } from './identidad/presentation/usuarios.controller
     { provide: ClientesApi, useClass: ClientesApiImpl },
     { provide: PersonalApi, useClass: PersonalApiImpl },
   ],
-  exports: [ValidarSolicitud, BarberiasApi, ClientesApi, PersonalApi],
+  exports: [ValidarSolicitud, ValidarSolicitudPlataforma, BarberiasApi, ClientesApi, PersonalApi],
 })
 export class AccesoBarberiasModule {}

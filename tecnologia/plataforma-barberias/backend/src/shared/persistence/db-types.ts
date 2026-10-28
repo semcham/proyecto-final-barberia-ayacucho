@@ -101,6 +101,12 @@ export interface PlanTable {
   max_users: number;
   max_barbers: number;
   ai_enabled: boolean;
+  // Funcionalidad 003 (migración 0014, R11).
+  name: string;
+  price_cents: number | null;
+  currency: Generated<string>;
+  active: Generated<boolean>;
+  public: Generated<boolean>;
 }
 
 export interface SubscriptionTable {
@@ -110,7 +116,13 @@ export interface SubscriptionTable {
   status: 'TRIAL' | 'ACTIVE' | 'PAST_DUE' | 'EXPIRED' | 'CANCELLED' | 'SUSPENDED';
   started_at: Fecha;
   trial_ends_at: FechaNula;
+  /** Copia derivada de la cobertura (003, M2): fin del último período o, sin períodos, de la prueba. */
   current_period_end: FechaNula;
+  // Funcionalidad 003 (migración 0014, R12).
+  grace_ends_at: FechaNula;
+  suspended_at: FechaNula;
+  suspension_reason: TextoNulo;
+  updated_at: Generated<Date>;
 }
 
 export interface TermsAcceptanceTable {
@@ -253,6 +265,154 @@ export interface AppointmentStatusHistoryTable {
   changed_at: Fecha;
 }
 
+// --- Funcionalidad 003: suscripciones y pagos (0015), plataforma (0016) y tareas (0017) ---
+
+export type EstadoPagoDb =
+  'PENDIENTE' | 'ESPERANDO_COMPROBANTE' | 'EN_REVISION' | 'APROBADO' | 'RECHAZADO' | 'ANULADO' | 'EXPIRADO';
+export type MarcaRevisionDb =
+  'DUPLICADO' | 'IMPORTE_DISTINTO' | 'APROBADO_TRAS_RECHAZO' | 'DEVOLUCION' | 'NUMERO_REPETIDO';
+
+export interface PaymentTable {
+  id: string;
+  tenant_id: string;
+  subscription_id: string;
+  plan_id: string;
+  amount_cents: number;
+  currency: Generated<string>;
+  method: 'YAPE' | 'TRANSFERENCIA' | 'MANUAL';
+  status: EstadoPagoDb;
+  covers_after: Fecha;
+  review: ColumnType<MarcaRevisionDb | null, MarcaRevisionDb | null | undefined, MarcaRevisionDb | null>;
+  review_resolved_at: FechaNula;
+  review_note: TextoNulo;
+  provider_reference: TextoNulo;
+  checkout_url_expires_at: FechaNula;
+  transfer_reference: TextoNulo;
+  /** Solo lo lee el rol de la aplicación con el tenant fijado (H2). */
+  bank_operation_number: TextoNulo;
+  /** Columnas generadas por la base a partir del número: solo lectura. */
+  bank_operation_last4: ColumnType<string | null, never, never>;
+  bank_operation_hash: ColumnType<string | null, never, never>;
+  transfer_date: ColumnType<string | null, string | null | undefined, string | null>;
+  rejection_reason: TextoNulo;
+  manual_reason: TextoNulo;
+  manual_external_ref: TextoNulo;
+  created_by: string;
+  created_at: Fecha;
+  approved_at: FechaNula;
+  closed_at: FechaNula;
+}
+
+export interface SubscriptionPeriodTable {
+  id: string;
+  tenant_id: string;
+  subscription_id: string;
+  payment_id: string;
+  plan_id: string;
+  starts_at: Fecha;
+  ends_at: Fecha;
+  created_at: Fecha;
+}
+
+export interface PaymentReceiptTable {
+  id: string;
+  tenant_id: string;
+  payment_id: string;
+  content_type: 'image/jpeg' | 'image/png' | 'application/pdf';
+  size_bytes: number;
+  sha256: string;
+  uploaded_by: string;
+  uploaded_at: Fecha;
+  reviewed_by: TextoNulo;
+  reviewed_at: FechaNula;
+  review_result: ColumnType<
+    'APROBADO' | 'RECHAZADO' | null,
+    'APROBADO' | 'RECHAZADO' | null | undefined,
+    'APROBADO' | 'RECHAZADO' | null
+  >;
+  review_reason: TextoNulo;
+}
+
+export interface PaymentReceiptFileTable {
+  tenant_id: string;
+  receipt_id: string;
+  content: Buffer;
+}
+
+export interface ReceiptUploadCounterTable {
+  tenant_id: string;
+  day: string;
+  count: number;
+}
+
+/** Tabla de la plataforma: barberias_app solo inserta (C1); la lee barberias_plataforma. */
+export interface ProviderEventTable {
+  event_id: string;
+  received_at: Fecha;
+  provider_reference: string;
+  reported_status: 'APROBADO' | 'RECHAZADO' | 'PENDIENTE' | 'EXPIRADO' | 'DEVUELTO';
+  amount_cents: number | null;
+  currency: TextoNulo;
+  tenant_id: TextoNulo;
+  payment_id: TextoNulo;
+  effect: 'APLICADO' | 'SIN_EFECTO' | 'REVISION' | 'SIN_PAGO';
+}
+
+/** Tabla de la plataforma: la lee solo barberias_plataforma; barberias_app no tiene permisos (C3). */
+export interface PlatformAdminTable {
+  id: string;
+  email: string;
+  full_name: string;
+  password_hash: string;
+  totp_secret_enc: Buffer;
+  recovery_codes_hash: string[];
+  status: Generated<'ACTIVA' | 'DESACTIVADA'>;
+  created_at: Fecha;
+}
+
+export interface PlatformSessionTable {
+  id: string;
+  admin_id: string;
+  refresh_token_hash: string;
+  previous_token_hash: string | null;
+  status: 'ACTIVA' | 'CERRADA' | 'REVOCADA';
+  /** bigint: PostgreSQL lo devuelve como texto. */
+  totp_step: ColumnType<string | null, number | string | null, number | string | null>;
+  created_at: Fecha;
+  expires_at: Fecha;
+  last_used_at: Fecha;
+  ended_at: FechaNula;
+}
+
+export interface PlatformChallengeTable {
+  id: string;
+  admin_id: string;
+  created_at: Fecha;
+  expires_at: Fecha;
+  used_at: FechaNula;
+  used_recovery_index: number | null;
+}
+
+export interface PlatformAuditLogTable {
+  id: string;
+  admin_id: string | null;
+  action: string;
+  result: 'PERMITIDO' | 'DENEGADO';
+  ip: string | null;
+  at: Fecha;
+}
+
+export interface ScheduledJobRunTable {
+  id: string;
+  job: string;
+  replica: string;
+  started_at: Fecha;
+  finished_at: FechaNula;
+  processed: Generated<number>;
+  failed: Generated<number>;
+  error_summary: TextoNulo;
+}
+
 export interface Database {
   tenant: TenantTable;
   role: RoleTable;
@@ -275,4 +435,15 @@ export interface Database {
   time_off: TimeOffTable;
   appointment: AppointmentTable;
   appointment_status_history: AppointmentStatusHistoryTable;
+  payment: PaymentTable;
+  subscription_period: SubscriptionPeriodTable;
+  payment_receipt: PaymentReceiptTable;
+  payment_receipt_file: PaymentReceiptFileTable;
+  receipt_upload_counter: ReceiptUploadCounterTable;
+  provider_event: ProviderEventTable;
+  platform_admin: PlatformAdminTable;
+  platform_session: PlatformSessionTable;
+  platform_challenge: PlatformChallengeTable;
+  platform_audit_log: PlatformAuditLogTable;
+  scheduled_job_run: ScheduledJobRunTable;
 }
