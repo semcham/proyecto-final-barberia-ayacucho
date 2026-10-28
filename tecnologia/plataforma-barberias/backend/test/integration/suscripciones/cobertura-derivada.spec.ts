@@ -1,5 +1,8 @@
+import { v7 as uuidv7 } from 'uuid';
 import { AvanzarSuscripcion } from '../../../src/modules/suscripciones-pagos/suscripciones/application/avanzar-suscripcion';
+import { sumarUnMes } from '../../../src/modules/suscripciones-pagos/suscripciones/domain/periodo';
 import { EjecutorTareas } from '../../../src/shared';
+import { sembrarPago } from '../../helpers/fixtures';
 import {
   barberiaEnPrueba,
   type EntornoDePagos,
@@ -7,6 +10,8 @@ import {
   iniciarEntornoDePagos,
   notificar,
   pagarConYape,
+  PLAN_BASICO,
+  PLAN_PRO,
 } from '../../helpers/pagos';
 import { decidirEnSimulador } from '../../helpers/simulador';
 import { cerrarPools, poolDe } from '../../helpers/test-db';
@@ -71,6 +76,58 @@ describe('Cobertura derivada: current_period_end coincide con los períodos (M2)
     const cobertura = await coberturaDe(b.suscripcionId);
     expect(cobertura.periodos).toBe(1);
     expect(cobertura.copia).toEqual(cobertura.derivada);
+  });
+
+  it('tras cada transición del vencimiento (US2), la copia sigue coincidiendo con los períodos', async () => {
+    const DIA = 24 * 60 * 60 * 1000;
+    const seed = poolDe('seed');
+    const vencer = () => entorno.prueba.app.get(EjecutorTareas).ejecutarAhora('vencer-suscripciones');
+    /** Suscripción en TRIAL con la prueba terminada en `inicio` y un período por cada plan, uno tras otro. */
+    const preparar = async (inicio: Date, planes: string[]) => {
+      const b = await barberiaEnPrueba();
+      let desde = inicio;
+      for (const plan of planes) {
+        const { pagoId } = await sembrarPago({
+          tenantId: b.tenantId,
+          suscripcionId: b.suscripcionId,
+          metodo: 'TRANSFERENCIA',
+          estado: 'APROBADO',
+          plan: plan === PLAN_PRO ? 'PRO' : 'BASICO',
+          cubreDesde: desde,
+        });
+        const hasta = sumarUnMes(desde);
+        await seed.query(
+          `INSERT INTO subscription_period (id, tenant_id, subscription_id, payment_id, plan_id, starts_at, ends_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+          [uuidv7(), b.tenantId, b.suscripcionId, pagoId, plan, desde, hasta],
+        );
+        desde = hasta;
+      }
+      await seed.query('UPDATE subscription SET trial_ends_at = $2, current_period_end = $3 WHERE id = $1', [
+        b.suscripcionId,
+        inicio,
+        desde,
+      ]);
+      return b;
+    };
+
+    const casos = [
+      { inicio: new Date(Date.now() - DIA), planes: [], estado: 'EXPIRED' },
+      { inicio: new Date(Date.now() - DIA), planes: [PLAN_BASICO], estado: 'ACTIVE' },
+      { inicio: new Date(Date.now() - 32 * DIA), planes: [PLAN_BASICO, PLAN_PRO], estado: 'ACTIVE' },
+      { inicio: new Date(Date.now() - 33 * DIA), planes: [PLAN_BASICO], estado: 'PAST_DUE' },
+      { inicio: new Date(Date.now() - 45 * DIA), planes: [PLAN_BASICO], estado: 'EXPIRED' },
+    ];
+    const suscripciones = [];
+    for (const caso of casos) suscripciones.push(await preparar(caso.inicio, caso.planes));
+    await vencer();
+    for (const [i, b] of suscripciones.entries()) {
+      const { rows } = await seed.query('SELECT status FROM subscription WHERE id = $1', [b.suscripcionId]);
+      expect(rows[0].status).toBe(casos[i].estado);
+      const cobertura = await coberturaDe(b.suscripcionId);
+      expect(cobertura.periodos).toBe(casos[i].planes.length);
+      expect(cobertura.copia).toEqual(cobertura.derivada);
+    }
   });
 
   it('una aprobación que falla a mitad no deja ni el período ni la copia cambiada', async () => {

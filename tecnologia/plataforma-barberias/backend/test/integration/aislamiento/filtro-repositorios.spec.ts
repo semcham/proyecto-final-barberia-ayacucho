@@ -84,7 +84,8 @@ describe('PR09 · Filtro explícito por tenant en los repositorios (principio II
     });
     contexto = new TenantContext();
     uow = new KyselyUnitOfWork(db, contexto);
-    a = await sembrarBarberia();
+    // Sin suscripción sembrada: el caso «crear» de KyselySuscripcionRepository la inserta (una por barbería).
+    a = await sembrarBarberia({ suscripcion: false });
   });
 
   afterAll(async () => {

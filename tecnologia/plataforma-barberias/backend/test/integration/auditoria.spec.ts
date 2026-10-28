@@ -1,8 +1,19 @@
 import { randomBytes } from 'node:crypto';
+import { v7 as uuidv7 } from 'uuid';
 import { CrearUsuario } from '../../src/modules/acceso-barberias/identidad/application/crear-usuario';
 import { AccesoDenegado } from '../../src/modules/acceso-barberias';
+import { EjecutorTareas } from '../../src/shared';
 import { type AppDePrueba, crearApp } from '../helpers/app';
-import { filasDe, sembrarBarbero, sembrarCita, sembrarCliente, sembrarServicio } from '../helpers/fixtures';
+import {
+  filasDe,
+  sembrarBarberia,
+  sembrarBarbero,
+  sembrarCita,
+  sembrarCliente,
+  sembrarPago,
+  sembrarServicio,
+} from '../helpers/fixtures';
+import { notificar, PLAN_BASICO } from '../helpers/pagos';
 import {
   type BarberiaParaReservar,
   barberiaParaReservar,
@@ -632,6 +643,115 @@ describe('PR13 · Auditoría de acciones sensibles', () => {
           recurso: `cita:${pasada}`,
         },
         'correlacion-estado',
+      );
+    });
+  });
+
+  // T056 · Funcionalidad 003 (FR-031, FR-037): las transiciones automáticas de la suscripción, sin actor y con
+  // la fecha que les correspondía (no la de la corrida), y la aprobación del pago. Ninguna lleva datos
+  // personales del propietario.
+  describe('acciones de la funcionalidad 003', () => {
+    const DIA = 24 * 60 * 60 * 1000;
+    const RECURSO = /^(suscripcion|pago):[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+    const vencer = () => prueba.app.get(EjecutorTareas).ejecutarAhora('vencer-suscripciones');
+
+    async function barberia(nombre: string) {
+      const b = await sembrarBarberia({ nombre, propietario: { nombre: `Dueño ${nombre}` } });
+      const { rows } = await poolDe('seed').query('SELECT id FROM subscription WHERE tenant_id = $1', [
+        b.tenantId,
+      ]);
+      return { ...b, suscripcionId: rows[0].id as string };
+    }
+
+    /** Un solo registro de la acción, sin actor, con su fecha y sin el nombre ni el correo del propietario. */
+    function registro(
+      filas: Fila[],
+      b: { tenantId: string; correo: string },
+      accion: string,
+      recurso: string,
+    ) {
+      const deLaAccion = filas.filter((fila) => fila.action === accion);
+      expect(deLaAccion).toHaveLength(1);
+      const [fila] = deLaAccion;
+      expect(fila).toMatchObject({
+        tenant_id: b.tenantId,
+        actor_id: null,
+        result: 'PERMITIDO',
+        resource: recurso,
+      });
+      expect(fila.resource).toMatch(RECURSO);
+      const texto = JSON.stringify(fila);
+      expect(texto).not.toContain(b.correo);
+      expect(texto).not.toContain('Dueño');
+      return fila;
+    }
+
+    it('SUSCRIPCION_VENCIDA al terminar la prueba, con la fecha de fin de la prueba', async () => {
+      const b = await barberia('Vencida Auditada');
+      const fin = new Date(Math.floor((Date.now() - 2 * 60 * 60 * 1000) / 1000) * 1000);
+      await poolDe('seed').query(
+        'UPDATE subscription SET trial_ends_at = $2, current_period_end = $2 WHERE id = $1',
+        [b.suscripcionId, fin],
+      );
+      const filas = await registrosNuevos(b.tenantId, vencer);
+      expect(registro(filas, b, 'SUSCRIPCION_VENCIDA', `suscripcion:${b.suscripcionId}`).at).toEqual(fin);
+    });
+
+    it('PAGO_APROBADO y SUSCRIPCION_ACTIVADA con el inicio del período pagado', async () => {
+      const b = await barberia('Activa Auditada');
+      // La prueba terminó hace una hora (sin que la tarea pasara): el período pagado empieza al aprobarse.
+      const fin = new Date(Date.now() - 60 * 60 * 1000);
+      await poolDe('seed').query(
+        'UPDATE subscription SET trial_ends_at = $2, current_period_end = $2 WHERE id = $1',
+        [b.suscripcionId, fin],
+      );
+      const pago = await sembrarPago({
+        tenantId: b.tenantId,
+        suscripcionId: b.suscripcionId,
+        cubreDesde: fin,
+      });
+
+      const filas = await registrosNuevos(b.tenantId, () =>
+        notificar(prueba, { referencia: pago.referencia }).expect(200),
+      );
+      registro(filas, b, 'PAGO_APROBADO', `pago:${pago.pagoId}`);
+      const { rows } = await poolDe('seed').query(
+        'SELECT starts_at FROM subscription_period WHERE payment_id = $1',
+        [pago.pagoId],
+      );
+      const activada = registro(filas, b, 'SUSCRIPCION_ACTIVADA', `suscripcion:${b.suscripcionId}`);
+      expect(activada.at).toEqual(rows[0].starts_at);
+      expect(filas.map((fila) => fila.action).sort()).toEqual(['PAGO_APROBADO', 'SUSCRIPCION_ACTIVADA']);
+
+      // La tarea no vuelve a registrar lo ya hecho.
+      expect(await registrosNuevos(b.tenantId, vencer)).toEqual([]);
+    });
+
+    it('SUSCRIPCION_EN_GRACIA al terminar el período sin el siguiente, con la fecha de su fin', async () => {
+      const b = await barberia('En Gracia Auditada');
+      const inicio = new Date(Math.floor((Date.now() - 32 * DIA) / 1000) * 1000);
+      const { pagoId } = await sembrarPago({
+        tenantId: b.tenantId,
+        suscripcionId: b.suscripcionId,
+        metodo: 'TRANSFERENCIA',
+        estado: 'APROBADO',
+        plan: 'BASICO',
+        cubreDesde: inicio,
+      });
+      const { rows } = await poolDe('seed').query(
+        `INSERT INTO subscription_period (id, tenant_id, subscription_id, payment_id, plan_id, starts_at, ends_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $6::timestamptz + interval '1 month') RETURNING ends_at`,
+        [uuidv7(), b.tenantId, b.suscripcionId, pagoId, PLAN_BASICO, inicio],
+      );
+      await poolDe('seed').query(
+        `UPDATE subscription SET status = 'ACTIVE', plan_id = $2, trial_ends_at = $3, current_period_end = $4
+          WHERE id = $1`,
+        [b.suscripcionId, PLAN_BASICO, inicio, rows[0].ends_at],
+      );
+      const filas = await registrosNuevos(b.tenantId, vencer);
+      expect(filas.map((fila) => fila.action)).toEqual(['SUSCRIPCION_EN_GRACIA']);
+      expect(registro(filas, b, 'SUSCRIPCION_EN_GRACIA', `suscripcion:${b.suscripcionId}`).at).toEqual(
+        rows[0].ends_at,
       );
     });
   });

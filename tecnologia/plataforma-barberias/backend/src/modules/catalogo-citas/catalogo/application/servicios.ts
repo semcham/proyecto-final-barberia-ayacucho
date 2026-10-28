@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { v7 as uuidv7 } from 'uuid';
 import { type Actor, BarberiasApi } from '../../../acceso-barberias';
+import { SuscripcionesApi } from '../../../suscripciones-pagos';
 import { AuditLog, Clock, TenantId, UnitOfWork, ZonaHoraria } from '../../../../shared';
 import { DatoInvalido, NoEncontrado } from '../domain/errores';
 import { type DatosServicio, Servicio } from '../domain/servicio';
@@ -39,6 +40,7 @@ export class CrearServicio {
     private readonly uow: UnitOfWork,
     private readonly servicios: ServicioRepository,
     private readonly invalidador: InvalidadorCatalogoPublico,
+    private readonly suscripciones: SuscripcionesApi,
   ) {}
 
   async ejecutar(actor: Actor, datos: DatosServicio): Promise<ServicioVista> {
@@ -46,6 +48,8 @@ export class CrearServicio {
     const servicio = Servicio.crear(uuidv7(), datos);
     const tenantId = TenantId.de(actor.tenantId);
     return this.uow.ejecutar(tenantId, async () => {
+      // FR-006 (003): con la suscripción vencida o suspendida, el catálogo queda de solo lectura.
+      await this.suscripciones.exigirOperacion(tenantId, 'CONFIGURAR_CATALOGO');
       await this.servicios.crear(servicio);
       this.invalidador.catalogoCambio(tenantId);
       return aServicioVista(servicio);
@@ -69,6 +73,7 @@ export class ActualizarServicio {
     private readonly reloj: Clock,
     private readonly auditoria: AuditLog,
     private readonly invalidador: InvalidadorCatalogoPublico,
+    private readonly suscripciones: SuscripcionesApi,
   ) {}
 
   async ejecutar(actor: Actor, id: string, cambios: CambiosServicio): Promise<ServicioVista> {
@@ -80,6 +85,7 @@ export class ActualizarServicio {
     const tenantId = TenantId.de(actor.tenantId);
 
     return this.uow.ejecutar(tenantId, async () => {
+      await this.suscripciones.exigirOperacion(tenantId, 'CONFIGURAR_CATALOGO');
       const servicio = await this.servicios.porId(id);
       if (!servicio) throw new NoEncontrado();
       servicio.editar(datos);

@@ -4,6 +4,7 @@ import { type RolSesion, useSesion } from '../../auth/SesionProvider';
 import { Icono, type NombreIcono } from '../Icono';
 import { Logo } from '../Logo';
 import { ConmutadorTema } from '../ui';
+import { AvisoSuscripcion } from './AvisoSuscripcion';
 import estilos from './DisenoApp.module.css';
 import { MenuUsuario } from './MenuUsuario';
 
@@ -110,6 +111,7 @@ export function DisenoApp() {
         </header>
 
         <main id="contenido" tabIndex={-1} className={estilos.contenido}>
+          <AvisoSuscripcion />
           <Suspense
             fallback={
               <div className={estilos.cargandoPagina} aria-busy="true">

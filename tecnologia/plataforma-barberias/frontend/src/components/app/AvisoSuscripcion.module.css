@@ -1,0 +1,31 @@
+/* Aviso del estado de la suscripción, sobre el contenido de cada pantalla del panel. El tono por defecto
+   es el de aviso (gracia); .error, el de vencida o suspendida. */
+
+.aviso {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--espacio-3);
+  margin-bottom: var(--espacio-5);
+  padding: var(--espacio-3) var(--espacio-4);
+  border: 1px solid var(--color-aviso-borde);
+  border-radius: var(--radio);
+  background: var(--color-aviso-fondo);
+  color: var(--color-aviso);
+  font-size: var(--texto-sm);
+}
+
+.aviso p {
+  flex: 1 1 16rem;
+  margin: 0;
+}
+
+.aviso svg {
+  flex-shrink: 0;
+}
+
+.error {
+  border-color: var(--color-error-borde);
+  background: var(--color-error-fondo);
+  color: var(--color-error);
+}

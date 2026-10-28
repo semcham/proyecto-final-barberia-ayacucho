@@ -81,6 +81,7 @@ export class CrearBarbero {
     private readonly barberos: BarberoRepository,
     private readonly reglas: ReglasBarbero,
     private readonly invalidador: InvalidadorCatalogoPublico,
+    private readonly suscripciones: SuscripcionesApi,
   ) {}
 
   async ejecutar(actor: Actor, datos: DatosNuevoBarbero): Promise<BarberoVista> {
@@ -92,6 +93,8 @@ export class CrearBarbero {
     });
     const tenantId = TenantId.de(actor.tenantId);
     return this.uow.ejecutar(tenantId, async () => {
+      // FR-006 (003): con la suscripción vencida o suspendida, el catálogo queda de solo lectura.
+      await this.suscripciones.exigirOperacion(tenantId, 'CONFIGURAR_CATALOGO');
       await this.reglas.validarServicios(barbero.servicioIds);
       await this.reglas.validarUsuario(barbero.usuarioId);
       await this.reglas.exigirCupo(tenantId);
@@ -119,6 +122,7 @@ export class ActualizarBarbero {
     private readonly reloj: Clock,
     private readonly auditoria: AuditLog,
     private readonly invalidador: InvalidadorCatalogoPublico,
+    private readonly suscripciones: SuscripcionesApi,
   ) {}
 
   async ejecutar(actor: Actor, id: string, cambios: CambiosBarbero): Promise<BarberoVista> {
@@ -128,6 +132,8 @@ export class ActualizarBarbero {
     const tenantId = TenantId.de(actor.tenantId);
 
     return this.uow.ejecutar(tenantId, async () => {
+      // FR-006 (003): con la suscripción vencida o suspendida, el catálogo queda de solo lectura.
+      await this.suscripciones.exigirOperacion(tenantId, 'CONFIGURAR_CATALOGO');
       const barbero = await this.barberos.porId(id);
       if (!barbero) throw new NoEncontrado();
 

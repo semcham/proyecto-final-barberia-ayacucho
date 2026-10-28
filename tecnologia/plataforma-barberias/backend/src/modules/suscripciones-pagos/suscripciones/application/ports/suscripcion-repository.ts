@@ -28,8 +28,14 @@ export abstract class SuscripcionRepository {
    * `bloquear`, la fila de la suscripción queda bloqueada (FOR UPDATE) hasta que termine la transacción.
    */
   abstract planDelTenant(opciones?: { bloquear?: boolean }): Promise<Plan | null>;
-  /** Suscripción del tenant actual. Con `bloquear`, FOR UPDATE hasta que termine la transacción. */
-  abstract suscripcionDelTenant(opciones?: { bloquear?: boolean }): Promise<Suscripcion | null>;
+  /**
+   * Suscripción del tenant actual. Con `bloquear`, FOR UPDATE hasta que termine la transacción; con
+   * `saltarSiBloqueada` además, devuelve null en lugar de esperar si otra transacción la tiene bloqueada.
+   */
+  abstract suscripcionDelTenant(opciones?: {
+    bloquear?: boolean;
+    saltarSiBloqueada?: boolean;
+  }): Promise<Suscripcion | null>;
   /** Períodos pagados de la suscripción, en orden de inicio. */
   abstract periodos(suscripcionId: string): Promise<Periodo[]>;
   /**

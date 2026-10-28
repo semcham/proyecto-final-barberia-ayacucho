@@ -6,7 +6,6 @@ import {
   sembrarDisponibilidad,
   sembrarHorarioAtencion,
   sembrarServicio,
-  sembrarSuscripcion,
   type BarberiaSembrada,
   type TramoSembrado,
 } from './fixtures';
@@ -43,8 +42,8 @@ export interface BarberiaParaReservar {
 
 /** Barbería activa con suscripción, horario de atención, un servicio de 30 min y dos barberos disponibles. */
 export async function barberiaParaReservar(): Promise<BarberiaParaReservar> {
+  // sembrarBarberia ya deja la suscripción de prueba vigente (T059 de 003).
   const barberia = await sembrarBarberia();
-  await sembrarSuscripcion({ tenantId: barberia.tenantId, trialEndsAt: new Date(Date.now() + 14 * DIA_MS) });
   await sembrarHorarioAtencion(barberia.tenantId, SEMANA_COMPLETA);
   const { servicioId } = await sembrarServicio({
     tenantId: barberia.tenantId,

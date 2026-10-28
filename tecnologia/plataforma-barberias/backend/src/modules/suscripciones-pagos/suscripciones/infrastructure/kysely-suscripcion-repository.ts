@@ -134,7 +134,9 @@ export class KyselySuscripcionRepository extends SuscripcionRepository {
     return fila ? aPlan(fila) : null;
   }
 
-  async suscripcionDelTenant(opciones: { bloquear?: boolean } = {}): Promise<Suscripcion | null> {
+  async suscripcionDelTenant(
+    opciones: { bloquear?: boolean; saltarSiBloqueada?: boolean } = {},
+  ): Promise<Suscripcion | null> {
     let consulta = this.uow
       .transaccionActual()
       .selectFrom('subscription')
@@ -153,6 +155,8 @@ export class KyselySuscripcionRepository extends SuscripcionRepository {
       .where('tenant_id', '=', this.tenantContext.actual().valor);
     // Solo la fila de la suscripción, hasta que termine la transacción.
     if (opciones.bloquear) consulta = consulta.forUpdate('subscription');
+    // SKIP LOCKED: si otra transacción la tiene (una aprobación en curso, otra réplica), no espera.
+    if (opciones.bloquear && opciones.saltarSiBloqueada) consulta = consulta.skipLocked();
     const fila = await consulta.executeTakeFirst();
     return fila
       ? Suscripcion.reconstruir({

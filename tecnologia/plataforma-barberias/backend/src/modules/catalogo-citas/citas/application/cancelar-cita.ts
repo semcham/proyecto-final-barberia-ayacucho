@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { type Actor, BarberiasApi, ClientesApi } from '../../../acceso-barberias';
+import { SuscripcionesApi } from '../../../suscripciones-pagos';
 import { AuditLog, Clock, TenantId, UnitOfWork } from '../../../../shared';
 import { AutorizacionCatalogoCitas } from '../../catalogo/application/autorizacion';
 import { CatalogQuery } from '../../catalogo/application/ports/catalog-query';
@@ -25,11 +26,14 @@ export class CancelarCita {
     private readonly barberias: BarberiasApi,
     private readonly reloj: Clock,
     private readonly auditoria: AuditLog,
+    private readonly suscripciones: SuscripcionesApi,
   ) {}
 
   async ejecutar(actor: Actor, citaId: string, motivo?: string | null): Promise<CitaVista> {
     const alcance = await this.autorizacion.exigir(actor, 'CANCELAR_CITA');
     return this.uow.ejecutar(TenantId.de(actor.tenantId), async () => {
+      // FR-006 (003): las citas existentes se gestionan en cualquier estado (P4: A); la política lo decide.
+      await this.suscripciones.exigirOperacion(TenantId.de(actor.tenantId), 'GESTIONAR_CITAS');
       const cita = await this.citas.buscarParaActualizar(citaId);
       if (!cita) throw new NoEncontrado();
       if (alcance === 'PROPIOS') {

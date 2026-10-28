@@ -30,6 +30,8 @@ export class ActualizarUsuario {
     await this.autorizacion.exigir(actor, 'ACTUALIZAR_USUARIO');
 
     return this.uow.ejecutar(TenantId.de(actor.tenantId), async () => {
+      // FR-006 (003): con la suscripción vencida o suspendida, los usuarios quedan de solo lectura.
+      await this.suscripciones.exigirOperacion(TenantId.de(actor.tenantId), 'GESTIONAR_USUARIOS');
       const membresia = await this.usuarios.obtenerMembresia(usuarioId);
       if (!membresia) throw new NoEncontrado();
 

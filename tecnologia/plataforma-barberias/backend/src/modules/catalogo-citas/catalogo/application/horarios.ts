@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { type Actor, BarberiasApi } from '../../../acceso-barberias';
+import { SuscripcionesApi } from '../../../suscripciones-pagos';
 import { AuditLog, Clock, TenantId, UnitOfWork, ZonaHoraria } from '../../../../shared';
 import { FueraDelHorarioDeAtencion } from '../domain/errores';
 import { AutorizacionCatalogoCitas } from './autorizacion';
@@ -53,6 +54,7 @@ export class ReemplazarHorarioAtencion {
     private readonly reloj: Clock,
     private readonly auditoria: AuditLog,
     private readonly invalidador: InvalidadorCatalogoPublico,
+    private readonly suscripciones: SuscripcionesApi,
   ) {}
 
   async ejecutar(actor: Actor, comando: ComandoHorario): Promise<HorarioVista> {
@@ -60,6 +62,8 @@ export class ReemplazarHorarioAtencion {
     const nuevo = horarioDesde(comando.tramos);
     const tenantId = TenantId.de(actor.tenantId);
     return this.uow.ejecutar(tenantId, async () => {
+      // FR-006 (003): con la suscripción vencida o suspendida, el catálogo queda de solo lectura.
+      await this.suscripciones.exigirOperacion(tenantId, 'CONFIGURAR_CATALOGO');
       const zona = new ZonaHoraria((await this.barberias.configuracionAgenda()).zonaHoraria);
       const afectadas = fueraDelHorario(await this.citas.futuras({}, this.reloj.ahora()), nuevo, zona);
       exigirConfirmacion(afectadas, comando.confirmarConflictos, zona);
@@ -114,12 +118,15 @@ export class ReemplazarDisponibilidad {
     private readonly barberias: BarberiasApi,
     private readonly reloj: Clock,
     private readonly auditoria: AuditLog,
+    private readonly suscripciones: SuscripcionesApi,
   ) {}
 
   async ejecutar(actor: Actor, barberoId: string, comando: ComandoHorario): Promise<HorarioVista> {
     const alcance = await this.autorizacion.exigir(actor, 'GESTIONAR_DISPONIBILIDAD');
     const nueva = horarioDesde(comando.tramos);
     return this.uow.ejecutar(TenantId.de(actor.tenantId), async () => {
+      // FR-006 (003): con la suscripción vencida o suspendida, el catálogo queda de solo lectura.
+      await this.suscripciones.exigirOperacion(TenantId.de(actor.tenantId), 'CONFIGURAR_CATALOGO');
       await barberoAccesible(this.barberos, actor, alcance, barberoId);
       const atencion = await this.horarios.atencion();
       const fuera = nueva

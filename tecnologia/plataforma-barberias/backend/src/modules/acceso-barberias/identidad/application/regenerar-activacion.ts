@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { AuditLog, Clock, TenantId, UnitOfWork } from '../../../../shared';
+import { SuscripcionesApi } from '../../../suscripciones-pagos';
 import { NoEncontrado, OperacionNoPermitida } from '../domain/errores';
 import { type Actor, Autorizacion } from './autorizacion';
 import { type EnlaceActivacion, GenerarEnlaceActivacion } from './enlace-activacion';
@@ -17,12 +18,15 @@ export class RegenerarActivacion {
     private readonly generarEnlace: GenerarEnlaceActivacion,
     private readonly auditoria: AuditLog,
     private readonly reloj: Clock,
+    private readonly suscripciones: SuscripcionesApi,
   ) {}
 
   async ejecutar(actor: Actor, usuarioId: string): Promise<EnlaceActivacion> {
     await this.autorizacion.exigir(actor, 'REGENERAR_ACTIVACION');
 
     return this.uow.ejecutar(TenantId.de(actor.tenantId), async () => {
+      // FR-006 (003): con la suscripción vencida o suspendida, los usuarios quedan de solo lectura.
+      await this.suscripciones.exigirOperacion(TenantId.de(actor.tenantId), 'GESTIONAR_USUARIOS');
       const membresia = await this.usuarios.obtenerMembresia(usuarioId);
       if (!membresia) throw new NoEncontrado();
       if (membresia.estado !== 'PENDIENTE') {

@@ -83,15 +83,39 @@ function enviar(
   });
 }
 
+/**
+ * 403 SUSCRIPCION_NO_PERMITE por el estado de la suscripción (funcionalidad 003, contracts/restricciones-estado.md):
+ * su detalle trae `{ estado, accion }`. El de los límites del plan trae `{ motivo, maximo }` y no cuenta aquí.
+ */
+export function esRestriccionDeSuscripcion(error: unknown): error is ApiError {
+  return (
+    error instanceof ApiError &&
+    error.codigo === 'SUSCRIPCION_NO_PERMITE' &&
+    error.detalles.some((detalle) => typeof detalle.accion === 'string')
+  );
+}
+
+/** Si el servidor no envía el mensaje, el del contrato: nunca "horario no disponible" para una reserva. */
+function mensajeDeRestriccion(detalles: Record<string, unknown>[]): string {
+  return detalles.some((detalle) => detalle.accion === 'RESERVAR')
+    ? 'Esta barbería no acepta reservas por ahora'
+    : 'Tu suscripción no permite este cambio';
+}
+
 async function aApiError(respuesta: Response): Promise<ApiError> {
   const espera = Number(respuesta.headers.get('Retry-After'));
   try {
     const cuerpo = (await respuesta.json()) as CuerpoError;
+    const detalles = cuerpo.detalles ?? [];
+    const mensaje =
+      cuerpo.codigo === 'SUSCRIPCION_NO_PERMITE' && !cuerpo.mensaje
+        ? mensajeDeRestriccion(detalles)
+        : cuerpo.mensaje;
     return new ApiError(
       respuesta.status,
       cuerpo.codigo,
-      cuerpo.mensaje,
-      cuerpo.detalles ?? [],
+      mensaje,
+      detalles,
       Number.isFinite(espera) && espera > 0 ? espera : undefined,
     );
   } catch {
@@ -106,6 +130,15 @@ const alPerderSesion = new Set<() => void>();
 export function suscribirSesionPerdida(oyente: () => void): () => void {
   alPerderSesion.add(oyente);
   return () => alPerderSesion.delete(oyente);
+}
+
+// Avisos de "la suscripción no permitió una operación": el panel vuelve a consultar su estado (T062).
+const alRestringirSuscripcion = new Set<() => void>();
+
+/** Se suscribe al aviso de una operación rechazada por el estado de la suscripción. Devuelve cómo cancelarla. */
+export function suscribirRestriccionSuscripcion(oyente: () => void): () => void {
+  alRestringirSuscripcion.add(oyente);
+  return () => alRestringirSuscripcion.delete(oyente);
 }
 
 // Una sola renovación a la vez aunque varias llamadas reciban 401 al mismo tiempo.
@@ -161,7 +194,11 @@ export async function llamarApi<T>(ruta: string, opciones: OpcionesLlamada = {})
       alPerderSesion.forEach((oyente) => oyente());
     }
   }
-  if (!respuesta.ok) throw await aApiError(respuesta);
+  if (!respuesta.ok) {
+    const error = await aApiError(respuesta);
+    if (esRestriccionDeSuscripcion(error)) alRestringirSuscripcion.forEach((oyente) => oyente());
+    throw error;
+  }
   if (respuesta.status === 204) return undefined as T;
   return (await respuesta.json()) as T;
 }

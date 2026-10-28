@@ -48,6 +48,8 @@ export class CrearUsuario {
     const tenantId = TenantId.de(actor.tenantId);
 
     return this.uow.ejecutar(tenantId, async () => {
+      // FR-006 (003): con la suscripción vencida o suspendida, los usuarios quedan de solo lectura.
+      await this.suscripciones.exigirOperacion(tenantId, 'GESTIONAR_USUARIOS');
       // El bloqueo de la suscripción serializa las altas de esta barbería hasta el fin de la transacción:
       // el conteo de abajo ya incluye a cualquier alta simultánea confirmada antes (FR-020).
       const maximo = await this.suscripciones.bloquearYObtenerLimiteUsuarios(tenantId);

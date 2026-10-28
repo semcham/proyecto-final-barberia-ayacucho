@@ -34,6 +34,11 @@ export async function sembrarBarberia(
     slug?: string;
     estado?: 'ACTIVA' | 'SUSPENDIDA';
     propietario?: { correo?: string; nombre?: string; contrasena?: string };
+    /**
+     * 003 (T059): como tras un registro real, la barbería nace con su suscripción de prueba vigente (14 días),
+     * porque las operaciones de 001 y 002 exigen el estado de la suscripción. `false` para no sembrarla.
+     */
+    suscripcion?: boolean;
   } = {},
 ): Promise<BarberiaSembrada> {
   const seed = poolDe('seed');
@@ -54,6 +59,9 @@ export async function sembrarBarberia(
     nombre: opciones.propietario?.nombre,
     contrasena: opciones.propietario?.contrasena ?? 'clave-de-prueba-segura',
   });
+  if (opciones.suscripcion !== false) {
+    await sembrarSuscripcion({ tenantId, trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000) });
+  }
   return {
     tenantId,
     slug,
@@ -88,24 +96,26 @@ export async function sembrarUsuario(opciones: {
   return { usuarioId, correo, contrasena };
 }
 
-/** Requiere la migración de suscripciones (US1). */
+/**
+ * Suscripción de prueba de la barbería con el fin de prueba indicado. Si la barbería ya tiene una (la que
+ * siembra sembrarBarberia por defecto), la deja en prueba con ese fin: hay una sola por barbería.
+ */
 export async function sembrarSuscripcion(opciones: {
   tenantId: string;
   trialEndsAt: Date;
 }): Promise<{ suscripcionId: string }> {
-  const seed = poolDe('seed');
-  const { rows } = await seed.query<{ existe: boolean }>(
-    "SELECT to_regclass('public.subscription') IS NOT NULL AS existe",
-  );
-  if (!rows[0]?.existe) throw new Error('La tabla subscription aún no existe (migración de US1)');
-  const suscripcionId = uuidv7();
-  await seed.query(
+  const { rows } = await poolDe('seed').query<{ id: string }>(
     // current_period_end es la copia derivada de la cobertura (003, M2): sin períodos, el fin de la prueba.
     `INSERT INTO subscription (id, tenant_id, plan_id, status, started_at, trial_ends_at, current_period_end)
-     SELECT $1, $2, p.id, 'TRIAL', now(), $3, $3 FROM plan p WHERE p.code = 'TRIAL'`,
-    [suscripcionId, opciones.tenantId, opciones.trialEndsAt],
+     SELECT $1, $2, p.id, 'TRIAL', now(), $3, $3 FROM plan p WHERE p.code = 'TRIAL'
+     ON CONFLICT (tenant_id) DO UPDATE
+       SET plan_id = EXCLUDED.plan_id, status = 'TRIAL', trial_ends_at = EXCLUDED.trial_ends_at,
+           current_period_end = EXCLUDED.current_period_end, grace_ends_at = NULL, suspended_at = NULL,
+           suspension_reason = NULL
+     RETURNING id`,
+    [uuidv7(), opciones.tenantId, opciones.trialEndsAt],
   );
-  return { suscripcionId };
+  return { suscripcionId: rows[0].id };
 }
 
 export type EstadoPagoSembrado =

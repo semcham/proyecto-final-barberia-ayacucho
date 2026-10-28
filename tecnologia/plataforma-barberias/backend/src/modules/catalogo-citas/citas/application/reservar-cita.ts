@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import { v7 as uuidv7 } from 'uuid';
 import { type Actor, BarberiasApi, ClientesApi, type ConfiguracionAgenda } from '../../../acceso-barberias';
+import { SuscripcionesApi } from '../../../suscripciones-pagos';
 import { AuditLog, Clock, Configuracion, TenantId, UnitOfWork, ZonaHoraria } from '../../../../shared';
 import { AutorizacionCatalogoCitas } from '../../catalogo/application/autorizacion';
 import { CatalogQuery } from '../../catalogo/application/ports/catalog-query';
@@ -70,6 +71,7 @@ export class ReservarCita {
     private readonly configuracion: Configuracion,
     private readonly reloj: Clock,
     private readonly auditoria: AuditLog,
+    private readonly suscripciones: SuscripcionesApi,
   ) {}
 
   async ejecutar(actor: Actor, comando: ComandoReservarCita, clave: string): Promise<ResultadoReserva> {
@@ -116,6 +118,10 @@ export class ReservarCita {
   ): Promise<ResultadoReserva> {
     const previa = await this.citaPrevia(actor, clave, hashSolicitud);
     if (previa) return previa;
+
+    // 0. El estado de la suscripción (FR-006, 003): una barbería vencida o suspendida no acepta reservas nuevas,
+    // con su propio mensaje, nunca "horario no disponible". Un reintento de una reserva ya hecha sí se devuelve.
+    await this.suscripciones.exigirOperacion(TenantId.de(actor.tenantId), 'RESERVAR');
 
     // 1. El cliente: el de la sesión (CLIENTE) o el elegido por el propietario (cita presencial).
     const cliente =

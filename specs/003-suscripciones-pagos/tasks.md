@@ -346,7 +346,7 @@ permite cancelar.
 
 ### Tests for User Story 2 ⚠️
 
-- [ ] T052 [P] [US2] Backend: en `backend/test/integration/tareas/vencimiento.spec.ts`, ejecutando con `ejecutarAhora`, probar las transiciones:
+- [x] T052 [P] [US2] Backend: en `backend/test/integration/tareas/vencimiento.spec.ts`, ejecutando con `ejecutarAhora`, probar las transiciones:
   - TRIAL → EXPIRED;
   - ACTIVE → PAST_DUE, con `grace_ends_at` a 7 días;
   - PAST_DUE → EXPIRED;
@@ -356,31 +356,31 @@ permite cancelar.
 
   Comprobar también la auditoría con la fecha que correspondía (FR-031), y el pago confirmado durante la gracia que empieza al final del período vencido (escenario 8).
 
-- [ ] T053 [P] [US2] Backend: **vencimiento con dos réplicas** en `backend/test/integration/tareas/vencimiento-dos-replicas.spec.ts`, con dos instancias (`crearApp`) sobre la misma base y 50 suscripciones vencidas:
+- [x] T053 [P] [US2] Backend: **vencimiento con dos réplicas** en `backend/test/integration/tareas/vencimiento-dos-replicas.spec.ts`, con dos instancias (`crearApp`) sobre la misma base y 50 suscripciones vencidas:
   - `ejecutarAhora` en ambas a la vez da 50 transiciones y 50 auditorías, sin repetir;
   - una instancia que falla a mitad (repositorio sustituido que lanza tras 20) deja que la siguiente corrida termine el resto sin repetir;
   - una aprobación de pago simultánea con el vencimiento deja la suscripción en ACTIVE (FR-033);
   - `scheduled_job_run` registra las dos réplicas.
-- [ ] T054 [P] [US2] Backend: en `backend/test/integration/suscripciones/restricciones-estado.spec.ts`, la prueba lee las dos tablas de `contracts/restricciones-estado.md`. Para cada estado y cada caso de uso de §2, llama a la API real y comprueba 2xx o 403 `SUSCRIPCION_NO_PERMITE`, con el mensaje correcto ("no acepta reservas por ahora" para `RESERVAR`, nunca "horario no disponible"). Las lecturas siguen respondiendo, y nada se borra ni se cancela. Además (SC-008, escenario 7 de US2), una barbería vencida que paga vuelve a aceptar reservas en la solicitud siguiente a la aprobación, sin esperar a la tarea.
-- [ ] T055 [P] [US2] Backend: **PR14**. En `backend/test/architecture/operaciones-con-politica.spec.ts`, la prueba lee §2 de `contracts/restricciones-estado.md` y falla si alguna clase listada no llama a `exigirOperacion` en su método `ejecutar` (análisis del texto fuente).
-- [ ] T056 [P] [US2] Backend: **PR13**. Ampliar `backend/test/integration/auditoria.spec.ts` con `SUSCRIPCION_VENCIDA`, `SUSCRIPCION_EN_GRACIA` y `SUSCRIPCION_ACTIVADA` (tenant, fecha que correspondía y sin datos personales), y `PAGO_APROBADO`.
-- [ ] T057 [P] [US2] Frontend: en `frontend/test/pages/suscripcion-vencida.spec.tsx`, con MSW, probar:
+- [x] T054 [P] [US2] Backend: en `backend/test/integration/suscripciones/restricciones-estado.spec.ts`, la prueba lee las dos tablas de `contracts/restricciones-estado.md`. Para cada estado y cada caso de uso de §2, llama a la API real y comprueba 2xx o 403 `SUSCRIPCION_NO_PERMITE`, con el mensaje correcto ("no acepta reservas por ahora" para `RESERVAR`, nunca "horario no disponible"). Las lecturas siguen respondiendo, y nada se borra ni se cancela. Además (SC-008, escenario 7 de US2), una barbería vencida que paga vuelve a aceptar reservas en la solicitud siguiente a la aprobación, sin esperar a la tarea.
+- [x] T055 [P] [US2] Backend: **PR14**. En `backend/test/architecture/operaciones-con-politica.spec.ts`, la prueba lee §2 de `contracts/restricciones-estado.md` y falla si alguna clase listada no llama a `exigirOperacion` en su método `ejecutar` (análisis del texto fuente).
+- [x] T056 [P] [US2] Backend: **PR13**. Ampliar `backend/test/integration/auditoria.spec.ts` con `SUSCRIPCION_VENCIDA`, `SUSCRIPCION_EN_GRACIA` y `SUSCRIPCION_ACTIVADA` (tenant, fecha que correspondía y sin datos personales), y `PAGO_APROBADO`.
+- [x] T057 [P] [US2] Frontend: en `frontend/test/pages/suscripcion-vencida.spec.tsx`, con MSW, probar:
   - `Reservar` muestra "Esta barbería no acepta reservas por ahora" antes de elegir horario si `aceptaReservas` es falso;
   - el panel muestra el aviso de gracia con su fecha;
   - un formulario de catálogo que recibe 403 `SUSCRIPCION_NO_PERMITE` muestra "Tu suscripción no permite este cambio".
 
 ### Implementation for User Story 2
 
-- [ ] T058 [US2] Backend: crear la tarea `vencer-suscripciones` en `backend/src/modules/suscripciones-pagos/suscripciones/application/vencer-suscripciones.ts`, más su lectura en `backend/src/modules/suscripciones-pagos/suscripciones/infrastructure/plataforma/suscripciones-por-vencer.ts` (lotes de 100). Cada elemento corre en su transacción con el tenant, con `FOR UPDATE SKIP LOCKED`, transición condicional y auditoría. Registrarla en `backend/src/host/tareas.ts`. Hace pasar T052, T053 y T056.
-- [ ] T059 [US2] Backend: en `backend/test/helpers/fixtures.ts`, hacer que `sembrarBarberia` siembre una suscripción TRIAL vigente por defecto (opción `suscripcion: false` para no sembrarla). Ajustar `barberiaParaReservar` para no duplicarla. Así, las pruebas de 001, 002 y 006 siguen en verde con las restricciones activas.
-- [ ] T060 [US2] Backend: en M02, llamar a `suscripciones.exigirOperacion(tenantId, accion)` al empezar, dentro del `uow.ejecutar`, de cada caso de uso de §2:
+- [x] T058 [US2] Backend: crear la tarea `vencer-suscripciones` en `backend/src/modules/suscripciones-pagos/suscripciones/application/vencer-suscripciones.ts`, más su lectura en `backend/src/modules/suscripciones-pagos/suscripciones/infrastructure/plataforma/suscripciones-por-vencer.ts` (lotes de 100). Cada elemento corre en su transacción con el tenant, con `FOR UPDATE SKIP LOCKED`, transición condicional y auditoría. Registrarla en `backend/src/host/tareas.ts`. Hace pasar T052, T053 y T056.
+- [x] T059 [US2] Backend: en `backend/test/helpers/fixtures.ts`, hacer que `sembrarBarberia` siembre una suscripción TRIAL vigente por defecto (opción `suscripcion: false` para no sembrarla). Ajustar `barberiaParaReservar` para no duplicarla. Así, las pruebas de 001, 002 y 006 siguen en verde con las restricciones activas.
+- [x] T060 [US2] Backend: en M02, llamar a `suscripciones.exigirOperacion(tenantId, accion)` al empezar, dentro del `uow.ejecutar`, de cada caso de uso de §2:
   - `backend/src/modules/catalogo-citas/citas/application/reservar-cita.ts`, `cancelar-cita.ts` y `cambiar-estado-cita.ts`;
   - `backend/src/modules/catalogo-citas/catalogo/application/servicios.ts`, `barberos.ts`, `horarios.ts` y `bloqueos.ts`.
 
   Traducir el error de `RESERVAR` al mensaje "Esta barbería no acepta reservas por ahora". Hace pasar T054 y T055 para M02.
 
-- [ ] T061 [US2] Backend: en M01, llamar a `exigirOperacion(…, 'GESTIONAR_USUARIOS')` en `backend/src/modules/acceso-barberias/identidad/application/crear-usuario.ts`, `actualizar-usuario.ts` y `regenerar-activacion.ts`. Hace pasar T054 y T055 para M01.
-- [ ] T062 [US2] Frontend:
+- [x] T061 [US2] Backend: en M01, llamar a `exigirOperacion(…, 'GESTIONAR_USUARIOS')` en `backend/src/modules/acceso-barberias/identidad/application/crear-usuario.ts`, `actualizar-usuario.ts` y `regenerar-activacion.ts`. Hace pasar T054 y T055 para M01.
+- [x] T062 [US2] Frontend:
   - aviso en `frontend/src/pages/publico/Reservar.tsx`, con `estadoOperativo` tras el inicio de sesión;
   - aviso de gracia, vencida y suspendida en el diseño del panel (`frontend/src/components/app/`);
   - manejo de 403 `SUSCRIPCION_NO_PERMITE` en `frontend/src/api/client.ts`, con el mensaje del servidor.

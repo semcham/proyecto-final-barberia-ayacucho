@@ -75,6 +75,7 @@ function crearCasosDeUso(usos: string[]) {
         d('enlace'),
         d('auditoria'),
         d('reloj'),
+        d('suscripciones'),
       ).ejecutar(actor, USUARIO),
   };
 }

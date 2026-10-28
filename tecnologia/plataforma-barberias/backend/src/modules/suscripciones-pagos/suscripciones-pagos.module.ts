@@ -26,7 +26,10 @@ import { ObtenerLimiteBarberos } from './suscripciones/application/obtener-limit
 import { ObtenerLimiteUsuarios } from './suscripciones/application/obtener-limite-usuarios';
 import { PlanVigente } from './suscripciones/application/plan-vigente';
 import { SuscripcionRepository } from './suscripciones/application/ports/suscripcion-repository';
+import { SuscripcionesPorVencer } from './suscripciones/application/ports/suscripciones-por-vencer';
+import { VencerSuscripciones } from './suscripciones/application/vencer-suscripciones';
 import { KyselySuscripcionRepository } from './suscripciones/infrastructure/kysely-suscripcion-repository';
+import { SuscripcionesPorVencerPlataforma } from './suscripciones/infrastructure/plataforma/suscripciones-por-vencer';
 import { NotificacionesController } from './suscripciones/presentation/notificaciones.controller';
 import { SuscripcionController } from './suscripciones/presentation/suscripcion.controller';
 
@@ -42,6 +45,7 @@ import { SuscripcionController } from './suscripciones/presentation/suscripcion.
     { provide: PagoRepository, useClass: KyselyPagoRepository },
     { provide: EventoProveedorRepository, useClass: KyselyEventoProveedorRepository },
     { provide: UbicacionDePagos, useClass: UbicacionDePagosPlataforma },
+    { provide: SuscripcionesPorVencer, useClass: SuscripcionesPorVencerPlataforma },
     { provide: PaymentGateway, inject: [Configuracion, Clock], useFactory: crearPasarela },
     AutorizacionSuscripciones,
     PlanVigente,
@@ -55,8 +59,9 @@ import { SuscripcionController } from './suscripciones/presentation/suscripcion.
     IniciarPago,
     RecibirNotificacion,
     ConciliarPagos,
+    VencerSuscripciones,
     SuscripcionesApi,
   ],
-  exports: [SuscripcionesApi, ConciliarPagos],
+  exports: [SuscripcionesApi, ConciliarPagos, VencerSuscripciones],
 })
 export class SuscripcionesPagosModule {}

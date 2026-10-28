@@ -38,6 +38,8 @@ describe('Registros sin datos sensibles', () => {
           },
           obtenerLimiteUsuarios: async () => 5,
           bloquearYObtenerLimiteUsuarios: async () => 5,
+          // 003 (T061): el alta de usuario consulta la política del estado; aquí siempre lo permite.
+          exigirOperacion: async () => undefined,
         }),
     });
     prueba.app.useLogger(['log', 'error', 'warn', 'debug', 'verbose']);

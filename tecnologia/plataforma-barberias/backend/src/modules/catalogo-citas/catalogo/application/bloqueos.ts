@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { v7 as uuidv7 } from 'uuid';
 import { type Actor, BarberiasApi } from '../../../acceso-barberias';
+import { SuscripcionesApi } from '../../../suscripciones-pagos';
 import { AuditLog, Clock, TenantId, UnitOfWork, ZonaHoraria } from '../../../../shared';
 import { Bloqueo } from '../domain/bloqueo';
 import { NoEncontrado } from '../domain/errores';
@@ -25,6 +26,7 @@ export class ContextoBloqueos {
     readonly bloqueos: BloqueoRepository,
     readonly barberias: BarberiasApi,
     readonly reloj: Clock,
+    readonly suscripciones: SuscripcionesApi,
   ) {}
 
   async zona(): Promise<ZonaHoraria> {
@@ -65,6 +67,8 @@ export class CrearBloqueo {
   async ejecutar(actor: Actor, barberoId: string, comando: ComandoBloqueo): Promise<BloqueoVista> {
     const alcance = await this.c.autorizacion.exigir(actor, 'GESTIONAR_BLOQUEOS');
     return this.c.uow.ejecutar(TenantId.de(actor.tenantId), async () => {
+      // FR-006 (003): con la suscripción vencida o suspendida, el catálogo queda de solo lectura.
+      await this.c.suscripciones.exigirOperacion(TenantId.de(actor.tenantId), 'CONFIGURAR_CATALOGO');
       await barberoAccesible(this.c.barberos, actor, alcance, barberoId);
       const bloqueo = Bloqueo.crear({
         id: uuidv7(),
@@ -99,6 +103,8 @@ export class EliminarBloqueo {
   async ejecutar(actor: Actor, barberoId: string, bloqueoId: string): Promise<void> {
     const alcance = await this.c.autorizacion.exigir(actor, 'GESTIONAR_BLOQUEOS');
     await this.c.uow.ejecutar(TenantId.de(actor.tenantId), async () => {
+      // FR-006 (003): con la suscripción vencida o suspendida, el catálogo queda de solo lectura.
+      await this.c.suscripciones.exigirOperacion(TenantId.de(actor.tenantId), 'CONFIGURAR_CATALOGO');
       await barberoAccesible(this.c.barberos, actor, alcance, barberoId);
       const bloqueo = await this.c.bloqueos.porId(barberoId, bloqueoId);
       if (!bloqueo) throw new NoEncontrado();

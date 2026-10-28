@@ -2,8 +2,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { clavesConsulta } from '../../api/claves';
-import { ApiError, llamarApi } from '../../api/client';
+import { ApiError, esRestriccionDeSuscripcion, llamarApi } from '../../api/client';
 import type { components } from '../../api/schema-002';
+import { apiSuscripcion } from '../../api/suscripcion';
 import { PantallaCarga } from '../../auth/PantallaCarga';
 import { RutaProtegida } from '../../auth/RutaProtegida';
 import { useSesion } from '../../auth/SesionProvider';
@@ -102,6 +103,12 @@ function ConfirmarReserva({ slug, seleccion }: { slug: string; seleccion: Solici
     queryKey: clavesConsulta.catalogo(slug),
     queryFn: () => llamarApi<Catalogo>(`/publico/${encodeURIComponent(slug)}`),
   });
+  // T062 · Con la sesión ya en esta barbería: si su suscripción no permite reservar, se avisa antes de
+  // confirmar, y no con un "horario no disponible" al final (FR-006).
+  const operativo = useQuery({
+    queryKey: ['suscripcion', 'estado-operativo', slug],
+    queryFn: apiSuscripcion.estadoOperativo,
+  });
 
   const reserva = useMutation({
     mutationFn: () =>
@@ -115,6 +122,11 @@ function ConfirmarReserva({ slug, seleccion }: { slug: string; seleccion: Solici
         encabezados: { 'Idempotency-Key': clave },
       }),
     onError: (error) => {
+      // El estado cambió con la confirmación abierta: se vuelve a consultar y la pantalla muestra el aviso.
+      if (esRestriccionDeSuscripcion(error)) {
+        void consultas.invalidateQueries({ queryKey: ['suscripcion', 'estado-operativo', slug] });
+        return;
+      }
       if (!(error instanceof ApiError) || !CONFLICTOS.has(error.codigo) || !catalogo.data) return;
       // Otro cliente ganó el horario: los horarios guardados de la barbería quedan vencidos y el catálogo
       // vuelve a pedir los del mismo día.
@@ -125,7 +137,7 @@ function ConfirmarReserva({ slug, seleccion }: { slug: string; seleccion: Solici
     },
   });
 
-  if (catalogo.isPending) {
+  if (catalogo.isPending || operativo.isPending) {
     return <p aria-busy="true">Cargando los datos de tu cita…</p>;
   }
   if (catalogo.isError) {
@@ -156,6 +168,18 @@ function ConfirmarReserva({ slug, seleccion }: { slug: string; seleccion: Solici
 
   if (reserva.data) {
     return <CitaReservada cita={reserva.data} zona={zona} />;
+  }
+
+  // Si la consulta del estado falla, la reserva sigue: el servidor la rechaza con su mensaje si no procede.
+  if (operativo.data && !operativo.data.aceptaReservas) {
+    return (
+      <EstadoVacio
+        icono="calendario"
+        titulo={operativo.data.mensaje ?? 'Esta barbería no acepta reservas por ahora'}
+        descripcion={`${barberia.nombre} no está recibiendo reservas en línea en este momento. Vuelve a intentarlo más tarde o comunícate con la barbería.`}
+        accion={volver}
+      />
+    );
   }
 
   return (
