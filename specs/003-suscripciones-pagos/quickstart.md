@@ -125,4 +125,60 @@ docker compose exec -T db psql -U postgres -d barberias -c "SELECT job, replica,
 
 ## 6. Registro de ejecuciones
 
-_(se completa al implementar)_
+### 6.1 Recorrido con Docker Compose (T104, 2026-10-29)
+
+Entorno: `docker compose up -d` con las dos réplicas, Nginx, Redis, PostgreSQL 16 y `pasarela-simulada`, más
+un archivo temporal de Compose con `TAREAS_INTERVALO_MS=60000` y una cuenta bancaria **de prueba**
+(`PAGOS_CUENTA_*`). Se recorrió por HTTP (puerto 3000, por Nginx) con un script temporal que se borró al
+terminar. El administrador fue una cuenta **descartable** creada para la verificación y desactivada al final;
+la cuenta real la crea el responsable con `npm run plataforma:crear-admin`. Las barberías del recorrido se
+sembraron como en las pruebas (salvo la del paso 1, registrada por la API) y la demostración de §4 se borró
+con `npm run demo:vencimiento -- --limpiar`.
+
+**Resultado: 39 de 39 comprobaciones conformes.**
+
+| Paso | Qué se comprobó                                                                                                                                                                                                                                                            | Resultado                                                                                                                                                                                           |
+| ---- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1    | Registro por la API; "En prueba" con fin, 14 días restantes y límites; planes BÁSICO (4 900) y PRO (8 900)                                                                                                                                                                 | Conforme                                                                                                                                                                                            |
+| 2    | Pago con Yape, aprobado en la página del simulador; "pagado" por la notificación, sin volver del navegador; período desde el fin de la prueba; historial                                                                                                                   | Conforme. Del inicio al pago aprobado: 1,4 s (el inicio respondió en 0,8 s)                                                                                                                         |
+| 3    | `duplicar 10`: 1 período, 1 pago aprobado, 1 auditoría y 1 evento registrado. `firma_invalida`: el pago sigue pendiente                                                                                                                                                    | Conforme; 3 líneas `PAGO_NOTIFICACION_RECHAZADA` (los reintentos), sin el cuerpo                                                                                                                    |
+| 4    | `docker compose stop pasarela-simulada`: 503 `PAGO_EN_LINEA_NO_DISPONIBLE`; catálogo público y panel funcionan                                                                                                                                                             | Conforme, en 2,6 s (meta: 3 s)                                                                                                                                                                      |
+| 5    | Transferencia, comprobante en revisión, cola, detalle con el número completo, archivo, aprobación con el importe exacto; mismo número desde otra barbería: "número ya usado" y 409 `NUMERO_OPERACION_YA_APROBADO`; fecha de hace 3 días con la marca y la de ayer sin ella | Conforme. La revisión por la API (cola, detalle, archivo y aprobación) tomó 0,5 s                                                                                                                   |
+| 6    | `.txt` renombrado a `.png`, fecha futura y de hace 31 días: 400 y nada guardado                                                                                                                                                                                            | Conforme                                                                                                                                                                                            |
+| 7    | Prueba vencida hace una hora: "Vencida" tras la tarea; el cliente ve "Esta barbería no acepta reservas por ahora"; reserva 403; cancelar se permite; crear un servicio, 403                                                                                                | Conforme; vencida 27 s después de sembrarla                                                                                                                                                         |
+| 8    | `aprobar_despues 900000` y aprobación sin notificación: la conciliación deja el pago aprobado, con un solo período                                                                                                                                                         | Conforme, 24 s después de cumplir los 10 minutos (la antigüedad se adelantó en la base para no esperar 10 minutos)                                                                                  |
+| 9    | Suspender: 403 `ACCESO_SUSPENDIDO` y enlace "no disponible"; reactivar con la prueba vencida mientras tanto: EXPIRED; activación manual: "Activación manual" con el motivo y S/ 49,00                                                                                      | Conforme                                                                                                                                                                                            |
+| 10   | Propietario de A pide un pago de B: 404; token del administrador en `GET /agenda`: 401                                                                                                                                                                                     | Conforme                                                                                                                                                                                            |
+| §4   | `npm run demo:vencimiento -- --barberias 50`                                                                                                                                                                                                                               | Conforme: 50 de 50 vencidas, cada una con **una** `SUSCRIPCION_VENCIDA`, y 50 tras un ciclo más. Corridas: `backend-1` procesó 51 (las 50 y la del paso 7) y las siguientes, en las dos réplicas, 0 |
+
+**SC-001 y SC-007:** el tramo del sistema está muy por debajo de las metas (1,4 s del inicio del pago a la
+suscripción activa, frente a 3 minutos; 0,5 s de la revisión por la API, frente a 2 minutos). **El
+cronometraje con una persona en la interfaz queda pendiente:** este recorrido es por HTTP y no mide el
+tiempo de quien usa la pantalla.
+
+### 6.2 Suite completa (T105, 2026-10-29)
+
+| Parte                         | Resultado                                                                                                                                                                                                                                                                                                                      |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Backend: Prettier y lint      | Sin diferencias ni errores                                                                                                                                                                                                                                                                                                     |
+| Backend: build                | Sin errores                                                                                                                                                                                                                                                                                                                    |
+| Backend: unitarias            | 32 archivos, **642 de 642**. Al terminar, Jest avisa a veces que un proceso no cerró a tiempo ("A worker process has failed to exit gracefully"); el resultado no cambia                                                                                                                                                       |
+| Backend: integración          | 78 archivos (77 ejecutados y 1 omitido), **1 328 en verde y 1 omitida** (`payment-gateway` contra el sandbox, sin credenciales). En la corrida completa, `aislamiento-cache` falló sus 4 casos porque Docker no pudo publicar el puerto del contenedor de Redis ("address already in use"); **repetida sola: 4 de 4 en verde** |
+| Backend: arquitectura         | Sin violaciones (292 módulos, 1 334 dependencias); **24 de 24**                                                                                                                                                                                                                                                                |
+| Frontend: Prettier y lint     | Sin diferencias ni errores                                                                                                                                                                                                                                                                                                     |
+| Frontend: build               | Sin errores; JavaScript de `react` 286,6 KB (92,2 KB comprimido) e `index` 61,5 KB                                                                                                                                                                                                                                             |
+| Frontend: Vitest (un proceso) | 22 archivos, **133 de 133** (525 s con un solo proceso)                                                                                                                                                                                                                                                                        |
+
+### 6.3 Limitaciones conocidas
+
+- **Notificaciones sin pago:** las del proveedor que no corresponden a ningún pago (`SIN_PAGO`) se listan 30
+  días en "Pagos por revisar", pero no se pueden marcar resueltas. No hay ruta en el contrato, y el rol de la
+  aplicación solo inserta en `provider_event` (C1); resolverlas exigiría una columna o tabla de resolución con
+  su permiso.
+- **Rotación de la llave TOTP:** cambiar `PLATAFORMA_LLAVE_TOTP` deja ilegibles los secretos guardados. No hay
+  rotación: hay que volver a dar de alta al administrador (nuevo secreto y nuevos códigos).
+- **Proveedor real:** el adaptador real (Culqi) depende de obtener credenciales del ambiente de pruebas y de
+  confirmar que el comercio puede cobrar con Yape (R15). Hasta entonces, todo es con el simulador, y PR20
+  contra el sandbox queda omitida.
+- **Aviso de Jest:** al terminar `npm test`, Jest avisa a veces que un proceso no cerró a tiempo; todas las
+  pruebas pasan y el aviso no cambia el resultado.

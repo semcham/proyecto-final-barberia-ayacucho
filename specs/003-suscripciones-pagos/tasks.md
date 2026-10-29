@@ -583,18 +583,18 @@ responde. Al reactivarla, todo vuelve. Una activación manual crea un pago `MANU
 **Purpose**: documentación exigida por los ADR (principio XI), demostración con el entorno real y suite
 completa.
 
-- [ ] T100 [P] Backend: crear `backend/scripts/demo-vencimiento.ts` (`npm run demo:vencimiento -- --barberias 50`). Siembra suscripciones vencidas hace una hora, con el superusuario de desarrollo, y las limpia con `--limpiar`. Crear también `backend/scripts/simulador-modo.ts` (`npm run simulador:modo -- <modo> [parámetros]`, con `SIMULADOR_TOKEN_CONTROL`).
-- [ ] T101 Actualizar la documentación de `docs/`:
+- [x] T100 [P] Backend: crear `backend/scripts/demo-vencimiento.ts` (`npm run demo:vencimiento -- --barberias 50`). Siembra suscripciones vencidas hace una hora, con el superusuario de desarrollo, y las limpia con `--limpiar`. Crear también `backend/scripts/simulador-modo.ts` (`npm run simulador:modo -- <modo> [parámetros]`, con `SIMULADOR_TOKEN_CONTROL`).
+- [x] T101 Actualizar la documentación de `docs/`:
   - [multi-tenancy y datos](../../docs/02-arquitectura-software/multi-tenancy-y-datos.md) §3: las tablas nuevas de M03 y de la plataforma, con sus restricciones;
   - [tecnologías](../../docs/02-arquitectura-software/tecnologias.md): el simulador, TOTP y el uso de `multer` ya instalado, sin dependencias nuevas; el contenedor de 64 MB;
   - [API REST](../../docs/02-arquitectura-software/api-rest.md): las rutas de 003;
   - [seguridad y privacidad](../../docs/02-arquitectura-software/seguridad-y-privacidad.md): el segundo factor, los comprobantes y las notificaciones firmadas;
   - [despliegue y escalabilidad](../../docs/02-arquitectura-software/despliegue-y-escalabilidad.md): el simulador y las equivalencias en la nube (S3 y EventBridge).
-- [ ] T102 [P] Actualizar `tecnologia/plataforma-barberias/README.md`: el servicio `pasarela-simulada`, las variables, los scripts (`plataforma:crear-admin`, `simulador:modo` y `demo:vencimiento`), el rol `barberias_plataforma` para bases existentes, y ADR-022 a ADR-024 y ADR-031.
-- [ ] T103 [P] Actualizar `docs/trazabilidad.md` (la fila de 003 con su estado y los números de la suite, y una subsección con los componentes y su evidencia), `docs/05-gestion/04-pruebas.md` (PR06, PR17, PR20 y PR25 ejecutadas; PR08, PR09 y PR13 ampliadas) y `docs/05-gestion/02-backlog-y-sprints.md` (003 implementada y las líneas de corte aplicadas, si se usaron).
-- [ ] T104 Recorrer `specs/003-suscripciones-pagos/quickstart.md` §3, pasos 1 a 10, y §4 (vencimiento con dos réplicas) con Docker Compose y el simulador, por HTTP con un script temporal en `tmp/` que se borra al terminar. Registrar los resultados y los tiempos de SC-001 y SC-007 en §6.
-- [ ] T105 Ejecutar la suite completa y registrar los totales en `quickstart.md` §6: primero el backend (Prettier, lint, build, unitarias, integración y arquitectura) y después, solo, el frontend (Prettier, lint, build y un solo proceso de Vitest). Si una prueba de tiempos falla por la carga del equipo, repetirla sola y anotarlo.
-- [ ] T106 Limpieza: borrar `tmp/`, detener Compose (`docker compose stop`), comprobar que no quedan contenedores de Testcontainers ni archivos en la caché de npm de C:, y formatear con el Prettier local (`npx --no-install`) los documentos tocados.
+- [x] T102 [P] Actualizar `tecnologia/plataforma-barberias/README.md`: el servicio `pasarela-simulada`, las variables, los scripts (`plataforma:crear-admin`, `simulador:modo` y `demo:vencimiento`), el rol `barberias_plataforma` para bases existentes, y ADR-022 a ADR-024 y ADR-031.
+- [x] T103 [P] Actualizar `docs/trazabilidad.md` (la fila de 003 con su estado y los números de la suite, y una subsección con los componentes y su evidencia), `docs/05-gestion/04-pruebas.md` (PR06, PR17, PR20 y PR25 ejecutadas; PR08, PR09 y PR13 ampliadas) y `docs/05-gestion/02-backlog-y-sprints.md` (003 implementada y las líneas de corte aplicadas, si se usaron).
+- [x] T104 Recorrer `specs/003-suscripciones-pagos/quickstart.md` §3, pasos 1 a 10, y §4 (vencimiento con dos réplicas) con Docker Compose y el simulador, por HTTP con un script temporal en `tmp/` que se borra al terminar. Registrar los resultados y los tiempos de SC-001 y SC-007 en §6.
+- [x] T105 Ejecutar la suite completa y registrar los totales en `quickstart.md` §6: primero el backend (Prettier, lint, build, unitarias, integración y arquitectura) y después, solo, el frontend (Prettier, lint, build y un solo proceso de Vitest). Si una prueba de tiempos falla por la carga del equipo, repetirla sola y anotarlo.
+- [x] T106 Limpieza: borrar `tmp/`, detener Compose (`docker compose stop`), comprobar que no quedan contenedores de Testcontainers ni archivos en la caché de npm de C:, y formatear con el Prettier local (`npx --no-install`) los documentos tocados.
 
 ---
 

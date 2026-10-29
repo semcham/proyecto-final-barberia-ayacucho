@@ -1,6 +1,6 @@
 # Diseño de la API REST
 
-Contrato **planificado** entre la aplicación web y el backend (cuarto punto del enfoque SDD). Es un diseño de referencia: las rutas se confirman y se versionan al implementar. Complemento de la documentación núcleo.
+Contrato entre la aplicación web y el backend (cuarto punto del enfoque SDD). Las rutas de M01, M02 y M03 están **implementadas** (funcionalidades 001, 002, 003 y 006); las de M04, M05 y parte de M01 y M06 siguen **planificadas** y se confirman al implementarlas. Complemento de la documentación núcleo.
 
 ## 1. Convenciones
 
@@ -26,19 +26,19 @@ Roles: **ADM** administrador de la plataforma · **PRO** propietario · **BAR** 
 
 ### M01 Acceso y barberías
 
-| Método y ruta                         | Propósito                                                                                          | RF         | Roles             |
-| ------------------------------------- | -------------------------------------------------------------------------------------------------- | ---------- | ----------------- |
-| `POST /auth/login`                    | Iniciar sesión; con `barberia` (enlace) el cliente entra a esa barbería o se une con su aceptación | RF04, RF05 | PUB               |
-| `POST /auth/barberia`                 | Cambiar la sesión del cliente a otra barbería (ADR-020)                                            | RF05       | CLI               |
-| `POST /auth/logout`                   | Cerrar sesión                                                                                      | RF04       | Todos             |
-| `POST /barberias`                     | Registrar barbería y crear tenant (inicia prueba gratuita)                                         | RF01, RF18 | PUB               |
-| `POST /clientes/registro`             | Registrar cliente con consentimiento desde el enlace de la barbería                                | RF05       | PUB               |
-| `GET/POST /clientes`                  | Buscar clientes y registrar el cliente presencial (consentimiento verbal)                          | RF05       | PRO               |
-| `GET/POST/PATCH /usuarios`            | Gestionar usuarios y roles de la barbería                                                          | RF06       | PRO               |
-| `GET/PATCH /barberia`                 | Ver y editar datos comerciales, enlace y antelación de cancelación                                 | RF03       | PRO (BAR lectura) |
-| `PATCH /admin/barberias/{id}/estado`  | Activar, suspender o reactivar                                                                     | RF02       | ADM               |
-| `PATCH /clientes/yo/notificaciones`   | Cambiar canal (correo o WhatsApp)                                                                  | RF33       | CLI               |
-| `POST /clientes/yo/solicitudes-datos` | Pedir acceso, rectificación o eliminación                                                          | RF32       | CLI               |
+| Método y ruta                                      | Propósito                                                                                          | RF         | Roles             |
+| -------------------------------------------------- | -------------------------------------------------------------------------------------------------- | ---------- | ----------------- |
+| `POST /auth/login`                                 | Iniciar sesión; con `barberia` (enlace) el cliente entra a esa barbería o se une con su aceptación | RF04, RF05 | PUB               |
+| `POST /auth/barberia`                              | Cambiar la sesión del cliente a otra barbería (ADR-020)                                            | RF05       | CLI               |
+| `POST /auth/logout`                                | Cerrar sesión                                                                                      | RF04       | Todos             |
+| `POST /barberias`                                  | Registrar barbería y crear tenant (inicia prueba gratuita)                                         | RF01, RF18 | PUB               |
+| `POST /clientes/registro`                          | Registrar cliente con consentimiento desde el enlace de la barbería                                | RF05       | PUB               |
+| `GET/POST /clientes`                               | Buscar clientes y registrar el cliente presencial (consentimiento verbal)                          | RF05       | PRO               |
+| `GET/POST/PATCH /usuarios`                         | Gestionar usuarios y roles de la barbería                                                          | RF06       | PRO               |
+| `GET/PATCH /barberia`                              | Ver y editar datos comerciales, enlace y antelación de cancelación                                 | RF03       | PRO (BAR lectura) |
+| `PUT/DELETE /plataforma/barberias/{id}/suspension` | Suspender (con motivo) o reactivar la barbería (003, US5)                                          | RF02       | ADM               |
+| `PATCH /clientes/yo/notificaciones`                | Cambiar canal (correo o WhatsApp)                                                                  | RF33       | CLI               |
+| `POST /clientes/yo/solicitudes-datos`              | Pedir acceso, rectificación o eliminación                                                          | RF32       | CLI               |
 
 ### M02 Catálogo y citas
 
@@ -61,14 +61,31 @@ Roles: **ADM** administrador de la plataforma · **PRO** propietario · **BAR** 
 
 ### M03 Suscripciones y pagos
 
-| Método y ruta                     | Propósito                                             | RF   | Roles     |
-| --------------------------------- | ----------------------------------------------------- | ---- | --------- |
-| `GET /suscripcion`                | Estado, fechas y funciones del plan                   | RF19 | PRO       |
-| `POST /suscripcion/cambio-plan`   | Contratar o cambiar de plan                           | RF20 | PRO       |
-| `PATCH /admin/suscripciones/{id}` | Suspender o reactivar                                 | RF22 | ADM       |
-| `POST /pagos`                     | Iniciar pago de la suscripción (sin datos de tarjeta) | RF23 | PRO       |
-| `GET /pagos`                      | Historial de transacciones                            | RF25 | PRO       |
-| `POST /webhooks/pagos`            | Confirmación del proveedor (firma + idempotencia)     | RF24 | Proveedor |
+Implementadas en la funcionalidad 003 ([contrato](../../specs/003-suscripciones-pagos/contracts/openapi.yaml),
+[matriz de permisos](../../specs/003-suscripciones-pagos/contracts/rbac.md)). El cambio de plan se hace pagando
+el período siguiente con otro plan: no hay una ruta aparte.
+
+| Método y ruta                                                        | Propósito                                                                                            | RF         | Roles             |
+| -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- | ---------- | ----------------- |
+| `GET /planes`                                                        | Planes contratables con su precio y los medios disponibles                                           | RF19, RF20 | PRO               |
+| `GET /suscripcion`                                                   | Estado, plan, fechas, días restantes, límites, avisos, motivo de suspensión y pago abierto           | RF19       | PRO               |
+| `GET /suscripcion/estado-operativo`                                  | Si la barbería acepta reservas (al barbero y al cliente, sin el estado)                              | RF21       | PRO, BAR, CLI     |
+| `POST /suscripcion/pagos`                                            | Iniciar el pago de un período con Yape (URL del proveedor) o por transferencia (cuenta y referencia) | RF20, RF23 | PRO               |
+| `GET /suscripcion/pagos?pagina=`                                     | Historial de pagos de la barbería, de a 20                                                           | RF25       | PRO               |
+| `GET /suscripcion/pagos/{id}`                                        | Estado de un pago (al volver del proveedor)                                                          | RF23       | PRO               |
+| `POST/GET /suscripcion/pagos/{id}/comprobante`                       | Subir (multipart, hasta 5 MB, tipo verificado por bytes) y ver el comprobante de la transferencia    | RF23       | PRO               |
+| `POST /pagos/notificaciones`                                         | Notificación del proveedor: firma HMAC con marca de tiempo e idempotencia por `evento_id`            | RF24       | Proveedor (firma) |
+| `POST /plataforma/auth/ingresar`, `…/segundo-factor`                 | Ingreso del administrador: contraseña y luego código TOTP o de recuperación                          | RF02, RF22 | PUB               |
+| `POST /plataforma/auth/renovar`, `…/salir`                           | Renovar (cookie propia) y cerrar la sesión de plataforma                                             | —          | ADM               |
+| `GET /plataforma/barberias?buscar=&pagina=`                          | Barberías con estado, plan y cobertura, sin datos de negocio                                         | RF02, RF22 | ADM               |
+| `PUT/DELETE /plataforma/barberias/{id}/suscripcion/suspension`       | Suspender con motivo o reactivar la suscripción (estado recalculado por fechas)                      | RF22       | ADM               |
+| `POST /plataforma/barberias/{id}/activacion-manual`                  | Activar un período a mano (pago `MANUAL` con el precio del plan, motivo y referencia externa)        | RF22, RF23 | ADM               |
+| `GET /plataforma/planes`                                             | Planes que se pueden activar a mano                                                                  | RF22       | ADM               |
+| `GET /plataforma/comprobantes`                                       | Cola de comprobantes en revisión de todas las barberías                                              | RF23       | ADM               |
+| `GET /plataforma/barberias/{id}/pagos/{pagoId}[/comprobante]`        | Detalle del pago (número de operación completo) y el archivo                                         | RF23       | ADM               |
+| `POST /plataforma/barberias/{id}/pagos/{pagoId}/revision`            | Aprobar con el importe transferido o rechazar con motivo                                             | RF23       | ADM               |
+| `GET /plataforma/pagos/por-revisar`                                  | Duplicados, importes distintos, aprobados tras rechazo, devoluciones y notificaciones sin pago       | RF25, RF26 | ADM               |
+| `POST /plataforma/barberias/{id}/pagos/{pagoId}/revision/resolucion` | Marcar resuelto un caso con una nota (no mueve dinero)                                               | RF25       | ADM               |
 
 ### M04 Asistente IA y reportes · M06 Núcleo
 
@@ -94,5 +111,9 @@ Las notificaciones (M05) no exponen endpoints propios: se disparan por eventos y
 - **Sin réplicas disponibles (006, ADR-030):** el balanceador responde `503` con `Retry-After: 5` y el formato de error de la API: `{"codigo":"SERVICIO_NO_DISPONIBLE","mensaje":"El servicio no está disponible en este momento. Intenta de nuevo en unos segundos.","detalles":[]}`. La interfaz lo muestra como un aviso de reintento.
 - **`X-Instancia` (006, R14):** cada respuesta de una réplica lleva el nombre lógico que la atendió (`backend-1` o `backend-2`), para demostrar el reparto sin leer registros. No es parte del contrato funcional: sin `INSTANCIA_ID` no se envía.
 - **Límite de solicitudes por IP compartido (006, ADR-029):** con varias réplicas el límite general se cuenta en Redis, así es el mismo con una o dos réplicas; si Redis no responde, cada réplica lo aplica por su cuenta con los mismos valores. La IP sale de `X-Forwarded-For` solo cuando la conexión llega desde el balanceador.
+- **Administrador de la plataforma (003, ADR-031):** su token tiene la audiencia `plataforma` y no lleva tenant. Responde `401` en cualquier ruta de barbería, y un token de barbería responde `401` en `/plataforma/*`. Las escrituras sobre una barbería corren con el tenant de la **ruta** y RLS: un pago de otra barbería responde `404`. Cada acción queda en el `audit_log` de la barbería con el administrador como actor y, cuando la lleva, el motivo.
+- **Pagos (003):** el importe se guarda en céntimos enteros. Un pago abierto se reutiliza si es el mismo intento (`200`) y se anula si no (`201` con el nuevo); con un comprobante en revisión, `409` `COMPROBANTE_YA_EN_REVISION`; con un período ya pagado por adelantado, `409` `PAGO_ADELANTADO_NO_PERMITIDO`. Con la pasarela caída o lenta, `503` `PAGO_EN_LINEA_NO_DISPONIBLE` en 3 s o menos, con la transferencia como alternativa.
+- **Notificaciones del proveedor (003, PR17):** sin firma, con firma inválida o fuera de la ventana de tiempo, `401` sin efecto y una línea `PAGO_NOTIFICACION_RECHAZADA` en el registro, sin el cuerpo. Una notificación repetida (mismo `evento_id`) responde `200` sin volver a aplicarse.
+- **Comprobantes (003, ADR-023):** solo se sirven con una sesión con permiso, como adjunto con `Cache-Control: no-store` y `X-Content-Type-Options: nosniff`. El tipo se verifica por los bytes, no por el nombre. Nginx admite 6 MB solo en la ruta de subida (16 KB en el resto).
 - El contrato completo de cada funcionalidad está en `specs/<funcionalidad>/contracts/openapi.yaml`; esta tabla es el resumen.
 - El asistente nunca devuelve datos de otro tenant; sus herramientas son las mismas operaciones de arriba con el rol del usuario.

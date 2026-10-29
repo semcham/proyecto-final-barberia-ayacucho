@@ -107,8 +107,13 @@ erDiagram
     SERVICE ||--o{ APPOINTMENT : "incluye"
     PLAN ||--o{ SUBSCRIPTION : "define"
     TENANT ||--|| SUBSCRIPTION : "contrata"
-    SUBSCRIPTION ||--o{ PAYMENT_TRANSACTION : "genera"
-    PAYMENT_TRANSACTION ||--o{ WEBHOOK_EVENT : "confirma"
+    SUBSCRIPTION ||--o{ PAYMENT : "genera"
+    SUBSCRIPTION ||--o{ SUBSCRIPTION_PERIOD : "cubre"
+    PAYMENT ||--o| SUBSCRIPTION_PERIOD : "paga"
+    PAYMENT ||--o| PAYMENT_RECEIPT : "comprobante"
+    PAYMENT_RECEIPT ||--|| PAYMENT_RECEIPT_FILE : "contenido"
+    PAYMENT ||--o{ PROVIDER_EVENT : "notifica"
+    PLATFORM_ADMIN ||--o{ PLATFORM_SESSION : "abre"
     CUSTOMER_PROFILE ||--o{ CONSENT_RECORD : "otorga"
     TENANT ||--o{ DATA_REQUEST : "recibe"
     TENANT ||--o{ AUDIT_LOG : "registra"
@@ -216,19 +221,57 @@ erDiagram
         timestamptz trial_ends_at
         timestamptz current_period_end
     }
-    PAYMENT_TRANSACTION {
+    SUBSCRIPTION_PERIOD {
         uuid id PK
         uuid tenant_id FK
         uuid subscription_id FK
-        string provider_ref UK
-        numeric amount
+        uuid payment_id FK
+        uuid plan_id FK
+        timestamptz starts_at
+        timestamptz ends_at
+    }
+    PAYMENT {
+        uuid id PK
+        uuid tenant_id FK
+        uuid subscription_id FK
+        uuid plan_id FK
+        int amount_cents
+        string method
+        string status
+        timestamptz covers_after
+        string review
+        string provider_reference UK
+    }
+    PAYMENT_RECEIPT {
+        uuid id PK
+        uuid tenant_id FK
+        uuid payment_id FK
+        string content_type
+        string sha256
+        string review_result
+    }
+    PAYMENT_RECEIPT_FILE {
+        uuid receipt_id PK
+        uuid tenant_id FK
+        bytea content
+    }
+    PROVIDER_EVENT {
+        string event_id PK
+        uuid tenant_id
+        uuid payment_id
+        string effect
+    }
+    PLATFORM_ADMIN {
+        uuid id PK
+        string email UK
+        bytea totp_secret_enc
         string status
     }
-    WEBHOOK_EVENT {
+    PLATFORM_SESSION {
         uuid id PK
-        string provider_event_id UK
-        uuid payment_id FK
-        timestamptz received_at
+        uuid admin_id FK
+        bigint totp_step
+        string status
     }
     CONSENT_RECORD {
         uuid id PK
@@ -303,6 +346,9 @@ erDiagram
 
 </details>
 
+> La imagen muestra el modelo anterior a la funcionalidad 003 (con `payment_transaction` y `webhook_event`);
+> el código Mermaid de arriba ya está al día y la imagen se regenera a partir de él.
+
 _Notas._ `TENANT` y `PLAN` son tablas globales (sin RLS por `tenant_id`; el acceso se limita por rol de base). `USER_ACCOUNT` es global en el sentido de que no lleva `tenant_id` (una cuenta, un correo), pero tiene RLS: el rol de aplicación solo ve las cuentas con membresía en el tenant actual y no puede leer `password_hash` (ADR-015). Las demás llevan `tenant_id` con RLS. Un correo de cliente puede existir en varias barberías: el cliente se modela como `customer_profile` por tenant.
 
 ### 3.1 Correspondencia con las entidades del enunciado
@@ -323,27 +369,53 @@ _Notas._ `TENANT` y `PLAN` son tablas globales (sin RLS por `tenant_id`; el acce
 | Suscripción                | `plan` + `subscription`               | Estados TRIAL, ACTIVE, PAST_DUE, EXPIRED, CANCELLED, SUSPENDED                                                                                |
 | ConversaciónIA / MensajeIA | `ai_conversation` + `ai_message`      | Sin contenido sensible innecesario; se registra intención, herramienta y resultado                                                            |
 | Auditoría                  | `audit_log`                           | Acciones sensibles                                                                                                                            |
+| Pago de la suscripción     | `payment` + `subscription_period`     | Cada intento de pago y cada período pagado (003); el comprobante en `payment_receipt` y `payment_receipt_file`                                |
+
+### 3.2 Tablas de la funcionalidad 003 (M03 y la plataforma)
+
+Detalle completo en el [modelo de datos de 003](../../specs/003-suscripciones-pagos/data-model.md)
+(migraciones `0014` a `0020`). Lo esencial para el aislamiento y la integridad:
+
+| Tabla                                     | Tenant y RLS                                      | Restricciones clave                                                                                                                                                                                                                                                                      |
+| ----------------------------------------- | ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `subscription` (cambios)                  | Sí                                                | `grace_ends_at` obligatoria en `PAST_DUE`; `SUSPENDED` ⇔ `suspended_at` y `suspension_reason` (5–300). `current_period_end` es una **copia derivada** de los períodos, actualizada en la misma transacción                                                                               |
+| `subscription_period`                     | Sí; FK compuestas `(tenant_id, …)`                | **`EXCLUDE USING gist`**: los períodos de una suscripción no se solapan; `UNIQUE (payment_id)`: un pago paga a lo sumo un período                                                                                                                                                        |
+| `payment`                                 | Sí; FK compuestas                                 | Importe en céntimos enteros (`> 0`); cada medio solo con sus datos y sus estados posibles (`CHECK`); **un pago abierto por suscripción** (índice único parcial); `provider_reference` y `transfer_reference` únicos; **número de operación aprobado una sola vez** en toda la plataforma |
+| `payment_receipt`                         | Sí                                                | Tipo `image/jpeg`, `image/png` o `application/pdf` (verificado por bytes); hasta 5 MB; uno en revisión por pago; revisión única; sin el nombre original del archivo                                                                                                                      |
+| `payment_receipt_file`                    | Sí                                                | El contenido (`bytea`). El rol de solo lectura de la plataforma **no** tiene ningún permiso sobre esta tabla                                                                                                                                                                             |
+| `receipt_upload_counter`                  | Sí                                                | Límite diario de comprobantes por barbería                                                                                                                                                                                                                                               |
+| `audit_log` (cambio)                      | Sí                                                | `reason` (0020): el motivo del administrador, **solo** en `BARBERIA_SUSPENDIDA`, `SUSCRIPCION_SUSPENDIDA` y `ACTIVACION_MANUAL` (`CHECK`)                                                                                                                                                |
+| `provider_event`                          | No (de la plataforma; `tenant_id` puede ser nulo) | `event_id` clave primaria (idempotencia). La aplicación solo inserta (`ON CONFLICT DO NOTHING`); sin datos del pagador                                                                                                                                                                   |
+| `platform_admin`                          | No (sin barbería)                                 | Correo único; secreto TOTP cifrado con AES-256-GCM; 10 hashes Argon2id de recuperación. La aplicación **no** tiene ningún permiso: solo la lee `barberias_plataforma`                                                                                                                    |
+| `platform_session`, `platform_challenge`  | No                                                | Vida máxima de 8 h y de 5 min; `UNIQUE (admin_id, totp_step)` (un código TOTP abre una sola sesión) y `UNIQUE (admin_id, used_recovery_index)` (cada código de recuperación, una vez)                                                                                                    |
+| `platform_audit_log`, `scheduled_job_run` | No                                                | Auditoría del acceso del administrador y corridas de las tareas programadas (solo conteos)                                                                                                                                                                                               |
+
+El rol `barberias_plataforma` lee entre barberías solo por políticas `FOR SELECT … USING (true)` propias,
+por columna y sobre una lista cerrada (nunca el número de operación completo ni el contenido de los
+comprobantes); una prueba compara sus permisos con esa lista exacta (PR09). Las escrituras del
+administrador sobre una barbería corren con el rol de la aplicación y el tenant de la ruta.
 
 ## 4. Claves, restricciones e índices
 
-| Tabla                        | Clave primaria            | Claves foráneas                                       | Restricciones                                                                                                                                                                                                                                                                 | Índices (propuestos)                                                 |
-| ---------------------------- | ------------------------- | ----------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
-| `membership`                 | `id`                      | `tenant_id`, `user_id`                                | `UNIQUE (tenant_id, user_id)`; `role` en lista permitida                                                                                                                                                                                                                      | `(user_id)`                                                          |
-| `service`                    | `id`                      | `tenant_id`                                           | `price >= 0`, `duration_min > 0`                                                                                                                                                                                                                                              | `(tenant_id, active)`                                                |
-| `barber_service`             | `(barber_id, service_id)` | `tenant_id`, `barber_id`, `service_id`                | FK compuestas que garantizan el mismo tenant                                                                                                                                                                                                                                  | `(tenant_id, service_id)`                                            |
-| `working_hours`              | `id`                      | `tenant_id`, `barber_id`                              | `start_time < end_time`; `weekday` entre 0 y 6                                                                                                                                                                                                                                | `(tenant_id, barber_id, weekday)`                                    |
-| `business_hours`             | `id`                      | `tenant_id`                                           | `start_time < end_time`; `weekday` entre 0 y 6                                                                                                                                                                                                                                | `(tenant_id, weekday)`                                               |
-| `time_off`                   | `id`                      | `tenant_id`, `barber_id`                              | `starts_at < ends_at`; motivo opcional (nunca público)                                                                                                                                                                                                                        | GiST `(tenant_id, barber_id, tstzrange(starts_at, ends_at))`         |
-| `appointment`                | `id`                      | `tenant_id`, `barber_id`, `service_id`, `customer_id` | `period tstzrange(starts_at, ends_at, '[)')` generado; **`appointment_no_overlap_barber`** y **`appointment_no_overlap_customer`** (`EXCLUDE USING gist`, solo `PENDIENTE` y `CONFIRMADA`); idempotencia `UNIQUE (tenant_id, created_by, idempotency_key)`; `status` en lista | `(tenant_id, starts_at)`, `(tenant_id, customer_id, starts_at DESC)` |
-| `customer_profile`           | `id`                      | `tenant_id`, `user_id` (opcional)                     | Un perfil por cuenta y barbería (`UNIQUE` parcial); con cuenta, correo obligatorio                                                                                                                                                                                            | `(tenant_id, lower(full_name))`, `(tenant_id, phone)`                |
-| `consent_record`             | `id`                      | `tenant_id`, `customer_id`                            | Inmutable; `PRESENCIAL` exige `recorded_by`                                                                                                                                                                                                                                   | `(tenant_id, customer_id)`                                           |
-| `subscription`               | `id`                      | `tenant_id`, `plan_id`                                | `UNIQUE (tenant_id)`; `status` en lista                                                                                                                                                                                                                                       | `(status, current_period_end)`                                       |
-| `payment_transaction`        | `id`                      | `tenant_id`, `subscription_id`                        | `UNIQUE (provider_ref)`                                                                                                                                                                                                                                                       | `(tenant_id, subscription_id)`                                       |
-| `webhook_event`              | `id`                      | `payment_id`                                          | `UNIQUE (provider_event_id)` **(idempotencia)**                                                                                                                                                                                                                               | —                                                                    |
-| `appointment_status_history` | `id`                      | `tenant_id`, `appointment_id`                         | Solo inserciones (sin actualizar ni borrar)                                                                                                                                                                                                                                   | `(tenant_id, appointment_id, changed_at)`                            |
-| `ai_conversation`            | `id`                      | `tenant_id`                                           | RLS por `tenant_id`; `actor_role` en lista permitida                                                                                                                                                                                                                          | `(tenant_id, actor_id, started_at)`                                  |
-| `ai_message`                 | `id`                      | `tenant_id`, `conversation_id`                        | FK compuesta que garantiza el mismo tenant                                                                                                                                                                                                                                    | `(tenant_id, conversation_id, at)`                                   |
-| `role`                       | `code`                    | —                                                     | Catálogo global de solo lectura                                                                                                                                                                                                                                               | —                                                                    |
+| Tabla                        | Clave primaria            | Claves foráneas                                                      | Restricciones                                                                                                                                                                                                                                                                 | Índices (propuestos)                                                  |
+| ---------------------------- | ------------------------- | -------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| `membership`                 | `id`                      | `tenant_id`, `user_id`                                               | `UNIQUE (tenant_id, user_id)`; `role` en lista permitida                                                                                                                                                                                                                      | `(user_id)`                                                           |
+| `service`                    | `id`                      | `tenant_id`                                                          | `price >= 0`, `duration_min > 0`                                                                                                                                                                                                                                              | `(tenant_id, active)`                                                 |
+| `barber_service`             | `(barber_id, service_id)` | `tenant_id`, `barber_id`, `service_id`                               | FK compuestas que garantizan el mismo tenant                                                                                                                                                                                                                                  | `(tenant_id, service_id)`                                             |
+| `working_hours`              | `id`                      | `tenant_id`, `barber_id`                                             | `start_time < end_time`; `weekday` entre 0 y 6                                                                                                                                                                                                                                | `(tenant_id, barber_id, weekday)`                                     |
+| `business_hours`             | `id`                      | `tenant_id`                                                          | `start_time < end_time`; `weekday` entre 0 y 6                                                                                                                                                                                                                                | `(tenant_id, weekday)`                                                |
+| `time_off`                   | `id`                      | `tenant_id`, `barber_id`                                             | `starts_at < ends_at`; motivo opcional (nunca público)                                                                                                                                                                                                                        | GiST `(tenant_id, barber_id, tstzrange(starts_at, ends_at))`          |
+| `appointment`                | `id`                      | `tenant_id`, `barber_id`, `service_id`, `customer_id`                | `period tstzrange(starts_at, ends_at, '[)')` generado; **`appointment_no_overlap_barber`** y **`appointment_no_overlap_customer`** (`EXCLUDE USING gist`, solo `PENDIENTE` y `CONFIRMADA`); idempotencia `UNIQUE (tenant_id, created_by, idempotency_key)`; `status` en lista | `(tenant_id, starts_at)`, `(tenant_id, customer_id, starts_at DESC)`  |
+| `customer_profile`           | `id`                      | `tenant_id`, `user_id` (opcional)                                    | Un perfil por cuenta y barbería (`UNIQUE` parcial); con cuenta, correo obligatorio                                                                                                                                                                                            | `(tenant_id, lower(full_name))`, `(tenant_id, phone)`                 |
+| `consent_record`             | `id`                      | `tenant_id`, `customer_id`                                           | Inmutable; `PRESENCIAL` exige `recorded_by`                                                                                                                                                                                                                                   | `(tenant_id, customer_id)`                                            |
+| `subscription`               | `id`                      | `tenant_id`, `plan_id`                                               | `UNIQUE (tenant_id)`; `status` en lista                                                                                                                                                                                                                                       | `(status, current_period_end)`                                        |
+| `subscription_period`        | `id`                      | `(tenant_id, subscription_id)`, `(tenant_id, payment_id)`, `plan_id` | `EXCLUDE USING gist` sin solapes; `UNIQUE (payment_id)`                                                                                                                                                                                                                       | GiST de la exclusión                                                  |
+| `payment`                    | `id`                      | `(tenant_id, subscription_id)`, `plan_id`                            | `UNIQUE (provider_reference)`, `UNIQUE (transfer_reference)`; un pago abierto por suscripción; número de operación aprobado una vez; datos y estados por medio (`CHECK`)                                                                                                      | `(tenant_id, created_at DESC)`; parciales de pendientes y por revisar |
+| `provider_event`             | `event_id`                | —                                                                    | Clave primaria **(idempotencia)**; solo `INSERT … ON CONFLICT DO NOTHING`                                                                                                                                                                                                     | —                                                                     |
+| `appointment_status_history` | `id`                      | `tenant_id`, `appointment_id`                                        | Solo inserciones (sin actualizar ni borrar)                                                                                                                                                                                                                                   | `(tenant_id, appointment_id, changed_at)`                             |
+| `ai_conversation`            | `id`                      | `tenant_id`                                                          | RLS por `tenant_id`; `actor_role` en lista permitida                                                                                                                                                                                                                          | `(tenant_id, actor_id, started_at)`                                   |
+| `ai_message`                 | `id`                      | `tenant_id`, `conversation_id`                                       | FK compuesta que garantiza el mismo tenant                                                                                                                                                                                                                                    | `(tenant_id, conversation_id, at)`                                    |
+| `role`                       | `code`                    | —                                                                    | Catálogo global de solo lectura                                                                                                                                                                                                                                               | —                                                                     |
 
 **Integridad entre tenants.** Para que una cita no mezcle entidades de tenants distintos, las claves foráneas incluyen `tenant_id` (por ejemplo, `FOREIGN KEY (tenant_id, barber_id) REFERENCES barber (tenant_id, id)`), lo que requiere `UNIQUE (tenant_id, id)` en las tablas referenciadas.
 

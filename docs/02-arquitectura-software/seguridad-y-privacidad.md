@@ -13,32 +13,35 @@ Decisión base: [ADR-010](../01-analisis-de-sistema/07-decisiones-arquitectonica
 
 ✓ permitido · ✓\* permitido solo sobre sus propios recursos · — denegado. PA = Administrador de la plataforma; PR = Propietario (administra todo en su barbería); BA = Barbero; CL = Cliente; AN = Anónimo.
 
-| Operación                                                  | AN  | CL                      | BA            | PR                   | PA  |
-| ---------------------------------------------------------- | --- | ----------------------- | ------------- | -------------------- | --- |
-| Registrar una barbería (alta con prueba gratuita)          | ✓   | ✓                       | ✓             | ✓                    | ✓   |
-| Activar / suspender / reactivar barbería                   | —   | —                       | —             | —                    | ✓   |
-| Configurar datos, enlace, antelación y horario de atención | —   | —                       | — (ve)        | ✓                    | —   |
-| Gestionar usuarios y roles de la barbería                  | —   | —                       | —             | ✓                    | —   |
-| Gestionar servicios y barberos                             | —   | —                       | — (ve)        | ✓                    | —   |
-| Definir disponibilidad y bloqueos                          | —   | —                       | ✓\*           | ✓                    | —   |
-| Ver catálogo público y horarios libres por el enlace       | ✓   | ✓                       | ✓             | ✓                    | —   |
-| Consultar horarios libres con sesión                       | —   | ✓                       | —             | ✓                    | —   |
-| Registrarse como cliente / unirse a otra barbería          | ✓   | ✓ (cambiar de barbería) | —             | —                    | —   |
-| Reservar cita                                              | —   | ✓\*                     | —             | ✓ (presencial)       | —   |
-| Cancelar cita                                              | —   | ✓\* (hasta el inicio)   | —             | ✓ (nunca tardía)     | —   |
-| Cambiar estado de cita (aprobar, completada, no asistió)   | —   | —                       | ✓\*           | ✓                    | —   |
-| Ver agenda                                                 | —   | —                       | ✓\*           | ✓ (toda la barbería) | —   |
-| Ver historial de citas                                     | —   | ✓\*                     | —             | —                    | —   |
-| Buscar clientes y registrar cliente presencial             | —   | —                       | —             | ✓                    | —   |
-| Ver estado de suscripción y pagar                          | —   | —                       | —             | ✓                    | —   |
-| Gestionar planes y estados de suscripción                  | —   | —                       | —             | —                    | ✓   |
-| Ver reportes de la barbería                                | —   | —                       | ✓\* (resumen) | ✓                    | —   |
-| Indicadores agregados de la plataforma y auditoría         | —   | —                       | —             | —                    | ✓   |
-| Asistente de IA (consultas de catálogo y disponibilidad)   | —   | ✓                       | —             | ✓                    | —   |
-| Asistente de IA (consultas administrativas)                | —   | —                       | —             | ✓                    | —   |
-| Solicitar acceso, rectificación o eliminación de datos     | —   | ✓\*                     | —             | ✓\*                  | —   |
+| Operación                                                  | AN  | CL                      | BA             | PR                   | PA  |
+| ---------------------------------------------------------- | --- | ----------------------- | -------------- | -------------------- | --- |
+| Registrar una barbería (alta con prueba gratuita)          | ✓   | ✓                       | ✓              | ✓                    | ✓   |
+| Activar / suspender / reactivar barbería                   | —   | —                       | —              | —                    | ✓   |
+| Configurar datos, enlace, antelación y horario de atención | —   | —                       | — (ve)         | ✓                    | —   |
+| Gestionar usuarios y roles de la barbería                  | —   | —                       | —              | ✓                    | —   |
+| Gestionar servicios y barberos                             | —   | —                       | — (ve)         | ✓                    | —   |
+| Definir disponibilidad y bloqueos                          | —   | —                       | ✓\*            | ✓                    | —   |
+| Ver catálogo público y horarios libres por el enlace       | ✓   | ✓                       | ✓              | ✓                    | —   |
+| Consultar horarios libres con sesión                       | —   | ✓                       | —              | ✓                    | —   |
+| Registrarse como cliente / unirse a otra barbería          | ✓   | ✓ (cambiar de barbería) | —              | —                    | —   |
+| Reservar cita                                              | —   | ✓\*                     | —              | ✓ (presencial)       | —   |
+| Cancelar cita                                              | —   | ✓\* (hasta el inicio)   | —              | ✓ (nunca tardía)     | —   |
+| Cambiar estado de cita (aprobar, completada, no asistió)   | —   | —                       | ✓\*            | ✓                    | —   |
+| Ver agenda                                                 | —   | —                       | ✓\*            | ✓ (toda la barbería) | —   |
+| Ver historial de citas                                     | —   | ✓\*                     | —              | —                    | —   |
+| Buscar clientes y registrar cliente presencial             | —   | —                       | —              | ✓                    | —   |
+| Ver estado de suscripción, pagar e historial de pagos      | —   | —                       | —              | ✓                    | —   |
+| Saber si la barbería acepta reservas                       | —   | ✓                       | ✓              | ✓                    | —   |
+| Suspender y reactivar suscripciones; activación manual     | —   | —                       | —              | —                    | ✓   |
+| Revisar comprobantes y resolver pagos por revisar          | —   | —                       | —              | —                    | ✓   |
+| Ver citas, clientes, catálogo o usuarios de una barbería   | —   | —                       | (según su rol) | (según su rol)       | —   |
+| Ver reportes de la barbería                                | —   | —                       | ✓\* (resumen)  | ✓                    | —   |
+| Indicadores agregados de la plataforma y auditoría         | —   | —                       | —              | —                    | ✓   |
+| Asistente de IA (consultas de catálogo y disponibilidad)   | —   | ✓                       | —              | ✓                    | —   |
+| Asistente de IA (consultas administrativas)                | —   | —                       | —              | ✓                    | —   |
+| Solicitar acceso, rectificación o eliminación de datos     | —   | ✓\*                     | —              | ✓\*                  | —   |
 
-La matriz se convierte en una **prueba parametrizada** (PR08): cada celda es un caso. Las matrices detalladas por ruta están en `specs/001-registro-acceso-barberia/contracts/rbac.md` y `specs/002-catalogo-citas-cliente/contracts/rbac.md`; la prueba de 002 (`backend/test/contract/rbac-002.spec.ts`) lee esa tabla y ejecuta cada celda para los cuatro roles.
+La matriz se convierte en una **prueba parametrizada** (PR08): cada celda es un caso. Las matrices detalladas por ruta están en `specs/001-registro-acceso-barberia/contracts/rbac.md`, `specs/002-catalogo-citas-cliente/contracts/rbac.md` y `specs/003-suscripciones-pagos/contracts/rbac.md`; las pruebas de 002 y 003 (`backend/test/contract/rbac-002.spec.ts` y `rbac-003.spec.ts`) leen su tabla y ejecutan cada celda. La de 003 recorre la tabla **completa** (falla si una fila no tiene su caso), con los cuatro roles de barbería, el administrador y sin token, y además comprueba que el token del administrador responde 401 en **todas** las rutas de 001 y 002, leídas de la propia aplicación.
 
 **Vía pública por enlace (ADR-021):** el catálogo y los horarios libres se leen sin sesión por el `slug` de la barbería, con un rol de base propio (`barberias_publico`: `NOBYPASSRLS`, solo `SELECT` sobre una lista cerrada de columnas públicas, transacción de solo lectura con el tenant del enlace y RLS). Nunca devuelve datos de clientes, del personal ni motivos de bloqueos; un enlace inexistente, cambiado o suspendido responde igual. El `slug` solo se acepta además para elegir la membresía del cliente (registro, ingreso, unión y cambio de barbería, ADR-020); ninguna operación de negocio con sesión lo usa: el tenant sale siempre del token.
 
@@ -53,7 +56,10 @@ La matriz se convierte en una **prueba parametrizada** (PR08): cada celda es un 
 | Fuerza bruta de contraseñas                             | Limitación de intentos, hash lento con sal                                                                                                                                                                      | EQ-12 / PR12              |
 | Escalada de privilegios                                 | RBAC en la capa de aplicación; rol no modificable por el cliente                                                                                                                                                | EQ-08 / PR08              |
 | Inyección SQL / XSS                                     | Consultas parametrizadas, validación y codificación de salida                                                                                                                                                   | EQ-10 / PR10              |
-| Webhook falso o repetido                                | Verificación de firma/autenticidad, idempotencia por identificador de evento, límite de tasa                                                                                                                    | EQ-17 / PR17              |
+| Webhook falso o repetido                                | Firma HMAC-SHA256 con marca de tiempo (ventana de 5 min) comparada en tiempo constante; idempotencia por `evento_id`; límite de tasa; rechazo sin efecto y sin registrar el cuerpo                              | EQ-17 / PR17              |
+| Robo de la cuenta del administrador de la plataforma    | Segundo factor TOTP obligatorio, bloqueo por intentos, sesión propia de 8 h, token sin acceso a rutas de barbería (sección 4.2)                                                                                 | EQ-07, EQ-08 / PR07, PR08 |
+| Comprobante malicioso o filtrado                        | Tipo verificado por bytes, tope de 5 MB, nunca servido sin sesión con permiso, sin el nombre original (sección 4.3)                                                                                             | EQ-09, EQ-10 / PR09, PR10 |
+| Pago aplicado dos veces o en otra barbería              | Un pago abierto por suscripción, períodos sin solape (`EXCLUDE`), número de operación aprobado una sola vez, bloqueo de la suscripción y luego del pago                                                         | EQ-17 / PR17, PR09        |
 | Fuga de secretos                                        | Variables de entorno/gestor; escaneo del repositorio; sin secretos en logs ni prompts                                                                                                                           | EQ-11 / PR11              |
 | Prompt injection / exceso de agencia de la IA           | Herramientas cerradas por rol, sin SQL libre, intención estructurada, confirmación para acciones sensibles                                                                                                      | EQ-19 / PR19              |
 | Fuga de datos personales a la IA                        | Enviar solo datos mínimos del tenant autenticado; sin datos de pago; revisión de lo enviado                                                                                                                     | EQ-19 / PR19              |
@@ -81,7 +87,36 @@ La matriz se convierte en una **prueba parametrizada** (PR08): cada celda es un 
 | Indicador `hay_sesion=1`     | Cookie                                                                      | No secreta ni da acceso; `SameSite=Strict`, `Secure` con HTTPS, 7 días; solo evita llamar a `/auth/refresh` sin sesión | ADR-017  |
 | Preferencia de tema (`tema`) | `localStorage`                                                              | Solo `claro` u `oscuro`; sin datos personales; si no se puede guardar, se usa el tema del sistema                      | ADR-016  |
 
-Las cookies `rt` y `hay_sesion` son técnicas (necesarias para mantener la sesión) y deben figurar en la política de privacidad y de cookies.
+La sesión del administrador de la plataforma usa su propia cookie `rtp` (`HttpOnly`, `Secure`, `SameSite=Strict`, `Path=/api/v1/plataforma/auth`, a lo sumo 8 h) y su token de acceso vive solo en la memoria de la página, en una variable distinta de la de las barberías.
+
+Las cookies `rt`, `rtp` y `hay_sesion` son técnicas (necesarias para mantener la sesión) y deben figurar en la política de privacidad y de cookies.
+
+### 4.2 Administrador de la plataforma y segundo factor (003, ADR-031)
+
+- **Sin barbería:** el administrador no tiene membresía. Su token lleva la audiencia `plataforma` y no lleva tenant; la guardia rechaza con 401 ese token en cualquier ruta de barbería y el de una barbería en `/plataforma/*`. Cada solicitud comprueba en la base que su sesión siga activa.
+- **Dos pasos:** contraseña (Argon2id) → desafío de 5 minutos → código TOTP (RFC 6238, 6 dígitos, 30 s, ±1 paso) o uno de los 10 códigos de recuperación. Un código TOTP abre una sola sesión (`UNIQUE (admin_id, totp_step)`) y cada código de recuperación sirve una sola vez, garantizado por la base.
+- **Bloqueo:** 5 fallos de contraseña o de código en 15 minutos bloquean ese correo desde esa IP (429 con `Retry-After`). Los ingresos, fallos, usos de códigos de recuperación y salidas quedan en `platform_audit_log`.
+- **Secretos:** el secreto TOTP se guarda cifrado con AES-256-GCM (llave `PLATAFORMA_LLAVE_TOTP`, de 32 bytes, con el id del administrador como dato asociado) y los códigos de recuperación como hashes Argon2id. El rol de la aplicación **no tiene ningún permiso** sobre `platform_admin`: solo la lee `barberias_plataforma`. Ni el secreto, ni los códigos, ni la contraseña aparecen en registros, errores o auditoría.
+- **Alta:** solo por la orden `npm run plataforma:crear-admin` (rol dueño de la base), que pide la contraseña sin eco y muestra **una sola vez** la URI `otpauth://` y los códigos de recuperación.
+- **Lo que puede hacer:** listar barberías (sin datos de negocio), suspender y reactivar barberías y suscripciones, activar un plan a mano, revisar comprobantes y resolver pagos por revisar. No puede ver ni cambiar citas, clientes, catálogo ni usuarios (FR-038). Sus escrituras corren con el tenant de la barbería de la ruta y RLS, y quedan en el `audit_log` de esa barbería con él como actor y el motivo.
+
+### 4.3 Comprobantes de transferencia (003, ADR-023)
+
+- El tipo se decide por los **primeros bytes** (JPEG, PNG o PDF), no por el nombre ni por el `Content-Type`; un archivo de otro tipo o de más de 5 MB se rechaza sin guardarse. Nginx admite 6 MB solo en la ruta de subida.
+- Se guardan en PostgreSQL con RLS (`payment_receipt_file`), sin el nombre original. El rol de solo lectura de la plataforma no puede leer su contenido.
+- Solo se descargan con una sesión con permiso (el propietario de esa barbería o el administrador), como adjunto, con `Cache-Control: no-store` y `X-Content-Type-Options: nosniff`. La interfaz los muestra en memoria (`blob:`) y libera la URL al minuto.
+- Ni el contenido, ni el nombre, ni el número de operación completo aparecen en registros, errores o auditoría; el número completo solo lo ve el administrador en el detalle del pago, y en los listados solo sus últimos 4 caracteres. Un número de operación se aprueba una sola vez en toda la plataforma.
+
+### 4.4 Notificaciones del proveedor de pagos (003, PR17)
+
+- Firma HMAC-SHA256 sobre el cuerpo crudo con marca de tiempo (`X-Firma: t=…,v1=…`), ventana de 5 minutos y comparación en tiempo constante. Sin firma, con firma inválida o vencida: 401, sin ningún efecto, y una sola línea `PAGO_NOTIFICACION_RECHAZADA` con la IP, **sin el cuerpo**.
+- Idempotencia por `evento_id` (clave primaria de `provider_event`); el resultado se aplica con la suscripción y el pago bloqueados, en una sola función que también usan la conciliación, la revisión del comprobante y la activación manual.
+- La confirmación siempre la da la notificación o la conciliación, nunca el navegador al volver del proveedor. La plataforma nunca recibe datos de tarjeta ni del pagador.
+
+### 4.5 Limitaciones conocidas de seguridad (003)
+
+- **Rotación de la llave TOTP:** no hay un procedimiento para cambiar `PLATAFORMA_LLAVE_TOTP`. Cambiarla deja ilegibles los secretos guardados: habría que volver a dar de alta a cada administrador (nuevo secreto y nuevos códigos). Una rotación sin interrupción exigiría guardar la versión de la llave con cada secreto y recifrarlos; queda pendiente.
+- **Proveedor real:** el adaptador real (Culqi) depende de obtener credenciales de pruebas y de confirmar que el comercio puede cobrar con Yape (riesgo R15). Hasta entonces, todo pago es con el simulador.
 
 ## 5. Privacidad y protección de datos personales (Ley N.° 29733)
 
@@ -115,3 +150,5 @@ Las cookies `rt` y `hay_sesion` son técnicas (necesarias para mantener la sesi�
 Se registran: alta, suspensión y reactivación de barberías; cambios de rol; cambios de plan; inicios de sesión fallidos repetidos; acciones de IA con herramientas sensibles; solicitudes de datos personales; confirmaciones de pago. Cada registro tiene actor, acción, recurso, tenant, fecha y origen. Sin datos sensibles innecesarios.
 
 La funcionalidad 002 agrega 12 acciones (R19): `CLIENTE_REGISTRADO`, `CLIENTE_UNIDO`, `CLIENTE_PRESENCIAL_REGISTRADO`, `BARBERIA_CAMBIADA`, `ENLACE_CAMBIADO`, `SERVICIO_DESACTIVADO`, `BARBERO_DESACTIVADO`, `BLOQUEO_CON_CONFLICTO`, `CAMBIO_CON_CONFLICTO`, `CITA_RESERVADA`, `CITA_CANCELADA` y `CITA_ESTADO_CAMBIADO`. El recurso va siempre como `tipo:identificador` (nunca nombres, teléfonos ni correos); la suite PR13 lo comprueba para cada una.
+
+La funcionalidad 003 agrega: las transiciones automáticas de la suscripción (`SUSCRIPCION_ACTIVADA`, `SUSCRIPCION_EN_GRACIA`, `SUSCRIPCION_VENCIDA`, sin actor y con la fecha que les correspondía), `PAGO_INICIADO`, `PAGO_APROBADO`, `COMPROBANTE_SUBIDO`, `COMPROBANTE_APROBADO`, `COMPROBANTE_RECHAZADO`, `REVISION_RESUELTA` y las del administrador sobre una barbería: `BARBERIA_SUSPENDIDA`, `BARBERIA_REACTIVADA`, `SUSCRIPCION_SUSPENDIDA`, `SUSCRIPCION_REACTIVADA` y `ACTIVACION_MANUAL`, con el administrador como actor. El motivo del administrador va en la columna `reason` (migración 0020), que la base solo admite en las tres acciones con motivo; el resto de la auditoría sigue sin texto libre. El acceso del administrador va aparte, en `platform_audit_log`.

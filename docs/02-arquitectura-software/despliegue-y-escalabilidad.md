@@ -67,7 +67,7 @@ flowchart TB
 | PostgreSQL             | Amazon RDS for PostgreSQL, una instancia con respaldos automáticos                                    | Multi-AZ y réplica de lectura a evaluar                                          |
 | Redis                  | Amazon ElastiCache for Redis, un nodo                                                                 | Réplica y conmutación a evaluar                                                  |
 | Interfaz web           | Archivos estáticos en S3                                                                              | S3 con CloudFront (CDN)                                                          |
-| Estado                 | Planificado                                                                                           | Planificado                                                                      |
+| Estado                 | Planificado en la nube; representado en local con Docker Compose (secciones 2.1 y 2.2)                | Planificado                                                                      |
 
 Se empieza con una instancia y se evoluciona cuando una **necesidad justificada** (medida en pruebas de carga) lo requiera.
 
@@ -111,6 +111,29 @@ flowchart LR
 - **Lo que no es:** alta disponibilidad (FR-028). Nginx, PostgreSQL y Redis son únicos, y Nginx local es además un punto único de falla. La comprobación de salud de Nginx es **pasiva** (la activa es de Nginx Plus); el ALB la haría activa.
 - **IP fijas:** Nginx resuelve el upstream una sola vez al iniciar, y las réplicas llegan a Redis por IP porque, con Redis detenido, resolver su nombre tardaba 3–4 s en cada reconexión.
 
+### 2.2 Pasarela simulada y tareas programadas (funcionalidad 003)
+
+La funcionalidad 003 suma al entorno local el servicio **`pasarela-simulada`** (172.28.0.14, puerto 3100 del
+equipo, 64 MB), que hace de proveedor de pagos: crea sesiones de pago, muestra la página con "Aprobar" y
+"Rechazar", y notifica el resultado firmado a `http://nginx/api/v1/pagos/notificaciones`, por el mismo
+balanceador que el resto (cualquier réplica la procesa: la idempotencia está en la base). Sus modos de
+falla (lento, caído, colgado, notificación duplicada, firma inválida, aprobación tardía…) se cambian con
+`npm run simulador:modo`. El backend le habla solo a través del adaptador del puerto `PaymentGateway`
+(ADR-022); pasar al ambiente de pruebas o a producción del proveedor es cambiar `PAGOS_PROVEEDOR` y sus
+credenciales.
+
+Las tareas programadas (vencimiento de suscripciones, conciliación de pagos y expiración de transferencias
+sin comprobante) corren en **las dos réplicas**; un candado de PostgreSQL (`pg_try_advisory_lock`) por tarea
+hace que solo una procese cada ciclo y la otra registre `processed = 0` en `scheduled_job_run` (ADR-024).
+El intervalo es `TAREAS_INTERVALO_MS` (5 minutos por defecto).
+
+| Local                                               | Nube (equivalente)                                                                                                                         |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `pasarela-simulada`                                 | Ambiente de pruebas (sandbox) y luego producción del proveedor real, por HTTPS; las notificaciones entran por el ALB (AWS WAF opcional)    |
+| Comprobantes en PostgreSQL (`payment_receipt_file`) | **Amazon S3** privado y cifrado, detrás del mismo puerto `AlmacenComprobantes`, con enlaces prefirmados de corta duración (ADR-023)        |
+| Tareas en las réplicas con candado de PostgreSQL    | **Amazon EventBridge Scheduler** que dispara la tarea (o la misma solución con candado, que no depende de cuántas réplicas haya) (ADR-024) |
+| `PLATAFORMA_LLAVE_TOTP`, `PAGOS_*` en `.env`        | AWS Secrets Manager                                                                                                                        |
+
 ## 3. Balanceo de carga
 
 | Aspecto               | Diseño                                                                                                                                                        |
@@ -126,7 +149,7 @@ Varias instancias del mismo monolito **siguen siendo una arquitectura monolític
 
 ## 4. Sesiones sin estado, conexiones y configuración
 
-- **Sin estado:** autenticación con token firmado; nada de sesión en memoria del proceso. Los trabajos en segundo plano (conciliación, recordatorios y envío de correos y WhatsApp, vencimientos) se ejecutan con un mecanismo que evita duplicados entre instancias (por ejemplo, bloqueo con `pg_advisory_lock` o una sola instancia con rol de planificador).
+- **Sin estado:** autenticación con token firmado; nada de sesión en memoria del proceso. Los trabajos en segundo plano se ejecutan con un mecanismo que evita duplicados entre instancias: desde la 003, el vencimiento, la conciliación y la expiración de transferencias usan `pg_try_advisory_lock` por tarea y transiciones condicionales (ADR-024, sección 2.2); los recordatorios y envíos de 004 usarán el mismo mecanismo.
 - **Conexiones a PostgreSQL:** pool por instancia; límite total controlado. Si crecen las instancias, usar un agrupador de conexiones.
 - **Redis:** cliente con tiempos límite cortos y circuit breaker.
 - **Configuración y secretos:** variables de entorno o AWS Secrets Manager; nunca en el repositorio (EQ-11).
