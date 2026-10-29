@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { type ReactNode, useState } from 'react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { llamarApi, tokenEnMemoria } from '../../src/api/client';
 import { indicadorSesion } from '../../src/auth/indicadorSesion';
 import { RutaProtegida } from '../../src/auth/RutaProtegida';
@@ -57,6 +57,16 @@ function renderizar(ruta: string, contenido: ReactNode = <RutasApp />) {
 
 const rutaActual = () => screen.getByTestId('ruta').textContent;
 
+// MSW guarda ahí las cookies simuladas de las respuestas (por ejemplo, la `rt` del login); no es de la app.
+const CLAVE_COOKIES_MSW = '__msw-cookie-store__';
+
+function contenidoDe(almacen: Storage): { claves: string[]; valores: string[] } {
+  const claves = Array.from({ length: almacen.length }, (_, i) => almacen.key(i)).filter(
+    (clave): clave is string => clave !== null,
+  );
+  return { claves, valores: claves.map((clave) => almacen.getItem(clave) ?? '') };
+}
+
 async function ingresar(correo = 'rosa@prueba.pe', contrasena = 'mi barberia en huamanga') {
   const usuario = userEvent.setup();
   await usuario.type(await screen.findByLabelText(/correo/i), correo);
@@ -66,6 +76,12 @@ async function ingresar(correo = 'rosa@prueba.pe', contrasena = 'mi barberia en 
 }
 
 describe('Sesión en la interfaz', () => {
+  // Otra prueba del mismo proceso pudo dejar datos: cada prueba empieza con el almacenamiento vacío.
+  beforeEach(() => {
+    localStorage.clear();
+    sessionStorage.clear();
+  });
+
   afterEach(() => {
     tokenEnMemoria.limpiar();
     localStorage.clear();
@@ -73,17 +89,25 @@ describe('Sesión en la interfaz', () => {
   });
 
   it('al iniciar sesión guarda el token solo en memoria y entra al panel', async () => {
-    servidor.use(http.post('/api/v1/auth/login', () => HttpResponse.json(sesion('token-de-acceso'))));
+    const respuesta = sesion('token-de-acceso');
+    const token = respuesta.tokenAcceso;
+    servidor.use(http.post('/api/v1/auth/login', () => HttpResponse.json(respuesta)));
     renderizar('/ingresar');
     await ingresar();
 
     expect(await screen.findByRole('heading', { name: 'Barbería Huamanga' })).toBeInTheDocument();
     expect(rutaActual()).toBe('/app');
-    expect(tokenEnMemoria.obtener()).toBe('token-de-acceso');
+    expect(tokenEnMemoria.obtener()).toBe(token);
     expect(indicadorSesion.presente()).toBe(true);
-    expect(localStorage.length).toBe(0);
-    expect(sessionStorage.length).toBe(0);
-    expect(document.cookie).not.toContain('token-de-acceso');
+
+    // El token solo vive en memoria: la aplicación no guarda nada en el almacenamiento del navegador y el
+    // token no aparece en ningún valor (tampoco en las cookies que simula MSW).
+    const local = contenidoDe(localStorage);
+    const deSesion = contenidoDe(sessionStorage);
+    expect(local.claves.filter((clave) => clave !== CLAVE_COOKIES_MSW)).toEqual([]);
+    expect(deSesion.claves.filter((clave) => clave !== CLAVE_COOKIES_MSW)).toEqual([]);
+    for (const valor of [...local.valores, ...deSesion.valores]) expect(valor).not.toContain(token);
+    expect(document.cookie).not.toContain(token);
   });
 
   it('al recargar recupera la sesión con /auth/refresh sin pedir la contraseña', async () => {

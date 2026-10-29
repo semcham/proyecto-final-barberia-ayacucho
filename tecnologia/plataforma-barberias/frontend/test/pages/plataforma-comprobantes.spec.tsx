@@ -182,7 +182,11 @@ describe('Comprobantes por revisar (/plataforma/comprobantes)', () => {
       await usuario.click(within(a).getByRole('button', { name: 'Ver comprobante' }));
       const enlace = await within(a).findByRole('link', { name: /Abrir el comprobante/ });
       expect(enlace).toHaveAttribute('href', 'blob:comprobante-1');
-      expect(crear).toHaveBeenCalledWith(expect.any(Blob));
+      // Sin expect.any(Blob): según la versión de Node, la respuesta crea un Blob de Node y no el de jsdom.
+      expect(crear).toHaveBeenCalledTimes(1);
+      const archivo = crear.mock.calls[0]![0] as Blob;
+      expect(archivo.type).toBe('application/pdf');
+      expect(archivo.size).toBe(6);
       expect(revocar).not.toHaveBeenCalled();
 
       await act(async () => {
