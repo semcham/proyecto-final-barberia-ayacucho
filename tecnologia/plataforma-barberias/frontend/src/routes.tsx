@@ -33,6 +33,14 @@ const Suscripcion = lazy(() => import('./pages/panel/Suscripcion'));
 const ReservarProtegida = lazy(() =>
   import('./pages/publico/Reservar').then((m) => ({ default: m.ReservarProtegida })),
 );
+// Administrador de la plataforma (003, T071): su propia sesión, que solo se descarga al visitar /plataforma.
+const RaizPlataforma = lazy(() => import('./auth/plataforma').then((m) => ({ default: m.RaizPlataforma })));
+const RutaPlataforma = lazy(() => import('./auth/plataforma').then((m) => ({ default: m.RutaPlataforma })));
+const IngresarPlataforma = lazy(() => import('./pages/plataforma/Ingresar'));
+const DisenoPlataforma = lazy(() =>
+  import('./components/plataforma/DisenoPlataforma').then((m) => ({ default: m.DisenoPlataforma })),
+);
+const InicioPlataforma = lazy(() => import('./pages/plataforma/Inicio'));
 
 /**
  * Rutas del panel de 002 y los roles que las ven (solo navegación: el backend exige los permisos). Las que
@@ -155,6 +163,18 @@ export function RutasApp() {
                 }
               />
             ))}
+          </Route>
+          <Route path="/plataforma" element={<RaizPlataforma />}>
+            <Route path="ingresar" element={<IngresarPlataforma />} />
+            <Route
+              element={
+                <RutaPlataforma>
+                  <DisenoPlataforma />
+                </RutaPlataforma>
+              }
+            >
+              <Route index element={<InicioPlataforma />} />
+            </Route>
           </Route>
           <Route path="*" element={<NoEncontrada />} />
         </Routes>

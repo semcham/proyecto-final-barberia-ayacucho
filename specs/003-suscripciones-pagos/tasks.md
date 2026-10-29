@@ -404,13 +404,13 @@ lo bloquean.
 
 ### Tests ⚠️
 
-- [ ] T063 [P] [US3] Backend: en `backend/test/unit/identidad/totp.spec.ts`, probar:
+- [x] T063 [P] [US3] Backend: en `backend/test/unit/identidad/totp.spec.ts`, probar:
   - los vectores de prueba del RFC 6238 (SHA-1, 6 dígitos, paso de 30 s);
   - la tolerancia de ±1 paso;
   - un código cuyo paso no es mayor que el último `totp_step` de las sesiones del administrador se rechaza;
   - el secreto cifrado con AES-256-GCM se descifra, y uno alterado falla;
   - los códigos de recuperación se aceptan una sola vez.
-- [ ] T064 [P] [US3] Backend: en `backend/test/integration/identidad/segundo-factor.spec.ts`, probar:
+- [x] T064 [P] [US3] Backend: en `backend/test/integration/identidad/segundo-factor.spec.ts`, probar:
   - el ingreso devuelve el desafío;
   - el TOTP correcto da el token `aud` plataforma y la cookie con ruta `/api/v1/plataforma/auth`;
   - un desafío vencido o usado da 401;
@@ -421,16 +421,16 @@ lo bloquean.
   - `platform_audit_log` registra el ingreso, el fallo, la recuperación y la salida;
   - el token del administrador da 401 en `GET /agenda`, `GET /clientes` y `GET /servicios`;
   - **canarios (SC-010, M7):** el secreto TOTP, la URI `otpauth://` y los códigos de recuperación no aparecen en los registros capturados, en `platform_audit_log`, en `audit_log` ni en las respuestas de error.
-- [ ] T065 [P] [US3] Backend: **PR08**. Agregar a `IMPLEMENTADAS`, en `backend/test/contract/rbac-003.spec.ts`, las filas `POST /plataforma/auth/ingresar` y `POST /plataforma/auth/segundo-factor`, y la fila "Cualquier ruta de 001 y 002 con token" con el administrador (401 en todas las rutas con `@Operacion` de M01 y M02, generadas desde las matrices existentes).
-- [ ] T066 [P] [US3] Frontend: en `frontend/test/pages/plataforma-ingreso.spec.tsx`, con MSW, probar los dos pasos, el código incorrecto, el uso de un código de recuperación y la salida, y que el token de plataforma vive separado de la sesión de barbería.
+- [x] T065 [P] [US3] Backend: **PR08**. Agregar a `IMPLEMENTADAS`, en `backend/test/contract/rbac-003.spec.ts`, las filas `POST /plataforma/auth/ingresar` y `POST /plataforma/auth/segundo-factor`, y la fila "Cualquier ruta de 001 y 002 con token" con el administrador (401 en todas las rutas con `@Operacion` de M01 y M02, generadas desde las matrices existentes).
+- [x] T066 [P] [US3] Frontend: en `frontend/test/pages/plataforma-ingreso.spec.tsx`, con MSW, probar los dos pasos, el código incorrecto, el uso de un código de recuperación y la salida, y que el token de plataforma vive separado de la sesión de barbería.
 
 ### Implementation
 
-- [ ] T067 [US3] Backend: crear el puerto `backend/src/modules/acceso-barberias/identidad/application/ports/segundo-factor.ts` y su adaptador `backend/src/modules/acceso-barberias/identidad/infrastructure/totp-node.ts` (HMAC-SHA1 con `node:crypto`, AES-256-GCM con `PLATAFORMA_LLAVE_TOTP` y códigos de recuperación con hash Argon2id). Hace pasar T063.
-- [ ] T068 [US3] Backend: repositorios de la plataforma en `backend/src/modules/acceso-barberias/identidad/infrastructure/plataforma/` (el administrador se lee con `LecturaPlataforma`, porque el rol de la aplicación no tiene permiso sobre `platform_admin`; el desafío, la sesión con `totp_step`, el uso del código de recuperación en `platform_challenge.used_recovery_index` y la auditoría de acceso se escriben con el rol de la aplicación) y casos de uso en `backend/src/modules/acceso-barberias/identidad/application/plataforma/`: `IngresarAdmin` (tiempo constante, igual que el inicio de sesión de 001), `VerificarSegundoFactor`, `RenovarSesionPlataforma` (vida máxima de 8 h) y `SalirPlataforma`.
-- [ ] T069 [US3] Backend: crear `backend/src/modules/acceso-barberias/identidad/presentation/plataforma-auth.controller.ts` (`/plataforma/auth/*`, con la cookie `HttpOnly`, `SameSite=Strict` y la ruta propia). Hace pasar T064 y T065.
-- [ ] T070 [P] [US3] Backend: crear `backend/scripts/crear-admin-plataforma.ts` (`npm run plataforma:crear-admin -- --correo --nombre`). Pide la contraseña sin eco o la toma de `--contrasena-desde-entorno`, e imprime **una vez** la URI `otpauth://` y 10 códigos de recuperación. Rechaza un correo repetido.
-- [ ] T071 [US3] Frontend: crear `frontend/src/auth/plataforma.tsx` (sesión de plataforma separada), `frontend/src/api/plataforma.ts`, `frontend/src/pages/plataforma/Ingresar.tsx` (dos pasos) y el diseño `/plataforma` con su menú. Agregar las rutas en `frontend/src/routes.tsx` con carga diferida. Hace pasar T066.
+- [x] T067 [US3] Backend: crear el puerto `backend/src/modules/acceso-barberias/identidad/application/ports/segundo-factor.ts` y su adaptador `backend/src/modules/acceso-barberias/identidad/infrastructure/totp-node.ts` (HMAC-SHA1 con `node:crypto`, AES-256-GCM con `PLATAFORMA_LLAVE_TOTP` y códigos de recuperación con hash Argon2id). Hace pasar T063.
+- [x] T068 [US3] Backend: repositorios de la plataforma en `backend/src/modules/acceso-barberias/identidad/infrastructure/plataforma/` (el administrador se lee con `LecturaPlataforma`, porque el rol de la aplicación no tiene permiso sobre `platform_admin`; el desafío, la sesión con `totp_step`, el uso del código de recuperación en `platform_challenge.used_recovery_index` y la auditoría de acceso se escriben con el rol de la aplicación) y casos de uso en `backend/src/modules/acceso-barberias/identidad/application/plataforma/`: `IngresarAdmin` (tiempo constante, igual que el inicio de sesión de 001), `VerificarSegundoFactor`, `RenovarSesionPlataforma` (vida máxima de 8 h) y `SalirPlataforma`.
+- [x] T069 [US3] Backend: crear `backend/src/modules/acceso-barberias/identidad/presentation/plataforma-auth.controller.ts` (`/plataforma/auth/*`, con la cookie `HttpOnly`, `SameSite=Strict` y la ruta propia). Hace pasar T064 y T065.
+- [x] T070 [P] [US3] Backend: crear `backend/scripts/crear-admin-plataforma.ts` (`npm run plataforma:crear-admin -- --correo --nombre`). Pide la contraseña sin eco o la toma de `--contrasena-desde-entorno`, e imprime **una vez** la URI `otpauth://` y 10 códigos de recuperación. Rechaza un correo repetido.
+- [x] T071 [US3] Frontend: crear `frontend/src/auth/plataforma.tsx` (sesión de plataforma separada), `frontend/src/api/plataforma.ts`, `frontend/src/pages/plataforma/Ingresar.tsx` (dos pasos) y el diseño `/plataforma` con su menú. Agregar las rutas en `frontend/src/routes.tsx` con carga diferida. Hace pasar T066.
 
 **Checkpoint (administrador)**: CI en verde. El administrador creado por línea de comandos entra con
 TOTP. Su token no abre ninguna ruta de barbería, y uno de barbería no abre las de plataforma.

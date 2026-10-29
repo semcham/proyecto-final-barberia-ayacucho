@@ -11,6 +11,7 @@ import {
   sembrarSuscripcion,
   sembrarUsuario,
 } from './fixtures';
+import { sembrarSesionPlataforma } from './plataforma';
 
 const DIA_MS = 24 * 60 * 60 * 1000;
 
@@ -31,14 +32,14 @@ export async function tokenPara(
 }
 
 /**
- * Token del administrador de la plataforma (003, ADR-031): aud "plataforma", sin tid. La sesión de
- * plataforma en la base llega con el ingreso del administrador (fase 5); hasta entonces, el id de sesión es
- * nuevo en cada llamada.
+ * Token del administrador de la plataforma (003, ADR-031): aud "plataforma", sin tid. Desde la fase 5 la
+ * guardia exige su sesión de plataforma ACTIVA en la base: se siembra (y el administrador, si no existe).
  */
 export async function tokenPlataformaPara(
-  adminId: string,
+  adminId: string = randomUUID(),
   sesionId: string = randomUUID(),
 ): Promise<{ token: string; sesionId: string }> {
+  await sembrarSesionPlataforma(adminId, sesionId);
   const { token } = await new JoseTokenSigner(new Configuracion()).firmarPlataforma({
     sub: adminId,
     sid: sesionId,

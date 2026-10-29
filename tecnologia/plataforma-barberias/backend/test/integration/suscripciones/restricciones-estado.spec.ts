@@ -215,9 +215,11 @@ describe('Restricciones por estado de la suscripción (T054)', () => {
         clienteId: cliente.cliente.clienteId,
         inicio,
       });
-    const citaFutura = await cita(new Date(Date.now() + 5 * DIA));
-    const citaPasada = await cita(new Date(Date.now() - 2 * 60 * 60 * 1000));
-    const citaIntacta = await cita(new Date(Date.now() + 6 * DIA));
+    // A una hora fija de Lima dentro del horario (09:00 a 19:00): con la hora real, según el momento del día
+    // la cita caería fuera y reemplazar el horario respondería 409 CONFLICTO_CON_CITAS.
+    const citaFutura = await cita(new Date(horaLima(fechaEnDias(5), '12:00')));
+    const citaPasada = await cita(new Date(horaLima(fechaEnDias(-1), '12:00')));
+    const citaIntacta = await cita(new Date(horaLima(fechaEnDias(6), '12:00')));
     const inicioBloqueo = new Date(Date.now() + 11 * DIA);
     const bloqueoId = await sembrarBloqueo({
       tenantId,

@@ -102,7 +102,8 @@ function mensajeDeRestriccion(detalles: Record<string, unknown>[]): string {
     : 'Tu suscripción no permite este cambio';
 }
 
-async function aApiError(respuesta: Response): Promise<ApiError> {
+/** Convierte una respuesta de error de la API en ApiError (también la usa el cliente de la plataforma). */
+export async function aApiError(respuesta: Response): Promise<ApiError> {
   const espera = Number(respuesta.headers.get('Retry-After'));
   try {
     const cuerpo = (await respuesta.json()) as CuerpoError;
@@ -145,13 +146,14 @@ export function suscribirRestriccionSuscripcion(oyente: () => void): () => void 
 let renovacionEnCurso: Promise<SesionResponse | null> | null = null;
 
 /**
- * Ejecuta la renovación con el bloqueo "renovar-sesion" de la Web Locks API, compartido por todas las
- * pestañas del sitio: la segunda pestaña renueva después de la primera, ya con la cookie nueva, y no
- * presenta el token que la primera acaba de rotar (FR-008a). Sin la API, se renueva directamente.
+ * Ejecuta la renovación con un bloqueo de la Web Locks API ("renovar-sesion" por defecto), compartido por
+ * todas las pestañas del sitio: la segunda pestaña renueva después de la primera, ya con la cookie nueva, y no
+ * presenta el token que la primera acaba de rotar (FR-008a). Sin la API, se renueva directamente. La sesión de
+ * la plataforma usa su propio nombre de bloqueo.
  */
-export function conBloqueoEntrePestanas<T>(tarea: () => Promise<T>): Promise<T> {
+export function conBloqueoEntrePestanas<T>(tarea: () => Promise<T>, nombre = 'renovar-sesion'): Promise<T> {
   const locks = typeof navigator === 'undefined' ? undefined : navigator.locks;
-  return locks ? (locks.request('renovar-sesion', tarea) as Promise<T>) : tarea();
+  return locks ? (locks.request(nombre, tarea) as Promise<T>) : tarea();
 }
 
 /**

@@ -52,6 +52,28 @@ import { KyselySesionRepository } from './identidad/infrastructure/kysely-sesion
 import { KyselyUsuarioRepository } from './identidad/infrastructure/kysely-usuario-repository';
 import { AuthController } from './identidad/presentation/auth.controller';
 import { UsuariosController } from './identidad/presentation/usuarios.controller';
+import { IngresarAdmin } from './identidad/application/plataforma/ingresar-admin';
+import { IntentosAdmin } from './identidad/application/plataforma/intentos-admin';
+import { RenovarSesionPlataforma } from './identidad/application/plataforma/renovar-sesion-plataforma';
+import { SalirPlataforma } from './identidad/application/plataforma/salir-plataforma';
+import { VerificarSegundoFactor } from './identidad/application/plataforma/verificar-segundo-factor';
+import {
+  AccesoPlataformaRepository,
+  AdminsPlataforma,
+  AuditoriaAccesoPlataforma,
+  SesionesPlataformaVigentes,
+} from './identidad/application/ports/plataforma';
+import { SegundoFactor } from './identidad/application/ports/segundo-factor';
+import {
+  AdminsPlataformaLectura,
+  SesionesPlataformaLectura,
+} from './identidad/infrastructure/plataforma/admins-plataforma';
+import {
+  KyselyAccesoPlataforma,
+  KyselyAuditoriaAccesoPlataforma,
+} from './identidad/infrastructure/plataforma/kysely-acceso-plataforma';
+import { TotpNode } from './identidad/infrastructure/totp-node';
+import { PlataformaAuthController } from './identidad/presentation/plataforma-auth.controller';
 
 /** M01 Acceso y barberías (submódulos identidad y barberias). */
 @Module({
@@ -63,6 +85,8 @@ import { UsuariosController } from './identidad/presentation/usuarios.controller
     AuthController,
     UsuariosController,
     ClientesController,
+    // Ingreso del administrador de la plataforma (003, R07).
+    PlataformaAuthController,
   ],
   providers: [
     // Puertos → adaptadores
@@ -107,6 +131,17 @@ import { UsuariosController } from './identidad/presentation/usuarios.controller
     { provide: BarberiasApi, useClass: BarberiasApiImpl },
     { provide: ClientesApi, useClass: ClientesApiImpl },
     { provide: PersonalApi, useClass: PersonalApiImpl },
+    // Administrador de la plataforma con segundo factor (003, ADR-031, R07).
+    { provide: SegundoFactor, useClass: TotpNode },
+    { provide: AdminsPlataforma, useClass: AdminsPlataformaLectura },
+    { provide: SesionesPlataformaVigentes, useClass: SesionesPlataformaLectura },
+    { provide: AccesoPlataformaRepository, useClass: KyselyAccesoPlataforma },
+    { provide: AuditoriaAccesoPlataforma, useClass: KyselyAuditoriaAccesoPlataforma },
+    IntentosAdmin,
+    IngresarAdmin,
+    VerificarSegundoFactor,
+    RenovarSesionPlataforma,
+    SalirPlataforma,
   ],
   exports: [ValidarSolicitud, ValidarSolicitudPlataforma, BarberiasApi, ClientesApi, PersonalApi],
 })

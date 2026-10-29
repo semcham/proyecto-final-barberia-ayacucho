@@ -132,14 +132,26 @@ function proveedorDePago(nombre: string): ProveedorDePago {
   return valor as ProveedorDePago;
 }
 
-/** Llave AES-256 en base64: exactamente 32 bytes. El mensaje de error nunca incluye el valor. */
-function llave32Bytes(nombre: string): Buffer {
+/**
+ * Llave AES-256 en base64: exactamente 32 bytes. El mensaje de error nunca incluye el valor. Exportada para la
+ * orden plataforma:crear-admin, que cifra el secreto TOTP sin necesitar todo el entorno del servidor.
+ */
+export function llave32Bytes(nombre: string): Buffer {
   const valor = requerida(nombre).trim();
   const bytes = /^[A-Za-z0-9+/]+={0,2}$/.test(valor) ? Buffer.from(valor, 'base64') : Buffer.alloc(0);
   if (bytes.length !== 32) {
     throw new Error(`La variable de entorno ${nombre} debe ser una llave de 32 bytes en base64`);
   }
   return bytes;
+}
+
+/** Parámetros de Argon2id del entorno (mínimo OWASP por defecto). Los usa también plataforma:crear-admin. */
+export function parametrosArgon2(): { memoriaKib: number; iteraciones: number; paralelismo: number } {
+  return {
+    memoriaKib: entero('ARGON2_MEMORY_KIB', 19456),
+    iteraciones: entero('ARGON2_TIME_COST', 2),
+    paralelismo: entero('ARGON2_PARALLELISM', 1),
+  };
 }
 
 // Los PEM pueden venir en una sola línea con "\n" literales (formato de .env).
@@ -174,11 +186,7 @@ export class Configuracion {
     audiencia: requerida('JWT_AUDIENCE'),
     vidaSegundos: entero('ACCESS_TOKEN_TTL_SECONDS', 900),
   };
-  readonly argon2 = {
-    memoriaKib: entero('ARGON2_MEMORY_KIB', 19456),
-    iteraciones: entero('ARGON2_TIME_COST', 2),
-    paralelismo: entero('ARGON2_PARALLELISM', 1),
-  };
+  readonly argon2 = parametrosArgon2();
   readonly sesion = {
     /** Período de gracia de la rotación del token de renovación (FR-008a): 10 s; 0 lo desactiva. */
     graciaRenovacionSegundos: enteroEnRango('REFRESH_GRACIA_SEGUNDOS', 10, 0, 30),

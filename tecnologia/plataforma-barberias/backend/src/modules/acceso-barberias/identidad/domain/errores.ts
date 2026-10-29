@@ -97,6 +97,16 @@ export class CuentaDePersonal extends ErrorDeAplicacion {
   }
 }
 
+// --- Funcionalidad 003: ingreso del administrador de la plataforma (R07) ---
+
+export class CredencialesPlataformaInvalidas extends ErrorDeAplicacion {
+  readonly codigo = 'NO_AUTENTICADO';
+  constructor() {
+    // Un solo mensaje para correo, contraseña, código, desafío vencido o código ya usado: no revela cuál falló.
+    super('Los datos de ingreso no son correctos o el código ya no es válido.');
+  }
+}
+
 export class DemasiadosIntentos extends ErrorDeAplicacion {
   readonly codigo = 'DEMASIADOS_INTENTOS';
   constructor(readonly reintentarEnSegundos: number) {
