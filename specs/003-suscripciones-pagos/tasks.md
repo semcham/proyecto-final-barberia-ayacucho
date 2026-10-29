@@ -521,21 +521,21 @@ con nota, sale de ella y queda auditado.
 
 ### Tests for User Story 4 ⚠️
 
-- [ ] T085 [P] [US4] Backend: en `backend/test/integration/pagos/historial.spec.ts` y en `backend/test/contract/suscripcion.contract.spec.ts`, probar:
+- [x] T085 [P] [US4] Backend: en `backend/test/integration/pagos/historial.spec.ts` y en `backend/test/contract/suscripcion.contract.spec.ts`, probar:
   - el orden;
   - los campos (plan, importe, medio, estado, motivo y marca);
   - el número de operación solo con sus últimos 4 caracteres;
   - la paginación;
   - que no aparezca ningún pago de otra barbería.
-- [ ] T086 [P] [US4] Backend: en `backend/test/integration/plataforma/pagos-por-revisar.spec.ts`, probar que se listan las marcas `DUPLICADO`, `IMPORTE_DISTINTO`, `APROBADO_TRAS_RECHAZO`, `DEVOLUCION` y `SIN_PAGO`, y que la resolución con nota sale de la lista y queda en la auditoría de la barbería (PR13).
-- [ ] T087 [P] [US4] Backend: **PR08**. Agregar a `IMPLEMENTADAS` las filas `GET /suscripcion/pagos`, `GET /plataforma/pagos/por-revisar` y `/revision/resolucion`.
-- [ ] T088 [P] [US4] Frontend: en `frontend/test/pages/historial-pagos.spec.tsx` y `frontend/test/pages/plataforma-pagos-revisar.spec.tsx`, con MSW, probar el historial (estados, marca "pago duplicado (en revisión)" y paginación) y la lista del administrador con la resolución.
+- [x] T086 [P] [US4] Backend: en `backend/test/integration/plataforma/pagos-por-revisar.spec.ts`, probar que se listan las marcas `DUPLICADO`, `IMPORTE_DISTINTO`, `APROBADO_TRAS_RECHAZO`, `DEVOLUCION` y `SIN_PAGO`, y que la resolución con nota sale de la lista y queda en la auditoría de la barbería (PR13).
+- [x] T087 [P] [US4] Backend: **PR08**. Agregar a `IMPLEMENTADAS` las filas `GET /suscripcion/pagos`, `GET /plataforma/pagos/por-revisar` y `/revision/resolucion`.
+- [x] T088 [P] [US4] Frontend: en `frontend/test/pages/historial-pagos.spec.tsx` y `frontend/test/pages/plataforma-pagos-revisar.spec.tsx`, con MSW, probar el historial (estados, marca "pago duplicado (en revisión)" y paginación) y la lista del administrador con la resolución.
 
 ### Implementation for User Story 4
 
-- [ ] T089 [US4] Backend: crear `HistorialDePagos` en `backend/src/modules/suscripciones-pagos/pagos/application/historial-de-pagos.ts` y `GET /suscripcion/pagos` en `suscripcion.controller.ts`. Hace pasar T085.
-- [ ] T090 [US4] Backend: crear `PagosPorRevisar` y `ResolverRevision` en `backend/src/modules/suscripciones-pagos/plataforma/application/`, y sus rutas en `backend/src/modules/suscripciones-pagos/plataforma/presentation/pagos-plataforma.controller.ts`. Hace pasar T086 y T087.
-- [ ] T091 [US4] Frontend: agregar el historial en `frontend/src/pages/panel/Suscripcion.tsx`, y crear `frontend/src/pages/plataforma/PagosPorRevisar.tsx`. Hace pasar T088.
+- [x] T089 [US4] Backend: crear `HistorialDePagos` en `backend/src/modules/suscripciones-pagos/pagos/application/historial-de-pagos.ts` y `GET /suscripcion/pagos` en `suscripcion.controller.ts`. Hace pasar T085.
+- [x] T090 [US4] Backend: crear `PagosPorRevisar` y `ResolverRevision` en `backend/src/modules/suscripciones-pagos/plataforma/application/`, y sus rutas en `backend/src/modules/suscripciones-pagos/plataforma/presentation/pagos-plataforma.controller.ts`. Hace pasar T086 y T087.
+- [x] T091 [US4] Frontend: agregar el historial en `frontend/src/pages/panel/Suscripcion.tsx`, y crear `frontend/src/pages/plataforma/PagosPorRevisar.tsx`. Hace pasar T088.
 
 **Checkpoint (P2)**: CI en verde. El historial y la lista de pagos por revisar funcionan con Compose
 (un pago duplicado provocado con el simulador en `aprobar_despues`).

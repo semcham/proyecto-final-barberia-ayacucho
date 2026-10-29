@@ -49,6 +49,11 @@ import {
 import { ColaDeComprobantesLectura } from './plataforma/application/ports/cola-de-comprobantes';
 import { ColaDeComprobantesPlataforma } from './plataforma/infrastructure/plataforma/cola-de-comprobantes-plataforma';
 import { ComprobantesPlataformaController } from './plataforma/presentation/comprobantes-plataforma.controller';
+import { HistorialDePagos } from './pagos/application/historial-de-pagos';
+import { PagosPorRevisar, ResolverRevision } from './plataforma/application/pagos-por-revisar';
+import { PagosPorRevisarLectura } from './plataforma/application/ports/pagos-por-revisar';
+import { PagosPorRevisarPlataforma } from './plataforma/infrastructure/plataforma/pagos-por-revisar-plataforma';
+import { PagosPlataformaController } from './plataforma/presentation/pagos-plataforma.controller';
 
 /**
  * M03 Suscripciones y pagos. Prueba gratuita y límites (001 y 002); en 003, planes, períodos, pagos con la
@@ -56,7 +61,12 @@ import { ComprobantesPlataformaController } from './plataforma/presentation/comp
  * conciliación y restricciones por estado.
  */
 @Module({
-  controllers: [SuscripcionController, NotificacionesController, ComprobantesPlataformaController],
+  controllers: [
+    SuscripcionController,
+    NotificacionesController,
+    ComprobantesPlataformaController,
+    PagosPlataformaController,
+  ],
   providers: [
     { provide: SuscripcionRepository, useClass: KyselySuscripcionRepository },
     { provide: PagoRepository, useClass: KyselyPagoRepository },
@@ -89,6 +99,11 @@ import { ComprobantesPlataformaController } from './plataforma/presentation/comp
     DetalleDePago,
     VerComprobante,
     RevisarComprobante,
+    // US4: historial y pagos por revisar (FR-025, FR-025a).
+    { provide: PagosPorRevisarLectura, useClass: PagosPorRevisarPlataforma },
+    HistorialDePagos,
+    PagosPorRevisar,
+    ResolverRevision,
   ],
   exports: [SuscripcionesApi, ConciliarPagos, VencerSuscripciones, ExpirarTransferencias],
 })

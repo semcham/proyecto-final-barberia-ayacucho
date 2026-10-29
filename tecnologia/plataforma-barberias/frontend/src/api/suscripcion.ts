@@ -22,6 +22,9 @@ export const apiSuscripcion = {
   /** Inicia el pago de un período. Devuelve la URL de la página del proveedor (Yape). */
   iniciarPago: (planId: string, medio: 'YAPE' | 'TRANSFERENCIA' = 'YAPE') =>
     llamarApi<PagoIniciado>('/suscripcion/pagos', { metodo: 'POST', cuerpo: { planId, medio } }),
+  /** US4 (T091): historial de pagos de la barbería, del más reciente al más antiguo, de a 20 por página. */
+  historial: (pagina = 1) =>
+    llamarApi<{ pagos: Pago[]; total: number }>(`/suscripcion/pagos?pagina=${pagina}`),
   /** Estado de un pago: la pantalla lo consulta al volver del proveedor. */
   pago: (id: string) => llamarApi<Pago>(`/suscripcion/pagos/${encodeURIComponent(id)}`),
   /** US3 (T084): sube el comprobante de la transferencia (multipart; el servidor verifica el tipo por bytes). */

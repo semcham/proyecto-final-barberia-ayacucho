@@ -36,7 +36,9 @@ export type AccionAuditada =
   // US3: transferencia con comprobante (FR-037). Sin el contenido, el nombre ni el número del comprobante.
   | 'COMPROBANTE_SUBIDO'
   | 'COMPROBANTE_APROBADO'
-  | 'COMPROBANTE_RECHAZADO';
+  | 'COMPROBANTE_RECHAZADO'
+  // US4: un caso de la lista de pagos por revisar se marca resuelto (FR-025a). La nota queda en el pago.
+  | 'REVISION_RESUELTA';
 
 export interface EntradaAuditoria {
   accion: AccionAuditada;

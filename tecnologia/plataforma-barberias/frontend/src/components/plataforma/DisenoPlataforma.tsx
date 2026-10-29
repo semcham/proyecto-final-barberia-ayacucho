@@ -13,6 +13,8 @@ const DESTINOS: { a: string; etiqueta: string; icono: NombreIcono }[] = [
   { a: '/plataforma', etiqueta: 'Inicio', icono: 'inicio' },
   // US3 (T084).
   { a: '/plataforma/comprobantes', etiqueta: 'Comprobantes', icono: 'dinero' },
+  // US4 (T091).
+  { a: '/plataforma/pagos-por-revisar', etiqueta: 'Pagos por revisar', icono: 'alerta' },
 ];
 
 // Llega con US5 (barberías y suscripciones).

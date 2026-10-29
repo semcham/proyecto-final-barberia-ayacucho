@@ -121,8 +121,28 @@ export interface DetalleDePago {
 export type Revision =
   { resultado: 'APROBADO'; importeTransferidoCentimos: number } | { resultado: 'RECHAZADO'; motivo: string };
 
+/** Caso de la lista de pagos por revisar (contracts/openapi.yaml, PagoPorRevisar; FR-025a). */
+export interface PagoPorRevisar {
+  marca: 'DUPLICADO' | 'IMPORTE_DISTINTO' | 'APROBADO_TRAS_RECHAZO' | 'DEVOLUCION' | 'SIN_PAGO';
+  barberia: { id: string; nombre: string } | null;
+  pagoId: string | null;
+  eventoId: string | null;
+  importeCentimos: number | null;
+  detectadoEn: string;
+}
+
 const rutaDePago = (barberiaId: string, pagoId: string) =>
   `/plataforma/barberias/${encodeURIComponent(barberiaId)}/pagos/${encodeURIComponent(pagoId)}`;
+
+/** US4 (T091): pagos por revisar y su resolución con nota (no mueve dinero). */
+export const apiPagosPorRevisar = {
+  lista: () => llamarPlataforma<PagoPorRevisar[]>('/plataforma/pagos/por-revisar'),
+  resolver: (barberiaId: string, pagoId: string, motivo: string) =>
+    llamarPlataforma<void>(`${rutaDePago(barberiaId, pagoId)}/revision/resolucion`, {
+      metodo: 'POST',
+      cuerpo: { motivo },
+    }),
+};
 
 /** US3 (T084): comprobantes por revisar. */
 export const apiComprobantesPlataforma = {

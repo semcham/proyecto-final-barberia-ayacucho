@@ -6,15 +6,22 @@ import {
   Param,
   ParseUUIDPipe,
   Post,
+  Query,
   Res,
   type StreamableFile,
   UploadedFile,
   UseInterceptors,
 } from '@nestjs/common';
-import { IsIn, IsString, IsUUID, MaxLength } from 'class-validator';
+import { Type } from 'class-transformer';
+import { IsIn, IsInt, IsOptional, IsString, IsUUID, Max, MaxLength, Min } from 'class-validator';
 import type { Response } from 'express';
 import { ActorActual, RequiereOperacion } from '../../../../shared';
 import { DescargarComprobante, SubirComprobante } from '../../pagos/application/comprobantes';
+import {
+  HistorialDePagos,
+  MAXIMA_PAGINA_HISTORIAL,
+  type PaginaDeHistorial,
+} from '../../pagos/application/historial-de-pagos';
 import { IniciarPago, type PagoIniciado } from '../../pagos/application/iniciar-pago';
 import type { PagoVista, PlanVista } from '../../pagos/application/vistas';
 import { ComprobanteInvalido } from '../../pagos/domain/errores';
@@ -60,6 +67,16 @@ export class SubirComprobanteDto {
   fechaTransferencia!: string;
 }
 
+/** Consulta de GET /suscripcion/pagos: la página, desde 1. */
+export class HistorialDto {
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(MAXIMA_PAGINA_HISTORIAL)
+  pagina?: number;
+}
+
 /** T049 · Suscripción de la barbería del token (RF19, RF20, RF23; contracts/openapi.yaml de 003). */
 @Controller()
 export class SuscripcionController {
@@ -68,6 +85,7 @@ export class SuscripcionController {
     private readonly iniciarPago: IniciarPago,
     private readonly subirComprobanteCaso: SubirComprobante,
     private readonly descargar: DescargarComprobante,
+    private readonly historialDePagos: HistorialDePagos,
   ) {}
 
   @Get('planes')
@@ -103,6 +121,16 @@ export class SuscripcionController {
     });
     if (!creado) respuesta.status(200);
     return iniciado;
+  }
+
+  /** T089 · Historial de pagos de la barbería, del más reciente al más antiguo (RF25, FR-025). */
+  @Get('suscripcion/pagos')
+  @OperacionM03('VER_SUSCRIPCION')
+  historial(
+    @ActorActual() actor: ActorDeBarberia,
+    @Query() consulta: HistorialDto,
+  ): Promise<PaginaDeHistorial> {
+    return this.historialDePagos.ejecutar(actor, consulta.pagina ?? 1);
   }
 
   @Get('suscripcion/pagos/:pagoId')

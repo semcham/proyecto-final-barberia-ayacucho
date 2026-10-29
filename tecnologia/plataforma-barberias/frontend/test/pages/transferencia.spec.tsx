@@ -194,7 +194,6 @@ async function llenarYEnviar(usuario: ReturnType<typeof userEvent.setup>, archiv
 
 beforeEach(() => {
   salirA.mockReset();
-  localStorage.clear();
 });
 afterEach(() => tokenEnMemoria.limpiar());
 
@@ -273,12 +272,16 @@ describe('Transferencia del propietario (/app/suscripcion)', () => {
     ).toBeInTheDocument();
   });
 
-  it('el motivo del rechazo y la subida de otro comprobante', async () => {
-    localStorage.setItem('ultima-transferencia', OTRO_PAGO_ID);
+  it('el motivo del rechazo (desde el historial) y la subida de otro comprobante', async () => {
     const estado = servidorDelPanel(null);
+    const rechazado = pago('RECHAZADO', { id: OTRO_PAGO_ID, motivoRechazo: 'El voucher no se lee' });
     servidor.use(
-      http.get(`/api/v1/suscripcion/pagos/${OTRO_PAGO_ID}`, () =>
-        HttpResponse.json(pago('RECHAZADO', { id: OTRO_PAGO_ID, motivoRechazo: 'El voucher no se lee' })),
+      // El pago más reciente del historial es la transferencia rechazada (hasta que se inicia otra).
+      http.get('/api/v1/suscripcion/pagos', () =>
+        HttpResponse.json({
+          pagos: estado.abierto ? [estado.abierto, rechazado] : [rechazado],
+          total: estado.abierto ? 2 : 1,
+        }),
       ),
     );
     renderizar();
@@ -288,7 +291,6 @@ describe('Transferencia del propietario (/app/suscripcion)', () => {
 
     expect(await screen.findByRole('form', { name: 'Comprobante de la transferencia' })).toBeInTheDocument();
     expect(estado.pagos).toEqual([{ planId: BASICO.id, medio: 'TRANSFERENCIA' }]);
-    expect(localStorage.getItem('ultima-transferencia')).toBeNull();
     await llenarYEnviar(usuario);
     expect(await screen.findByText(/Tu comprobante está en revisión/)).toBeInTheDocument();
     expect(estado.subidas).toHaveLength(1);

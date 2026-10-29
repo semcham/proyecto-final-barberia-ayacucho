@@ -15,8 +15,6 @@ import estilos from './Panel.module.css';
 
 const MAXIMO_BYTES = 5 * 1024 * 1024;
 const TIPOS = '.jpg,.jpeg,.png,.pdf,image/jpeg,image/png,application/pdf';
-/** Último pago por transferencia de esta barbería, para mostrar su rechazo después de recargar. */
-const CLAVE_ULTIMA = 'ultima-transferencia';
 
 const soles = new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' });
 
@@ -24,29 +22,11 @@ function hoy(): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Lima' }).format(new Date());
 }
 
-const recordar = {
-  leer(): string | null {
-    try {
-      return localStorage.getItem(CLAVE_ULTIMA);
-    } catch {
-      return null;
-    }
-  },
-  guardar(pagoId: string): void {
-    try {
-      localStorage.setItem(CLAVE_ULTIMA, pagoId);
-    } catch {
-      // Sin almacenamiento (ventana privada): solo se pierde el aviso de rechazo tras recargar.
-    }
-  },
-  olvidar(): void {
-    try {
-      localStorage.removeItem(CLAVE_ULTIMA);
-    } catch {
-      // Igual que arriba.
-    }
-  },
-};
+/** Después de crear o cambiar un pago: la suscripción y el historial se vuelven a pedir. */
+function refrescar(consultas: ReturnType<typeof useQueryClient>): void {
+  void consultas.invalidateQueries({ queryKey: ['suscripcion'], exact: true });
+  void consultas.invalidateQueries({ queryKey: ['suscripcion', 'historial'] });
+}
 
 const esquema = z.object({
   archivo: z
@@ -213,13 +193,7 @@ function EsperandoComprobante({ pago }: { pago: Pago }) {
   return (
     <>
       <DatosTransferencia datos={datos.data.transferencia} />
-      <FormularioComprobante
-        pagoId={pago.id}
-        alSubir={(subido) => {
-          recordar.guardar(subido.id);
-          void consultas.invalidateQueries({ queryKey: ['suscripcion'], exact: true });
-        }}
-      />
+      <FormularioComprobante pagoId={pago.id} alSubir={() => refrescar(consultas)} />
     </>
   );
 }
@@ -230,10 +204,10 @@ function Rechazado({ pago }: { pago: Pago }) {
   const otra = useMutation({
     mutationFn: () => apiSuscripcion.iniciarPago(pago.plan.id as string, 'TRANSFERENCIA'),
     onSuccess: (iniciado) => {
-      recordar.olvidar();
-      // Los datos ya llegaron: se guardan y solo se vuelve a pedir la suscripción (sin repetir este POST).
+      // Los datos ya llegaron: se guardan y solo se vuelven a pedir la suscripción y el historial (sin repetir
+      // este POST).
       consultas.setQueryData(['suscripcion', 'transferencia', iniciado.pago.id], iniciado);
-      void consultas.invalidateQueries({ queryKey: ['suscripcion'], exact: true });
+      refrescar(consultas);
     },
   });
   return (
@@ -258,19 +232,19 @@ function Rechazado({ pago }: { pago: Pago }) {
 }
 
 /**
- * Sección de la transferencia en /app/suscripcion. Se muestra si hay una transferencia abierta, o si el último
- * comprobante fue rechazado (para avisar el motivo). El historial completo llega con US4.
+ * Sección de la transferencia en /app/suscripcion. Se muestra si hay una transferencia abierta, o si el pago más
+ * reciente del historial es una transferencia rechazada (para avisar el motivo y ofrecer enviar otra).
  */
 export function SeccionTransferencia({ suscripcion }: { suscripcion: Suscripcion }) {
   const abierto = suscripcion.pagoAbierto;
   const conTransferencia = abierto?.medio === 'TRANSFERENCIA' ? abierto : null;
-  const [ultima] = useState(() => (conTransferencia ? null : recordar.leer()));
-  const anterior = useQuery({
-    queryKey: ['suscripcion', 'pago', ultima],
-    queryFn: () => apiSuscripcion.pago(ultima as string),
-    enabled: ultima !== null,
-    retry: false,
+  // La misma consulta que la primera página del historial (US4): no se pide dos veces.
+  const historial = useQuery({
+    queryKey: ['suscripcion', 'historial', 1],
+    queryFn: () => apiSuscripcion.historial(1),
+    enabled: abierto === null,
   });
+  const ultimo = historial.data?.pagos[0];
 
   let contenido = null;
   if (conTransferencia?.estado === 'ESPERANDO_COMPROBANTE') {
@@ -288,8 +262,8 @@ export function SeccionTransferencia({ suscripcion }: { suscripcion: Suscripcion
         <VerMiComprobante pagoId={conTransferencia.id} />
       </div>
     );
-  } else if (anterior.data?.estado === 'RECHAZADO' && anterior.data.medio === 'TRANSFERENCIA') {
-    contenido = <Rechazado pago={anterior.data} />;
+  } else if (abierto === null && ultimo?.estado === 'RECHAZADO' && ultimo.medio === 'TRANSFERENCIA') {
+    contenido = <Rechazado pago={ultimo} />;
   }
   if (!contenido) return null;
 

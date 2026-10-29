@@ -222,6 +222,34 @@ export class KyselyPagoRepository extends PagoRepository {
       .execute();
   }
 
+  async historial(pagina: number, tamano: number): Promise<{ pagos: Pago[]; total: number }> {
+    const filas = await this.consulta()
+      .orderBy('created_at', 'desc')
+      .orderBy('id', 'desc')
+      .limit(tamano)
+      .offset((pagina - 1) * tamano)
+      .execute();
+    const { total } = await this.uow
+      .transaccionActual()
+      .selectFrom('payment')
+      .select((eb) => eb.fn.countAll<string>().as('total'))
+      .where('tenant_id', '=', this.tenantContext.actual().valor)
+      .executeTakeFirstOrThrow();
+    return { pagos: filas.map(aPago), total: Number(total) };
+  }
+
+  async periodosDe(ids: readonly string[]): Promise<Map<string, { inicio: Date; fin: Date }>> {
+    if (ids.length === 0) return new Map();
+    const filas = await this.uow
+      .transaccionActual()
+      .selectFrom('subscription_period')
+      .select(['payment_id', 'starts_at', 'ends_at'])
+      .where('tenant_id', '=', this.tenantContext.actual().valor)
+      .where('payment_id', 'in', [...ids])
+      .execute();
+    return new Map(filas.map((f) => [f.payment_id, { inicio: f.starts_at, fin: f.ends_at }]));
+  }
+
   async resolverMarca(id: string, marca: MarcaRevision, nota: string): Promise<boolean> {
     const resultado = await this.uow
       .transaccionActual()

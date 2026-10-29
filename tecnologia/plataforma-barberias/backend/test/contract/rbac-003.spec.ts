@@ -16,7 +16,7 @@ import {
   png,
 } from '../helpers/comprobantes';
 import { codigoPara, sembrarAdminPlataforma } from '../helpers/plataforma';
-import { filasDe, sembrarUsuario } from '../helpers/fixtures';
+import { filasDe, sembrarPago, sembrarUsuario } from '../helpers/fixtures';
 import {
   barberiaEnPrueba,
   type EntornoDePagos,
@@ -26,7 +26,7 @@ import {
   RUTA_NOTIFICACIONES,
 } from '../helpers/pagos';
 import { sesionCliente, tokenPara, tokenPlataformaPara } from '../helpers/sesiones';
-import { cerrarPools } from '../helpers/test-db';
+import { cerrarPools, poolDe } from '../helpers/test-db';
 
 // T039 · PR08 de 003: cada celda de specs/003-suscripciones-pagos/contracts/rbac.md es un caso. La prueba lee
 // la tabla y recorre las filas de IMPLEMENTADAS (cada fase de 003 agrega las suyas), con PROPIETARIO, BARBERO,
@@ -220,6 +220,36 @@ const IMPLEMENTADAS: Caso[] = [
         .post(`/api/v1/plataforma/barberias/${s.tenantId}/pagos/${pagoId}/revision`)
         .set(con(t))
         .send({ resultado: 'APROBADO', importeTransferidoCentimos: 4900 });
+    },
+  },
+  // Fase 7 (T087): historial del propietario y pagos por revisar del administrador.
+  {
+    fila: '`GET /suscripcion/pagos`',
+    exito: 200,
+    ejecutar: (p, t) => p.agente.get('/api/v1/suscripcion/pagos').set(con(t)),
+  },
+  {
+    fila: '`GET /plataforma/pagos/por-revisar`',
+    exito: 200,
+    ejecutar: (p, t) => p.agente.get('/api/v1/plataforma/pagos/por-revisar').set(con(t)),
+  },
+  {
+    fila: '`POST /plataforma/barberias/{id}/pagos/{pagoId}/revision/resolucion`',
+    exito: 204,
+    ejecutar: async (p, t, s) => {
+      const { rows } = await poolDe('seed').query('SELECT id FROM subscription WHERE tenant_id = $1', [
+        s.tenantId,
+      ]);
+      const { pagoId } = await sembrarPago({
+        tenantId: s.tenantId,
+        suscripcionId: rows[0].id,
+        estado: 'APROBADO',
+      });
+      await poolDe('seed').query(`UPDATE payment SET review = 'DUPLICADO' WHERE id = $1`, [pagoId]);
+      return p.agente
+        .post(`/api/v1/plataforma/barberias/${s.tenantId}/pagos/${pagoId}/revision/resolucion`)
+        .set(con(t))
+        .send({ motivo: 'Devuelto fuera de la plataforma' });
     },
   },
   {

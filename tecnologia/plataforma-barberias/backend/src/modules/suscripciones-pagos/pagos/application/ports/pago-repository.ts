@@ -66,6 +66,13 @@ export abstract class PagoRepository {
   abstract numeroOperacion(id: string): Promise<string | null>;
   /** Período que pagó el pago, si tiene uno. */
   abstract periodoDe(id: string): Promise<{ inicio: Date; fin: Date } | null>;
+  /**
+   * US4 (FR-025): una página de los pagos de la barbería del contexto, del más reciente al más antiguo, y el
+   * total. `pagina` empieza en 1.
+   */
+  abstract historial(pagina: number, tamano: number): Promise<{ pagos: Pago[]; total: number }>;
+  /** Períodos pagados por estos pagos, en una sola consulta (por id de pago). */
+  abstract periodosDe(ids: readonly string[]): Promise<Map<string, { inicio: Date; fin: Date }>>;
 }
 
 /** Evento del proveedor, sin datos del pagador (FR-013b). */

@@ -38,6 +38,8 @@ export const manejadoresBase = [
       avisos: [],
     }),
   ),
+  // 003 (US4): la pantalla de suscripción muestra el historial; por defecto, vacío.
+  http.get('/api/v1/suscripcion/pagos', () => HttpResponse.json({ pagos: [], total: 0 })),
   http.get('/api/v1/suscripcion/estado-operativo', () =>
     HttpResponse.json({ aceptaReservas: true, mensaje: null }),
   ),

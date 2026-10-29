@@ -160,6 +160,26 @@ describe('Contrato de 003 · Suscripción y pago con Yape (T033)', () => {
     }
   });
 
+  // US4: el historial del propietario y la lista de pagos por revisar, contra el contrato.
+  it('GET /suscripcion/pagos y GET /plataforma/pagos/por-revisar según el contrato', async () => {
+    const b = await barberiaEnPrueba();
+    const { pagoId } = await sembrarPago({
+      tenantId: b.tenantId,
+      suscripcionId: b.suscripcionId,
+      estado: 'APROBADO',
+    });
+    await poolDe('seed').query(`UPDATE payment SET review = 'DUPLICADO' WHERE id = $1`, [pagoId]);
+    await pagarConYape(entorno.prueba, b.token);
+    const historial = await get('/suscripcion/pagos?pagina=1', b.token).expect(200);
+    expect(erroresDeContrato003('/suscripcion/pagos', 'get', 200, historial.body)).toEqual([]);
+    expect(historial.body.total).toBeGreaterThanOrEqual(1);
+
+    const { token } = await tokenPlataformaPara();
+    const porRevisar = await get('/plataforma/pagos/por-revisar', token).expect(200);
+    expect(erroresDeContrato003('/plataforma/pagos/por-revisar', 'get', 200, porRevisar.body)).toEqual([]);
+    expect(porRevisar.body.some((c: { pagoId: string }) => c.pagoId === pagoId)).toBe(true);
+  });
+
   // US3: la transferencia, el comprobante y la revisión del administrador, contra el mismo contrato.
   it('transferencia, comprobante y revisión: cada respuesta según el contrato', async () => {
     const b = await barberiaEnPrueba();

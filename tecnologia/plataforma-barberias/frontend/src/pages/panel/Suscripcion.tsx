@@ -5,20 +5,16 @@ import { clavesConsulta } from '../../api/claves';
 import { llamarApi } from '../../api/client';
 import type { components as Componentes001 } from '../../api/schema';
 import type { components as Componentes002 } from '../../api/schema-002';
-import {
-  apiSuscripcion,
-  type EstadoPago,
-  type EstadoSuscripcion,
-  type Plan,
-  type Suscripcion,
-} from '../../api/suscripcion';
+import { apiSuscripcion, type EstadoSuscripcion, type Plan, type Suscripcion } from '../../api/suscripcion';
 import { EncabezadoPagina } from '../../components/app/EncabezadoPagina';
 import { Alerta, Boton, EtiquetaEstado, Tarjeta } from '../../components/ui';
 import type { TonoEtiqueta } from '../../components/ui/EtiquetaEstado';
 import { salirA } from '../../navegacion';
 import { Cargando } from './Cargando';
 import { mensajeDeError } from './datos-barberia';
+import { HistorialDePagos } from './HistorialPagos';
 import estilos from './Panel.module.css';
+import { ESTADOS_PAGO } from './textos-pagos';
 import { SeccionTransferencia } from './Transferencia';
 
 type PaginaUsuarios = Componentes001['schemas']['PaginaUsuarios'];
@@ -35,16 +31,6 @@ const ESTADOS: Record<EstadoSuscripcion, { texto: string; tono: TonoEtiqueta }> 
   EXPIRED: { texto: 'Vencida', tono: 'error' },
   CANCELLED: { texto: 'Cancelada', tono: 'neutro' },
   SUSPENDED: { texto: 'Suspendida', tono: 'error' },
-};
-
-const ESTADOS_PAGO: Record<EstadoPago, string> = {
-  PENDIENTE: 'pendiente de confirmación',
-  ESPERANDO_COMPROBANTE: 'esperando comprobante',
-  EN_REVISION: 'comprobante en revisión',
-  APROBADO: 'aprobado',
-  RECHAZADO: 'rechazado',
-  ANULADO: 'anulado',
-  EXPIRADO: 'expirado',
 };
 
 const soles = new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' });
@@ -323,6 +309,7 @@ export default function SuscripcionPagina() {
           <Cargando />
         )}
       </div>
+      <HistorialDePagos />
     </>
   );
 }
