@@ -173,6 +173,8 @@ export interface Pago {
   /** Solo transferencia: el día de la transferencia declarado (`AAAA-MM-DD`). */
   fechaTransferencia: string | null;
   motivoRechazo: string | null;
+  /** Solo MANUAL (FR-036): el motivo de la activación manual que escribió el administrador. */
+  motivoActivacion: string | null;
   creadoPor: string;
   creadoEn: Date;
   aprobadoEn: Date | null;

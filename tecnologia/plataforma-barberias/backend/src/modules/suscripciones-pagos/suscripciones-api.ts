@@ -1,6 +1,12 @@
 import { Injectable } from '@nestjs/common';
-import type { TenantId } from '../../shared';
+import { Clock, type TenantId } from '../../shared';
+import {
+  type ResumenDeSuscripcion,
+  ResumenesDeSuscripcionLectura,
+} from './plataforma/application/ports/resumenes-de-suscripcion';
+import { AvanzarSuscripcion } from './suscripciones/application/avanzar-suscripcion';
 import { type EstadoOperativo, ExigirOperacion } from './suscripciones/application/exigir-operacion';
+import { SuscripcionRepository } from './suscripciones/application/ports/suscripcion-repository';
 import {
   IniciarPruebaGratuita,
   type ResumenSuscripcion,
@@ -20,7 +26,30 @@ export class SuscripcionesApi {
     private readonly obtenerLimite: ObtenerLimiteUsuarios,
     private readonly obtenerLimiteDeBarberos: ObtenerLimiteBarberos,
     private readonly restricciones: ExigirOperacion,
+    private readonly resumenes: ResumenesDeSuscripcionLectura,
+    private readonly suscripciones: SuscripcionRepository,
+    private readonly avanzar: AvanzarSuscripcion,
+    private readonly reloj: Clock,
   ) {}
+
+  /**
+   * US5 (T096): estado, plan y cobertura de la suscripción de cada barbería, para el listado del administrador.
+   * Es la única operación que NO participa en la transacción del llamador: lee entre barberías con el rol de
+   * solo lectura de la plataforma (ADR-031).
+   */
+  resumenesParaPlataforma(tenantIds: readonly string[]): Promise<Map<string, ResumenDeSuscripcion>> {
+    return this.resumenes.deBarberias(tenantIds);
+  }
+
+  /**
+   * US5 (FR-034, HU01): al reactivar una barbería, su suscripción queda en el estado que le corresponde por sus
+   * fechas (siguió su curso durante la suspensión). La tarea de vencimiento ya la mantiene al día; esto cubre lo
+   * que la tarea aún no alcanzó. Con la suscripción bloqueada, en la transacción del llamador.
+   */
+  async ponerAlDia(_tenantId: TenantId): Promise<void> {
+    const suscripcion = await this.suscripciones.suscripcionDelTenant({ bloquear: true });
+    if (suscripcion) await this.avanzar.ejecutar(suscripcion, this.reloj.ahora());
+  }
 
   /**
    * Exige que el estado de la suscripción permita la acción (FR-006, FR-007): lanza SuscripcionNoPermite

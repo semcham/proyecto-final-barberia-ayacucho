@@ -5,6 +5,8 @@ import { AvanzarSuscripcion } from '../../suscripciones/application/avanzar-susc
 import { SuscripcionRepository } from '../../suscripciones/application/ports/suscripcion-repository';
 import { PeriodoYaCubierto } from '../../suscripciones/domain/errores';
 import { decidirAprobacion } from '../../suscripciones/domain/periodo';
+import type { Suscripcion } from '../../suscripciones/domain/suscripcion';
+import { PagoAdelantadoNoPermitido } from '../domain/errores';
 import {
   type EfectoDelEvento,
   type EstadoPago,
@@ -68,23 +70,7 @@ export class AplicarResultadoDelProveedor {
     let efecto: EfectoDelEvento = transicion.efecto;
     let periodoCreado = false;
     if (transicion.aplicarPeriodo) {
-      const periodos = await this.suscripciones.periodos(suscripcion.id);
-      const decision = decidirAprobacion(suscripcion.cobertura(periodos), pago.cubreDesde, ahora);
-      if (decision.tipo === 'PERIODO') {
-        try {
-          await this.suscripciones.insertarPeriodo({
-            id: uuidv7(),
-            suscripcionId: suscripcion.id,
-            pagoId: pago.id,
-            planId: pago.planId,
-            inicio: decision.inicio,
-            fin: decision.fin,
-          });
-          periodoCreado = true;
-        } catch (error) {
-          if (!(error instanceof PeriodoYaCubierto)) throw error;
-        }
-      }
+      periodoCreado = await this.crearPeriodo(suscripcion, pago, ahora);
       if (!periodoCreado) {
         // El dinero recibido nunca se ignora (FR-012a): aprobado, marcado para el administrador.
         marca = 'DUPLICADO';
@@ -108,5 +94,51 @@ export class AplicarResultadoDelProveedor {
     }
     if (periodoCreado) await this.avanzar.ejecutar(suscripcion, ahora);
     return { efecto, pago: (await this.pagos.porId(pago.id)) as Pago };
+  }
+
+  /**
+   * US5 (FR-036) · Período de una activación manual: el pago MANUAL nace APROBADO (la base no admite otro
+   * estado para ese medio), así que no pasa por la máquina de estados, pero sí por la MISMA regla de aprobación
+   * y el mismo avance de la suscripción. Si el período objetivo ya no está libre, lanza PagoAdelantadoNoPermitido
+   * y el llamador revierte todo: una activación manual nunca queda como DUPLICADO (no entró dinero a la
+   * plataforma que haya que devolver).
+   */
+  async aplicarActivacionManual(pagoId: string): Promise<Pago> {
+    const suscripcion = await this.suscripciones.suscripcionDelTenant({ bloquear: true });
+    const pago = await this.pagos.porId(pagoId, { bloquear: true });
+    if (!suscripcion || !pago || pago.suscripcionId !== suscripcion.id) {
+      throw new Error('El pago no pertenece a la suscripción de la barbería');
+    }
+    if (pago.metodo !== 'MANUAL' || pago.estado !== 'APROBADO') {
+      throw new Error('Solo una activación manual aprobada se aplica así');
+    }
+    const ahora = this.reloj.ahora();
+    if (!(await this.crearPeriodo(suscripcion, pago, ahora))) throw new PagoAdelantadoNoPermitido();
+    await this.avanzar.ejecutar(suscripcion, ahora);
+    return (await this.pagos.porId(pago.id)) as Pago;
+  }
+
+  /**
+   * Regla de aprobación (data-model.md §3, H1): el período objetivo del pago, si está libre y no excede el tope
+   * de uno por adelantado. Devuelve si se creó; las restricciones de la base son la última barrera.
+   */
+  private async crearPeriodo(suscripcion: Suscripcion, pago: Pago, ahora: Date): Promise<boolean> {
+    const periodos = await this.suscripciones.periodos(suscripcion.id);
+    const decision = decidirAprobacion(suscripcion.cobertura(periodos), pago.cubreDesde, ahora);
+    if (decision.tipo !== 'PERIODO') return false;
+    try {
+      await this.suscripciones.insertarPeriodo({
+        id: uuidv7(),
+        suscripcionId: suscripcion.id,
+        pagoId: pago.id,
+        planId: pago.planId,
+        inicio: decision.inicio,
+        fin: decision.fin,
+      });
+      return true;
+    } catch (error) {
+      if (error instanceof PeriodoYaCubierto) return false;
+      throw error;
+    }
   }
 }

@@ -830,6 +830,169 @@ describe('PR13 · Auditoría de acciones sensibles', () => {
     });
   });
 
+  // T093 · US5 (FR-037): cada acción del administrador sobre una barbería deja UN registro en el audit_log de esa
+  // barbería, con el administrador como actor, el recurso, la IP y la correlación de la solicitud y, cuando la
+  // acción lo lleva, el motivo. Ningún dato personal del propietario.
+  describe('administración de barberías y suscripciones (US5)', () => {
+    const MOTIVO = 'Contracargo del último pago sin resolver';
+    let adminId: string;
+    let conAdmin: (correlacion: string) => Record<string, string>;
+
+    beforeAll(async () => {
+      adminId = uuidv7();
+      const { token } = await tokenPlataformaPara(adminId);
+      conAdmin = (id) => ({ Authorization: `Bearer ${token}`, 'X-Correlation-Id': id });
+    });
+
+    const ruta = (tenantId: string, resto: string) => `/api/v1/plataforma/barberias/${tenantId}${resto}`;
+
+    async function suscripcionDe(tenantId: string): Promise<string> {
+      const { rows } = await poolDe('seed').query('SELECT id FROM subscription WHERE tenant_id = $1', [
+        tenantId,
+      ]);
+      return rows[0].id;
+    }
+
+    /** Un solo registro de la acción, completo, con el motivo esperado y sin datos del propietario. */
+    function delAdministrador(
+      filas: Fila[],
+      b: { tenantId: string; correo: string },
+      accion: string,
+      esperado: { recurso: string; motivo: string | null; correlacion: string },
+    ) {
+      const deLaAccion = filas.filter((fila) => fila.action === accion);
+      expect(deLaAccion).toHaveLength(1);
+      esCompleto(deLaAccion[0], { tenantId: b.tenantId, actorId: adminId, accion, resultado: 'PERMITIDO' });
+      expect(deLaAccion[0]).toMatchObject({ resource: esperado.recurso, reason: esperado.motivo });
+      vieneDeLaSolicitud(deLaAccion[0], esperado.correlacion);
+      const texto = JSON.stringify(filas);
+      expect(texto).not.toContain(b.correo);
+      expect(texto).not.toContain('Dueño');
+    }
+
+    it('BARBERIA_SUSPENDIDA (con el motivo) y BARBERIA_REACTIVADA', async () => {
+      const b = await sembrarBarberia({ propietario: { nombre: 'Dueño Auditado' } });
+      const suspendida = await registrosNuevos(b.tenantId, () =>
+        prueba.agente
+          .put(ruta(b.tenantId, '/suspension'))
+          .set(conAdmin('correlacion-suspension'))
+          .send({ motivo: `  ${MOTIVO}  ` })
+          .expect(204),
+      );
+      expect(suspendida.map((f) => f.action)).toEqual(['BARBERIA_SUSPENDIDA']);
+      delAdministrador(suspendida, b, 'BARBERIA_SUSPENDIDA', {
+        recurso: `barberia:${b.tenantId}`,
+        motivo: MOTIVO,
+        correlacion: 'correlacion-suspension',
+      });
+
+      const reactivada = await registrosNuevos(b.tenantId, () =>
+        prueba.agente
+          .delete(ruta(b.tenantId, '/suspension'))
+          .set(conAdmin('correlacion-reactivacion'))
+          .expect(204),
+      );
+      expect(reactivada.map((f) => f.action)).toEqual(['BARBERIA_REACTIVADA']);
+      delAdministrador(reactivada, b, 'BARBERIA_REACTIVADA', {
+        recurso: `barberia:${b.tenantId}`,
+        motivo: null,
+        correlacion: 'correlacion-reactivacion',
+      });
+
+      // Un intento repetido (409) no deja registro.
+      expect(
+        await registrosNuevos(b.tenantId, () =>
+          prueba.agente
+            .delete(ruta(b.tenantId, '/suspension'))
+            .set(conAdmin('correlacion-repetida'))
+            .expect(409),
+        ),
+      ).toEqual([]);
+    });
+
+    it('SUSCRIPCION_SUSPENDIDA (con el motivo) y SUSCRIPCION_REACTIVADA', async () => {
+      const b = await sembrarBarberia({ propietario: { nombre: 'Dueño Auditado' } });
+      const suscripcionId = await suscripcionDe(b.tenantId);
+      const suspendida = await registrosNuevos(b.tenantId, () =>
+        prueba.agente
+          .put(ruta(b.tenantId, '/suscripcion/suspension'))
+          .set(conAdmin('correlacion-suscripcion'))
+          .send({ motivo: MOTIVO })
+          .expect(204),
+      );
+      expect(suspendida.map((f) => f.action)).toEqual(['SUSCRIPCION_SUSPENDIDA']);
+      delAdministrador(suspendida, b, 'SUSCRIPCION_SUSPENDIDA', {
+        recurso: `suscripcion:${suscripcionId}`,
+        motivo: MOTIVO,
+        correlacion: 'correlacion-suscripcion',
+      });
+
+      const reactivada = await registrosNuevos(b.tenantId, () =>
+        prueba.agente
+          .delete(ruta(b.tenantId, '/suscripcion/suspension'))
+          .set(conAdmin('correlacion-reactivar-suscripcion'))
+          .expect(204),
+      );
+      // Sigue en prueba: la reactivación no agrega transiciones automáticas.
+      expect(reactivada.map((f) => f.action)).toEqual(['SUSCRIPCION_REACTIVADA']);
+      delAdministrador(reactivada, b, 'SUSCRIPCION_REACTIVADA', {
+        recurso: `suscripcion:${suscripcionId}`,
+        motivo: null,
+        correlacion: 'correlacion-reactivar-suscripcion',
+      });
+    });
+
+    it('ACTIVACION_MANUAL (con el motivo, sin la referencia externa) y la transición que provoca', async () => {
+      const b = await sembrarBarberia({ propietario: { nombre: 'Dueño Auditado' } });
+      const suscripcionId = await suscripcionDe(b.tenantId);
+      // La prueba terminó hace una hora: el período manual empieza ahora y la suscripción se activa.
+      await poolDe('seed').query(
+        `UPDATE subscription SET trial_ends_at = now() - interval '1 hour', current_period_end = now() - interval '1 hour'
+          WHERE id = $1`,
+        [suscripcionId],
+      );
+      let pagoId = '';
+      const filas = await registrosNuevos(b.tenantId, async () => {
+        const { body } = await prueba.agente
+          .post(ruta(b.tenantId, '/activacion-manual'))
+          .set(conAdmin('correlacion-activacion'))
+          .send({ planId: PLAN_BASICO, motivo: MOTIVO, referenciaExterna: 'OP-BANCO-99812' })
+          .expect(201);
+        pagoId = body.id;
+      });
+      expect(filas.map((f) => f.action).sort()).toEqual(['ACTIVACION_MANUAL', 'SUSCRIPCION_ACTIVADA']);
+      delAdministrador(filas, b, 'ACTIVACION_MANUAL', {
+        recurso: `pago:${pagoId}`,
+        motivo: MOTIVO,
+        correlacion: 'correlacion-activacion',
+      });
+      // La activación de la suscripción es automática (sin actor), como con cualquier pago aprobado.
+      expect(filas.find((f) => f.action === 'SUSCRIPCION_ACTIVADA')).toMatchObject({
+        actor_id: null,
+        reason: null,
+      });
+      expect(JSON.stringify(filas)).not.toContain('OP-BANCO-99812');
+    });
+
+    it('la base solo admite motivo en las acciones del administrador que lo llevan', async () => {
+      const b = await sembrarBarberia();
+      const cliente = await poolDe('app').connect();
+      try {
+        await cliente.query('BEGIN');
+        await cliente.query("SELECT set_config('app.tenant_id', $1, true)", [b.tenantId]);
+        await expect(
+          cliente.query(
+            `INSERT INTO audit_log (id, tenant_id, action, result, reason) VALUES ($1, $2, 'CITA_CANCELADA', 'PERMITIDO', $3)`,
+            [uuidv7(), b.tenantId, 'Texto libre que no corresponde'],
+          ),
+        ).rejects.toThrow(/audit_log_motivo_del_administrador/);
+      } finally {
+        await cliente.query('ROLLBACK');
+        cliente.release();
+      }
+    });
+  });
+
   it('barberias_app no puede modificar ni borrar registros de auditoría', async () => {
     const e = await crearEscenario();
     const cliente = await poolDe('app').connect();

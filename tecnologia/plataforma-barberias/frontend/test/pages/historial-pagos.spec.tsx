@@ -159,6 +159,27 @@ describe('Historial de pagos (/app/suscripcion)', () => {
     expect(await screen.findByText('Página 1 de 2')).toBeInTheDocument();
   });
 
+  it('la activación manual de la plataforma aparece como tal, con su motivo (US5, FR-036)', async () => {
+    servidorDelPanel({
+      1: {
+        total: 1,
+        pagos: [
+          pago('APROBADO', {
+            medio: 'MANUAL',
+            motivoActivacion: 'La pasarela no procesó el pago',
+            aprobadoEn: '2026-10-28T15:01:00.000Z',
+            periodo: { iniciaEn: '2026-11-03T15:00:00.000Z', terminaEn: '2026-12-03T15:00:00.000Z' },
+          }),
+        ],
+      },
+    });
+    renderizar();
+    const [fila] = within(await screen.findByRole('list', { name: 'Pagos' })).getAllByRole('listitem');
+    expect(fila).toHaveTextContent('Activación manual');
+    expect(fila).toHaveTextContent('Motivo: La pasarela no procesó el pago');
+    expect(fila).toHaveTextContent('aprobado');
+  });
+
   it('sin pagos muestra el historial vacío', async () => {
     servidorDelPanel({});
     renderizar();

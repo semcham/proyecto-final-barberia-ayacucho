@@ -19,6 +19,7 @@ const CAMPOS_DEL_CONTRATO = [
   'marca',
   'medio',
   'moneda',
+  'motivoActivacion',
   'motivoRechazo',
   'numeroOperacionFinal',
   'periodo',

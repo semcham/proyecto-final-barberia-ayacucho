@@ -1,12 +1,16 @@
 import { Injectable } from '@nestjs/common';
 import { sql } from 'kysely';
 import { KyselyUnitOfWork, TenantContext } from '../../../../shared';
-import { type PeriodoNuevo, SuscripcionRepository } from '../application/ports/suscripcion-repository';
+import {
+  type PeriodoNuevo,
+  type ResultadoDeReactivar,
+  SuscripcionRepository,
+} from '../application/ports/suscripcion-repository';
 import { PeriodoYaCubierto } from '../domain/errores';
 import type { PasoDeSuscripcion } from '../domain/estado-suscripcion';
 import type { Periodo } from '../domain/periodo';
 import { Plan } from '../domain/plan';
-import { Suscripcion } from '../domain/suscripcion';
+import { type EstadoSuscripcion, Suscripcion } from '../domain/suscripcion';
 
 /** Restricciones de la base que significan "el período ya está cubierto" (migración 0015). */
 const RESTRICCIONES_DE_COBERTURA = new Set([
@@ -247,5 +251,48 @@ export class KyselySuscripcionRepository extends SuscripcionRepository {
       .where('status', '=', paso.desde)
       .executeTakeFirst();
     return Number(resultado.numUpdatedRows) === 1;
+  }
+
+  async suspender(
+    suscripcionId: string,
+    desde: EstadoSuscripcion,
+    motivo: string,
+    ahora: Date,
+  ): Promise<boolean> {
+    // La gracia deja de contar como estado (subscription_gracia_con_fecha); al reactivar se recalcula.
+    const resultado = await this.uow
+      .transaccionActual()
+      .updateTable('subscription')
+      .set({
+        status: 'SUSPENDED',
+        suspended_at: ahora,
+        suspension_reason: motivo,
+        grace_ends_at: null,
+        updated_at: sql<Date>`now()`,
+      })
+      .where('tenant_id', '=', this.tenantContext.actual().valor)
+      .where('id', '=', suscripcionId)
+      .where('status', '=', desde)
+      .executeTakeFirst();
+    return Number(resultado.numUpdatedRows) === 1;
+  }
+
+  async reactivar(suscripcionId: string, resultado: ResultadoDeReactivar): Promise<boolean> {
+    const cambio = await this.uow
+      .transaccionActual()
+      .updateTable('subscription')
+      .set({
+        status: resultado.estado,
+        suspended_at: null,
+        suspension_reason: null,
+        grace_ends_at: resultado.estado === 'PAST_DUE' ? resultado.graciaHasta : null,
+        updated_at: sql<Date>`now()`,
+        ...(resultado.planId ? { plan_id: resultado.planId } : {}),
+      })
+      .where('tenant_id', '=', this.tenantContext.actual().valor)
+      .where('id', '=', suscripcionId)
+      .where('status', '=', 'SUSPENDED')
+      .executeTakeFirst();
+    return Number(cambio.numUpdatedRows) === 1;
   }
 }

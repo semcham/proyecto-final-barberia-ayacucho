@@ -146,6 +146,58 @@ describe('Cobertura derivada: current_period_end coincide con los períodos (M2)
     expect(cobertura.copia.getTime()).toBeGreaterThan(b.finPrueba.getTime());
   });
 
+  it('tras una activación manual del administrador (US5)', async () => {
+    const b = await barberiaEnPrueba();
+    const { token } = await tokenPlataformaPara();
+    const { body } = await entorno.prueba.agente
+      .post(`/api/v1/plataforma/barberias/${b.tenantId}/activacion-manual`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ planId: PLAN_PRO, motivo: 'Pago en efectivo en la oficina', referenciaExterna: 'REC-0042' })
+      .expect(201);
+    const cobertura = await coberturaDe(b.suscripcionId);
+    expect(cobertura.periodos).toBe(1);
+    expect(cobertura.copia).toEqual(cobertura.derivada);
+    // El período empieza al terminar la prueba y la copia es su fin: un mes calendario después.
+    expect(new Date(body.periodo.iniciaEn)).toEqual(b.finPrueba);
+    expect(cobertura.copia).toEqual(sumarUnMes(b.finPrueba));
+  });
+
+  it('una activación manual que falla a mitad no deja ni el pago, ni el período, ni la copia cambiada', async () => {
+    const conFalla = await iniciarEntornoDePagos({
+      ajustar: (constructor) =>
+        constructor.overrideProvider(AvanzarSuscripcion).useValue({
+          ejecutar: async () => {
+            throw new Error('falla simulada después de insertar el período');
+          },
+        }),
+    });
+    try {
+      const b = await barberiaEnPrueba();
+      const { token } = await tokenPlataformaPara();
+      await conFalla.prueba.agente
+        .post(`/api/v1/plataforma/barberias/${b.tenantId}/activacion-manual`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          planId: PLAN_BASICO,
+          motivo: 'Pago en efectivo en la oficina',
+          referenciaExterna: 'REC-0043',
+        })
+        .expect(500);
+      expect(await coberturaDe(b.suscripcionId)).toEqual({
+        copia: b.finPrueba,
+        derivada: b.finPrueba,
+        periodos: 0,
+      });
+      const { rows } = await poolDe('seed').query(
+        'SELECT count(*)::int AS total FROM payment WHERE tenant_id = $1',
+        [b.tenantId],
+      );
+      expect(rows[0].total).toBe(0);
+    } finally {
+      await conFalla.cerrar();
+    }
+  });
+
   it('un número de operación repetido deshace la aprobación entera: ni período ni copia cambiada', async () => {
     const { token } = await tokenPlataformaPara();
     const primera = await barberiaEnPrueba();

@@ -1,4 +1,5 @@
 import { aApiError, conBloqueoEntrePestanas, type OpcionesLlamada } from './client';
+import type { components } from './schema-003';
 
 // T071 · Cliente de la API del administrador de la plataforma (003, R07, ADR-031). Separado del de las
 // barberías a propósito:
@@ -130,6 +131,41 @@ export interface PagoPorRevisar {
   importeCentimos: number | null;
   detectadoEn: string;
 }
+
+/** Barbería del listado del administrador (contracts/openapi.yaml, BarberiaPlataforma): sin datos de negocio. */
+export type BarberiaPlataforma = components['schemas']['BarberiaPlataforma'];
+export type PlanPlataforma = components['schemas']['Plan'];
+export type PagoManual = components['schemas']['Pago'];
+
+const rutaDeBarberia = (barberiaId: string) => `/plataforma/barberias/${encodeURIComponent(barberiaId)}`;
+
+/** US5 (T099): barberías y suscripciones, y la activación manual de un plan (FR-034 a FR-036). */
+export const apiBarberiasPlataforma = {
+  lista: (buscar: string, pagina: number) => {
+    const consulta = new URLSearchParams({ pagina: String(pagina) });
+    if (buscar) consulta.set('buscar', buscar);
+    return llamarPlataforma<{ barberias: BarberiaPlataforma[]; total: number }>(
+      `/plataforma/barberias?${consulta.toString()}`,
+    );
+  },
+  suspender: (barberiaId: string, motivo: string) =>
+    llamarPlataforma<void>(`${rutaDeBarberia(barberiaId)}/suspension`, { metodo: 'PUT', cuerpo: { motivo } }),
+  reactivar: (barberiaId: string) =>
+    llamarPlataforma<void>(`${rutaDeBarberia(barberiaId)}/suspension`, { metodo: 'DELETE' }),
+  suspenderSuscripcion: (barberiaId: string, motivo: string) =>
+    llamarPlataforma<void>(`${rutaDeBarberia(barberiaId)}/suscripcion/suspension`, {
+      metodo: 'PUT',
+      cuerpo: { motivo },
+    }),
+  reactivarSuscripcion: (barberiaId: string) =>
+    llamarPlataforma<void>(`${rutaDeBarberia(barberiaId)}/suscripcion/suspension`, { metodo: 'DELETE' }),
+  planes: () => llamarPlataforma<PlanPlataforma[]>('/plataforma/planes'),
+  activar: (barberiaId: string, datos: { planId: string; motivo: string; referenciaExterna: string }) =>
+    llamarPlataforma<PagoManual>(`${rutaDeBarberia(barberiaId)}/activacion-manual`, {
+      metodo: 'POST',
+      cuerpo: datos,
+    }),
+};
 
 const rutaDePago = (barberiaId: string, pagoId: string) =>
   `/plataforma/barberias/${encodeURIComponent(barberiaId)}/pagos/${encodeURIComponent(pagoId)}`;

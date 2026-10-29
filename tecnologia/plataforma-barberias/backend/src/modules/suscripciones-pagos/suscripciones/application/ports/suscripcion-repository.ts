@@ -1,7 +1,7 @@
-import type { PasoDeSuscripcion } from '../../domain/estado-suscripcion';
+import type { EstadoPorFechas, PasoDeSuscripcion } from '../../domain/estado-suscripcion';
 import type { Periodo } from '../../domain/periodo';
 import type { Plan } from '../../domain/plan';
-import type { Suscripcion } from '../../domain/suscripcion';
+import type { EstadoSuscripcion, Suscripcion } from '../../domain/suscripcion';
 
 /** Período nuevo que paga un pago aprobado (regla de aprobación, data-model.md §3). */
 export interface PeriodoNuevo {
@@ -49,4 +49,26 @@ export abstract class SuscripcionRepository {
    * condicional, FR-032). Devuelve si se aplicó.
    */
   abstract aplicarPaso(suscripcionId: string, paso: PasoDeSuscripcion): Promise<boolean>;
+  /**
+   * US5 (FR-035): suspende con el motivo, solo si la suscripción sigue en `desde` (transición condicional).
+   * Devuelve si se aplicó.
+   */
+  abstract suspender(
+    suscripcionId: string,
+    desde: EstadoSuscripcion,
+    motivo: string,
+    ahora: Date,
+  ): Promise<boolean>;
+  /**
+   * US5 (FR-035): deja la suscripción SUSPENDED en el estado que le corresponde por sus fechas y borra la
+   * suspensión. Devuelve si se aplicó (seguía suspendida).
+   */
+  abstract reactivar(suscripcionId: string, resultado: ResultadoDeReactivar): Promise<boolean>;
+}
+
+export interface ResultadoDeReactivar {
+  estado: EstadoPorFechas;
+  /** Plan que rige ahora (el del período vigente), si cambia. */
+  planId: string | null;
+  graciaHasta: Date | null;
 }

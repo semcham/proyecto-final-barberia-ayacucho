@@ -74,6 +74,14 @@ import {
 } from './identidad/infrastructure/plataforma/kysely-acceso-plataforma';
 import { TotpNode } from './identidad/infrastructure/totp-node';
 import { PlataformaAuthController } from './identidad/presentation/plataforma-auth.controller';
+import {
+  ListarBarberiasPlataforma,
+  ReactivarBarberia,
+  SuspenderBarberia,
+} from './barberias/application/plataforma/administrar-barberias';
+import { BarberiasPlataformaLectura } from './barberias/application/plataforma/ports/barberias-plataforma';
+import { BarberiasPlataformaKysely } from './barberias/infrastructure/plataforma/barberias-plataforma';
+import { BarberiasPlataformaController } from './barberias/presentation/barberias-plataforma.controller';
 
 /** M01 Acceso y barberías (submódulos identidad y barberias). */
 @Module({
@@ -87,6 +95,8 @@ import { PlataformaAuthController } from './identidad/presentation/plataforma-au
     ClientesController,
     // Ingreso del administrador de la plataforma (003, R07).
     PlataformaAuthController,
+    // Administración de barberías por la plataforma (003, US5).
+    BarberiasPlataformaController,
   ],
   providers: [
     // Puertos → adaptadores
@@ -142,6 +152,11 @@ import { PlataformaAuthController } from './identidad/presentation/plataforma-au
     VerificarSegundoFactor,
     RenovarSesionPlataforma,
     SalirPlataforma,
+    // Suspender y reactivar barberías (003, US5; FR-034).
+    { provide: BarberiasPlataformaLectura, useClass: BarberiasPlataformaKysely },
+    ListarBarberiasPlataforma,
+    SuspenderBarberia,
+    ReactivarBarberia,
   ],
   exports: [ValidarSolicitud, ValidarSolicitudPlataforma, BarberiasApi, ClientesApi, PersonalApi],
 })

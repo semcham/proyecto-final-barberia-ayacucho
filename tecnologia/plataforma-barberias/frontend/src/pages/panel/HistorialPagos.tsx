@@ -9,7 +9,7 @@ import { MEDIOS_PAGO, textoDelPago } from './textos-pagos';
 
 // T091 · Historial de pagos del propietario (RF25, HU20; FR-025): del más reciente al más antiguo, de a 20.
 // Muestra lo que trae el contrato y nada más: fecha, plan, importe, medio, estado (con sus textos), período,
-// motivo del rechazo y los últimos 4 caracteres del número de operación. Nada de tarjetas, cuentas ni del
+// motivo del rechazo o de la activación manual y los últimos 4 caracteres del número de operación. Nada de tarjetas, cuentas ni del
 // comprobante más allá del estado del pago.
 
 export const TAMANO_PAGINA = 20;
@@ -40,6 +40,10 @@ function FilaDePago({ pago }: { pago: Pago }) {
         </span>
         {pago.estado === 'RECHAZADO' && pago.motivoRechazo && (
           <span className={estilos.elementoDetalle}>Motivo: {pago.motivoRechazo}</span>
+        )}
+        {/* US5 (FR-036): la activación manual de la plataforma, con su motivo. */}
+        {pago.medio === 'MANUAL' && pago.motivoActivacion && (
+          <span className={estilos.elementoDetalle}>Motivo: {pago.motivoActivacion}</span>
         )}
       </div>
       <EtiquetaEstado tono={tonoDe(pago)}>{textoDelPago(pago)}</EtiquetaEstado>

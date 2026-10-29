@@ -38,7 +38,13 @@ export type AccionAuditada =
   | 'COMPROBANTE_APROBADO'
   | 'COMPROBANTE_RECHAZADO'
   // US4: un caso de la lista de pagos por revisar se marca resuelto (FR-025a). La nota queda en el pago.
-  | 'REVISION_RESUELTA';
+  | 'REVISION_RESUELTA'
+  // US5: administración de barberías y suscripciones (FR-034 a FR-037), con el administrador como actor.
+  | 'BARBERIA_SUSPENDIDA'
+  | 'BARBERIA_REACTIVADA'
+  | 'SUSCRIPCION_SUSPENDIDA'
+  | 'SUSCRIPCION_REACTIVADA'
+  | 'ACTIVACION_MANUAL';
 
 export interface EntradaAuditoria {
   accion: AccionAuditada;
@@ -47,6 +53,12 @@ export interface EntradaAuditoria {
   resultado: 'PERMITIDO' | 'DENEGADO';
   /** Fecha que le correspondía a la acción (transiciones automáticas, FR-031); por defecto, ahora. */
   en?: Date;
+  /**
+   * FR-037: el motivo que escribió el administrador, de 5 a 300 caracteres. Solo BARBERIA_SUSPENDIDA,
+   * SUSCRIPCION_SUSPENDIDA y ACTIVACION_MANUAL lo llevan (la migración 0020 rechaza un motivo en otra acción):
+   * el resto de la auditoría sigue sin texto libre.
+   */
+  motivo?: string;
 }
 
 /** Puerto de auditoría de acciones sensibles (R17, EQ-13). El tenant sale siempre del contexto. */
@@ -89,6 +101,7 @@ export class KyselyAuditLog extends AuditLog {
         result: entrada.resultado,
         ip: solicitud.ip ?? null,
         correlation_id: solicitud.correlationId?.slice(0, 64) ?? null,
+        reason: entrada.motivo ?? null,
         ...(entrada.en ? { at: entrada.en } : {}),
       })
       .execute();

@@ -118,6 +118,17 @@ export class KyselyTenantRepository extends TenantRepository {
     return fila?.status ?? null;
   }
 
+  async cambiarEstado(id: string, desde: EstadoBarberia, hacia: EstadoBarberia): Promise<boolean> {
+    const resultado = await this.uow
+      .transaccionActual()
+      .updateTable('tenant')
+      .set({ status: hacia })
+      .where('id', '=', id)
+      .where('status', '=', desde)
+      .executeTakeFirst();
+    return Number(resultado.numUpdatedRows) === 1;
+  }
+
   async idActivaPorSlug(slug: string): Promise<string | null> {
     const fila = await this.uow
       .transaccionActual()

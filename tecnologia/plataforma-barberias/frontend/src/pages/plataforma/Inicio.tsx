@@ -1,7 +1,7 @@
 import { EncabezadoPagina } from '../../components/app/EncabezadoPagina';
 import { Tarjeta } from '../../components/ui';
 
-/** /plataforma · Inicio del administrador. Las secciones de comprobantes y barberías llegan con US3 y US5. */
+/** /plataforma · Inicio del administrador: lleva a comprobantes (US3), pagos por revisar (US4) y barberías (US5). */
 export default function InicioPlataforma() {
   return (
     <>
@@ -9,7 +9,7 @@ export default function InicioPlataforma() {
         migas={[{ etiqueta: 'Plataforma' }]}
         antetitulo="Administración"
         titulo="Panel de la plataforma"
-        descripcion="Revisa los comprobantes de transferencia en «Comprobantes». La gestión de barberías y suscripciones llega más adelante."
+        descripcion="Revisa los comprobantes de transferencia en «Comprobantes», los casos pendientes en «Pagos por revisar» y el estado de cada barbería y su suscripción en «Barberías»."
       />
       <Tarjeta titulo="Tu sesión" icono="escudo">
         <p>

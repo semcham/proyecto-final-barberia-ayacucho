@@ -54,6 +54,15 @@ import { PagosPorRevisar, ResolverRevision } from './plataforma/application/pago
 import { PagosPorRevisarLectura } from './plataforma/application/ports/pagos-por-revisar';
 import { PagosPorRevisarPlataforma } from './plataforma/infrastructure/plataforma/pagos-por-revisar-plataforma';
 import { PagosPlataformaController } from './plataforma/presentation/pagos-plataforma.controller';
+import { ResumenesDeSuscripcionLectura } from './plataforma/application/ports/resumenes-de-suscripcion';
+import {
+  ActivacionManual,
+  PlanesParaPlataforma,
+  ReactivarSuscripcion,
+  SuspenderSuscripcion,
+} from './plataforma/application/suscripciones-plataforma';
+import { ResumenesDeSuscripcionPlataforma } from './plataforma/infrastructure/plataforma/resumenes-de-suscripcion-plataforma';
+import { SuscripcionesPlataformaController } from './plataforma/presentation/suscripciones-plataforma.controller';
 
 /**
  * M03 Suscripciones y pagos. Prueba gratuita y límites (001 y 002); en 003, planes, períodos, pagos con la
@@ -66,6 +75,7 @@ import { PagosPlataformaController } from './plataforma/presentation/pagos-plata
     NotificacionesController,
     ComprobantesPlataformaController,
     PagosPlataformaController,
+    SuscripcionesPlataformaController,
   ],
   providers: [
     { provide: SuscripcionRepository, useClass: KyselySuscripcionRepository },
@@ -104,6 +114,12 @@ import { PagosPlataformaController } from './plataforma/presentation/pagos-plata
     HistorialDePagos,
     PagosPorRevisar,
     ResolverRevision,
+    // US5: administración de suscripciones y activación manual (FR-035, FR-036).
+    { provide: ResumenesDeSuscripcionLectura, useClass: ResumenesDeSuscripcionPlataforma },
+    SuspenderSuscripcion,
+    ReactivarSuscripcion,
+    ActivacionManual,
+    PlanesParaPlataforma,
   ],
   exports: [SuscripcionesApi, ConciliarPagos, VencerSuscripciones, ExpirarTransferencias],
 })

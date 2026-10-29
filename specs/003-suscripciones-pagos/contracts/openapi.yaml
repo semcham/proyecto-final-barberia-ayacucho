@@ -368,15 +368,21 @@ paths:
       parameters: [{ $ref: "#/components/parameters/BarberiaId" }]
       requestBody: { $ref: "#/components/requestBodies/Motivo" }
       responses:
-        "204": { description: Suspendida }
+        "204":
+          {
+            description: "Suspendida: sus usuarios no inician sesión (403 ACCESO_SUSPENDIDO), sus sesiones abiertas dejan de servir y su enlace responde 404 BARBERIA_NO_DISPONIBLE. No se borra nada; el motivo queda en la auditoría",
+          }
         "404": { description: NO_ENCONTRADO }
+        "409": { description: BARBERIA_YA_EN_ESE_ESTADO (ya estaba suspendida) }
     delete:
       tags: [Plataforma (administrador)]
-      summary: Reactivar la barbería
+      summary: Reactivar la barbería (su suscripción queda en el estado que le corresponde por sus fechas)
       security: [{ plataforma: [] }]
       parameters: [{ $ref: "#/components/parameters/BarberiaId" }]
       responses:
         "204": { description: Reactivada }
+        "404": { description: NO_ENCONTRADO }
+        "409": { description: BARBERIA_YA_EN_ESE_ESTADO (ya estaba activa) }
   /plataforma/barberias/{barberiaId}/suscripcion/suspension:
     put:
       tags: [Plataforma (administrador)]
@@ -386,6 +392,11 @@ paths:
       requestBody: { $ref: "#/components/requestBodies/Motivo" }
       responses:
         "204": { description: Suspendida }
+        "404": { description: NO_ENCONTRADO }
+        "409":
+          {
+            description: TRANSICION_DE_SUSCRIPCION_INVALIDA (ya suspendida o cancelada),
+          }
     delete:
       tags: [Plataforma (administrador)]
       summary: Reactivar la suscripción (estado recalculado por fechas)
@@ -393,6 +404,21 @@ paths:
       parameters: [{ $ref: "#/components/parameters/BarberiaId" }]
       responses:
         "204": { description: Reactivada }
+        "404": { description: NO_ENCONTRADO }
+        "409":
+          { description: TRANSICION_DE_SUSCRIPCION_INVALIDA (no estaba suspendida) }
+  /plataforma/planes:
+    get:
+      tags: [Plataforma (administrador)]
+      summary: Planes que el administrador puede activar a mano (los mismos que contrata el propietario)
+      security: [{ plataforma: [] }]
+      responses:
+        "200":
+          description: Planes contratables, del más barato al más caro
+          content:
+            application/json:
+              schema:
+                { type: array, items: { $ref: "#/components/schemas/Plan" } }
   /plataforma/barberias/{barberiaId}/activacion-manual:
     post:
       tags: [Plataforma (administrador)]
@@ -421,7 +447,12 @@ paths:
                   { schema: { $ref: "#/components/schemas/Pago" } },
               },
           }
-        "409": { description: PAGO_ADELANTADO_NO_PERMITIDO }
+        "404": { description: NO_ENCONTRADO }
+        "409":
+          {
+            description: "PAGO_ADELANTADO_NO_PERMITIDO, o COMPROBANTE_YA_EN_REVISION (primero se revisa el comprobante: el dinero pudo haberse transferido)",
+          }
+        "422": { description: PLAN_NO_CONTRATABLE }
   /plataforma/comprobantes:
     get:
       tags: [Plataforma (administrador)]
@@ -724,6 +755,11 @@ components:
             iniciaEn: { type: string, format: date-time }
             terminaEn: { type: string, format: date-time }
         motivoRechazo: { type: [string, "null"] }
+        motivoActivacion:
+          {
+            type: [string, "null"],
+            description: "Solo MANUAL (FR-036): el motivo de la activación manual. La referencia del pago externo no sale de la plataforma",
+          }
         numeroOperacionFinal:
           {
             type: [string, "null"],
@@ -786,7 +822,20 @@ components:
         nombre: { type: string }
         slug: { type: string }
         estadoBarberia: { type: string, enum: [ACTIVA, SUSPENDIDA] }
-        estadoSuscripcion: { type: string }
+        estadoSuscripcion:
+          {
+            type: string,
+            enum:
+              [
+                TRIAL,
+                ACTIVE,
+                PAST_DUE,
+                EXPIRED,
+                CANCELLED,
+                SUSPENDED,
+                SIN_SUSCRIPCION,
+              ],
+          }
         plan: { type: string }
         finCobertura: { type: [string, "null"], format: date-time }
     ComprobantePorRevisar:

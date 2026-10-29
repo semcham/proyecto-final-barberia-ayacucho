@@ -54,6 +54,8 @@ export interface PagoVista {
   marca: MarcaRevision | null;
   periodo: { iniciaEn: Date; terminaEn: Date } | null;
   motivoRechazo: string | null;
+  /** Solo MANUAL (FR-036): el historial muestra "activación manual" con su motivo. */
+  motivoActivacion: string | null;
   numeroOperacionFinal: string | null;
   creadoEn: Date;
   aprobadoEn: Date | null;
@@ -92,6 +94,7 @@ export function aPagoVista(
     marca: pago.marca,
     periodo: periodo ? { iniciaEn: periodo.inicio, terminaEn: periodo.fin } : null,
     motivoRechazo: pago.motivoRechazo,
+    motivoActivacion: pago.motivoActivacion,
     numeroOperacionFinal: pago.numeroOperacionFinal,
     creadoEn: pago.creadoEn,
     aprobadoEn: pago.aprobadoEn,

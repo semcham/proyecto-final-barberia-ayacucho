@@ -92,6 +92,8 @@ export interface AuditLogTable {
   ip: string | null;
   correlation_id: string | null;
   at: Fecha;
+  /** 003 (0020): motivo de la acción del administrador (solo BARBERIA_SUSPENDIDA, SUSCRIPCION_SUSPENDIDA y ACTIVACION_MANUAL). */
+  reason: TextoNulo;
 }
 
 export interface PlanTable {

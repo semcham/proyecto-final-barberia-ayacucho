@@ -42,6 +42,10 @@ export const ESTADO_POR_CODIGO: Record<string, number> = {
   PAGO_YA_REVISADO: 409,
   PAGO_NO_ESPERA_COMPROBANTE: 409,
   NUMERO_OPERACION_YA_APROBADO: 409,
+  // US5: suspender una suscripción ya suspendida (o cancelada), o reactivar una que no lo está.
+  TRANSICION_DE_SUSCRIPCION_INVALIDA: 409,
+  // US5: suspender una barbería ya suspendida, o reactivar una activa.
+  BARBERIA_YA_EN_ESE_ESTADO: 409,
   MEDIO_NO_DISPONIBLE_PARA_EL_PLAN: 422,
   PLAN_NO_CONTRATABLE: 422,
   IMPORTE_DISTINTO: 422,

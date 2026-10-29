@@ -29,6 +29,7 @@ const COLUMNAS = [
   'bank_operation_last4',
   'transfer_reference',
   'rejection_reason',
+  'manual_reason',
   'created_by',
   'created_at',
   'approved_at',
@@ -59,6 +60,7 @@ interface FilaPago {
   transfer_reference: string | null;
   fecha_transferencia: string | null;
   rejection_reason: string | null;
+  manual_reason: string | null;
   created_by: string;
   created_at: Date;
   approved_at: Date | null;
@@ -84,6 +86,7 @@ function aPago(f: FilaPago): Pago {
     referenciaTransferencia: f.transfer_reference,
     fechaTransferencia: f.fecha_transferencia,
     motivoRechazo: f.rejection_reason,
+    motivoActivacion: f.manual_reason,
     creadoPor: f.created_by,
     creadoEn: f.created_at,
     aprobadoEn: f.approved_at,
@@ -148,6 +151,12 @@ export class KyselyPagoRepository extends PagoRepository {
           covers_after: pago.cubreDesde,
           created_by: pago.creadoPor,
           transfer_reference: pago.referenciaTransferencia ?? null,
+          manual_reason: pago.manual?.motivo ?? null,
+          manual_external_ref: pago.manual?.referenciaExterna ?? null,
+          // Un pago que nace aprobado (activación manual) nace también cerrado (payment_cerrado_con_fecha).
+          ...(pago.estado === 'APROBADO'
+            ? { approved_at: sql<Date>`now()`, closed_at: sql<Date>`now()` }
+            : {}),
         })
         .execute();
     } catch (error) {

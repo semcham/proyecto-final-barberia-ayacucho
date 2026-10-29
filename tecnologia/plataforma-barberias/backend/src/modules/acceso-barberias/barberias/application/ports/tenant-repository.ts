@@ -29,6 +29,12 @@ export abstract class TenantRepository {
    */
   abstract insertar(barberia: Barberia): Promise<void>;
   abstract estado(id: string): Promise<EstadoBarberia | null>;
+  /**
+   * US5 de 003 (FR-034, H5): cambia `tenant.status` de la barbería del contexto, solo si sigue en `desde`
+   * (transición condicional; la política tenant_edicion impide tocar otra). Devuelve si se aplicó. Solo lo usan
+   * los casos de uso del administrador: ninguna ruta del propietario cambia el estado.
+   */
+  abstract cambiarEstado(id: string, desde: EstadoBarberia, hacia: EstadoBarberia): Promise<boolean>;
   /** Id de la barbería ACTIVA con ese slug, o null (inexistente o suspendida). */
   abstract idActivaPorSlug(slug: string): Promise<string | null>;
   /** Datos públicos de una barbería ACTIVA, o null. */

@@ -5,6 +5,7 @@ export type { ResumenSuscripcion } from './suscripciones/application/iniciar-pru
 export { SuscripcionNoPermite } from './suscripciones/domain/errores';
 export { ACCIONES_SUSCRIPCION, type AccionSuscripcion } from './suscripciones/domain/accion-suscripcion';
 export type { EstadoOperativo } from './suscripciones/application/exigir-operacion';
+export type { ResumenDeSuscripcion } from './plataforma/application/ports/resumenes-de-suscripcion';
 export {
   PermisosSuscripciones,
   OPERACIONES_SUSCRIPCIONES,

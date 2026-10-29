@@ -10,6 +10,9 @@ Cada celda es un caso de la prueba `test/contract/rbac-003.spec.ts`, que lee est
 
 El administrador (ADMIN) solo tiene token de plataforma (ADR-031).
 
+Una fila con dos métodos (`PUT, DELETE …`) son dos casos por columna, uno por método. Todas las filas de la
+tabla están implementadas: la prueba falla si a una le falta su caso.
+
 | Operación                                                                                         | PROPIETARIO | BARBERO    | CLIENTE    | ADMIN   | Anónimo                         |
 | ------------------------------------------------------------------------------------------------- | ----------- | ---------- | ---------- | ------- | ------------------------------- |
 | `GET /planes`                                                                                     | ✓           | ✗          | ✗          | 401     | 401                             |
@@ -27,6 +30,7 @@ El administrador (ADMIN) solo tiene token de plataforma (ADR-031).
 | `PUT, DELETE /plataforma/barberias/{id}/suspension`                                               | 401         | 401        | 401        | ✓       | 401                             |
 | `PUT, DELETE /plataforma/barberias/{id}/suscripcion/suspension`                                   | 401         | 401        | 401        | ✓       | 401                             |
 | `POST /plataforma/barberias/{id}/activacion-manual`                                               | 401         | 401        | 401        | ✓       | 401                             |
+| `GET /plataforma/planes`                                                                          | 401         | 401        | 401        | ✓       | 401                             |
 | `GET /plataforma/comprobantes`                                                                    | 401         | 401        | 401        | ✓       | 401                             |
 | `GET /plataforma/barberias/{id}/pagos/{pagoId}`                                                   | 401         | 401        | 401        | ✓       | 401                             |
 | `GET /plataforma/barberias/{id}/pagos/{pagoId}/comprobante`                                       | 401         | 401        | 401        | ✓       | 401                             |

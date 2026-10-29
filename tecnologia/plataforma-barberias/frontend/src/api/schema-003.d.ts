@@ -695,7 +695,7 @@ export interface paths {
       };
       requestBody: components['requestBodies']['Motivo'];
       responses: {
-        /** @description Suspendida */
+        /** @description Suspendida: sus usuarios no inician sesión (403 ACCESO_SUSPENDIDO), sus sesiones abiertas dejan de servir y su enlace responde 404 BARBERIA_NO_DISPONIBLE. No se borra nada; el motivo queda en la auditoría */
         204: {
           headers: {
             [name: string]: unknown;
@@ -709,10 +709,17 @@ export interface paths {
           };
           content?: never;
         };
+        /** @description BARBERIA_YA_EN_ESE_ESTADO (ya estaba suspendida) */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
       };
     };
     post?: never;
-    /** Reactivar la barbería */
+    /** Reactivar la barbería (su suscripción queda en el estado que le corresponde por sus fechas) */
     delete: {
       parameters: {
         query?: never;
@@ -726,6 +733,20 @@ export interface paths {
       responses: {
         /** @description Reactivada */
         204: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description NO_ENCONTRADO */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description BARBERIA_YA_EN_ESE_ESTADO (ya estaba activa) */
+        409: {
           headers: {
             [name: string]: unknown;
           };
@@ -765,6 +786,20 @@ export interface paths {
           };
           content?: never;
         };
+        /** @description NO_ENCONTRADO */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description TRANSICION_DE_SUSCRIPCION_INVALIDA (ya suspendida o cancelada) */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
       };
     };
     post?: never;
@@ -787,8 +822,58 @@ export interface paths {
           };
           content?: never;
         };
+        /** @description NO_ENCONTRADO */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description TRANSICION_DE_SUSCRIPCION_INVALIDA (no estaba suspendida) */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
       };
     };
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/plataforma/planes': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Planes que el administrador puede activar a mano (los mismos que contrata el propietario) */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Planes contratables, del más barato al más caro */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Plan'][];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
     options?: never;
     head?: never;
     patch?: never;
@@ -833,8 +918,22 @@ export interface paths {
             'application/json': components['schemas']['Pago'];
           };
         };
-        /** @description PAGO_ADELANTADO_NO_PERMITIDO */
+        /** @description NO_ENCONTRADO */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description PAGO_ADELANTADO_NO_PERMITIDO, o COMPROBANTE_YA_EN_REVISION (primero se revisa el comprobante: el dinero pudo haberse transferido) */
         409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description PLAN_NO_CONTRATABLE */
+        422: {
           headers: {
             [name: string]: unknown;
           };
@@ -1214,6 +1313,8 @@ export interface components {
         terminaEn?: string;
       } | null;
       motivoRechazo?: string | null;
+      /** @description Solo MANUAL (FR-036): el motivo de la activación manual. La referencia del pago externo no sale de la plataforma */
+      motivoActivacion?: string | null;
       /** @description Solo los últimos 4 caracteres */
       numeroOperacionFinal?: string | null;
       /** Format: date-time */
@@ -1257,7 +1358,9 @@ export interface components {
       slug: string;
       /** @enum {string} */
       estadoBarberia: 'ACTIVA' | 'SUSPENDIDA';
-      estadoSuscripcion: string;
+      /** @enum {string} */
+      estadoSuscripcion:
+        'TRIAL' | 'ACTIVE' | 'PAST_DUE' | 'EXPIRED' | 'CANCELLED' | 'SUSPENDED' | 'SIN_SUSCRIPCION';
       plan?: string;
       /** Format: date-time */
       finCobertura?: string | null;

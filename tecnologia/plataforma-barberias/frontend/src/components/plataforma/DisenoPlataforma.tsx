@@ -15,10 +15,9 @@ const DESTINOS: { a: string; etiqueta: string; icono: NombreIcono }[] = [
   { a: '/plataforma/comprobantes', etiqueta: 'Comprobantes', icono: 'dinero' },
   // US4 (T091).
   { a: '/plataforma/pagos-por-revisar', etiqueta: 'Pagos por revisar', icono: 'alerta' },
+  // US5 (T099).
+  { a: '/plataforma/barberias', etiqueta: 'Barberías', icono: 'tienda' },
 ];
-
-// Llega con US5 (barberías y suscripciones).
-const PROXIMAMENTE: { etiqueta: string; icono: NombreIcono }[] = [{ etiqueta: 'Barberías', icono: 'tienda' }];
 
 export function DisenoPlataforma() {
   const { salir } = usePlataforma();
@@ -66,17 +65,6 @@ export function DisenoPlataforma() {
             ))}
           </ul>
         </nav>
-        <div className={estilos.proximamente}>
-          <p className={estilos.proximamenteTitulo}>Próximamente</p>
-          <ul>
-            {PROXIMAMENTE.map((item) => (
-              <li key={item.etiqueta}>
-                <Icono nombre={item.icono} tamano={18} />
-                {item.etiqueta}
-              </li>
-            ))}
-          </ul>
-        </div>
       </aside>
 
       <div className={estilos.area}>

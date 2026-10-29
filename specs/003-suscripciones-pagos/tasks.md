@@ -552,7 +552,7 @@ responde. Al reactivarla, todo vuelve. Una activación manual crea un pago `MANU
 
 ### Tests for User Story 5 ⚠️
 
-- [ ] T092 [P] [US5] Backend: en `backend/test/integration/plataforma/barberias-plataforma.spec.ts`, probar:
+- [x] T092 [P] [US5] Backend: en `backend/test/integration/plataforma/barberias-plataforma.spec.ts`, probar:
   - el listado muestra el nombre, el enlace, los estados, el plan y la cobertura, y nada de citas, clientes ni usuarios;
   - suspender la barbería hace que el inicio de sesión dé 401 y el enlace público dé 404, conserva los datos y queda auditado;
   - reactivarla devuelve el acceso;
@@ -562,16 +562,16 @@ responde. Al reactivarla, todo vuelve. Una activación manual crea un pago `MANU
   - la activación manual crea un pago `MANUAL` con el **precio del plan** como importe, el motivo y la referencia externa, y su período; anula el pago abierto y respeta la regla del pago adelantado y la del período objetivo (FR-036, M6);
   - suspender y reactivar cambian `tenant.status` con el tenant de la ruta, y ninguna ruta del propietario lo cambia (H5);
   - un caso más en `cobertura-derivada.spec.ts`: tras una activación manual, `current_period_end` coincide con los períodos.
-- [ ] T093 [P] [US5] Backend: **PR13** en `backend/test/integration/auditoria.spec.ts`: `BARBERIA_SUSPENDIDA`, `BARBERIA_REACTIVADA`, `SUSCRIPCION_SUSPENDIDA`, `SUSCRIPCION_REACTIVADA` y `ACTIVACION_MANUAL`, con el administrador como actor y el motivo.
-- [ ] T094 [P] [US5] Backend: **PR08**. Agregar a `IMPLEMENTADAS` las filas restantes de `contracts/rbac.md` (barberías, suspensiones y activación manual). Ninguna fila queda fuera de la lista: la prueba debe fallar si una fila de la tabla no está implementada.
-- [ ] T095 [P] [US5] Frontend: en `frontend/test/pages/plataforma-barberias.spec.tsx`, con MSW, probar el listado con búsqueda, suspender y reactivar con motivo y confirmación, y la activación manual.
+- [x] T093 [P] [US5] Backend: **PR13** en `backend/test/integration/auditoria.spec.ts`: `BARBERIA_SUSPENDIDA`, `BARBERIA_REACTIVADA`, `SUSCRIPCION_SUSPENDIDA`, `SUSCRIPCION_REACTIVADA` y `ACTIVACION_MANUAL`, con el administrador como actor y el motivo.
+- [x] T094 [P] [US5] Backend: **PR08**. Agregar a `IMPLEMENTADAS` las filas restantes de `contracts/rbac.md` (barberías, suspensiones y activación manual). Ninguna fila queda fuera de la lista: la prueba debe fallar si una fila de la tabla no está implementada.
+- [x] T095 [P] [US5] Frontend: en `frontend/test/pages/plataforma-barberias.spec.tsx`, con MSW, probar el listado con búsqueda, suspender y reactivar con motivo y confirmación, y la activación manual.
 
 ### Implementation for User Story 5
 
-- [ ] T096 [US5] Backend: en M01 `barberias`, crear `SuspenderBarberia` y `ReactivarBarberia` (`tenant.status`, con el tenant de la ruta y auditoría) en `backend/src/modules/acceso-barberias/barberias/application/plataforma/`, y el listado en `backend/src/modules/acceso-barberias/barberias/infrastructure/plataforma/barberias-plataforma.ts`. Los resúmenes de suscripción vienen de `SuscripcionesApi.resumenesParaPlataforma(ids)`, que se agrega en M03 (M01 → M03 está permitido).
-- [ ] T097 [US5] Backend: en M03 `plataforma`, crear `SuspenderSuscripcion`, `ReactivarSuscripcion` (recalculada por fechas) y `ActivacionManual` (con las reglas de FR-036: el precio del plan como importe, medio `MANUAL`, motivo y referencia externa, y `AplicarResultadoDelProveedor` para el período) en `backend/src/modules/suscripciones-pagos/plataforma/application/`.
-- [ ] T098 [US5] Backend: crear los controladores `backend/src/modules/acceso-barberias/barberias/presentation/barberias-plataforma.controller.ts` y `backend/src/modules/suscripciones-pagos/plataforma/presentation/suscripciones-plataforma.controller.ts`, con `@Plataforma()`. Hace pasar T092 a T094.
-- [ ] T099 [US5] Frontend: crear `frontend/src/pages/plataforma/Barberias.tsx` (listado, búsqueda, suspender y reactivar, y activación manual con motivo y referencia). Hace pasar T095.
+- [x] T096 [US5] Backend: en M01 `barberias`, crear `SuspenderBarberia` y `ReactivarBarberia` (`tenant.status`, con el tenant de la ruta y auditoría) en `backend/src/modules/acceso-barberias/barberias/application/plataforma/`, y el listado en `backend/src/modules/acceso-barberias/barberias/infrastructure/plataforma/barberias-plataforma.ts`. Los resúmenes de suscripción vienen de `SuscripcionesApi.resumenesParaPlataforma(ids)`, que se agrega en M03 (M01 → M03 está permitido).
+- [x] T097 [US5] Backend: en M03 `plataforma`, crear `SuspenderSuscripcion`, `ReactivarSuscripcion` (recalculada por fechas) y `ActivacionManual` (con las reglas de FR-036: el precio del plan como importe, medio `MANUAL`, motivo y referencia externa, y `AplicarResultadoDelProveedor` para el período) en `backend/src/modules/suscripciones-pagos/plataforma/application/`.
+- [x] T098 [US5] Backend: crear los controladores `backend/src/modules/acceso-barberias/barberias/presentation/barberias-plataforma.controller.ts` y `backend/src/modules/suscripciones-pagos/plataforma/presentation/suscripciones-plataforma.controller.ts`, con `@Plataforma()`. Hace pasar T092 a T094.
+- [x] T099 [US5] Frontend: crear `frontend/src/pages/plataforma/Barberias.tsx` (listado, búsqueda, suspender y reactivar, y activación manual con motivo y referencia). Hace pasar T095.
 
 **Checkpoint (P3)**: CI en verde. `rbac-003` recorre la tabla completa. `quickstart.md` §3, pasos 9 y
 10, funciona con Compose.

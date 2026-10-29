@@ -43,6 +43,7 @@ const DisenoPlataforma = lazy(() =>
 const InicioPlataforma = lazy(() => import('./pages/plataforma/Inicio'));
 const ComprobantesPlataforma = lazy(() => import('./pages/plataforma/Comprobantes'));
 const PagosPorRevisarPlataforma = lazy(() => import('./pages/plataforma/PagosPorRevisar'));
+const BarberiasPlataforma = lazy(() => import('./pages/plataforma/Barberias'));
 
 /**
  * Rutas del panel de 002 y los roles que las ven (solo navegación: el backend exige los permisos). Las que
@@ -178,6 +179,7 @@ export function RutasApp() {
               <Route index element={<InicioPlataforma />} />
               <Route path="comprobantes" element={<ComprobantesPlataforma />} />
               <Route path="pagos-por-revisar" element={<PagosPorRevisarPlataforma />} />
+              <Route path="barberias" element={<BarberiasPlataforma />} />
             </Route>
           </Route>
           <Route path="*" element={<NoEncontrada />} />

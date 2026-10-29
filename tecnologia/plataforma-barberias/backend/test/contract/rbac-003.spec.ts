@@ -104,6 +104,8 @@ const con = (t: string | null) => (t ? { Authorization: `Bearer ${t}` } : {});
 
 interface Caso {
   fila: string;
+  /** En una fila con dos métodos (`PUT, DELETE …`), cuál prueba este caso. */
+  metodo?: 'PUT' | 'DELETE';
   exito: number;
   /** `s`: la barbería del caso, para las filas que necesitan uno de sus pagos. */
   ejecutar: (p: AppDePrueba, token: string | null, s: Escenario) => Promise<{ status: number }>;
@@ -113,7 +115,13 @@ interface Caso {
 const enRevision = async (p: AppDePrueba, s: Escenario) =>
   (await pagoEnRevision(p, s.tokens.PROPIETARIO as string)).pagoId;
 
-/** Filas de rbac.md implementadas hasta esta fase (US1, el ingreso del administrador y US3). */
+/** Id de la suscripción de la barbería del escenario. */
+const suscripcionDe = async (s: Escenario): Promise<string> =>
+  (await poolDe('seed').query('SELECT id FROM subscription WHERE tenant_id = $1', [s.tenantId])).rows[0].id;
+
+const MOTIVO = { motivo: 'Prueba de la matriz de permisos' };
+
+/** Todas las filas de rbac.md: US1 a US5, el ingreso del administrador y la notificación del proveedor. */
 const IMPLEMENTADAS: Caso[] = [
   { fila: '`GET /planes`', exito: 200, ejecutar: (p, t) => p.agente.get('/api/v1/planes').set(con(t)) },
   {
@@ -237,12 +245,9 @@ const IMPLEMENTADAS: Caso[] = [
     fila: '`POST /plataforma/barberias/{id}/pagos/{pagoId}/revision/resolucion`',
     exito: 204,
     ejecutar: async (p, t, s) => {
-      const { rows } = await poolDe('seed').query('SELECT id FROM subscription WHERE tenant_id = $1', [
-        s.tenantId,
-      ]);
       const { pagoId } = await sembrarPago({
         tenantId: s.tenantId,
-        suscripcionId: rows[0].id,
+        suscripcionId: await suscripcionDe(s),
         estado: 'APROBADO',
       });
       await poolDe('seed').query(`UPDATE payment SET review = 'DUPLICADO' WHERE id = $1`, [pagoId]);
@@ -251,6 +256,64 @@ const IMPLEMENTADAS: Caso[] = [
         .set(con(t))
         .send({ motivo: 'Devuelto fuera de la plataforma' });
     },
+  },
+  // Fase 8 (T094): administración de barberías y suscripciones, y activación manual.
+  {
+    fila: '`GET /plataforma/barberias`',
+    exito: 200,
+    ejecutar: (p, t) => p.agente.get('/api/v1/plataforma/barberias').set(con(t)),
+  },
+  {
+    fila: '`PUT, DELETE /plataforma/barberias/{id}/suspension`',
+    metodo: 'PUT',
+    exito: 204,
+    ejecutar: (p, t, s) =>
+      p.agente.put(`/api/v1/plataforma/barberias/${s.tenantId}/suspension`).set(con(t)).send(MOTIVO),
+  },
+  {
+    fila: '`PUT, DELETE /plataforma/barberias/{id}/suspension`',
+    metodo: 'DELETE',
+    exito: 204,
+    ejecutar: async (p, t, s) => {
+      await poolDe('seed').query(`UPDATE tenant SET status = 'SUSPENDIDA' WHERE id = $1`, [s.tenantId]);
+      return p.agente.delete(`/api/v1/plataforma/barberias/${s.tenantId}/suspension`).set(con(t));
+    },
+  },
+  {
+    fila: '`PUT, DELETE /plataforma/barberias/{id}/suscripcion/suspension`',
+    metodo: 'PUT',
+    exito: 204,
+    ejecutar: (p, t, s) =>
+      p.agente
+        .put(`/api/v1/plataforma/barberias/${s.tenantId}/suscripcion/suspension`)
+        .set(con(t))
+        .send(MOTIVO),
+  },
+  {
+    fila: '`PUT, DELETE /plataforma/barberias/{id}/suscripcion/suspension`',
+    metodo: 'DELETE',
+    exito: 204,
+    ejecutar: async (p, t, s) => {
+      await poolDe('seed').query(
+        `UPDATE subscription SET status = 'SUSPENDED', suspended_at = now(), suspension_reason = $2 WHERE id = $1`,
+        [await suscripcionDe(s), MOTIVO.motivo],
+      );
+      return p.agente.delete(`/api/v1/plataforma/barberias/${s.tenantId}/suscripcion/suspension`).set(con(t));
+    },
+  },
+  {
+    fila: '`POST /plataforma/barberias/{id}/activacion-manual`',
+    exito: 201,
+    ejecutar: (p, t, s) =>
+      p.agente
+        .post(`/api/v1/plataforma/barberias/${s.tenantId}/activacion-manual`)
+        .set(con(t))
+        .send({ planId: PLAN_BASICO, ...MOTIVO, referenciaExterna: 'DEP-0001' }),
+  },
+  {
+    fila: '`GET /plataforma/planes`',
+    exito: 200,
+    ejecutar: (p, t) => p.agente.get('/api/v1/plataforma/planes').set(con(t)),
   },
   {
     fila: '`POST /pagos/notificaciones`',
@@ -325,8 +388,27 @@ describe('PR08 · Matriz de permisos de 003 (contracts/rbac.md)', () => {
     expect(IMPLEMENTADAS.map((c) => c.fila).filter((fila) => !MATRIZ.has(fila))).toEqual([]);
   });
 
+  // T094 · La tabla se recorre completa: una fila nueva en rbac.md sin su caso hace fallar la prueba. La fila
+  // "Cualquier ruta de 001 y 002" tiene su propia prueba (abajo), que recorre las rutas de la aplicación.
+  it('toda fila de la tabla tiene su caso, y una fila con dos métodos tiene uno por método', () => {
+    const conCaso = new Set(IMPLEMENTADAS.map((c) => c.fila));
+    const sinCaso = [...MATRIZ.keys()].filter(
+      (fila) => !conCaso.has(fila) && !fila.startsWith('**Cualquier ruta de 001 y 002 con token**'),
+    );
+    expect(sinCaso).toEqual([]);
+
+    for (const fila of MATRIZ.keys()) {
+      const metodos = /^`([A-Z]+(?:, [A-Z]+)+) /.exec(fila)?.[1].split(', ');
+      if (!metodos) continue;
+      const cubiertos = IMPLEMENTADAS.filter((c) => c.fila === fila).map((c) => c.metodo);
+      expect({ fila, metodos: [...cubiertos].sort() }).toEqual({ fila, metodos: [...metodos].sort() });
+    }
+  });
+
   const casos = IMPLEMENTADAS.flatMap((caso) =>
-    COLUMNAS.map((columna) => [caso.fila, columna, caso] as const),
+    COLUMNAS.map(
+      (columna) => [caso.metodo ? `${caso.fila} (${caso.metodo})` : caso.fila, columna, caso] as const,
+    ),
   );
 
   // T065 · Fila "Cualquier ruta de 001 y 002 con token": el token del administrador responde 401 en TODAS las

@@ -12,7 +12,11 @@ export type PagoNuevo = Pick<
   | 'estado'
   | 'cubreDesde'
   | 'creadoPor'
-> & { referenciaTransferencia?: string };
+> & {
+  referenciaTransferencia?: string;
+  /** US5 (FR-036): activación manual, que nace APROBADA con el motivo y la referencia del pago externo. */
+  manual?: { motivo: string; referenciaExterna: string };
+};
 
 /** Cambios de una transición, aplicados solo si el pago sigue en `desde` (transición condicional). */
 export interface CambioDePago {
