@@ -55,6 +55,11 @@ export abstract class PagoRepository {
   ): Promise<void>;
   abstract fijarMotivoRechazo(id: string, motivo: string): Promise<void>;
   /**
+   * Da por resuelta la marca de revisión con una nota, solo si el pago sigue con ESA marca y sin resolver (si
+   * otra la reemplazó, por ejemplo DUPLICADO al aprobar, esa queda pendiente).
+   */
+  abstract resolverMarca(id: string, marca: MarcaRevision, nota: string): Promise<boolean>;
+  /**
    * Número de operación COMPLETO: solo para el detalle que ve el administrador con el tenant de la barbería
    * fijado (H2). Las vistas y la vía de la plataforma solo tienen los últimos 4 caracteres.
    */

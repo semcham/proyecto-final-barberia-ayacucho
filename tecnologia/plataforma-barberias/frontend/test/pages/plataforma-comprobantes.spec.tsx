@@ -28,6 +28,8 @@ const item = (barberia: typeof BARBERIA_A, pagoId: string, cambios: object = {})
     numeroOperacionFinal: '1234',
     numeroRepetido: false,
     fechaTransferencia: '2026-10-27',
+    pagoIniciadoEn: '2026-10-26T15:00:00.000Z',
+    fechaAnteriorAlPago: false,
     numeroYaUsadoEn: [],
     ...cambios,
   },
@@ -122,6 +124,42 @@ describe('Comprobantes por revisar (/plataforma/comprobantes)', () => {
     expect(within(b).getByText('Archivo repetido')).toBeInTheDocument();
     expect(within(b).queryByText('Número ya usado')).not.toBeInTheDocument();
     expect(screen.queryByText('OPERACION9871234')).not.toBeInTheDocument();
+  });
+
+  it('FR-020b: la fecha anterior al pago se señala con el día de inicio en hora de Lima, y se puede aprobar', async () => {
+    const estado = servidorPlataforma();
+    // Iniciado a las 22:00 del 27 en Lima (03:00 del 28 en UTC); la transferencia dice el 20.
+    estado.cola = [
+      item(BARBERIA_B, PAGO_B, {
+        fechaTransferencia: '2026-10-20',
+        pagoIniciadoEn: '2026-10-28T03:00:00.000Z',
+        fechaAnteriorAlPago: true,
+      }),
+    ];
+    renderizar();
+    const b = await tarjetaDe('Barbería Wari');
+    expect(within(b).getByText('Fecha anterior al pago')).toBeInTheDocument();
+    expect(within(b).getByRole('note')).toHaveTextContent(
+      'La transferencia tiene fecha 2026-10-20, anterior al día en que se inició el pago (2026-10-27)',
+    );
+    // El día de inicio que se muestra es el de Lima, no el de UTC.
+    expect(within(b).queryByText('2026-10-28')).not.toBeInTheDocument();
+
+    // La marca no bloquea: se aprueba igual.
+    const usuario = userEvent.setup();
+    await usuario.click(within(b).getByRole('button', { name: 'Aprobar' }));
+    await usuario.type(within(b).getByLabelText(/Importe recibido/), '49');
+    await usuario.click(within(b).getByRole('button', { name: 'Confirmar la aprobación' }));
+    expect(await screen.findByText('Comprobante aprobado')).toBeInTheDocument();
+    expect(estado.revisiones).toHaveLength(1);
+  });
+
+  it('sin la marca no aparece el aviso de fecha', async () => {
+    servidorPlataforma();
+    renderizar();
+    const b = await tarjetaDe('Barbería Wari');
+    expect(within(b).queryByText('Fecha anterior al pago')).not.toBeInTheDocument();
+    expect(within(b).getByText('2026-10-26')).toBeInTheDocument();
   });
 
   it('el número completo solo aparece al pedir el detalle', async () => {

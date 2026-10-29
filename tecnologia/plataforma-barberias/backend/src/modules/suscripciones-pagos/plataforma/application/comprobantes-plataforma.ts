@@ -125,6 +125,16 @@ export class RevisarComprobante {
         await this.pagos.fijarMotivoRechazo(pago.id, revision.motivo);
         await this.aplicar.ejecutar(pago.id, { tipo: 'RECHAZAR_REVISION' }, { siSigueEn: 'EN_REVISION' });
       }
+      // La marca de fecha anterior es informativa: el administrador la vio al revisar, así que queda resuelta
+      // (y no se acumula en la lista de pagos por revisar). Si la aprobación dejó otra marca, como DUPLICADO,
+      // esa sigue pendiente.
+      if (pago.marca === 'FECHA_ANTERIOR_AL_PAGO') {
+        await this.pagos.resolverMarca(
+          pago.id,
+          'FECHA_ANTERIOR_AL_PAGO',
+          `Vista al revisar el comprobante (${revision.resultado === 'APROBADO' ? 'aprobado' : 'rechazado'}).`,
+        );
+      }
       const marcado = await this.almacen.marcarRevisado(comprobante.id, {
         por: admin.adminId,
         en: this.reloj.ahora(),

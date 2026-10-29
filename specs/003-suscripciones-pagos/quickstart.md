@@ -63,8 +63,14 @@ Requisitos: el entorno de 006 en marcha y una barbería registrada en prueba gra
    - **Esperado:** la suscripción se extiende un período.
    - **Acción:** subir otro con el **mismo** número de operación desde otra barbería.
    - **Esperado:** el administrador ve "número ya usado" y no puede aprobarlo.
+   - **Acción:** en una barbería que inició la transferencia hoy, subir el comprobante con una fecha de
+     hace 3 días (FR-020b).
+   - **Esperado:** se acepta ("comprobante en revisión") y en la cola el administrador ve "Fecha anterior
+     al pago" junto al día en que se inició; puede aprobarlo o rechazarlo igual. Con la fecha de ayer
+     (tolerancia de un día por la hora de Lima) no aparece la marca.
 6. **Comprobante inválido.** Renombrar un `.txt` a `.png` y subirlo.
-   - **Esperado:** se rechaza sin guardarse.
+   - **Esperado:** se rechaza sin guardarse. Una fecha futura o de hace más de 30 días también se
+     rechaza sin guardarse.
 7. **Vencimiento** (US2).
    - **Acción:** con una barbería de prueba sembrada con `npm run demo:vencimiento` (fin de prueba hace
      una hora), esperar a la tarea (`TAREAS_INTERVALO_MS=60000`).

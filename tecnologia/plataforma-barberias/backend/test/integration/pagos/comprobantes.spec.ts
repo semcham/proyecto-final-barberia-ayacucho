@@ -237,6 +237,102 @@ describe('Transferencia con comprobante (T073)', () => {
     });
   });
 
+  // FR-020b: una fecha anterior al día de inicio del pago (hora de Lima, un día de tolerancia) se acepta con
+  // la marca FECHA_ANTERIOR_AL_PAGO, que se ve en la cola y no bloquea.
+  describe('fecha anterior al pago (FR-020b)', () => {
+    /** Transferencia iniciada en `iniciadoEn` (se fija en la base) y su comprobante con `fecha`. */
+    async function subirConFecha(fecha: string, iniciadoEn?: Date) {
+      const b = await barberiaEnPrueba();
+      const pagoId = (await iniciarTransferencia(prueba, b.token).expect(201)).body.pago.id as string;
+      if (iniciadoEn)
+        await seed().query('UPDATE payment SET created_at = $2 WHERE id = $1', [pagoId, iniciadoEn]);
+      const r = await subirComprobante(prueba, b.token, pagoId, { archivo: png(), fecha });
+      return { b, pagoId, r };
+    }
+
+    it('dos días antes del inicio: se acepta, EN_REVISION y con la marca, visible en la cola', async () => {
+      const { pagoId, r } = await subirConFecha(hoyEnLima(-3));
+      expect(r.status).toBe(201);
+      expect(r.body).toMatchObject({ estado: 'EN_REVISION', marca: 'FECHA_ANTERIOR_AL_PAGO' });
+      expect(await filaDePago(pagoId)).toMatchObject({
+        review: 'FECHA_ANTERIOR_AL_PAGO',
+        review_resolved_at: null,
+      });
+      const enCola = (await cola()).find((c) => c.pago.id === pagoId);
+      expect(enCola?.pago).toMatchObject({
+        fechaAnteriorAlPago: true,
+        fechaTransferencia: hoyEnLima(-3),
+        pagoIniciadoEn: expect.any(String),
+      });
+    });
+
+    it.each([
+      ['el mismo día', 0],
+      ['un día antes (tolerancia por la hora de Lima)', -1],
+    ])('%s: se acepta sin marca', async (_caso, dias) => {
+      const { pagoId, r } = await subirConFecha(hoyEnLima(dias));
+      expect(r.status).toBe(201);
+      expect(r.body.marca).toBeNull();
+      expect((await filaDePago(pagoId)).review).toBeNull();
+      expect((await cola()).find((c) => c.pago.id === pagoId)?.pago.fechaAnteriorAlPago).toBe(false);
+    });
+
+    it('el día de inicio es el de Lima: un pago iniciado a las 22:00 de Lima de ayer cuenta como ayer', async () => {
+      // Ayer a las 22:00 en Lima (UTC−5) ya es hoy en UTC.
+      const iniciadoEn = new Date(Date.parse(`${hoyEnLima()}T00:00:00-05:00`) - 2 * 60 * 60 * 1000);
+      expect(iniciadoEn.toISOString().slice(0, 10)).toBe(hoyEnLima());
+      // Anteayer: el día anterior al inicio (ayer), dentro de la tolerancia. Con el día de UTC se marcaría.
+      const dentro = await subirConFecha(hoyEnLima(-2), iniciadoEn);
+      expect(dentro.r.status).toBe(201);
+      expect(dentro.r.body.marca).toBeNull();
+      // Tres días antes de hoy: dos antes del inicio, fuera de la tolerancia.
+      const fuera = await subirConFecha(hoyEnLima(-3), iniciadoEn);
+      expect(fuera.r.body.marca).toBe('FECHA_ANTERIOR_AL_PAGO');
+    });
+
+    it('hace exactamente 30 días se acepta (con la marca); hace 31 y una futura se rechazan sin guardar', async () => {
+      const treinta = await subirConFecha(hoyEnLima(-30));
+      expect(treinta.r.status).toBe(201);
+      expect(treinta.r.body.marca).toBe('FECHA_ANTERIOR_AL_PAGO');
+      for (const fecha of [hoyEnLima(-31), hoyEnLima(1)]) {
+        const { b, pagoId, r } = await subirConFecha(fecha);
+        expect({ fecha, estado: r.status, detalles: r.body.detalles }).toEqual({
+          fecha,
+          estado: 400,
+          detalles: [{ campo: 'fechaTransferencia', problema: 'fecha_no_valida' }],
+        });
+        expect((await filaDePago(pagoId)).status).toBe('ESPERANDO_COMPROBANTE');
+        expect(await receiptsDe(b.tenantId)).toEqual([]);
+      }
+    });
+
+    it.each([
+      ['aprobar', { resultado: 'APROBADO', importeTransferidoCentimos: 4900 }, 'APROBADO', 'aprobado'],
+      ['rechazar', { resultado: 'RECHAZADO', motivo: 'La fecha no corresponde' }, 'RECHAZADO', 'rechazado'],
+    ] as const)(
+      'no bloquea %s, y la marca queda resuelta al revisar',
+      async (_caso, revision, estado, palabra) => {
+        const { b, pagoId } = await subirConFecha(hoyEnLima(-5));
+        await revisar(prueba, admin, b.tenantId, pagoId, revision).expect(200);
+        const fila = await filaDePago(pagoId);
+        expect(fila).toMatchObject({
+          status: estado,
+          review: 'FECHA_ANTERIOR_AL_PAGO',
+          review_resolved_at: expect.any(Date),
+          review_note: `Vista al revisar el comprobante (${palabra}).`,
+        });
+        if (estado === 'APROBADO') {
+          const { rows } = await seed().query(
+            'SELECT count(*)::int AS n FROM subscription_period WHERE payment_id = $1',
+            [pagoId],
+          );
+          expect(rows[0].n).toBe(1);
+        }
+        expect((await cola()).some((c) => c.pago.id === pagoId)).toBe(false);
+      },
+    );
+  });
+
   describe('descargar el comprobante', () => {
     it('el propietario lo descarga como adjunto, con nosniff y no-store; sin sesión 401 y el barbero 403', async () => {
       const b = await barberiaEnPrueba();

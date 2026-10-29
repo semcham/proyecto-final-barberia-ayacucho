@@ -157,7 +157,13 @@ describe('PR25 · Marcas e importes', () => {
   it('las marcas de revisión no son estados', () => {
     for (const marca of MARCAS_REVISION) expect(ESTADOS_PAGO).not.toContain(marca);
     expect(MARCAS_REVISION).toEqual(
-      expect.arrayContaining(['DUPLICADO', 'IMPORTE_DISTINTO', 'APROBADO_TRAS_RECHAZO', 'DEVOLUCION']),
+      expect.arrayContaining([
+        'DUPLICADO',
+        'IMPORTE_DISTINTO',
+        'APROBADO_TRAS_RECHAZO',
+        'DEVOLUCION',
+        'FECHA_ANTERIOR_AL_PAGO',
+      ]),
     );
   });
 

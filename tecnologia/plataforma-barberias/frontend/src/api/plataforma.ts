@@ -103,6 +103,10 @@ export interface ComprobantePorRevisar {
     numeroOperacionFinal: string;
     numeroRepetido: boolean;
     fechaTransferencia: string;
+    /** Cuándo se inició el pago (FR-020b). */
+    pagoIniciadoEn: string;
+    /** La fecha de la transferencia es anterior al inicio del pago (marca FECHA_ANTERIOR_AL_PAGO). */
+    fechaAnteriorAlPago: boolean;
     numeroYaUsadoEn: string[];
   };
   enviadoEn: string;

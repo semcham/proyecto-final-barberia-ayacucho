@@ -10,7 +10,7 @@ import {
   YaHayPagoAbierto,
 } from '../application/ports/pago-repository';
 import { NumeroOperacionYaAprobado } from '../domain/errores';
-import { ESTADOS_ABIERTOS, type Pago } from '../domain/pago';
+import { ESTADOS_ABIERTOS, type MarcaRevision, type Pago } from '../domain/pago';
 
 const COLUMNAS = [
   'id',
@@ -220,6 +220,19 @@ export class KyselyPagoRepository extends PagoRepository {
       .where('tenant_id', '=', this.tenantContext.actual().valor)
       .where('id', '=', id)
       .execute();
+  }
+
+  async resolverMarca(id: string, marca: MarcaRevision, nota: string): Promise<boolean> {
+    const resultado = await this.uow
+      .transaccionActual()
+      .updateTable('payment')
+      .set({ review_resolved_at: sql<Date>`now()`, review_note: nota })
+      .where('tenant_id', '=', this.tenantContext.actual().valor)
+      .where('id', '=', id)
+      .where('review', '=', marca)
+      .where('review_resolved_at', 'is', null)
+      .executeTakeFirst();
+    return Number(resultado.numUpdatedRows) === 1;
   }
 
   async numeroOperacion(id: string): Promise<string | null> {

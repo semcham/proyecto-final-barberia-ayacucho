@@ -307,7 +307,10 @@ export interface paths {
       };
     };
     put?: never;
-    /** Subir el comprobante de una transferencia (FR-020; JPG, PNG o PDF de hasta 5 MB, verificado por bytes) */
+    /**
+     * Subir el comprobante de una transferencia (FR-020; JPG, PNG o PDF de hasta 5 MB, verificado por bytes)
+     * @description fechaTransferencia es un día de la barbería (America/Lima): no futura y de los últimos 30 días, si no 400. Si es anterior al día en que se inició el pago, más allá de un día de tolerancia, el comprobante se acepta igual y el pago queda con la marca FECHA_ANTERIOR_AL_PAGO (FR-020b).
+     */
     post: {
       parameters: {
         query?: never;
@@ -1192,9 +1195,18 @@ export interface components {
         | 'RECHAZADO'
         | 'ANULADO'
         | 'EXPIRADO';
-      /** @enum {string|null} */
+      /**
+       * @description Marca de revisión. FECHA_ANTERIOR_AL_PAGO: la fecha de la transferencia es anterior al día (hora de Lima) en que se inició el pago, más allá de un día de tolerancia; es informativa y queda resuelta al revisar el comprobante
+       * @enum {string|null}
+       */
       marca?:
-        'DUPLICADO' | 'IMPORTE_DISTINTO' | 'APROBADO_TRAS_RECHAZO' | 'DEVOLUCION' | 'NUMERO_REPETIDO' | null;
+        | 'DUPLICADO'
+        | 'IMPORTE_DISTINTO'
+        | 'APROBADO_TRAS_RECHAZO'
+        | 'DEVOLUCION'
+        | 'NUMERO_REPETIDO'
+        | 'FECHA_ANTERIOR_AL_PAGO'
+        | null;
       periodo?: {
         /** Format: date-time */
         iniciaEn?: string;
@@ -1266,6 +1278,13 @@ export interface components {
         numeroRepetido?: boolean;
         /** Format: date */
         fechaTransferencia?: string;
+        /**
+         * Format: date-time
+         * @description Cuándo inició el propietario el pago
+         */
+        pagoIniciadoEn?: string;
+        /** @description La fecha de la transferencia es anterior al día de inicio del pago (hora de Lima, con un día de tolerancia): marca FECHA_ANTERIOR_AL_PAGO. Informativa, no impide aprobar */
+        fechaAnteriorAlPago?: boolean;
         numeroYaUsadoEn?: string[];
       };
       /** Format: date-time */

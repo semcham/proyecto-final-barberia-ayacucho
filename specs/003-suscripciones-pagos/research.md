@@ -243,6 +243,11 @@ se pierden, igual que cuando un proveedor real "olvida" una sesión vencida.
 - **Revisión:** solo una vez (FR-022c), con `UPDATE ... WHERE status = 'EN_REVISION'` y la fila
   bloqueada. La segunda revisión recibe `PAGO_YA_REVISADO` (409). Aprobar aplica R04 en la misma
   transacción. Rechazar exige un motivo de 5 a 300 caracteres.
+- **Fecha de la transferencia (FR-020b):** día de la barbería (hora de Lima), no futura y de los
+  últimos 30 días, o 400. Si es anterior al día en que se inició el pago, con un día de tolerancia, se
+  acepta igual y el pago queda con `review = FECHA_ANTERIOR_AL_PAGO` (migración 0019): una transferencia
+  hecha antes de iniciar el pago puede ser legítima, o la de otro pago. La marca se ve en la cola, no
+  bloquea, y se resuelve al revisar el comprobante.
 - **Importe exacto (FR-022a):** el administrador confirma el importe transferido, y se rechaza si no
   es igual.
 

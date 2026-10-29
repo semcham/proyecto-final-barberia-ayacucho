@@ -16,6 +16,8 @@ import estilos from '../panel/Panel.module.css';
 
 const CLAVE_COLA = ['plataforma', 'comprobantes'] as const;
 const soles = new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' });
+/** Día de la barbería (hora de Lima), como el de la fecha de la transferencia. */
+const fecha = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Lima' });
 const fechaHora = new Intl.DateTimeFormat('es-PE', {
   dateStyle: 'medium',
   timeStyle: 'short',
@@ -160,10 +162,14 @@ function ElementoDeLaCola({ item, alTerminar }: { item: ComprobantePorRevisar; a
         descripcion={`Plan ${pago.plan} · ${soles.format(pago.importeCentimos / 100)} · enviado el ${fechaHora.format(new Date(item.enviadoEn))}`}
         icono="dinero"
         acciones={
-          pago.numeroRepetido ? (
-            <EtiquetaEstado tono="error">Número ya usado</EtiquetaEstado>
-          ) : archivoRepetido ? (
-            <EtiquetaEstado tono="aviso">Archivo repetido</EtiquetaEstado>
+          pago.numeroRepetido || archivoRepetido || pago.fechaAnteriorAlPago ? (
+            <span className={estilos.acciones}>
+              {pago.numeroRepetido && <EtiquetaEstado tono="error">Número ya usado</EtiquetaEstado>}
+              {archivoRepetido && <EtiquetaEstado tono="aviso">Archivo repetido</EtiquetaEstado>}
+              {pago.fechaAnteriorAlPago && (
+                <EtiquetaEstado tono="aviso">Fecha anterior al pago</EtiquetaEstado>
+              )}
+            </span>
           ) : undefined
         }
       >
@@ -182,7 +188,18 @@ function ElementoDeLaCola({ item, alTerminar }: { item: ComprobantePorRevisar; a
             <dt className={estilos.elementoDetalle}>Fecha de la transferencia</dt>
             <dd className={estilos.elementoNombre}>{pago.fechaTransferencia}</dd>
           </div>
+          <div className={estilos.elemento}>
+            <dt className={estilos.elementoDetalle}>Pago iniciado el</dt>
+            <dd className={estilos.elementoNombre}>{fecha.format(new Date(pago.pagoIniciadoEn))}</dd>
+          </div>
         </dl>
+        {pago.fechaAnteriorAlPago && (
+          <p className={estilos.aviso} role="note">
+            La transferencia tiene fecha {pago.fechaTransferencia}, anterior al día en que se inició el pago (
+            {fecha.format(new Date(pago.pagoIniciadoEn))}). Puede ser legítima o de otro pago: compruébalo en
+            la cuenta antes de aprobar.
+          </p>
+        )}
         {pago.numeroRepetido && (
           <p className={estilos.aviso} role="note">
             Este número de operación ya figura en otro pago. Si ese pago fue aprobado, este no se podrá

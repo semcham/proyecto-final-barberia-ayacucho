@@ -19,7 +19,11 @@ import {
   TAMANO_MAXIMO_COMPROBANTE,
   type TipoComprobante,
 } from '../domain/tipo-de-archivo';
-import { esFechaTransferenciaValida, normalizarNumeroOperacion } from '../domain/transferencia';
+import {
+  esFechaAnteriorAlPago,
+  esFechaTransferenciaValida,
+  normalizarNumeroOperacion,
+} from '../domain/transferencia';
 import { AlmacenComprobantes, ComprobanteEnRevisionExistente } from './ports/almacen-comprobantes';
 import { PagoRepository } from './ports/pago-repository';
 import { aPagoVista, type PagoVista } from './vistas';
@@ -41,7 +45,9 @@ export interface ArchivoComprobante {
  * T080 · El propietario sube el comprobante de su transferencia (FR-020 a FR-021, R05; ADR-023):
  * - el tipo se verifica por los bytes (JPEG, PNG o PDF de hasta 5 MB); el nombre y el Content-Type no
  *   cuentan, y lo que no coincide se descarta antes de guardar nada;
- * - el número de operación se normaliza, y la fecha debe ser real, no futura y de los últimos 30 días;
+ * - el número de operación se normaliza, y la fecha debe ser real, no futura y de los últimos 30 días; si es
+ *   anterior al día en que se inició el pago (hora de Lima, un día de tolerancia), se acepta y el pago queda
+ *   con la marca FECHA_ANTERIOR_AL_PAGO para el administrador;
  * - en UNA transacción con la suscripción y el pago bloqueados: un solo comprobante en revisión, el cupo de
  *   5 por día y por barbería, el comprobante (con su SHA-256) y el pago pasa a EN_REVISION. Si algo falla,
  *   no queda nada, ni el lugar del cupo.
@@ -105,10 +111,16 @@ export class SubirComprobante {
         throw error;
       }
       const transicion = transicionDePago(pago, { tipo: 'COMPROBANTE_SUBIDO' });
+      // Una fecha anterior al inicio del pago (en hora de Lima, con un día de tolerancia) no se rechaza: queda
+      // marcada para el administrador.
+      const inicioDelPago = ZonaHoraria.LIMA.fechaDe(pago.creadoEn).toString();
+      const marca = esFechaAnteriorAlPago(subido.fechaTransferencia, inicioDelPago)
+        ? 'FECHA_ANTERIOR_AL_PAGO'
+        : null;
       const cambiado = await this.pagos.cambiar(pago.id, {
         desde: pago.estado,
         hacia: transicion.estado,
-        marca: null,
+        marca,
       });
       if (!cambiado) throw new Error('El pago cambió durante la transacción a pesar del bloqueo');
       await this.auditoria.registrar({

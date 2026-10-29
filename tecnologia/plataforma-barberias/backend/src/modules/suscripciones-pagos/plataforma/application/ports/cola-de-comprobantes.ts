@@ -14,6 +14,13 @@ export interface ComprobantePorRevisar {
     /** El mismo número (comparado por su hash) figura en otro pago, de esta o de otra barbería. */
     numeroRepetido: boolean;
     fechaTransferencia: string;
+    /** Cuándo inició el propietario el pago (para comparar con la fecha declarada). */
+    pagoIniciadoEn: Date;
+    /**
+     * La fecha de la transferencia es anterior al día en que se inició el pago, más allá del día de tolerancia
+     * (marca FECHA_ANTERIOR_AL_PAGO). Informativa: no impide aprobar.
+     */
+    fechaAnteriorAlPago: boolean;
     /** Ids de otros pagos con el mismo número (por su hash) o con el mismo archivo (por su SHA-256). */
     numeroYaUsadoEn: string[];
   };

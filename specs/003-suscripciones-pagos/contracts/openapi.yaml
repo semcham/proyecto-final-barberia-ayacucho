@@ -153,6 +153,10 @@ paths:
     post:
       tags: [Suscripción (propietario)]
       summary: Subir el comprobante de una transferencia (FR-020; JPG, PNG o PDF de hasta 5 MB, verificado por bytes)
+      description: >-
+        fechaTransferencia es un día de la barbería (America/Lima): no futura y de los últimos 30 días, si no
+        400. Si es anterior al día en que se inició el pago, más allá de un día de tolerancia, el comprobante
+        se acepta igual y el pago queda con la marca FECHA_ANTERIOR_AL_PAGO (FR-020b).
       security: [{ barberia: [] }]
       parameters: [{ $ref: "#/components/parameters/PagoId" }]
       requestBody:
@@ -709,8 +713,10 @@ components:
                 APROBADO_TRAS_RECHAZO,
                 DEVOLUCION,
                 NUMERO_REPETIDO,
+                FECHA_ANTERIOR_AL_PAGO,
                 null,
               ],
+            description: "Marca de revisión. FECHA_ANTERIOR_AL_PAGO: la fecha de la transferencia es anterior al día (hora de Lima) en que se inició el pago, más allá de un día de tolerancia; es informativa y queda resuelta al revisar el comprobante",
           }
         periodo:
           type: [object, "null"]
@@ -811,6 +817,17 @@ components:
                 description: El mismo número (por su hash) figura en otro pago,
               }
             fechaTransferencia: { type: string, format: date }
+            pagoIniciadoEn:
+              {
+                type: string,
+                format: date-time,
+                description: Cuándo inició el propietario el pago,
+              }
+            fechaAnteriorAlPago:
+              {
+                type: boolean,
+                description: "La fecha de la transferencia es anterior al día de inicio del pago (hora de Lima, con un día de tolerancia): marca FECHA_ANTERIOR_AL_PAGO. Informativa, no impide aprobar",
+              }
             numeroYaUsadoEn:
               {
                 type: array,

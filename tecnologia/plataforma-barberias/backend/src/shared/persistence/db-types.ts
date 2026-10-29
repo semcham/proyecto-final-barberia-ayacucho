@@ -270,7 +270,13 @@ export interface AppointmentStatusHistoryTable {
 export type EstadoPagoDb =
   'PENDIENTE' | 'ESPERANDO_COMPROBANTE' | 'EN_REVISION' | 'APROBADO' | 'RECHAZADO' | 'ANULADO' | 'EXPIRADO';
 export type MarcaRevisionDb =
-  'DUPLICADO' | 'IMPORTE_DISTINTO' | 'APROBADO_TRAS_RECHAZO' | 'DEVOLUCION' | 'NUMERO_REPETIDO';
+  | 'DUPLICADO'
+  | 'IMPORTE_DISTINTO'
+  | 'APROBADO_TRAS_RECHAZO'
+  | 'DEVOLUCION'
+  | 'NUMERO_REPETIDO'
+  // 0019 (US3).
+  | 'FECHA_ANTERIOR_AL_PAGO';
 
 export interface PaymentTable {
   id: string;

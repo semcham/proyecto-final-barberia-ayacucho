@@ -24,7 +24,8 @@ export function normalizarNumeroOperacion(texto: string): string | null {
 
 /**
  * La fecha de la transferencia (`AAAA-MM-DD`, día de calendario de la barbería) es válida si existe, no es
- * posterior a hoy y no tiene más de 30 días.
+ * posterior a hoy y no tiene más de 30 días. Fuera de esto, el comprobante se rechaza; una fecha válida pero
+ * anterior al inicio del pago se acepta con una marca (esFechaAnteriorAlPago).
  */
 export function esFechaTransferenciaValida(fecha: string, hoy: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return false;
@@ -33,6 +34,20 @@ export function esFechaTransferenciaValida(fecha: string, hoy: string): boolean 
   if (Number.isNaN(instante) || new Date(instante).toISOString().slice(0, 10) !== fecha) return false;
   const dia = Date.parse(`${hoy}T00:00:00Z`);
   return instante <= dia && dia - instante <= DIAS_ATRAS_TRANSFERENCIA * DIA_MS;
+}
+
+/** Días de tolerancia antes del día de inicio del pago (la hora de Lima corre el día respecto del banco). */
+export const TOLERANCIA_FECHA_ANTERIOR_DIAS = 1;
+
+/**
+ * La fecha de la transferencia es anterior al día (en hora de Lima) en que se inició el pago, más allá de la
+ * tolerancia de un día: el mismo día y el día anterior no cuentan. No invalida el comprobante: el pago queda
+ * marcado FECHA_ANTERIOR_AL_PAGO para que el administrador lo mire (puede ser una transferencia de otro pago).
+ * Las dos fechas son días de calendario `AAAA-MM-DD` ya válidos.
+ */
+export function esFechaAnteriorAlPago(fecha: string, diaInicioDelPago: string): boolean {
+  const limite = Date.parse(`${diaInicioDelPago}T00:00:00Z`) - TOLERANCIA_FECHA_ANTERIOR_DIAS * DIA_MS;
+  return Date.parse(`${fecha}T00:00:00Z`) < limite;
 }
 
 /**

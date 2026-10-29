@@ -51,7 +51,7 @@ cada operación de pago, de vencimiento, de reactivación y de activación manua
 | `method`                                 | varchar(16)               | `YAPE`, `TRANSFERENCIA` o `MANUAL`                                                                                                                                                                                                                       |
 | `status`                                 | varchar(24)               | `PENDIENTE`, `ESPERANDO_COMPROBANTE`, `EN_REVISION`, `APROBADO`, `RECHAZADO`, `ANULADO` o `EXPIRADO` (§3)                                                                                                                                                |
 | `covers_after`                           | timestamptz NOT NULL      | **Período objetivo** (FR-004, H1): la cobertura vigente al iniciar el pago (fin de la prueba o del último período, o el instante de inicio si estaba vencida). Al aprobar, si ya existe un período con `starts_at >= covers_after`, el pago es duplicado |
-| `review`                                 | varchar(24) NULL          | `DUPLICADO`, `IMPORTE_DISTINTO`, `APROBADO_TRAS_RECHAZO`, `DEVOLUCION` o `NUMERO_REPETIDO`: marca para la lista del administrador (FR-025a)                                                                                                              |
+| `review`                                 | varchar(24) NULL          | `DUPLICADO`, `IMPORTE_DISTINTO`, `APROBADO_TRAS_RECHAZO`, `DEVOLUCION`, `NUMERO_REPETIDO` o `FECHA_ANTERIOR_AL_PAGO` (0019, FR-020b): marca para la lista del administrador (FR-025a)                                                         |
 | `review_resolved_at`, `review_note`      | timestamptz, varchar(300) | Resolución de la marca                                                                                                                                                                                                                                   |
 | `provider_reference`                     | varchar(80) NULL          | **`UNIQUE`** global (la referencia del proveedor no se repite)                                                                                                                                                                                           |
 | `checkout_url_expires_at`                | timestamptz NULL          | Vida de la sesión del proveedor. Un pago `PENDIENTE` se reutiliza solo si es posterior a ahora (FR-012, H3)                                                                                                                                              |
@@ -152,11 +152,17 @@ stateDiagram-v2
 | `RECHAZADO`             | Aprobado por el proveedor                                                                | `RECHAZADO` + `review = APROBADO_TRAS_RECHAZO` | Sin período; lo decide el administrador (FR-017)                                                                  |
 | `APROBADO`              | Pendiente o rechazado atrasado                                                           | `APROBADO`                                     | Evento sin efecto                                                                                                 |
 | `APROBADO`              | Devolución o contracargo                                                                 | `APROBADO` + `review = DEVOLUCION`             | Sin cambio en la suscripción (FR-017a)                                                                            |
-| `ESPERANDO_COMPROBANTE` | Comprobante subido                                                                       | `EN_REVISION`                                  | —                                                                                                                 |
+| `ESPERANDO_COMPROBANTE` | Comprobante subido                                                                       | `EN_REVISION`                                  | Con la fecha anterior al inicio del pago (más de un día, hora de Lima): `review = FECHA_ANTERIOR_AL_PAGO` (FR-020b) |
 | `ESPERANDO_COMPROBANTE` | 7 días sin comprobante, u otro medio elegido                                             | `EXPIRADO` o `ANULADO`                         | —                                                                                                                 |
 | `EN_REVISION`           | Otro plan o medio elegido                                                                | **sin cambio**                                 | El intento nuevo recibe 409 `COMPROBANTE_YA_EN_REVISION`; un pago en revisión nunca se anula (FR-012, FR-021, H4) |
 | `EN_REVISION`           | El administrador aprueba (importe exacto, número no repetido)                            | `APROBADO`                                     | **Regla de aprobación**                                                                                           |
 | `EN_REVISION`           | El administrador rechaza (con motivo)                                                    | `RECHAZADO`                                    | El propietario puede iniciar otro                                                                                 |
+
+**`FECHA_ANTERIOR_AL_PAGO`** (migración 0019) es informativa: se muestra en la cola de comprobantes
+(`fechaAnteriorAlPago`) y no impide aprobar ni rechazar. Al revisar el comprobante, en la misma
+transacción, se da por resuelta (`review_resolved_at` y `review_note`), salvo que la aprobación la haya
+reemplazado por otra marca (`DUPLICADO`), que sigue pendiente. Por eso no aparece en la lista de pagos
+por revisar de US5.
 
 **Regla de aprobación** (FR-004, FR-012a; H1). Con la suscripción y el pago bloqueados:
 
@@ -202,5 +208,7 @@ Cómo se muestran al propietario:
 - **Las demás tablas** (citas, clientes, catálogo, usuarios, `user_account`, `auth_session`) no le
   dan **ningún** permiso. Lo comprueba PR09 `lectura-plataforma`.
 - **Validación de entradas:** importe = precio del plan (FR-005b); `bank_operation_number` normalizado
-  con 6 a 40 caracteres; `transfer_date` no futura y con menos de 60 días de antigüedad; motivo de 5 a
-  300 caracteres.
+  con 6 a 40 caracteres; `transfer_date` (día de la barbería, hora de Lima) no futura y de los últimos
+  30 días; motivo de 5 a 300 caracteres. Una `transfer_date` anterior al día de inicio del pago (hora de
+  Lima de `created_at`), más allá de un día de tolerancia, no se rechaza: se marca
+  `review = FECHA_ANTERIOR_AL_PAGO` (FR-020b, §3).

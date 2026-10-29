@@ -22,6 +22,8 @@ export const MARCAS_REVISION = [
   'APROBADO_TRAS_RECHAZO',
   'DEVOLUCION',
   'NUMERO_REPETIDO',
+  // US3: la fecha de la transferencia es anterior al día en que se inició el pago (informativa, no bloquea).
+  'FECHA_ANTERIOR_AL_PAGO',
 ] as const;
 export type MarcaRevision = (typeof MARCAS_REVISION)[number];
 

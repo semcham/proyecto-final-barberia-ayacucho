@@ -43,6 +43,8 @@ export class ColaDeComprobantesPlataforma extends ColaDeComprobantesLectura {
           'p.bank_operation_last4',
           'p.bank_operation_hash',
           sql<string>`to_char(p.transfer_date, 'YYYY-MM-DD')`.as('fecha'),
+          'p.created_at',
+          'p.review',
           'r.sha256',
           'r.uploaded_at',
         ])
@@ -84,6 +86,8 @@ export class ColaDeComprobantesPlataforma extends ColaDeComprobantesLectura {
             numeroOperacionFinal: f.bank_operation_last4 ?? '',
             numeroRepetido: mismoNumero.length > 0,
             fechaTransferencia: f.fecha,
+            pagoIniciadoEn: f.created_at,
+            fechaAnteriorAlPago: f.review === 'FECHA_ANTERIOR_AL_PAGO',
             numeroYaUsadoEn: [
               ...new Set([...mismoNumero.map((o) => o.id), ...mismoArchivo.map((o) => o.payment_id)]),
             ],
