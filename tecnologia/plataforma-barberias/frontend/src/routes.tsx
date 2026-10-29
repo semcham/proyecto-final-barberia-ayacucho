@@ -41,6 +41,7 @@ const DisenoPlataforma = lazy(() =>
   import('./components/plataforma/DisenoPlataforma').then((m) => ({ default: m.DisenoPlataforma })),
 );
 const InicioPlataforma = lazy(() => import('./pages/plataforma/Inicio'));
+const ComprobantesPlataforma = lazy(() => import('./pages/plataforma/Comprobantes'));
 
 /**
  * Rutas del panel de 002 y los roles que las ven (solo navegación: el backend exige los permisos). Las que
@@ -174,6 +175,7 @@ export function RutasApp() {
               }
             >
               <Route index element={<InicioPlataforma />} />
+              <Route path="comprobantes" element={<ComprobantesPlataforma />} />
             </Route>
           </Route>
           <Route path="*" element={<NoEncontrada />} />

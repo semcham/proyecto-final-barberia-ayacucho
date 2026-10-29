@@ -1,6 +1,7 @@
+import { randomInt } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import { v7 as uuidv7 } from 'uuid';
-import { AuditLog, Clock, Configuracion, TenantId, UnitOfWork } from '../../../../shared';
+import { AuditLog, Clock, Configuracion, TenantId, UnitOfWork, ZonaHoraria } from '../../../../shared';
 import {
   type ActorDeBarberia,
   AutorizacionSuscripciones,
@@ -16,13 +17,20 @@ import {
   PlanNoContratable,
 } from '../domain/errores';
 import { esReutilizable, type Pago, transicionDePago } from '../domain/pago';
+import { referenciaDeTransferencia } from '../domain/transferencia';
 import { PagoRepository } from './ports/pago-repository';
 import { PaymentGateway, ProveedorNoDisponible } from './ports/payment-gateway';
-import { aPagoVista, type PagoVista } from './vistas';
+import { aPagoVista, type CuentaDeTransferencia, cuentaDeTransferencia, type PagoVista } from './vistas';
 
 export interface SolicitudDePago {
   planId: string;
   medio: 'YAPE' | 'TRANSFERENCIA';
+}
+
+/** Lo que el propietario necesita para transferir (FR-019): la cuenta, el importe exacto y la referencia. */
+export interface DatosDeTransferencia extends CuentaDeTransferencia {
+  importeCentimos: number;
+  referencia: string;
 }
 
 export interface PagoIniciado {
@@ -30,21 +38,25 @@ export interface PagoIniciado {
   creado: boolean;
   pago: PagoVista;
   urlPago: string | null;
-  transferencia: null;
+  transferencia: DatosDeTransferencia | null;
 }
 
 type Desenlace = { tipo: 'LISTO'; creado: boolean; pago: Pago; plan: Plan } | { tipo: 'PROVEEDOR_CAIDO' };
 
+const ALFABETO_REFERENCIA = 'ABCDEFGHJKMNPQRSTVWXYZ23456789';
+
 /**
- * T045 · Iniciar el pago de un período con Yape (FR-008 a FR-012, R04). Todo ocurre en UNA transacción con
- * la suscripción bloqueada, así dos intentos simultáneos se ejecutan de a uno y dejan un solo pago:
+ * T045 y T080 · Iniciar el pago de un período con Yape o por transferencia (FR-008 a FR-012, FR-019; R04,
+ * R05). Todo ocurre en UNA transacción con la suscripción bloqueada, así dos intentos simultáneos se ejecutan
+ * de a uno y dejan un solo pago:
  * 1. con un comprobante en revisión, 409 COMPROBANTE_YA_EN_REVISION y no se anula nada (H4);
  * 2. con un período ya pagado por adelantado, 409 PAGO_ADELANTADO_NO_PERMITIDO;
- * 3. el mismo intento con la sesión de pago vigente devuelve el pago abierto (200); si la sesión venció, o
- *    es otro plan o medio, el pago abierto se anula y su sesión se intenta cancelar (H3);
+ * 3. el mismo intento devuelve el pago abierto (200): con Yape, si su sesión sigue vigente; por
+ *    transferencia, si sigue esperando el comprobante. Si no, el pago abierto se anula (H3);
  * 4. el pago nuevo guarda el importe del plan (FR-005b) y su período objetivo `covers_after` (H1);
- * 5. la sesión se crea en el proveedor después de insertar; si el proveedor no responde, el pago queda
- *    ANULADO y se responde 503 con la alternativa de transferencia (SC-005).
+ * 5. Yape: la sesión se crea en el proveedor después de insertar; si no responde, el pago queda ANULADO y se
+ *    responde 503 con la alternativa de transferencia (SC-005). Transferencia: queda ESPERANDO_COMPROBANTE con
+ *    la referencia `SUS-…` y los datos de la cuenta de la plataforma.
  */
 @Injectable()
 export class IniciarPago {
@@ -70,11 +82,16 @@ export class IniciarPago {
       await this.pasarela.cancelarSesion(referencia).catch(() => false);
     }
     if (desenlace.tipo === 'PROVEEDOR_CAIDO') throw new PagoEnLineaNoDisponible();
+    const { pago, plan, creado } = desenlace;
+    const cuenta = cuentaDeTransferencia(this.configuracion.pagos.cuenta);
     return this.uow.ejecutar(TenantId.de(actor.tenantId), async () => ({
-      creado: desenlace.creado,
-      pago: aPagoVista(desenlace.pago, desenlace.plan, await this.pagos.periodoDe(desenlace.pago.id)),
-      urlPago: desenlace.pago.urlPago,
-      transferencia: null,
+      creado,
+      pago: aPagoVista(pago, plan, await this.pagos.periodoDe(pago.id)),
+      urlPago: pago.urlPago,
+      transferencia:
+        pago.metodo === 'TRANSFERENCIA' && cuenta && pago.referenciaTransferencia
+          ? { ...cuenta, importeCentimos: pago.importeCentimos, referencia: pago.referenciaTransferencia }
+          : null,
     }));
   }
 
@@ -83,13 +100,16 @@ export class IniciarPago {
     solicitud: SolicitudDePago,
     sesionesPorCancelar: string[],
   ): Promise<Desenlace> {
-    // La transferencia con comprobante llega con US3.
-    if (solicitud.medio !== 'YAPE') throw new MedioNoDisponible(solicitud.medio);
     const plan = await this.suscripciones.planPorId(solicitud.planId);
     if (!plan || !plan.esContratable) throw new PlanNoContratable();
     const precio = plan.precioCentimos as number;
-    const { minimoCentimos, maximoCentimos } = this.pasarela.limitesYape();
-    if (precio < minimoCentimos || precio > maximoCentimos) throw new MedioNoDisponible('YAPE');
+    if (solicitud.medio === 'YAPE') {
+      const { minimoCentimos, maximoCentimos } = this.pasarela.limitesYape();
+      if (precio < minimoCentimos || precio > maximoCentimos) throw new MedioNoDisponible('YAPE');
+    } else if (!cuentaDeTransferencia(this.configuracion.pagos.cuenta)) {
+      // Sin la cuenta de la plataforma configurada no hay a dónde transferir.
+      throw new MedioNoDisponible('TRANSFERENCIA');
+    }
 
     const suscripcion = await this.suscripciones.suscripcionDelTenant({ bloquear: true });
     if (!suscripcion) throw new Error('La barbería no tiene una suscripción');
@@ -99,7 +119,7 @@ export class IniciarPago {
     const cobertura = suscripcion.cobertura(await this.suscripciones.periodos(suscripcion.id));
     if (tienePeriodoPorAdelantado(cobertura, ahora)) throw new PagoAdelantadoNoPermitido();
 
-    if (abierto && esReutilizable(abierto, plan.id, 'YAPE', ahora)) {
+    if (abierto && esReutilizable(abierto, plan.id, solicitud.medio, ahora)) {
       return { tipo: 'LISTO', creado: false, pago: abierto, plan };
     }
     if (abierto) {
@@ -109,38 +129,42 @@ export class IniciarPago {
     }
 
     const pagoId = uuidv7();
+    const porTransferencia = solicitud.medio === 'TRANSFERENCIA';
     await this.pagos.insertar({
       id: pagoId,
       suscripcionId: suscripcion.id,
       planId: plan.id,
       importeCentimos: precio,
       moneda: plan.moneda,
-      metodo: 'YAPE',
-      estado: 'PENDIENTE',
+      metodo: solicitud.medio,
+      estado: porTransferencia ? 'ESPERANDO_COMPROBANTE' : 'PENDIENTE',
       cubreDesde: inicioDelProximoPeriodo(cobertura, ahora),
       creadoPor: actor.usuarioId,
+      ...(porTransferencia ? { referenciaTransferencia: this.referencia(actor.tenantId, ahora) } : {}),
     });
 
-    let sesion;
-    try {
-      sesion = await this.pasarela.crearSesionDePago({
-        pagoId,
-        importeCentimos: precio,
-        moneda: plan.moneda,
-        descripcion: `Suscripción · plan ${plan.nombre}`,
-        metodo: 'YAPE',
-        urlRetorno: this.configuracion.pagos.urlRetorno,
+    if (!porTransferencia) {
+      let sesion;
+      try {
+        sesion = await this.pasarela.crearSesionDePago({
+          pagoId,
+          importeCentimos: precio,
+          moneda: plan.moneda,
+          descripcion: `Suscripción · plan ${plan.nombre}`,
+          metodo: 'YAPE',
+          urlRetorno: this.configuracion.pagos.urlRetorno,
+        });
+      } catch (error) {
+        if (!(error instanceof ProveedorNoDisponible)) throw error;
+        await this.pagos.cambiar(pagoId, { desde: 'PENDIENTE', hacia: 'ANULADO', marca: null });
+        return { tipo: 'PROVEEDOR_CAIDO' };
+      }
+      await this.pagos.fijarSesion(pagoId, {
+        referencia: sesion.referenciaProveedor,
+        url: sesion.urlPago,
+        expiraEn: sesion.expiraEn,
       });
-    } catch (error) {
-      if (!(error instanceof ProveedorNoDisponible)) throw error;
-      await this.pagos.cambiar(pagoId, { desde: 'PENDIENTE', hacia: 'ANULADO', marca: null });
-      return { tipo: 'PROVEEDOR_CAIDO' };
     }
-    await this.pagos.fijarSesion(pagoId, {
-      referencia: sesion.referenciaProveedor,
-      url: sesion.urlPago,
-      expiraEn: sesion.expiraEn,
-    });
     await this.auditoria.registrar({
       accion: 'PAGO_INICIADO',
       actorId: actor.usuarioId,
@@ -148,5 +172,15 @@ export class IniciarPago {
       resultado: 'PERMITIDO',
     });
     return { tipo: 'LISTO', creado: true, pago: (await this.pagos.porId(pagoId)) as Pago, plan };
+  }
+
+  /** `SUS-` + tenant + año y mes de la barbería + 4 al azar (R05). */
+  private referencia(tenantId: string, ahora: Date): string {
+    const mes = ZonaHoraria.LIMA.fechaDe(ahora).toString().slice(0, 7);
+    const aleatorio = Array.from(
+      { length: 4 },
+      () => ALFABETO_REFERENCIA[randomInt(ALFABETO_REFERENCIA.length)],
+    ).join('');
+    return referenciaDeTransferencia(tenantId, mes, aleatorio);
   }
 }

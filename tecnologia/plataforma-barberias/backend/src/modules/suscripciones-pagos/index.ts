@@ -11,4 +11,5 @@ export {
   type OperacionSuscripciones,
 } from './suscripciones/domain/permisos';
 export { ConciliarPagos } from './pagos/application/conciliar-pagos';
+export { ExpirarTransferencias } from './pagos/application/expirar-transferencias';
 export { VencerSuscripciones } from './suscripciones/application/vencer-suscripciones';

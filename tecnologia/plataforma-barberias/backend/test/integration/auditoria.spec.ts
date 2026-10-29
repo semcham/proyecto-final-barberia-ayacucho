@@ -13,7 +13,14 @@ import {
   sembrarPago,
   sembrarServicio,
 } from '../helpers/fixtures';
-import { notificar, PLAN_BASICO } from '../helpers/pagos';
+import {
+  iniciarTransferencia,
+  pagoEnRevision,
+  png,
+  revisar,
+  subirComprobante,
+} from '../helpers/comprobantes';
+import { barberiaEnPrueba, notificar, PLAN_BASICO } from '../helpers/pagos';
 import {
   type BarberiaParaReservar,
   barberiaParaReservar,
@@ -22,7 +29,13 @@ import {
   nuevaClave,
 } from '../helpers/reservas';
 import { cerrarPools, poolDe } from '../helpers/test-db';
-import { crearEscenario, type Escenario, sesionCliente, tokenPara } from '../helpers/sesiones';
+import {
+  crearEscenario,
+  type Escenario,
+  sesionCliente,
+  tokenPara,
+  tokenPlataformaPara,
+} from '../helpers/sesiones';
 
 // T114 · PR13: cada acción sensible de FR-027 deja exactamente un registro completo en audit_log de su
 // barbería, y la aplicación no puede modificarlo ni borrarlo (SC-007).
@@ -753,6 +766,67 @@ describe('PR13 · Auditoría de acciones sensibles', () => {
       expect(registro(filas, b, 'SUSCRIPCION_EN_GRACIA', `suscripcion:${b.suscripcionId}`).at).toEqual(
         rows[0].ends_at,
       );
+    });
+  });
+
+  // T076 · US3 (FR-037): la revisión del comprobante queda en el audit_log de la barbería, con el administrador
+  // como actor y el pago como recurso; el motivo queda con el comprobante. Nunca el contenido, el nombre ni el
+  // número de operación.
+  describe('revisión de comprobantes (US3)', () => {
+    it.each([
+      ['COMPROBANTE_APROBADO', { resultado: 'APROBADO', importeTransferidoCentimos: 4900 }],
+      ['COMPROBANTE_RECHAZADO', { resultado: 'RECHAZADO', motivo: 'El voucher no corresponde a la cuenta' }],
+    ] as const)('%s con el administrador como actor y sin el comprobante', async (accion, revision) => {
+      const adminId = uuidv7();
+      const { token } = await tokenPlataformaPara(adminId);
+      const b = await barberiaEnPrueba();
+      const contenido = `CANARIO-${randomBytes(8).toString('hex')}`;
+      const { pagoId, numero } = await pagoEnRevision(prueba, b.token, {
+        archivo: Buffer.concat([png(16), Buffer.from(contenido)]),
+      });
+      const correlacion = `correlacion-${revision.resultado.toLowerCase()}`;
+      const filas = await registrosNuevos(b.tenantId, () =>
+        revisar(prueba, token, b.tenantId, pagoId, revision).set('X-Correlation-Id', correlacion).expect(200),
+      );
+      const deLaAccion = filas.filter((fila) => fila.action === accion);
+      expect(deLaAccion).toHaveLength(1);
+      esCompleto(deLaAccion[0], { tenantId: b.tenantId, actorId: adminId, accion, resultado: 'PERMITIDO' });
+      expect(deLaAccion[0].resource).toBe(`pago:${pagoId}`);
+      vieneDeLaSolicitud(deLaAccion[0], correlacion);
+      const texto = JSON.stringify(filas);
+      for (const prohibido of [contenido, numero]) expect(texto).not.toContain(prohibido);
+
+      // El motivo queda con el comprobante, junto a quién lo revisó.
+      const { rows } = await poolDe('seed').query(
+        'SELECT reviewed_by, review_result, review_reason FROM payment_receipt WHERE tenant_id = $1',
+        [b.tenantId],
+      );
+      expect(rows).toEqual([
+        {
+          reviewed_by: adminId,
+          review_result: revision.resultado,
+          review_reason: revision.resultado === 'RECHAZADO' ? revision.motivo : null,
+        },
+      ]);
+    });
+
+    it('COMPROBANTE_SUBIDO con el propietario como actor', async () => {
+      const b = await barberiaEnPrueba();
+      const { body } = await iniciarTransferencia(prueba, b.token).expect(201);
+      const filas = await registrosNuevos(b.tenantId, () =>
+        subirComprobante(prueba, b.token, body.pago.id, { archivo: png() })
+          .set('X-Correlation-Id', 'correlacion-subida')
+          .expect(201),
+      );
+      expect(filas.map((fila) => fila.action)).toEqual(['COMPROBANTE_SUBIDO']);
+      esCompleto(filas[0], {
+        tenantId: b.tenantId,
+        actorId: b.propietarioId,
+        accion: 'COMPROBANTE_SUBIDO',
+        resultado: 'PERMITIDO',
+      });
+      expect(filas[0].resource).toBe(`pago:${body.pago.id}`);
+      vieneDeLaSolicitud(filas[0], 'correlacion-subida');
     });
   });
 

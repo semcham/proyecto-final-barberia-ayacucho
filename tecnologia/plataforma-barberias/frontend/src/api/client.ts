@@ -66,19 +66,32 @@ export interface OpcionesLlamada {
   sinRenovar?: boolean;
   /** Encabezados adicionales (p. ej. Idempotency-Key de POST /citas). */
   encabezados?: Record<string, string>;
+  /**
+   * Cuerpo multipart (la subida del comprobante, 003). El navegador pone el Content-Type con su límite; no
+   * se combina con `cuerpo`.
+   */
+  formulario?: FormData;
 }
 
-function enviar(
-  ruta: string,
-  { metodo = 'GET', cuerpo, encabezados: extra }: OpcionesLlamada,
-): Promise<Response> {
-  const encabezados: Record<string, string> = { Accept: 'application/json', ...extra };
-  if (cuerpo !== undefined) encabezados['Content-Type'] = 'application/json';
+/** Cuerpo de la solicitud: JSON, multipart o nada. Compartido con el cliente de la plataforma. */
+export function cuerpoDe({ cuerpo, formulario }: Pick<OpcionesLlamada, 'cuerpo' | 'formulario'>): {
+  body: BodyInit | undefined;
+  tipo: string | undefined;
+} {
+  if (formulario) return { body: formulario, tipo: undefined };
+  if (cuerpo !== undefined) return { body: JSON.stringify(cuerpo), tipo: 'application/json' };
+  return { body: undefined, tipo: undefined };
+}
+
+function enviar(ruta: string, opciones: OpcionesLlamada): Promise<Response> {
+  const encabezados: Record<string, string> = { Accept: 'application/json', ...opciones.encabezados };
+  const { body, tipo } = cuerpoDe(opciones);
+  if (tipo) encabezados['Content-Type'] = tipo;
   if (tokenAcceso) encabezados.Authorization = `Bearer ${tokenAcceso}`;
   return fetch(`${BASE}${ruta}`, {
-    method: metodo,
+    method: opciones.metodo ?? 'GET',
     headers: encabezados,
-    body: cuerpo === undefined ? undefined : JSON.stringify(cuerpo),
+    body,
     credentials: 'include',
   });
 }
@@ -188,6 +201,21 @@ export function renovarSesion(): Promise<SesionResponse | null> {
  * respuesta no es correcta, lanza un ApiError tipado.
  */
 export async function llamarApi<T>(ruta: string, opciones: OpcionesLlamada = {}): Promise<T> {
+  const respuesta = await solicitar(ruta, opciones);
+  if (respuesta.status === 204) return undefined as T;
+  return (await respuesta.json()) as T;
+}
+
+/**
+ * Descarga un archivo de la API con la sesión (el comprobante de una transferencia, 003). Devuelve el Blob en
+ * memoria: la interfaz lo muestra con una URL `blob:` local que revoca al poco tiempo. Ninguna URL del
+ * servidor sirve el archivo sin sesión (FR-041).
+ */
+export async function obtenerArchivo(ruta: string): Promise<Blob> {
+  return (await solicitar(ruta, {})).blob();
+}
+
+async function solicitar(ruta: string, opciones: OpcionesLlamada): Promise<Response> {
   let respuesta = await enviar(ruta, opciones);
   if (respuesta.status === 401 && !opciones.sinRenovar) {
     if (await renovarSesion()) {
@@ -201,6 +229,5 @@ export async function llamarApi<T>(ruta: string, opciones: OpcionesLlamada = {})
     if (esRestriccionDeSuscripcion(error)) alRestringirSuscripcion.forEach((oyente) => oyente());
     throw error;
   }
-  if (respuesta.status === 204) return undefined as T;
-  return (await respuesta.json()) as T;
+  return respuesta;
 }

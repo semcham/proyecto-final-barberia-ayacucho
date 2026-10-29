@@ -8,6 +8,13 @@ import { AccesoBarberiasModule } from '../../src/modules/acceso-barberias/acceso
 import { CatalogoCitasModule } from '../../src/modules/catalogo-citas/catalogo-citas.module';
 import { CLAVE_OPERACION } from '../../src/shared';
 import type { AppDePrueba } from '../helpers/app';
+import {
+  hoyEnLima,
+  iniciarTransferencia,
+  numeroOperacion,
+  pagoEnRevision,
+  png,
+} from '../helpers/comprobantes';
 import { codigoPara, sembrarAdminPlataforma } from '../helpers/plataforma';
 import { filasDe, sembrarUsuario } from '../helpers/fixtures';
 import {
@@ -98,10 +105,15 @@ const con = (t: string | null) => (t ? { Authorization: `Bearer ${t}` } : {});
 interface Caso {
   fila: string;
   exito: number;
-  ejecutar: (p: AppDePrueba, token: string | null) => Promise<{ status: number }>;
+  /** `s`: la barbería del caso, para las filas que necesitan uno de sus pagos. */
+  ejecutar: (p: AppDePrueba, token: string | null, s: Escenario) => Promise<{ status: number }>;
 }
 
-/** Filas de rbac.md implementadas hasta esta fase (US1 y el ingreso del administrador). */
+/** Pago en revisión de la barbería del escenario (lo crea su propietario). */
+const enRevision = async (p: AppDePrueba, s: Escenario) =>
+  (await pagoEnRevision(p, s.tokens.PROPIETARIO as string)).pagoId;
+
+/** Filas de rbac.md implementadas hasta esta fase (US1, el ingreso del administrador y US3). */
 const IMPLEMENTADAS: Caso[] = [
   { fila: '`GET /planes`', exito: 200, ejecutar: (p, t) => p.agente.get('/api/v1/planes').set(con(t)) },
   {
@@ -151,6 +163,63 @@ const IMPLEMENTADAS: Caso[] = [
         .post('/api/v1/plataforma/auth/segundo-factor')
         .set(con(t))
         .send({ desafio: body.desafio, codigo: codigoPara(admin.secreto, new Date()) });
+    },
+  },
+  // Fase 6 (T077): comprobantes del propietario y del administrador.
+  {
+    fila: '`POST /suscripcion/pagos/{id}/comprobante`',
+    exito: 201,
+    ejecutar: async (p, t, s) => {
+      const iniciado = await iniciarTransferencia(p, s.tokens.PROPIETARIO as string).expect(201);
+      const ruta = `/api/v1/suscripcion/pagos/${iniciado.body.pago.id}/comprobante`;
+      return p.agente
+        .post(ruta)
+        .set(con(t))
+        .attach('archivo', png(), { filename: 'comprobante.png' })
+        .field('numeroOperacion', numeroOperacion())
+        .field('fechaTransferencia', hoyEnLima());
+    },
+  },
+  {
+    fila: '`GET /suscripcion/pagos/{id}/comprobante`',
+    exito: 200,
+    ejecutar: async (p, t, s) => {
+      const pagoId = await enRevision(p, s);
+      return p.agente.get(`/api/v1/suscripcion/pagos/${pagoId}/comprobante`).set(con(t));
+    },
+  },
+  {
+    fila: '`GET /plataforma/comprobantes`',
+    exito: 200,
+    ejecutar: (p, t) => p.agente.get('/api/v1/plataforma/comprobantes').set(con(t)),
+  },
+  {
+    fila: '`GET /plataforma/barberias/{id}/pagos/{pagoId}`',
+    exito: 200,
+    ejecutar: async (p, t, s) => {
+      const pagoId = await enRevision(p, s);
+      return p.agente.get(`/api/v1/plataforma/barberias/${s.tenantId}/pagos/${pagoId}`).set(con(t));
+    },
+  },
+  {
+    fila: '`GET /plataforma/barberias/{id}/pagos/{pagoId}/comprobante`',
+    exito: 200,
+    ejecutar: async (p, t, s) => {
+      const pagoId = await enRevision(p, s);
+      return p.agente
+        .get(`/api/v1/plataforma/barberias/${s.tenantId}/pagos/${pagoId}/comprobante`)
+        .set(con(t));
+    },
+  },
+  {
+    fila: '`POST /plataforma/barberias/{id}/pagos/{pagoId}/revision`',
+    exito: 200,
+    ejecutar: async (p, t, s) => {
+      const pagoId = await enRevision(p, s);
+      return p.agente
+        .post(`/api/v1/plataforma/barberias/${s.tenantId}/pagos/${pagoId}/revision`)
+        .set(con(t))
+        .send({ resultado: 'APROBADO', importeTransferidoCentimos: 4900 });
     },
   },
   {
@@ -266,7 +335,7 @@ describe('PR08 · Matriz de permisos de 003 (contracts/rbac.md)', () => {
     const simbolo = (MATRIZ.get(caso.fila) as Record<Columna, string>)[columna];
     const estado = esperado(simbolo, caso.exito);
     const s = await crearEscenario();
-    const respuesta = await caso.ejecutar(entorno.prueba, s.tokens[columna]);
+    const respuesta = await caso.ejecutar(entorno.prueba, s.tokens[columna], s);
     expect({ celda: simbolo, estado: respuesta.status }).toEqual({ celda: simbolo, estado });
     if (estado === 403) {
       const denegaciones = (await filasDe('audit_log', s.tenantId)).filter(

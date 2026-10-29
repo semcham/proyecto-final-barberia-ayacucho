@@ -9,6 +9,7 @@ import {
   type PagoNuevo,
   YaHayPagoAbierto,
 } from '../application/ports/pago-repository';
+import { NumeroOperacionYaAprobado } from '../domain/errores';
 import { ESTADOS_ABIERTOS, type Pago } from '../domain/pago';
 
 const COLUMNAS = [
@@ -26,12 +27,19 @@ const COLUMNAS = [
   'checkout_url',
   'checkout_url_expires_at',
   'bank_operation_last4',
+  'transfer_reference',
   'rejection_reason',
   'created_by',
   'created_at',
   'approved_at',
   'closed_at',
 ] as const;
+
+// `date` como texto: el driver lo convertiría en un Date a la medianoche local y podría correr el día.
+const FECHA_TRANSFERENCIA = sql<string | null>`to_char(transfer_date, 'YYYY-MM-DD')`.as(
+  'fecha_transferencia',
+);
+const NUMERO_APROBADO = 'payment_numero_operacion_aprobado';
 
 interface FilaPago {
   id: string;
@@ -48,6 +56,8 @@ interface FilaPago {
   checkout_url: string | null;
   checkout_url_expires_at: Date | null;
   bank_operation_last4: string | null;
+  transfer_reference: string | null;
+  fecha_transferencia: string | null;
   rejection_reason: string | null;
   created_by: string;
   created_at: Date;
@@ -71,6 +81,8 @@ function aPago(f: FilaPago): Pago {
     urlPago: f.checkout_url,
     sesionExpiraEn: f.checkout_url_expires_at,
     numeroOperacionFinal: f.bank_operation_last4,
+    referenciaTransferencia: f.transfer_reference,
+    fechaTransferencia: f.fecha_transferencia,
     motivoRechazo: f.rejection_reason,
     creadoPor: f.created_by,
     creadoEn: f.created_at,
@@ -98,7 +110,7 @@ export class KyselyPagoRepository extends PagoRepository {
     return this.uow
       .transaccionActual()
       .selectFrom('payment')
-      .select(COLUMNAS)
+      .select([...COLUMNAS, FECHA_TRANSFERENCIA])
       .where('tenant_id', '=', this.tenantContext.actual().valor);
   }
 
@@ -135,6 +147,7 @@ export class KyselyPagoRepository extends PagoRepository {
           status: pago.estado,
           covers_after: pago.cubreDesde,
           created_by: pago.creadoPor,
+          transfer_reference: pago.referenciaTransferencia ?? null,
         })
         .execute();
     } catch (error) {
@@ -162,20 +175,62 @@ export class KyselyPagoRepository extends PagoRepository {
   async cambiar(id: string, cambio: CambioDePago): Promise<boolean> {
     const cierra = ESTADOS_ABIERTOS.includes(cambio.desde) && !ESTADOS_ABIERTOS.includes(cambio.hacia);
     const aprueba = cambio.hacia === 'APROBADO' && cambio.desde !== 'APROBADO';
-    const resultado = await this.uow
+    let resultado;
+    try {
+      resultado = await this.uow
+        .transaccionActual()
+        .updateTable('payment')
+        .set({
+          status: cambio.hacia,
+          ...(cambio.marca ? { review: cambio.marca } : {}),
+          ...(aprueba ? { approved_at: sql<Date>`now()` } : {}),
+          ...(cierra ? { closed_at: sql<Date>`now()` } : {}),
+        })
+        .where('tenant_id', '=', this.tenantContext.actual().valor)
+        .where('id', '=', id)
+        .where('status', '=', cambio.desde)
+        .executeTakeFirst();
+    } catch (error) {
+      // El índice global payment_numero_operacion_aprobado (FR-022b): la transacción entera se deshace,
+      // también el período que se acababa de insertar.
+      if (esViolacionDe(error, NUMERO_APROBADO)) throw new NumeroOperacionYaAprobado();
+      throw error;
+    }
+    return Number(resultado.numUpdatedRows) === 1;
+  }
+
+  async fijarDatosDeTransferencia(
+    id: string,
+    datos: { numeroOperacion: string; fecha: string },
+  ): Promise<void> {
+    await this.uow
       .transaccionActual()
       .updateTable('payment')
-      .set({
-        status: cambio.hacia,
-        ...(cambio.marca ? { review: cambio.marca } : {}),
-        ...(aprueba ? { approved_at: sql<Date>`now()` } : {}),
-        ...(cierra ? { closed_at: sql<Date>`now()` } : {}),
-      })
+      .set({ bank_operation_number: datos.numeroOperacion, transfer_date: datos.fecha })
       .where('tenant_id', '=', this.tenantContext.actual().valor)
       .where('id', '=', id)
-      .where('status', '=', cambio.desde)
+      .execute();
+  }
+
+  async fijarMotivoRechazo(id: string, motivo: string): Promise<void> {
+    await this.uow
+      .transaccionActual()
+      .updateTable('payment')
+      .set({ rejection_reason: motivo })
+      .where('tenant_id', '=', this.tenantContext.actual().valor)
+      .where('id', '=', id)
+      .execute();
+  }
+
+  async numeroOperacion(id: string): Promise<string | null> {
+    const fila = await this.uow
+      .transaccionActual()
+      .selectFrom('payment')
+      .select('bank_operation_number')
+      .where('tenant_id', '=', this.tenantContext.actual().valor)
+      .where('id', '=', id)
       .executeTakeFirst();
-    return Number(resultado.numUpdatedRows) === 1;
+    return fila?.bank_operation_number ?? null;
   }
 
   async periodoDe(id: string): Promise<{ inicio: Date; fin: Date } | null> {

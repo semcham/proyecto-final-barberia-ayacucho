@@ -11,13 +11,12 @@ import { Boton, ConmutadorTema } from '../ui';
 
 const DESTINOS: { a: string; etiqueta: string; icono: NombreIcono }[] = [
   { a: '/plataforma', etiqueta: 'Inicio', icono: 'inicio' },
+  // US3 (T084).
+  { a: '/plataforma/comprobantes', etiqueta: 'Comprobantes', icono: 'dinero' },
 ];
 
-// Llegan con US3 (comprobantes) y US5 (barberías y suscripciones).
-const PROXIMAMENTE: { etiqueta: string; icono: NombreIcono }[] = [
-  { etiqueta: 'Comprobantes', icono: 'dinero' },
-  { etiqueta: 'Barberías', icono: 'tienda' },
-];
+// Llega con US5 (barberías y suscripciones).
+const PROXIMAMENTE: { etiqueta: string; icono: NombreIcono }[] = [{ etiqueta: 'Barberías', icono: 'tienda' }];
 
 export function DisenoPlataforma() {
   const { salir } = usePlataforma();

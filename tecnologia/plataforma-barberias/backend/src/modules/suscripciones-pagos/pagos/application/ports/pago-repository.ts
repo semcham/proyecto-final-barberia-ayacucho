@@ -12,7 +12,7 @@ export type PagoNuevo = Pick<
   | 'estado'
   | 'cubreDesde'
   | 'creadoPor'
->;
+> & { referenciaTransferencia?: string };
 
 /** Cambios de una transición, aplicados solo si el pago sigue en `desde` (transición condicional). */
 export interface CambioDePago {
@@ -43,8 +43,22 @@ export abstract class PagoRepository {
     id: string,
     sesion: { referencia: string; url: string; expiraEn: Date },
   ): Promise<void>;
-  /** Devuelve si se aplicó (el pago seguía en `cambio.desde`). */
+  /**
+   * Devuelve si se aplicó (el pago seguía en `cambio.desde`). Lanza NumeroOperacionYaAprobado si al aprobar
+   * el número de operación ya está aprobado en otro pago, de cualquier barbería (FR-022b).
+   */
   abstract cambiar(id: string, cambio: CambioDePago): Promise<boolean>;
+  /** Número de operación normalizado y fecha declarados con el comprobante (US3). */
+  abstract fijarDatosDeTransferencia(
+    id: string,
+    datos: { numeroOperacion: string; fecha: string },
+  ): Promise<void>;
+  abstract fijarMotivoRechazo(id: string, motivo: string): Promise<void>;
+  /**
+   * Número de operación COMPLETO: solo para el detalle que ve el administrador con el tenant de la barbería
+   * fijado (H2). Las vistas y la vía de la plataforma solo tienen los últimos 4 caracteres.
+   */
+  abstract numeroOperacion(id: string): Promise<string | null>;
   /** Período que pagó el pago, si tiene uno. */
   abstract periodoDe(id: string): Promise<{ inicio: Date; fin: Date } | null>;
 }
@@ -88,4 +102,6 @@ export interface PagoPendiente extends UbicacionDePago {
 export abstract class UbicacionDePagos {
   abstract porReferencia(referenciaProveedor: string): Promise<UbicacionDePago | null>;
   abstract pendientesCreadosAntesDe(instante: Date, limite: number): Promise<PagoPendiente[]>;
+  /** Transferencias que siguen esperando comprobante desde antes de `instante` (para expirarlas). */
+  abstract esperandoComprobanteAntesDe(instante: Date, limite: number): Promise<UbicacionDePago[]>;
 }

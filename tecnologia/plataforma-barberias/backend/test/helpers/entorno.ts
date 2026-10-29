@@ -17,6 +17,11 @@ process.env.PAGOS_URL_BASE = 'http://127.0.0.1:9';
 process.env.PAGOS_LLAVE_SECRETA = 'sk_pruebas_integracion';
 process.env.PAGOS_SECRETO_FIRMA = 'whsec_pruebas_integracion_0123456789';
 process.env.PLATAFORMA_LLAVE_TOTP = Buffer.alloc(32, 42).toString('base64');
+// US3: cuenta de la plataforma para las transferencias (datos de prueba, no reales).
+process.env.PAGOS_CUENTA_BANCO = 'Banco de Pruebas';
+process.env.PAGOS_CUENTA_TITULAR = 'Plataforma de Barberías SAC';
+process.env.PAGOS_CUENTA_NUMERO = '191-0000000-0-00';
+process.env.PAGOS_CUENTA_CCI = '00219100000000000000';
 process.env.TAREAS_ACTIVAS = 'false';
 process.env.JWT_PRIVATE_KEY = privateKey.export({ type: 'pkcs8', format: 'pem' }).toString();
 process.env.JWT_PUBLIC_KEYS = JSON.stringify({

@@ -19,6 +19,7 @@ import { salirA } from '../../navegacion';
 import { Cargando } from './Cargando';
 import { mensajeDeError } from './datos-barberia';
 import estilos from './Panel.module.css';
+import { SeccionTransferencia } from './Transferencia';
 
 type PaginaUsuarios = Componentes001['schemas']['PaginaUsuarios'];
 type Barbero = Componentes002['schemas']['Barbero'];
@@ -164,6 +165,7 @@ function AvisoLimites({ plan }: { plan: Plan }) {
 }
 
 function ElegirPlan({ planes }: { planes: Plan[] }) {
+  const consultas = useQueryClient();
   const [elegido, setElegido] = useState<string | null>(null);
   const plan = planes.find((p) => p.id === elegido) ?? null;
   const pagar = useMutation({
@@ -172,7 +174,16 @@ function ElegirPlan({ planes }: { planes: Plan[] }) {
       if (urlPago) salirA(urlPago);
     },
   });
+  // US3: la transferencia queda esperando el comprobante; sus datos se muestran en la sección de abajo.
+  const transferir = useMutation({
+    mutationFn: (planId: string) => apiSuscripcion.iniciarPago(planId, 'TRANSFERENCIA'),
+    onSuccess: (iniciado) => {
+      consultas.setQueryData(['suscripcion', 'transferencia', iniciado.pago.id], iniciado);
+      void consultas.invalidateQueries({ queryKey: ['suscripcion'], exact: true });
+    },
+  });
   const conYape = plan?.mediosDisponibles.includes('YAPE') ?? false;
+  const conTransferencia = plan?.mediosDisponibles.includes('TRANSFERENCIA') ?? false;
 
   return (
     <Tarjeta
@@ -199,6 +210,7 @@ function ElegirPlan({ planes }: { planes: Plan[] }) {
       {plan && <AvisoLimites plan={plan} />}
       {plan && !conYape && <p className={estilos.aviso}>Este plan no se puede pagar con Yape.</p>}
       {pagar.isError && <Alerta>{mensajeDeError(pagar.error)}</Alerta>}
+      {transferir.isError && <Alerta>{mensajeDeError(transferir.error)}</Alerta>}
       <div className={estilos.acciones}>
         <Boton
           disabled={!plan || !conYape}
@@ -207,6 +219,15 @@ function ElegirPlan({ planes }: { planes: Plan[] }) {
           onClick={() => plan && pagar.mutate(plan.id)}
         >
           Pagar con Yape
+        </Boton>
+        <Boton
+          variante="secundario"
+          disabled={!plan || !conTransferencia}
+          cargando={transferir.isPending}
+          textoCargando="Preparando…"
+          onClick={() => plan && transferir.mutate(plan.id)}
+        >
+          Pagar por transferencia
         </Boton>
       </div>
     </Tarjeta>
@@ -265,7 +286,10 @@ function ResultadoDelPago({ pagoId }: { pagoId: string }) {
   return <Alerta>El pago quedó {ESTADOS_PAGO[pago.data.estado]}. Puedes intentarlo de nuevo.</Alerta>;
 }
 
-/** Suscripción de la barbería (HU17, HU18; RF19, RF20, RF23): estado, planes y pago con Yape. Solo el propietario. */
+/**
+ * Suscripción de la barbería (HU17, HU18; RF19 a RF23): estado, planes, pago con Yape y por transferencia con
+ * comprobante. Solo el propietario.
+ */
 export default function SuscripcionPagina() {
   const [parametros] = useSearchParams();
   const pagoId = parametros.get('pago');
@@ -284,7 +308,10 @@ export default function SuscripcionPagina() {
         {suscripcion.isError ? (
           <Alerta>{mensajeDeError(suscripcion.error)}</Alerta>
         ) : suscripcion.data ? (
-          <EstadoActual suscripcion={suscripcion.data} />
+          <div className={estilos.secciones}>
+            <EstadoActual suscripcion={suscripcion.data} />
+            <SeccionTransferencia suscripcion={suscripcion.data} />
+          </div>
         ) : (
           <Cargando />
         )}

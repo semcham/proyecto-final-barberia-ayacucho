@@ -4,7 +4,7 @@ export { Ayuda } from './Ayuda';
 export { useAvisos, ProveedorAvisos, type Aviso, type TonoAviso } from './Avisos';
 export { Boton, clasesBoton, type VarianteBoton } from './Boton';
 export { BotonIcono } from './BotonIcono';
-export { Campo, CampoContrasena } from './Campo';
+export { Campo, CampoArchivo, CampoContrasena } from './Campo';
 export { ConmutadorTema } from './ConmutadorTema';
 export { Esqueleto, EsqueletoTexto } from './Esqueleto';
 export { EstadoVacio } from './EstadoVacio';

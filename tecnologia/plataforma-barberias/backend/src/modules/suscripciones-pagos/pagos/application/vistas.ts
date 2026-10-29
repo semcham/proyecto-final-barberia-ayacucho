@@ -14,20 +14,24 @@ export interface PlanVista {
   moneda: string;
   maxUsuarios: number;
   maxBarberos: number;
-  mediosDisponibles: 'YAPE'[];
+  mediosDisponibles: ('YAPE' | 'TRANSFERENCIA')[];
 }
 
 /**
- * Medios con los que se puede pagar el plan. Yape, si el importe está dentro de los límites del proveedor
- * (FR-009). La transferencia se suma con US3.
+ * Medios con los que se puede pagar el plan (FR-009, FR-019): Yape, si el importe está dentro de los límites
+ * del proveedor; transferencia, para todo plan contratable si la plataforma configuró su cuenta.
  */
-export function aPlanVista(plan: Plan, limitesYape: LimitesDelMedio): PlanVista {
+export function aPlanVista(plan: Plan, limitesYape: LimitesDelMedio, conTransferencia: boolean): PlanVista {
   const precio = plan.precioCentimos;
+  const contratable = plan.esContratable && precio !== null;
   const conYape =
-    plan.esContratable &&
+    contratable &&
     precio !== null &&
     precio >= limitesYape.minimoCentimos &&
     precio <= limitesYape.maximoCentimos;
+  const medios: PlanVista['mediosDisponibles'] = [];
+  if (conYape) medios.push('YAPE');
+  if (contratable && conTransferencia) medios.push('TRANSFERENCIA');
   return {
     id: plan.id,
     codigo: plan.codigo,
@@ -36,7 +40,7 @@ export function aPlanVista(plan: Plan, limitesYape: LimitesDelMedio): PlanVista 
     moneda: plan.moneda,
     maxUsuarios: plan.maxUsuarios,
     maxBarberos: plan.maxBarberos,
-    mediosDisponibles: conYape ? ['YAPE'] : [],
+    mediosDisponibles: medios,
   };
 }
 
@@ -53,6 +57,24 @@ export interface PagoVista {
   numeroOperacionFinal: string | null;
   creadoEn: Date;
   aprobadoEn: Date | null;
+}
+
+/** Datos de la cuenta de la plataforma para transferir (variables PAGOS_CUENTA_*), o null si falta alguno. */
+export interface CuentaDeTransferencia {
+  banco: string;
+  titular: string;
+  numeroCuenta: string;
+  cci: string;
+}
+
+export function cuentaDeTransferencia(cuenta: {
+  banco?: string;
+  titular?: string;
+  numero?: string;
+  cci?: string;
+}): CuentaDeTransferencia | null {
+  const { banco, titular, numero, cci } = cuenta;
+  return banco && titular && numero && cci ? { banco, titular, numeroCuenta: numero, cci } : null;
 }
 
 export function aPagoVista(

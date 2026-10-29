@@ -9,7 +9,7 @@ export default function InicioPlataforma() {
         migas={[{ etiqueta: 'Plataforma' }]}
         antetitulo="Administración"
         titulo="Panel de la plataforma"
-        descripcion="Desde aquí revisarás los comprobantes de transferencia y gestionarás las barberías y sus suscripciones."
+        descripcion="Revisa los comprobantes de transferencia en «Comprobantes». La gestión de barberías y suscripciones llega más adelante."
       />
       <Tarjeta titulo="Tu sesión" icono="escudo">
         <p>

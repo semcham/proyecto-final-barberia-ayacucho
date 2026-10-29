@@ -13,6 +13,8 @@ import {
   PLAN_BASICO,
   PLAN_PRO,
 } from '../../helpers/pagos';
+import { pagoEnRevision, revisar } from '../../helpers/comprobantes';
+import { tokenPlataformaPara } from '../../helpers/sesiones';
 import { decidirEnSimulador } from '../../helpers/simulador';
 import { cerrarPools, poolDe } from '../../helpers/test-db';
 
@@ -128,6 +130,41 @@ describe('Cobertura derivada: current_period_end coincide con los períodos (M2)
       expect(cobertura.periodos).toBe(casos[i].planes.length);
       expect(cobertura.copia).toEqual(cobertura.derivada);
     }
+  });
+
+  it('tras aprobar un comprobante de transferencia (US3)', async () => {
+    const b = await barberiaEnPrueba();
+    const { pagoId } = await pagoEnRevision(entorno.prueba, b.token);
+    const { token } = await tokenPlataformaPara();
+    await revisar(entorno.prueba, token, b.tenantId, pagoId, {
+      resultado: 'APROBADO',
+      importeTransferidoCentimos: 4900,
+    }).expect(200);
+    const cobertura = await coberturaDe(b.suscripcionId);
+    expect(cobertura.periodos).toBe(1);
+    expect(cobertura.copia).toEqual(cobertura.derivada);
+    expect(cobertura.copia.getTime()).toBeGreaterThan(b.finPrueba.getTime());
+  });
+
+  it('un número de operación repetido deshace la aprobación entera: ni período ni copia cambiada', async () => {
+    const { token } = await tokenPlataformaPara();
+    const primera = await barberiaEnPrueba();
+    const { numero, pagoId: aprobado } = await pagoEnRevision(entorno.prueba, primera.token);
+    await revisar(entorno.prueba, token, primera.tenantId, aprobado, {
+      resultado: 'APROBADO',
+      importeTransferidoCentimos: 4900,
+    }).expect(200);
+    const b = await barberiaEnPrueba();
+    const { pagoId } = await pagoEnRevision(entorno.prueba, b.token, { numero });
+    await revisar(entorno.prueba, token, b.tenantId, pagoId, {
+      resultado: 'APROBADO',
+      importeTransferidoCentimos: 4900,
+    }).expect(409);
+    expect(await coberturaDe(b.suscripcionId)).toEqual({
+      copia: b.finPrueba,
+      derivada: b.finPrueba,
+      periodos: 0,
+    });
   });
 
   it('una aprobación que falla a mitad no deja ni el período ni la copia cambiada', async () => {

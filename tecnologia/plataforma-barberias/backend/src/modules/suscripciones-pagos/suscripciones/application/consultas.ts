@@ -1,8 +1,14 @@
 import { Injectable } from '@nestjs/common';
-import { Clock, TenantId, UnitOfWork } from '../../../../shared';
+import { Clock, Configuracion, TenantId, UnitOfWork } from '../../../../shared';
 import { PagoRepository } from '../../pagos/application/ports/pago-repository';
 import { PaymentGateway } from '../../pagos/application/ports/payment-gateway';
-import { aPagoVista, aPlanVista, type PagoVista, type PlanVista } from '../../pagos/application/vistas';
+import {
+  aPagoVista,
+  aPlanVista,
+  cuentaDeTransferencia,
+  type PagoVista,
+  type PlanVista,
+} from '../../pagos/application/vistas';
 import { NoEncontrado } from '../domain/errores';
 import { finDeGracia, periodoVigente, ultimoPeriodoEmpezado } from '../domain/periodo';
 import type { Plan } from '../domain/plan';
@@ -49,6 +55,7 @@ export class ConsultasDeSuscripcion {
     private readonly pasarela: PaymentGateway,
     private readonly restricciones: ExigirOperacion,
     private readonly reloj: Clock,
+    private readonly configuracion: Configuracion,
   ) {}
 
   /** Planes contratables, del más barato al más caro, con los medios disponibles para cada uno. */
@@ -138,6 +145,7 @@ export class ConsultasDeSuscripcion {
   }
 
   private vistaDe(plan: Plan): PlanVista {
-    return aPlanVista(plan, this.pasarela.limitesYape());
+    const conTransferencia = cuentaDeTransferencia(this.configuracion.pagos.cuenta) !== null;
+    return aPlanVista(plan, this.pasarela.limitesYape(), conTransferencia);
   }
 }

@@ -32,7 +32,11 @@ export type AccionAuditada =
   | 'PAGO_APROBADO'
   | 'SUSCRIPCION_ACTIVADA'
   | 'SUSCRIPCION_EN_GRACIA'
-  | 'SUSCRIPCION_VENCIDA';
+  | 'SUSCRIPCION_VENCIDA'
+  // US3: transferencia con comprobante (FR-037). Sin el contenido, el nombre ni el número del comprobante.
+  | 'COMPROBANTE_SUBIDO'
+  | 'COMPROBANTE_APROBADO'
+  | 'COMPROBANTE_RECHAZADO';
 
 export interface EntradaAuditoria {
   accion: AccionAuditada;

@@ -1,9 +1,28 @@
-import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Post, Res } from '@nestjs/common';
-import { IsIn, IsUUID } from 'class-validator';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  Param,
+  ParseUUIDPipe,
+  Post,
+  Res,
+  type StreamableFile,
+  UploadedFile,
+  UseInterceptors,
+} from '@nestjs/common';
+import { IsIn, IsString, IsUUID, MaxLength } from 'class-validator';
 import type { Response } from 'express';
 import { ActorActual, RequiereOperacion } from '../../../../shared';
+import { DescargarComprobante, SubirComprobante } from '../../pagos/application/comprobantes';
 import { IniciarPago, type PagoIniciado } from '../../pagos/application/iniciar-pago';
 import type { PagoVista, PlanVista } from '../../pagos/application/vistas';
+import { ComprobanteInvalido } from '../../pagos/domain/errores';
+import { comoAdjunto } from '../../pagos/presentation/adjunto';
+import {
+  type ArchivoEnMemoria,
+  ComprobanteInterceptor,
+} from '../../pagos/presentation/comprobante.interceptor';
 import type { ActorDeBarberia } from '../application/autorizacion';
 import {
   ConsultasDeSuscripcion,
@@ -27,12 +46,28 @@ export class IniciarPagoDto {
   medio!: 'YAPE' | 'TRANSFERENCIA';
 }
 
+/**
+ * Campos de texto del comprobante (multipart). El formato lo valida el caso de uso (número normalizado y
+ * fecha real); aquí solo el tipo y un tope. Los errores nunca repiten lo recibido.
+ */
+export class SubirComprobanteDto {
+  @IsString()
+  @MaxLength(60)
+  numeroOperacion!: string;
+
+  @IsString()
+  @MaxLength(10)
+  fechaTransferencia!: string;
+}
+
 /** T049 · Suscripción de la barbería del token (RF19, RF20, RF23; contracts/openapi.yaml de 003). */
 @Controller()
 export class SuscripcionController {
   constructor(
     private readonly consultas: ConsultasDeSuscripcion,
     private readonly iniciarPago: IniciarPago,
+    private readonly subirComprobanteCaso: SubirComprobante,
+    private readonly descargar: DescargarComprobante,
   ) {}
 
   @Get('planes')
@@ -77,5 +112,35 @@ export class SuscripcionController {
     @Param('pagoId', ParseUUIDPipe) pagoId: string,
   ): Promise<PagoVista> {
     return this.consultas.pago(actor, pagoId);
+  }
+
+  /** T083 · Subir el comprobante de la transferencia (FR-020): multipart, verificado por bytes. */
+  @Post('suscripcion/pagos/:pagoId/comprobante')
+  @HttpCode(201)
+  @OperacionM03('PAGAR_SUSCRIPCION')
+  @UseInterceptors(ComprobanteInterceptor)
+  subirComprobante(
+    @ActorActual() actor: ActorDeBarberia,
+    @Param('pagoId', ParseUUIDPipe) pagoId: string,
+    @UploadedFile() archivo: ArchivoEnMemoria | undefined,
+    @Body() dto: SubirComprobanteDto,
+  ): Promise<PagoVista> {
+    if (!archivo) throw new ComprobanteInvalido('archivo', 'requerido');
+    return this.subirComprobanteCaso.ejecutar(actor, pagoId, {
+      contenido: archivo.buffer,
+      numeroOperacion: dto.numeroOperacion,
+      fechaTransferencia: dto.fechaTransferencia,
+    });
+  }
+
+  /** T083 · Descargar el comprobante (FR-041): solo con sesión, como adjunto y sin caché. */
+  @Get('suscripcion/pagos/:pagoId/comprobante')
+  @OperacionM03('VER_SUSCRIPCION')
+  async descargarComprobante(
+    @ActorActual() actor: ActorDeBarberia,
+    @Param('pagoId', ParseUUIDPipe) pagoId: string,
+    @Res({ passthrough: true }) respuesta: Response,
+  ): Promise<StreamableFile> {
+    return comoAdjunto(respuesta, pagoId, await this.descargar.ejecutar(actor, pagoId));
   }
 }

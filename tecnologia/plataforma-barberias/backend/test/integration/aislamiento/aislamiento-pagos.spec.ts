@@ -8,11 +8,14 @@ import {
   notificar,
   pagarConYape,
 } from '../../helpers/pagos';
+import { pagoEnRevision, png, subirComprobante } from '../../helpers/comprobantes';
+import { tokenPlataformaPara } from '../../helpers/sesiones';
 import { cerrarPools, poolDe } from '../../helpers/test-db';
 
-// T036 · PR09 de los pagos (FR-040; ADR-031): pagos, períodos y suscripciones de una barbería son invisibles
-// para otra, por la API y por SQL directo con el rol de la aplicación, y una notificación de un pago de B
-// nunca modifica a A. US3 amplía esta prueba con los comprobantes.
+// T036 y T074 · PR09 de los pagos (FR-040; ADR-031): pagos, períodos, suscripciones y comprobantes de una
+// barbería son invisibles para otra, por la API y por SQL directo con el rol de la aplicación; una
+// notificación de un pago de B nunca modifica a A; el rol de la plataforma no lee el contenido de los
+// comprobantes, y el administrador no cruza barberías por la ruta.
 
 const TABLAS = ['payment', 'subscription_period', 'subscription'];
 
@@ -124,5 +127,83 @@ describe('PR09 · Aislamiento de pagos entre barberías', () => {
     }).expect(200);
     expect(await fotoDe(a.tenantId)).toEqual(antesA);
     expect((await filaDePago(pagoB)).review).toBe('DEVOLUCION');
+  });
+
+  // T074 · US3: los comprobantes son de su barbería y de nadie más.
+  describe('comprobantes', () => {
+    let c: BarberiaEnPrueba;
+    let d: BarberiaEnPrueba;
+    let pagoC: string;
+    let tokenAdmin: string;
+
+    beforeAll(async () => {
+      c = await barberiaEnPrueba();
+      d = await barberiaEnPrueba();
+      pagoC = (await pagoEnRevision(entorno.prueba, c.token)).pagoId;
+      await pagoEnRevision(entorno.prueba, d.token);
+      tokenAdmin = (await tokenPlataformaPara()).token;
+    });
+
+    it('el comprobante de C da 404 al propietario de D, igual que uno inexistente', async () => {
+      const ajeno = await entorno.prueba.agente
+        .get(`/api/v1/suscripcion/pagos/${pagoC}/comprobante`)
+        .set('Authorization', `Bearer ${d.token}`)
+        .expect(404);
+      const inexistente = await entorno.prueba.agente
+        .get('/api/v1/suscripcion/pagos/01923a00-0000-7000-8000-00000000abcd/comprobante')
+        .set('Authorization', `Bearer ${d.token}`)
+        .expect(404);
+      expect(ajeno.body).toEqual(inexistente.body);
+      // Subir un comprobante a un pago ajeno tampoco existe.
+      await subirComprobante(entorno.prueba, d.token, pagoC, { archivo: png() }).expect(404);
+    });
+
+    it.each(['payment_receipt', 'payment_receipt_file', 'receipt_upload_counter'])(
+      '%s: por SQL con barberias_app y el tenant de D no aparece ninguna fila de C',
+      async (tabla) => {
+        const filas = await comoApp(
+          d.tenantId,
+          async (cl) => (await cl.query(`SELECT tenant_id FROM ${tabla}`)).rows,
+        );
+        expect(filas.length).toBeGreaterThan(0);
+        expect(filas.every((f) => f.tenant_id === d.tenantId)).toBe(true);
+      },
+    );
+
+    it('barberias_plataforma no puede leer payment_receipt_file (el contenido)', async () => {
+      await expect(
+        poolDe('plataforma').query('SELECT content FROM payment_receipt_file LIMIT 1'),
+      ).rejects.toThrow(/permission denied/);
+      await expect(
+        poolDe('plataforma').query('SELECT tenant_id FROM payment_receipt_file LIMIT 1'),
+      ).rejects.toThrow(/permission denied/);
+      // Y del pago no ve el número de operación completo, solo sus últimos 4 y su hash (H2).
+      await expect(
+        poolDe('plataforma').query('SELECT bank_operation_number FROM payment LIMIT 1'),
+      ).rejects.toThrow(/permission denied/);
+    });
+
+    it('el administrador con la barbería D en la ruta no ve el pago ni el comprobante de C (404)', async () => {
+      const como = { Authorization: `Bearer ${tokenAdmin}` };
+      await entorno.prueba.agente
+        .get(`/api/v1/plataforma/barberias/${d.tenantId}/pagos/${pagoC}/comprobante`)
+        .set(como)
+        .expect(404);
+      await entorno.prueba.agente
+        .get(`/api/v1/plataforma/barberias/${d.tenantId}/pagos/${pagoC}`)
+        .set(como)
+        .expect(404);
+      await entorno.prueba.agente
+        .post(`/api/v1/plataforma/barberias/${d.tenantId}/pagos/${pagoC}/revision`)
+        .set(como)
+        .send({ resultado: 'APROBADO', importeTransferidoCentimos: 4900 })
+        .expect(404);
+      expect((await filaDePago(pagoC)).status).toBe('EN_REVISION');
+      // Con la barbería correcta, sí.
+      await entorno.prueba.agente
+        .get(`/api/v1/plataforma/barberias/${c.tenantId}/pagos/${pagoC}/comprobante`)
+        .set(como)
+        .expect(200);
+    });
   });
 });

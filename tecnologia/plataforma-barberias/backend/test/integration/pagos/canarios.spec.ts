@@ -1,6 +1,9 @@
+import { randomBytes } from 'node:crypto';
 import { Logger } from '@nestjs/common';
 import { iniciarSimuladorDePrueba } from '../../helpers/simulador';
 import { crearApp } from '../../helpers/app';
+import { iniciarTransferencia, png, revisar, subirComprobante } from '../../helpers/comprobantes';
+import { tokenPlataformaPara } from '../../helpers/sesiones';
 import {
   barberiaEnPrueba,
   esperarHasta,
@@ -14,7 +17,8 @@ import { cerrarPools, poolDe } from '../../helpers/test-db';
 
 // T038 · Datos canario (SC-010): la llave secreta de la pasarela, el secreto de firma de las notificaciones y
 // el teléfono del pagador que manda el proveedor nunca aparecen en los registros, en audit_log, en
-// provider_event ni en las respuestas de error. US3 suma los comprobantes y el administrador, el TOTP.
+// provider_event ni en las respuestas de error. US3 suma los comprobantes (el TOTP del administrador tiene los
+// suyos en identidad/segundo-factor.spec.ts).
 
 const TELEFONO_PAGADOR = '987650321';
 
@@ -117,6 +121,104 @@ describe('Datos canario de los pagos (SC-010)', () => {
       }
     } finally {
       await simulador.cerrar();
+      await prueba.cerrar();
+    }
+  });
+
+  // T075 · US3: el contenido y el nombre original de un comprobante canario no aparecen en los registros, la
+  // auditoría, los errores ni la cola del administrador. El contenido solo vive en payment_receipt_file.
+  it('un comprobante canario no deja su contenido ni su nombre fuera de payment_receipt_file', async () => {
+    const prueba = await crearApp();
+    const respuestas: string[] = [];
+    const guardar = (r: { body: unknown }) => {
+      respuestas.push(JSON.stringify(r.body));
+      return r;
+    };
+    try {
+      const contenido = `CANARIO-CONTENIDO-${randomBytes(8).toString('hex')}`;
+      const nombre = `CANARIO-NOMBRE-${randomBytes(8).toString('hex')}`;
+      const numero = `CANARIO${randomBytes(6).toString('hex').toUpperCase()}`;
+      const archivo = Buffer.concat([png(16), Buffer.from(contenido)]);
+      const b = await barberiaEnPrueba();
+      const admin = (await tokenPlataformaPara()).token;
+      const pagoId = (await iniciarTransferencia(prueba, b.token).expect(201)).body.pago.id as string;
+
+      // Un texto renombrado (rechazado) y uno demasiado grande, los dos con el canario.
+      guardar(
+        await subirComprobante(prueba, b.token, pagoId, {
+          archivo: Buffer.from(`${contenido} texto plano`),
+          nombre: `${nombre}.png`,
+          numero,
+        }).expect(400),
+      );
+      guardar(
+        await subirComprobante(prueba, b.token, pagoId, {
+          archivo: Buffer.concat([png(5 * 1024 * 1024), Buffer.from(contenido)]),
+          nombre: `${nombre}.png`,
+          numero,
+        }).expect(400),
+      );
+      // El válido, con el canario dentro de los bytes y en el nombre.
+      guardar(
+        await subirComprobante(prueba, b.token, pagoId, { archivo, nombre: `${nombre}.png`, numero }).expect(
+          201,
+        ),
+      );
+      guardar(
+        await subirComprobante(prueba, b.token, pagoId, { archivo, nombre: `${nombre}.png`, numero }).expect(
+          409,
+        ),
+      );
+      const cola = guardar(
+        await prueba.agente
+          .get('/api/v1/plataforma/comprobantes')
+          .set('Authorization', `Bearer ${admin}`)
+          .expect(200),
+      );
+      expect(JSON.stringify(cola.body)).toContain(pagoId);
+      guardar(
+        await revisar(prueba, admin, b.tenantId, pagoId, {
+          resultado: 'APROBADO',
+          importeTransferidoCentimos: 1,
+        }).expect(422),
+      );
+      guardar(
+        await revisar(prueba, admin, b.tenantId, pagoId, {
+          resultado: 'RECHAZADO',
+          motivo: 'Comprobante ilegible, envía otro',
+        }).expect(200),
+      );
+
+      const seed = poolDe('seed');
+      const lugares: Record<string, string> = {
+        registros: registro,
+        respuestas: respuestas.join('\n'),
+        auditoria: JSON.stringify(
+          (await seed.query('SELECT * FROM audit_log WHERE tenant_id = $1', [b.tenantId])).rows,
+        ),
+        auditoriaPlataforma: JSON.stringify((await seed.query('SELECT * FROM platform_audit_log')).rows),
+        pagos: JSON.stringify(
+          (await seed.query('SELECT * FROM payment WHERE tenant_id = $1', [b.tenantId])).rows,
+        ),
+        metadatos: JSON.stringify(
+          (await seed.query('SELECT * FROM payment_receipt WHERE tenant_id = $1', [b.tenantId])).rows,
+        ),
+      };
+      const hallazgos = Object.entries(lugares).flatMap(([lugar, texto]) =>
+        [contenido, nombre]
+          .filter((canario) => texto.includes(canario))
+          .map((canario) => `${lugar}: ${canario}`),
+      );
+      expect(hallazgos).toEqual([]);
+      // El número completo solo está en el pago (y en el detalle del administrador), nunca en la cola ni la auditoría.
+      expect(JSON.stringify(cola.body)).not.toContain(numero);
+      expect(lugares.auditoria).not.toContain(numero);
+      // El contenido sí está, y solo, en payment_receipt_file.
+      const { rows } = await seed.query('SELECT content FROM payment_receipt_file WHERE tenant_id = $1', [
+        b.tenantId,
+      ]);
+      expect((rows[0].content as Buffer).equals(archivo)).toBe(true);
+    } finally {
       await prueba.cerrar();
     }
   });

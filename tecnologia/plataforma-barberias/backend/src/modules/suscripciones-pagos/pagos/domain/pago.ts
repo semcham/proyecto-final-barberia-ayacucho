@@ -166,6 +166,10 @@ export interface Pago {
   urlPago: string | null;
   sesionExpiraEn: Date | null;
   numeroOperacionFinal: string | null;
+  /** Solo transferencia: la referencia `SUS-…` que el propietario escribe en el banco (R05). */
+  referenciaTransferencia: string | null;
+  /** Solo transferencia: el día de la transferencia declarado (`AAAA-MM-DD`). */
+  fechaTransferencia: string | null;
   motivoRechazo: string | null;
   creadoPor: string;
   creadoEn: Date;
@@ -173,8 +177,14 @@ export interface Pago {
   cerradoEn: Date | null;
 }
 
-/** El pago abierto se reutiliza solo si es el mismo intento y su sesión de pago sigue vigente (FR-012, H3). */
+/**
+ * El pago abierto se reutiliza solo si es el mismo intento (FR-012, H3): con Yape, si su sesión de pago sigue
+ * vigente; con transferencia, si sigue esperando el comprobante (la referencia ya entregada sigue sirviendo).
+ */
 export function esReutilizable(pago: Pago, planId: string, metodo: MetodoPago, ahora: Date): boolean {
+  if (metodo === 'TRANSFERENCIA') {
+    return pago.estado === 'ESPERANDO_COMPROBANTE' && pago.metodo === metodo && pago.planId === planId;
+  }
   return (
     pago.estado === 'PENDIENTE' &&
     pago.metodo === metodo &&

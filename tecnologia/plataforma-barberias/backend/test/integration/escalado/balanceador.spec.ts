@@ -13,7 +13,9 @@ import {
   nuevaClave,
 } from '../../helpers/reservas';
 import { sesionCliente } from '../../helpers/sesiones';
-import { cerrarPools } from '../../helpers/test-db';
+import { hoyEnLima, numeroOperacion, png } from '../../helpers/comprobantes';
+import { barberiaEnPrueba, PLAN_BASICO } from '../../helpers/pagos';
+import { cerrarPools, poolDe } from '../../helpers/test-db';
 
 // T020 · US1 (FR-001, FR-002, FR-005, FR-006, FR-026; SC-007; ADR-030): Nginx con la configuración del
 // repositorio delante de dos instancias de la aplicación. Reparto, sesión entre instancias, IP real del
@@ -204,6 +206,55 @@ describe('Balanceador: Nginx delante de dos instancias (US1)', () => {
       codigos409: ['HORARIO_NO_DISPONIBLE'],
     });
     expect(activas).toBe(1);
+  });
+
+  // 003 (US3, R05): el límite del cuerpo sube a 6 MB SOLO en la subida del comprobante; el resto sigue en 16 KB.
+  it('límite del cuerpo por Nginx: un comprobante de 4 MB llega; 20 KB en otra ruta y 7 MB en la subida dan 413', async () => {
+    const b = await barberiaEnPrueba();
+    const iniciado = await instancias[0].agente
+      .post('/api/v1/suscripcion/pagos')
+      .set('Authorization', `Bearer ${b.token}`)
+      .send({ planId: PLAN_BASICO, medio: 'TRANSFERENCIA' })
+      .expect(201);
+    const ruta = `/suscripcion/pagos/${iniciado.body.pago.id}/comprobante`;
+    const formulario = (archivo: Buffer) => {
+      const datos = new FormData();
+      datos.append('archivo', new Blob([archivo]), 'comprobante.png');
+      datos.append('numeroOperacion', numeroOperacion());
+      datos.append('fechaTransferencia', hoyEnLima());
+      return datos;
+    };
+    const subir = (archivo: Buffer) =>
+      porNginx(ruta, {
+        method: 'POST',
+        signal: AbortSignal.timeout(30_000),
+        headers: { Authorization: `Bearer ${b.token}` },
+        body: formulario(archivo),
+      });
+
+    // Más de 6 MB: lo corta Nginx antes de llegar a la aplicación.
+    const grande = await subir(png(7 * 1024 * 1024));
+    expect(grande.status).toBe(413);
+    // 4 MB: pasa Nginx y la aplicación lo guarda.
+    const archivo = png(4 * 1024 * 1024);
+    const subida = await subir(archivo);
+    expect(subida.status).toBe(201);
+    expect(((await subida.json()) as { estado: string }).estado).toBe('EN_REVISION');
+    const { rows } = await poolDe('seed').query(
+      'SELECT size_bytes FROM payment_receipt WHERE payment_id = $1',
+      [iniciado.body.pago.id],
+    );
+    expect(rows).toEqual([{ size_bytes: archivo.length }]);
+
+    // Cualquier otra ruta, incluso una parecida, sigue con 16 KB.
+    for (const otra of ['/citas', `${ruta}-otra`, `/suscripcion/pagos/${iniciado.body.pago.id}`]) {
+      const respuesta = await porNginx(otra, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${b.token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ relleno: 'x'.repeat(20 * 1024) }),
+      });
+      expect({ otra, estado: respuesta.status }).toEqual({ otra, estado: 413 });
+    }
   });
 
   // Va al final: los cortes cuentan como fallos de backend-1 para max_fails (3 en 10 s).

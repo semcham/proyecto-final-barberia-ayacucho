@@ -104,6 +104,35 @@ export function CampoContrasena({
   );
 }
 
+/**
+ * Campo para elegir un archivo (el comprobante de una transferencia, 003). `accept` solo ayuda al selector del
+ * sistema: el servidor verifica el tipo real por los bytes.
+ */
+export function CampoArchivo({
+  id,
+  etiqueta,
+  registro,
+  ayuda,
+  error,
+  accept,
+}: Pick<PropiedadesCampo, 'id' | 'etiqueta' | 'registro' | 'ayuda' | 'error'> & { accept: string }) {
+  return (
+    <ContenedorCampo id={id} etiqueta={etiqueta} ayuda={ayuda} error={error}>
+      {(descripcion) => (
+        <input
+          id={id}
+          type="file"
+          accept={accept}
+          className="entrada"
+          aria-invalid={error ? true : undefined}
+          aria-describedby={descripcion}
+          {...registro}
+        />
+      )}
+    </ContenedorCampo>
+  );
+}
+
 function ContenedorCampo({
   id,
   etiqueta,

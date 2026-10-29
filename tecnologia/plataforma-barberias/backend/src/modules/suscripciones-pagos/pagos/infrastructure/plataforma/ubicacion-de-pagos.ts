@@ -46,4 +46,18 @@ export class UbicacionDePagosPlataforma extends UbicacionDePagos {
       }));
     });
   }
+
+  esperandoComprobanteAntesDe(instante: Date, limite: number): Promise<UbicacionDePago[]> {
+    return this.lectura.ejecutarLectura(async (trx) => {
+      const filas = await trx
+        .selectFrom('payment')
+        .select(['tenant_id', 'id'])
+        .where('status', '=', 'ESPERANDO_COMPROBANTE')
+        .where('created_at', '<', instante)
+        .orderBy('created_at')
+        .limit(limite)
+        .execute();
+      return filas.map((f) => ({ tenantId: f.tenant_id, pagoId: f.id }));
+    });
+  }
 }

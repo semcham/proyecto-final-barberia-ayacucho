@@ -32,6 +32,23 @@ import { KyselySuscripcionRepository } from './suscripciones/infrastructure/kyse
 import { SuscripcionesPorVencerPlataforma } from './suscripciones/infrastructure/plataforma/suscripciones-por-vencer';
 import { NotificacionesController } from './suscripciones/presentation/notificaciones.controller';
 import { SuscripcionController } from './suscripciones/presentation/suscripcion.controller';
+import {
+  DescargarComprobante,
+  LectorDeComprobantes,
+  SubirComprobante,
+} from './pagos/application/comprobantes';
+import { ExpirarTransferencias } from './pagos/application/expirar-transferencias';
+import { AlmacenComprobantes } from './pagos/application/ports/almacen-comprobantes';
+import { AlmacenComprobantesPostgres } from './pagos/infrastructure/almacen-comprobantes-postgres';
+import {
+  ColaDeComprobantes,
+  DetalleDePago,
+  RevisarComprobante,
+  VerComprobante,
+} from './plataforma/application/comprobantes-plataforma';
+import { ColaDeComprobantesLectura } from './plataforma/application/ports/cola-de-comprobantes';
+import { ColaDeComprobantesPlataforma } from './plataforma/infrastructure/plataforma/cola-de-comprobantes-plataforma';
+import { ComprobantesPlataformaController } from './plataforma/presentation/comprobantes-plataforma.controller';
 
 /**
  * M03 Suscripciones y pagos. Prueba gratuita y límites (001 y 002); en 003, planes, períodos, pagos con la
@@ -39,7 +56,7 @@ import { SuscripcionController } from './suscripciones/presentation/suscripcion.
  * conciliación y restricciones por estado.
  */
 @Module({
-  controllers: [SuscripcionController, NotificacionesController],
+  controllers: [SuscripcionController, NotificacionesController, ComprobantesPlataformaController],
   providers: [
     { provide: SuscripcionRepository, useClass: KyselySuscripcionRepository },
     { provide: PagoRepository, useClass: KyselyPagoRepository },
@@ -61,7 +78,18 @@ import { SuscripcionController } from './suscripciones/presentation/suscripcion.
     ConciliarPagos,
     VencerSuscripciones,
     SuscripcionesApi,
+    // US3: transferencia con comprobante (R05, ADR-023).
+    { provide: AlmacenComprobantes, useClass: AlmacenComprobantesPostgres },
+    { provide: ColaDeComprobantesLectura, useClass: ColaDeComprobantesPlataforma },
+    LectorDeComprobantes,
+    SubirComprobante,
+    DescargarComprobante,
+    ExpirarTransferencias,
+    ColaDeComprobantes,
+    DetalleDePago,
+    VerComprobante,
+    RevisarComprobante,
   ],
-  exports: [SuscripcionesApi, ConciliarPagos, VencerSuscripciones],
+  exports: [SuscripcionesApi, ConciliarPagos, VencerSuscripciones, ExpirarTransferencias],
 })
 export class SuscripcionesPagosModule {}

@@ -11,7 +11,8 @@ import {
   pagarConYape,
   PLAN_BASICO,
 } from '../helpers/pagos';
-import { sesionCliente, tokenPara } from '../helpers/sesiones';
+import { iniciarTransferencia, png, revisar, subirComprobante } from '../helpers/comprobantes';
+import { sesionCliente, tokenPara, tokenPlataformaPara } from '../helpers/sesiones';
 import { cerrarPools, poolDe } from '../helpers/test-db';
 
 // T033 · Contrato de las rutas de US1 (specs/003-suscripciones-pagos/contracts/openapi.yaml): cada respuesta
@@ -40,16 +41,25 @@ describe('Contrato de 003 · Suscripción y pago con Yape (T033)', () => {
     await cerrarPools();
   });
 
-  it('GET /planes: BÁSICO y PRO con su precio y Yape como medio', async () => {
+  it('GET /planes: BÁSICO y PRO con su precio, Yape y transferencia como medios', async () => {
     const b = await barberiaEnPrueba();
     const { body } = await get('/planes', b.token).expect(200);
     expect(erroresDeContrato003('/planes', 'get', 200, body)).toEqual([]);
     expect(body.filter((p: { codigo: string }) => ['BASICO', 'PRO'].includes(p.codigo))).toEqual([
-      expect.objectContaining({ codigo: 'BASICO', precioCentimos: 4900, mediosDisponibles: ['YAPE'] }),
-      expect.objectContaining({ codigo: 'PRO', precioCentimos: 8900, mediosDisponibles: ['YAPE'] }),
+      expect.objectContaining({
+        codigo: 'BASICO',
+        precioCentimos: 4900,
+        mediosDisponibles: ['YAPE', 'TRANSFERENCIA'],
+      }),
+      expect.objectContaining({
+        codigo: 'PRO',
+        precioCentimos: 8900,
+        mediosDisponibles: ['YAPE', 'TRANSFERENCIA'],
+      }),
     ]);
     expect(body.map((p: { codigo: string }) => p.codigo)).not.toContain('TRIAL');
-    expect(body.find((p: { id: string }) => p.id === planCaro).mediosDisponibles).toEqual([]);
+    // Fuera de los límites de Yape solo queda la transferencia (US3, FR-019).
+    expect(body.find((p: { id: string }) => p.id === planCaro).mediosDisponibles).toEqual(['TRANSFERENCIA']);
   });
 
   it('GET /suscripcion en prueba, y con un pago abierto', async () => {
@@ -148,5 +158,45 @@ describe('Contrato de 003 · Suscripción y pago con Yape (T033)', () => {
     } finally {
       await entorno.simulador.cambiarModo({ modo: 'normal' });
     }
+  });
+
+  // US3: la transferencia, el comprobante y la revisión del administrador, contra el mismo contrato.
+  it('transferencia, comprobante y revisión: cada respuesta según el contrato', async () => {
+    const b = await barberiaEnPrueba();
+    const iniciado = await iniciarTransferencia(entorno.prueba, b.token).expect(201);
+    expect(erroresDeContrato003('/suscripcion/pagos', 'post', 201, iniciado.body)).toEqual([]);
+    const pagoId = iniciado.body.pago.id as string;
+    const ruta = '/suscripcion/pagos/{pagoId}/comprobante';
+
+    const invalido = await subirComprobante(entorno.prueba, b.token, pagoId, {
+      archivo: Buffer.from('texto'),
+    }).expect(400);
+    expect(erroresDeContrato003(ruta, 'post', 400, invalido.body)).toEqual([]);
+    const subido = await subirComprobante(entorno.prueba, b.token, pagoId, { archivo: png() }).expect(201);
+    expect(erroresDeContrato003(ruta, 'post', 201, subido.body)).toEqual([]);
+    const otro = await subirComprobante(entorno.prueba, b.token, pagoId, { archivo: png() }).expect(409);
+    expect(erroresDeContrato003(ruta, 'post', 409, otro.body)).toEqual([]);
+    const ajeno = await get(`/suscripcion/pagos/${uuidv7()}/comprobante`, b.token).expect(404);
+    expect(erroresDeContrato003(ruta, 'get', 404, ajeno.body)).toEqual([]);
+
+    const { token } = await tokenPlataformaPara();
+    const cola = await get('/plataforma/comprobantes', token).expect(200);
+    expect(erroresDeContrato003('/plataforma/comprobantes', 'get', 200, cola.body)).toEqual([]);
+    const detalle = await get(`/plataforma/barberias/${b.tenantId}/pagos/${pagoId}`, token).expect(200);
+    expect(
+      erroresDeContrato003('/plataforma/barberias/{barberiaId}/pagos/{pagoId}', 'get', 200, detalle.body),
+    ).toEqual([]);
+    const revisado = await revisar(entorno.prueba, token, b.tenantId, pagoId, {
+      resultado: 'RECHAZADO',
+      motivo: 'No se ve el número de operación',
+    }).expect(200);
+    expect(
+      erroresDeContrato003(
+        '/plataforma/barberias/{barberiaId}/pagos/{pagoId}/revision',
+        'post',
+        200,
+        revisado.body,
+      ),
+    ).toEqual([]);
   });
 });

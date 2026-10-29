@@ -448,8 +448,8 @@ renombrado se rechaza sin guardarse.
 
 ### Tests for User Story 3 ⚠️
 
-- [ ] T072 [P] [US3] Backend: en `backend/test/unit/pagos/tipo-de-archivo.spec.ts`, probar la detección por bytes: JPEG, PNG y PDF válidos, un texto renombrado, un archivo vacío, una cabecera truncada y un PNG con extensión `.pdf`.
-- [ ] T073 [P] [US3] Backend: en `backend/test/integration/pagos/comprobantes.spec.ts`, probar:
+- [x] T072 [P] [US3] Backend: en `backend/test/unit/pagos/tipo-de-archivo.spec.ts`, probar la detección por bytes: JPEG, PNG y PDF válidos, un texto renombrado, un archivo vacío, una cabecera truncada y un PNG con extensión `.pdf`.
+- [x] T073 [P] [US3] Backend: en `backend/test/integration/pagos/comprobantes.spec.ts`, probar:
   - iniciar la transferencia devuelve los datos de la cuenta, el importe y la referencia `SUS-…`;
   - subir JPG, PNG o PDF con número de operación y fecha deja `EN_REVISION`;
   - un tipo falso, más de 5 MB, o un número o una fecha inválidos responden 400 sin guardar nada;
@@ -464,15 +464,15 @@ renombrado se rechaza sin guardarse.
   - el mismo SHA-256 en otra barbería queda señalado;
   - `ESPERANDO_COMPROBANTE` pasa a `EXPIRADO` a los 7 días;
   - un caso más en `cobertura-derivada.spec.ts`: tras aprobar un comprobante, `current_period_end` coincide con los períodos.
-- [ ] T074 [P] [US3] Backend: **PR09**. Ampliar `backend/test/integration/aislamiento/aislamiento-pagos.spec.ts`:
+- [x] T074 [P] [US3] Backend: **PR09**. Ampliar `backend/test/integration/aislamiento/aislamiento-pagos.spec.ts`:
   - el comprobante de A da 404 al propietario de B, por la API;
   - por SQL con `barberias_app` y el tenant de B, no aparece en `payment_receipt` ni en `payment_receipt_file`;
   - `barberias_plataforma` no puede leer `payment_receipt_file`;
   - `GET /plataforma/barberias/{B}/pagos/{pago de A}/comprobante` responde 404.
-- [ ] T075 [P] [US3] Backend: en `backend/test/integration/pagos/canarios.spec.ts`, agregar casos: el contenido y el nombre original de un comprobante canario no aparecen en los registros, la auditoría, los errores ni la cola del administrador.
-- [ ] T076 [P] [US3] Backend: **PR13** en `backend/test/integration/auditoria.spec.ts`: `COMPROBANTE_APROBADO` y `COMPROBANTE_RECHAZADO` en el `audit_log` de la barbería, con el administrador como actor, el motivo y sin el contenido del comprobante.
-- [ ] T077 [P] [US3] Backend: **PR08**. Agregar a `IMPLEMENTADAS` en `rbac-003.spec.ts` las filas de los comprobantes del propietario y del administrador (`/suscripcion/pagos/{id}/comprobante`, `/plataforma/comprobantes`, `GET /plataforma/barberias/{id}/pagos/{pagoId}`, `/plataforma/barberias/{id}/pagos/{pagoId}/comprobante` y `/revision`).
-- [ ] T078 [P] [US3] Frontend: en `frontend/test/pages/transferencia.spec.tsx` y `frontend/test/pages/plataforma-comprobantes.spec.tsx`, con MSW, probar:
+- [x] T075 [P] [US3] Backend: en `backend/test/integration/pagos/canarios.spec.ts`, agregar casos: el contenido y el nombre original de un comprobante canario no aparecen en los registros, la auditoría, los errores ni la cola del administrador.
+- [x] T076 [P] [US3] Backend: **PR13** en `backend/test/integration/auditoria.spec.ts`: `COMPROBANTE_APROBADO` y `COMPROBANTE_RECHAZADO` en el `audit_log` de la barbería, con el administrador como actor, el motivo y sin el contenido del comprobante.
+- [x] T077 [P] [US3] Backend: **PR08**. Agregar a `IMPLEMENTADAS` en `rbac-003.spec.ts` las filas de los comprobantes del propietario y del administrador (`/suscripcion/pagos/{id}/comprobante`, `/plataforma/comprobantes`, `GET /plataforma/barberias/{id}/pagos/{pagoId}`, `/plataforma/barberias/{id}/pagos/{pagoId}/comprobante` y `/revision`).
+- [x] T078 [P] [US3] Frontend: en `frontend/test/pages/transferencia.spec.tsx` y `frontend/test/pages/plataforma-comprobantes.spec.tsx`, con MSW, probar:
   - los datos de la transferencia y la referencia;
   - la subida con el archivo, el número y la fecha;
   - el estado "comprobante en revisión";
@@ -483,12 +483,12 @@ renombrado se rechaza sin guardarse.
 
 ### Implementation for User Story 3
 
-- [ ] T079 [US3] Backend: crear el puerto `backend/src/modules/suscripciones-pagos/pagos/application/ports/almacen-comprobantes.ts` y el adaptador `backend/src/modules/suscripciones-pagos/pagos/infrastructure/almacen-comprobantes-postgres.ts` (`bytea` con RLS y SHA-256), y la detección por bytes en `backend/src/modules/suscripciones-pagos/pagos/domain/tipo-de-archivo.ts`. Hace pasar T072.
-- [ ] T080 [US3] Backend: casos de uso en `backend/src/modules/suscripciones-pagos/pagos/application/`:
+- [x] T079 [US3] Backend: crear el puerto `backend/src/modules/suscripciones-pagos/pagos/application/ports/almacen-comprobantes.ts` y el adaptador `backend/src/modules/suscripciones-pagos/pagos/infrastructure/almacen-comprobantes-postgres.ts` (`bytea` con RLS y SHA-256), y la detección por bytes en `backend/src/modules/suscripciones-pagos/pagos/domain/tipo-de-archivo.ts`. Hace pasar T072.
+- [x] T080 [US3] Backend: casos de uso en `backend/src/modules/suscripciones-pagos/pagos/application/`:
   - `IniciarPago` con el medio `TRANSFERENCIA` (referencia y datos de la cuenta desde la configuración);
   - `SubirComprobante` (contador diario, un solo comprobante en revisión, número normalizado, con `bank_operation_last4` y `bank_operation_hash`, y fecha válida);
   - `DescargarComprobante`.
-- [ ] T081 [US3] Backend: casos de uso del administrador en `backend/src/modules/suscripciones-pagos/plataforma/application/`:
+- [x] T081 [US3] Backend: casos de uso del administrador en `backend/src/modules/suscripciones-pagos/plataforma/application/`:
   - `ColaDeComprobantes` (lectura de plataforma, con `bank_operation_last4`, el número repetido por `bank_operation_hash` y el SHA-256 repetido);
   - `DetalleDePago`, con el tenant de la ruta, que devuelve el número de operación completo (H2);
   - `VerComprobante`, con el tenant de la ruta;
@@ -496,15 +496,15 @@ renombrado se rechaza sin guardarse.
 
   Las lecturas van en `backend/src/modules/suscripciones-pagos/plataforma/infrastructure/plataforma/`.
 
-- [ ] T082 [US3] Backend: crear la tarea `expirar-transferencias` (`ESPERANDO_COMPROBANTE` de más de 7 días) en `backend/src/modules/suscripciones-pagos/pagos/application/expirar-transferencias.ts`, y registrarla en `backend/src/host/tareas.ts`.
-- [ ] T083 [US3] Backend: controladores.
+- [x] T082 [US3] Backend: crear la tarea `expirar-transferencias` (`ESPERANDO_COMPROBANTE` de más de 7 días) en `backend/src/modules/suscripciones-pagos/pagos/application/expirar-transferencias.ts`, y registrarla en `backend/src/host/tareas.ts`.
+- [x] T083 [US3] Backend: controladores.
   - **Propietario:** en `suscripcion.controller.ts`, `POST` y `GET /suscripcion/pagos/:id/comprobante`, con `FileInterceptor` en memoria, un archivo y 5 MB, más un tipo mínimo propio del archivo en lugar de `@types/multer`.
   - **Administrador:** `backend/src/modules/suscripciones-pagos/plataforma/presentation/comprobantes-plataforma.controller.ts`, con `@Plataforma()`, incluido `GET /plataforma/barberias/:barberiaId/pagos/:pagoId` (detalle con el número completo).
   - **Encabezados de la descarga:** `attachment`, `nosniff` y `no-store`.
 
   Hace pasar T073 a T077.
 
-- [ ] T084 [US3] Frontend: en `frontend/src/pages/panel/Suscripcion.tsx`, agregar la sección de transferencia (datos, subida, estado y rechazo). Crear `frontend/src/pages/plataforma/Comprobantes.tsx` (cola, ver como `blob:` revocado a los 60 s, aprobar con el importe y rechazar con motivo). Hace pasar T078.
+- [x] T084 [US3] Frontend: en `frontend/src/pages/panel/Suscripcion.tsx`, agregar la sección de transferencia (datos, subida, estado y rechazo). Crear `frontend/src/pages/plataforma/Comprobantes.tsx` (cola, ver como `blob:` revocado a los 60 s, aprobar con el importe y rechazar con motivo). Hace pasar T078.
 
 **Checkpoint (US3)**: CI en verde. `quickstart.md` §3, pasos 5 y 6, funciona con Compose.
 

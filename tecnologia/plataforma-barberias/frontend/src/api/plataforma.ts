@@ -70,19 +70,71 @@ export function renovarPlataforma(): Promise<boolean> {
   return renovacionEnCurso;
 }
 
-/** Llama a una ruta /plataforma/*. Ante un 401 renueva UNA vez y repite; si no, lanza ApiError. */
-export async function llamarPlataforma<T>(
+async function solicitar(
   ruta: string,
-  opciones: Pick<OpcionesLlamada, 'metodo' | 'cuerpo' | 'sinRenovar'> = {},
-): Promise<T> {
+  opciones: Pick<OpcionesLlamada, 'metodo' | 'cuerpo' | 'sinRenovar'>,
+): Promise<Response> {
   let respuesta = await enviar(ruta, opciones);
   if (respuesta.status === 401 && !opciones.sinRenovar && (await renovarPlataforma())) {
     respuesta = await enviar(ruta, opciones);
   }
   if (!respuesta.ok) throw await aApiError(respuesta);
+  return respuesta;
+}
+
+/** Llama a una ruta /plataforma/*. Ante un 401 renueva UNA vez y repite; si no, lanza ApiError. */
+export async function llamarPlataforma<T>(
+  ruta: string,
+  opciones: Pick<OpcionesLlamada, 'metodo' | 'cuerpo' | 'sinRenovar'> = {},
+): Promise<T> {
+  const respuesta = await solicitar(ruta, opciones);
   if (respuesta.status === 204) return undefined as T;
   return (await respuesta.json()) as T;
 }
+
+/** Comprobante en la cola del administrador (contracts/openapi.yaml, ComprobantePorRevisar). */
+export interface ComprobantePorRevisar {
+  barberia: { id: string; nombre: string };
+  pago: {
+    id: string;
+    plan: string;
+    importeCentimos: number;
+    referencia: string;
+    numeroOperacionFinal: string;
+    numeroRepetido: boolean;
+    fechaTransferencia: string;
+    numeroYaUsadoEn: string[];
+  };
+  enviadoEn: string;
+}
+
+export interface DetalleDePago {
+  pago: { id: string; estado: string; importeCentimos: number };
+  numeroOperacion: string | null;
+  fechaTransferencia: string | null;
+}
+
+export type Revision =
+  { resultado: 'APROBADO'; importeTransferidoCentimos: number } | { resultado: 'RECHAZADO'; motivo: string };
+
+const rutaDePago = (barberiaId: string, pagoId: string) =>
+  `/plataforma/barberias/${encodeURIComponent(barberiaId)}/pagos/${encodeURIComponent(pagoId)}`;
+
+/** US3 (T084): comprobantes por revisar. */
+export const apiComprobantesPlataforma = {
+  cola: () => llamarPlataforma<ComprobantePorRevisar[]>('/plataforma/comprobantes'),
+  /** El número de operación completo solo llega aquí (H2). */
+  detalle: (barberiaId: string, pagoId: string) =>
+    llamarPlataforma<DetalleDePago>(rutaDePago(barberiaId, pagoId)),
+  /** El archivo en memoria, con la sesión de plataforma; la pantalla lo abre como `blob:` y lo revoca. */
+  archivo: async (barberiaId: string, pagoId: string): Promise<Blob> =>
+    (await solicitar(`${rutaDePago(barberiaId, pagoId)}/comprobante`, {})).blob(),
+  revisar: (barberiaId: string, pagoId: string, revision: Revision) =>
+    llamarPlataforma<unknown>(`${rutaDePago(barberiaId, pagoId)}/revision`, {
+      metodo: 'POST',
+      cuerpo: revision,
+    }),
+};
 
 export const apiPlataforma = {
   /** Primer paso: correo y contraseña → desafío de 5 minutos. */

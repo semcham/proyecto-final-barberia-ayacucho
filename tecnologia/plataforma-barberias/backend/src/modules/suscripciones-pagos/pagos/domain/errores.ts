@@ -67,6 +67,35 @@ export class ComprobanteYaEnRevision extends ErrorDeAplicacion {
   }
 }
 
+// --- US3: transferencia con comprobante (R05, ADR-023) ---
+
+/** Archivo, número de operación o fecha del comprobante inválidos. 400. Nunca repite lo recibido. */
+export class ComprobanteInvalido extends ErrorDeAplicacion {
+  readonly codigo = 'VALIDACION';
+
+  constructor(campo: 'archivo' | 'numeroOperacion' | 'fechaTransferencia', problema: string) {
+    super('Revisa los datos del comprobante.', [{ campo, problema }]);
+  }
+}
+
+/** El pago no espera un comprobante (no es una transferencia, o ya se cerró). 409. */
+export class PagoNoEsperaComprobante extends ErrorDeAplicacion {
+  readonly codigo = 'PAGO_NO_ESPERA_COMPROBANTE';
+
+  constructor() {
+    super('Este pago no espera un comprobante. Inicia una transferencia nueva.');
+  }
+}
+
+/** Se alcanzó el máximo de comprobantes del día de la barbería (FR-020a). 429, con la espera hasta mañana. */
+export class DemasiadosComprobantes extends ErrorDeAplicacion {
+  readonly codigo = 'DEMASIADOS_INTENTOS';
+
+  constructor(readonly reintentarEnSegundos: number) {
+    super('Ya enviaste 5 comprobantes hoy. Podrás enviar otro mañana.', [{ reintentarEnSegundos }]);
+  }
+}
+
 /** Orden incompatible con el estado del pago: error de programación, nunca efecto parcial. */
 export class TransicionDePagoInvalida extends ErrorDeAplicacion {
   readonly codigo = 'TRANSICION_DE_PAGO_INVALIDA';

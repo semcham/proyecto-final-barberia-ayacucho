@@ -1,11 +1,10 @@
 import { Injectable, type OnApplicationBootstrap } from '@nestjs/common';
-import { ConciliarPagos, VencerSuscripciones } from '../modules/suscripciones-pagos';
+import { ConciliarPagos, ExpirarTransferencias, VencerSuscripciones } from '../modules/suscripciones-pagos';
 import { EjecutorTareas } from '../shared';
 
 /**
  * Raíz de composición de las tareas programadas (ADR-024): registra en el ejecutor de M06 las tareas que
- * ofrecen los módulos y lo pone en marcha al terminar el arranque. 003 suma `expirar-transferencias` con
- * US3.
+ * ofrecen los módulos y lo pone en marcha al terminar el arranque.
  */
 @Injectable()
 export class TareasProgramadas implements OnApplicationBootstrap {
@@ -13,6 +12,7 @@ export class TareasProgramadas implements OnApplicationBootstrap {
     private readonly ejecutor: EjecutorTareas,
     private readonly conciliarPagos: ConciliarPagos,
     private readonly vencerSuscripciones: VencerSuscripciones,
+    private readonly expirarTransferencias: ExpirarTransferencias,
   ) {}
 
   onApplicationBootstrap(): void {
@@ -22,6 +22,11 @@ export class TareasProgramadas implements OnApplicationBootstrap {
     this.ejecutor.registrar({
       nombre: 'vencer-suscripciones',
       ejecutar: () => this.vencerSuscripciones.ejecutar(),
+    });
+    // US3: una transferencia sin comprobante en 7 días expira y libera el pago abierto.
+    this.ejecutor.registrar({
+      nombre: 'expirar-transferencias',
+      ejecutar: () => this.expirarTransferencias.ejecutar(),
     });
     this.ejecutor.iniciar();
   }
