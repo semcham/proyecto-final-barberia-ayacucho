@@ -115,7 +115,8 @@ function ContenidoCatalogo({ catalogo, slug }: { catalogo: Catalogo; slug: strin
   return (
     <main className={estilos.pagina}>
       <header className={estilos.cabecera}>
-        <Logo />
+        {/* Compacto: el protagonista de esta página es la barbería, no la plataforma. */}
+        <Logo compacto />
         <p className="antetitulo">Reserva en línea</p>
       </header>
 

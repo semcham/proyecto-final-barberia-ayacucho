@@ -148,7 +148,7 @@ export default function MisCitas() {
                     {activa && futura && (
                       <Boton
                         type="button"
-                        variante="secundario"
+                        variante="peligro"
                         tamano="sm"
                         onClick={() => setPorCancelar(cita)}
                       >

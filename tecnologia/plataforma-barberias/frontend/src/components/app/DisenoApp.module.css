@@ -105,6 +105,15 @@
   color: var(--color-enlace);
 }
 
+/* Etiqueta corta en la barra inferior del celular; la completa en la barra lateral. */
+.etiquetaLarga {
+  display: none;
+}
+
+.etiquetaCorta {
+  white-space: nowrap;
+}
+
 .activo::before {
   content: '';
   position: absolute;
@@ -160,6 +169,8 @@
   align-items: center;
   gap: var(--espacio-2);
   flex-shrink: 0;
+  /* Siempre a la derecha, también sin la fecha (cabecera de la plataforma). */
+  margin-left: auto;
 }
 
 /* ---------- Contenido ---------- */
@@ -205,7 +216,15 @@
     padding: var(--espacio-5) var(--espacio-4);
     border-right: 1px solid var(--color-borde);
     background: var(--color-superficie);
-    overflow-y: auto;
+    /* Marca y barbería arriba, "Próximamente" abajo y siempre visible: si las opciones no caben en la altura,
+       se desplaza solo la navegación. */
+    overflow: hidden;
+  }
+
+  .marca,
+  .barberia,
+  .proximamente {
+    flex-shrink: 0;
   }
 
   .marca {
@@ -240,19 +259,27 @@
 
   .navegacion {
     position: static;
+    flex: 0 1 auto;
+    min-height: 0;
     height: auto;
     padding: 0;
     border: none;
     background: none;
     backdrop-filter: none;
+    overflow-y: auto;
   }
 
   .navegacion ul {
     flex-direction: column;
     gap: var(--espacio-1);
+    height: auto;
+    overflow: visible;
   }
 
+  /* En el celular cada opción ocupa al menos 4,75rem de ancho (flex: 1 0 4.75rem); en la columna lateral ese
+     valor se volvería altura. Aquí cada opción mide lo que su enlace. */
   .navegacion li {
+    flex: none;
     max-width: none;
   }
 
@@ -273,6 +300,14 @@
   .activo,
   .activo:hover {
     background: var(--color-acento-suave);
+  }
+
+  .etiquetaLarga {
+    display: inline;
+  }
+
+  .etiquetaCorta {
+    display: none;
   }
 
   .activo::before {
@@ -329,6 +364,12 @@
 
   .contenido {
     padding: var(--espacio-8) var(--espacio-10) var(--espacio-16);
+  }
+}
+
+@media (min-width: 100rem) {
+  .contenido {
+    max-width: var(--ancho-contenido-amplio);
   }
 }
 

@@ -7,10 +7,25 @@
   align-items: start;
 }
 
+/* Formulario y lista en proporción 2:3 (antes, el formulario quedaba fijo en 22rem y en pantallas anchas la
+   lista corta dejaba un hueco grande). El formulario no baja de 20rem para que sus campos no se aprieten. */
 @media (min-width: 64rem) {
   .distribucion {
-    grid-template-columns: minmax(0, 22rem) minmax(0, 1fr);
+    grid-template-columns: minmax(20rem, 2fr) minmax(0, 3fr);
   }
+}
+
+/* Búsqueda en una fila: el campo se estira y el botón queda alineado con él (abajo, a la altura del campo). */
+.busqueda {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--espacio-3);
+}
+
+.busqueda > :first-child {
+  /* 12rem: en un celular de 360 px el campo y el botón todavía caben en la misma fila. */
+  flex: 1 1 12rem;
 }
 
 .formulario {

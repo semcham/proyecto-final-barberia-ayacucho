@@ -2,6 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { Link } from 'react-router-dom';
 import { z } from 'zod';
 import { clavesConsulta } from '../../api/claves';
 import { ApiError, llamarApi } from '../../api/client';
@@ -10,7 +11,7 @@ import { useSesion } from '../../auth/SesionProvider';
 import { EditorSemana, type Tramo, validarSemana } from '../../components/app/EditorSemana';
 import { EncabezadoPagina } from '../../components/app/EncabezadoPagina';
 import { type CitaAfectada, citasEnConflicto, ModalConflictos } from '../../components/app/ModalConflictos';
-import { Alerta, Boton, Campo, EstadoVacio, Tarjeta, useAvisos } from '../../components/ui';
+import { Alerta, Boton, Campo, clasesBoton, EstadoVacio, Tarjeta, useAvisos } from '../../components/ui';
 import { fechaDeBarberia, horaDeBarberia, isoEnZona } from '../../hora-barberia';
 import { Cargando } from './Cargando';
 import { mensajeDeError, useZonaBarberia } from './datos-barberia';
@@ -48,6 +49,11 @@ export default function Disponibilidad() {
         icono="usuario"
         titulo="Aún no tienes barberos activos"
         descripcion="Agrégalos en la pantalla Barberos."
+        accion={
+          <Link to="/app/barberos" className={clasesBoton({ variante: 'secundario' })}>
+            Ir a Barberos
+          </Link>
+        }
       />
     ) : (
       <EstadoVacio
@@ -334,7 +340,7 @@ function Bloqueos({ barbero, zona }: { barbero: Barbero; zona: string }) {
                     </span>
                     {b.motivo && <span className={estilos.elementoDetalle}>{b.motivo}</span>}
                   </div>
-                  <Boton type="button" variante="fantasma" tamano="sm" onClick={() => eliminar.mutate(b.id)}>
+                  <Boton type="button" variante="peligro" tamano="sm" onClick={() => eliminar.mutate(b.id)}>
                     Eliminar
                   </Boton>
                 </li>

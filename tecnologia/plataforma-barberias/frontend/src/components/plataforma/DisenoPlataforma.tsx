@@ -9,12 +9,17 @@ import { Boton, ConmutadorTema } from '../ui';
 // T071 · Diseño de /plataforma: la misma estructura del panel de las barberías (barra lateral en escritorio y
 // navegación abajo en el celular), con su propio menú y su propia salida.
 
-const DESTINOS: { a: string; etiqueta: string; icono: NombreIcono }[] = [
+const DESTINOS: { a: string; etiqueta: string; icono: NombreIcono; etiquetaCorta?: string }[] = [
   { a: '/plataforma', etiqueta: 'Inicio', icono: 'inicio' },
   // US3 (T084).
   { a: '/plataforma/comprobantes', etiqueta: 'Comprobantes', icono: 'dinero' },
-  // US4 (T091).
-  { a: '/plataforma/pagos-por-revisar', etiqueta: 'Pagos por revisar', icono: 'alerta' },
+  // US4 (T091). En la barra inferior del celular, la etiqueta corta (la completa no cabe en una línea).
+  {
+    a: '/plataforma/pagos-por-revisar',
+    etiqueta: 'Pagos por revisar',
+    icono: 'alerta',
+    etiquetaCorta: 'Por revisar',
+  },
   // US5 (T099).
   { a: '/plataforma/barberias', etiqueta: 'Barberías', icono: 'tienda' },
 ];
@@ -54,12 +59,23 @@ export function DisenoPlataforma() {
                 <NavLink
                   to={destino.a}
                   end
+                  // Con etiqueta corta, el nombre accesible sigue siendo el completo (contiene al visible).
+                  aria-label={destino.etiquetaCorta ? destino.etiqueta : undefined}
                   className={({ isActive }) =>
                     isActive ? `${estilos.enlace} ${estilos.activo}` : estilos.enlace
                   }
                 >
                   <Icono nombre={destino.icono} />
-                  <span>{destino.etiqueta}</span>
+                  {destino.etiquetaCorta ? (
+                    <>
+                      <span className={estilos.etiquetaLarga}>{destino.etiqueta}</span>
+                      <span className={estilos.etiquetaCorta} aria-hidden="true">
+                        {destino.etiquetaCorta}
+                      </span>
+                    </>
+                  ) : (
+                    <span>{destino.etiqueta}</span>
+                  )}
                 </NavLink>
               </li>
             ))}

@@ -245,7 +245,7 @@ export default function Barberos() {
                     </Boton>
                     <Boton
                       type="button"
-                      variante={barbero.activo ? 'fantasma' : 'secundario'}
+                      variante={barbero.activo ? 'peligro' : 'secundario'}
                       tamano="sm"
                       onClick={() => cambiarEstado.mutate({ barbero, activo: !barbero.activo })}
                     >

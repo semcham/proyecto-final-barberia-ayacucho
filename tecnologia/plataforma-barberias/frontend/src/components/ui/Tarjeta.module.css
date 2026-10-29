@@ -1,4 +1,8 @@
 .tarjeta {
+  /* El encabezado se acomoda al ancho de la tarjeta (no al de la pantalla): una tarjeta angosta en escritorio
+     se comporta como en el celular. */
+  container: tarjeta / inline-size;
+  --ancho-icono-tarjeta: 2.75rem;
   display: flex;
   flex-direction: column;
   gap: var(--espacio-4);
@@ -12,16 +16,17 @@
 
 .encabezado {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-start;
-  gap: var(--espacio-4);
+  gap: var(--espacio-3) var(--espacio-4);
 }
 
 .icono {
   display: inline-grid;
   place-items: center;
   flex-shrink: 0;
-  width: 2.75rem;
-  height: 2.75rem;
+  width: var(--ancho-icono-tarjeta);
+  height: var(--ancho-icono-tarjeta);
   border: 1px solid var(--color-acento-borde);
   border-radius: var(--radio);
   background: var(--color-acento-suave);
@@ -29,7 +34,7 @@
 }
 
 .textos {
-  flex: 1;
+  flex: 1 1 12rem;
   min-width: 0;
 }
 
@@ -49,4 +54,17 @@
   flex-wrap: wrap;
   gap: var(--espacio-2);
   margin-left: auto;
+}
+
+/* Tarjeta angosta (celular o columna estrecha): las etiquetas y acciones bajan a su propia línea, debajo del
+   título y alineadas con él (después del icono), en lugar de comprimirlo. */
+@container tarjeta (max-width: 36rem) {
+  .acciones {
+    flex-basis: 100%;
+    margin-left: 0;
+  }
+
+  .icono ~ .acciones {
+    padding-left: calc(var(--ancho-icono-tarjeta) + var(--espacio-4));
+  }
 }

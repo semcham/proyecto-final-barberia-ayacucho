@@ -185,6 +185,14 @@ export default function Agenda() {
               icono="calendario"
               titulo="Sin citas este día"
               descripcion={fechaDeBarberia(`${fecha}T12:00:00Z`, zona)}
+              accion={
+                esPropietario &&
+                !presencial && (
+                  <Boton type="button" variante="secundario" icono="mas" onClick={() => setPresencial(true)}>
+                    Registrar cita presencial
+                  </Boton>
+                )
+              }
             />
           ) : (
             <ul className={estilos.lista}>
@@ -232,7 +240,7 @@ export default function Agenda() {
                       {esPropietario && (cita.estado === 'CONFIRMADA' || cita.estado === 'PENDIENTE') && (
                         <Boton
                           type="button"
-                          variante="fantasma"
+                          variante="peligro"
                           tamano="sm"
                           onClick={() => setPorCancelar(cita)}
                         >

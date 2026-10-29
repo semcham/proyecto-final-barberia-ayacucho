@@ -30,7 +30,8 @@ const DESTINOS: Destino[] = [
   { a: '/app/suscripcion', etiqueta: 'Suscripción', icono: 'dinero', roles: ['PROPIETARIO'] },
 ];
 
-const PROXIMAMENTE: { etiqueta: string; icono: NombreIcono }[] = [{ etiqueta: 'Ingresos', icono: 'dinero' }];
+// Secciones anunciadas que aún no existen; el bloque "Próximamente" solo se muestra si hay alguna.
+const PROXIMAMENTE: { etiqueta: string; icono: NombreIcono }[] = [];
 
 function fechaDeHoy(): string {
   const texto = new Intl.DateTimeFormat('es-PE', { weekday: 'long', day: 'numeric', month: 'long' }).format(
@@ -84,17 +85,19 @@ export function DisenoApp() {
           </ul>
         </nav>
 
-        <div className={estilos.proximamente}>
-          <p className={estilos.proximamenteTitulo}>Próximamente</p>
-          <ul>
-            {PROXIMAMENTE.map((item) => (
-              <li key={item.etiqueta}>
-                <Icono nombre={item.icono} tamano={18} />
-                {item.etiqueta}
-              </li>
-            ))}
-          </ul>
-        </div>
+        {PROXIMAMENTE.length > 0 && (
+          <div className={estilos.proximamente}>
+            <p className={estilos.proximamenteTitulo}>Próximamente</p>
+            <ul>
+              {PROXIMAMENTE.map((item) => (
+                <li key={item.etiqueta}>
+                  <Icono nombre={item.icono} tamano={18} />
+                  {item.etiqueta}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </aside>
 
       <div className={estilos.area}>

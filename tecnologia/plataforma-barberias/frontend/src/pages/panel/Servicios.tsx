@@ -221,7 +221,7 @@ export default function Servicios() {
                     </Boton>
                     <Boton
                       type="button"
-                      variante={servicio.activo ? 'fantasma' : 'secundario'}
+                      variante={servicio.activo ? 'peligro' : 'secundario'}
                       tamano="sm"
                       onClick={() => cambiarEstado.mutate({ servicio, activo: !servicio.activo })}
                     >

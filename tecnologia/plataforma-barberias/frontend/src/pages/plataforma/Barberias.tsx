@@ -374,6 +374,11 @@ export default function BarberiasPlataforma() {
     setBuscar(texto.trim());
     setPagina(1);
   };
+  const limpiarBusqueda = () => {
+    setTexto('');
+    setBuscar('');
+    setPagina(1);
+  };
 
   return (
     <>
@@ -383,63 +388,70 @@ export default function BarberiasPlataforma() {
         titulo="Barberías"
         descripcion="Estado de cada barbería y de su suscripción. Desde aquí no se ven citas, clientes, catálogo ni usuarios."
       />
-      <form role="search" aria-label="Buscar barberías" className={estilos.fila} onSubmit={enviar}>
-        <div className="campo">
-          <label htmlFor="buscar-barberias" className="campo__etiqueta">
-            Buscar por nombre o enlace
-          </label>
-          <input
-            id="buscar-barberias"
-            type="search"
-            className="entrada"
-            maxLength={80}
-            autoComplete="off"
-            value={texto}
-            onChange={(e) => setTexto(e.target.value)}
-          />
-        </div>
-        <div className={estilos.acciones}>
-          <Boton type="submit" variante="secundario">
+      <div className={estilos.secciones}>
+        <form role="search" aria-label="Buscar barberías" className={estilos.busqueda} onSubmit={enviar}>
+          <div className="campo">
+            <label htmlFor="buscar-barberias" className="campo__etiqueta">
+              Buscar por nombre o enlace
+            </label>
+            <input
+              id="buscar-barberias"
+              type="search"
+              className="entrada"
+              maxLength={80}
+              autoComplete="off"
+              value={texto}
+              onChange={(e) => setTexto(e.target.value)}
+            />
+          </div>
+          <Boton type="submit" variante="secundario" icono="buscar">
             Buscar
           </Boton>
-        </div>
-      </form>
-      {lista.isError ? (
-        <Alerta>{mensajeDeError(lista.error)}</Alerta>
-      ) : !lista.data ? (
-        <p aria-busy="true">Cargando las barberías…</p>
-      ) : lista.data.barberias.length === 0 ? (
-        <EstadoVacio
-          icono="tienda"
-          titulo={buscar ? 'Ninguna barbería coincide' : 'Aún no hay barberías'}
-          descripcion={buscar ? 'Prueba con otra parte del nombre o del enlace.' : undefined}
-        />
-      ) : (
-        <>
-          <ul className={estilos.lista} aria-label="Barberías">
-            {lista.data.barberias.map((barberia) => (
-              <Fila key={barberia.id} barberia={barberia} alCambiar={recargar} />
-            ))}
-          </ul>
-          {paginas > 1 && (
-            <nav aria-label="Páginas" className={estilos.acciones}>
-              <Boton variante="secundario" disabled={pagina <= 1} onClick={() => setPagina((p) => p - 1)}>
-                Anterior
-              </Boton>
-              <span>
-                Página {pagina} de {paginas}
-              </span>
-              <Boton
-                variante="secundario"
-                disabled={pagina >= paginas}
-                onClick={() => setPagina((p) => p + 1)}
-              >
-                Siguiente
-              </Boton>
-            </nav>
-          )}
-        </>
-      )}
+        </form>
+        {lista.isError ? (
+          <Alerta>{mensajeDeError(lista.error)}</Alerta>
+        ) : !lista.data ? (
+          <p aria-busy="true">Cargando las barberías…</p>
+        ) : lista.data.barberias.length === 0 ? (
+          <EstadoVacio
+            icono="tienda"
+            titulo={buscar ? 'Ninguna barbería coincide' : 'Aún no hay barberías'}
+            descripcion={buscar ? 'Prueba con otra parte del nombre o del enlace.' : undefined}
+            accion={
+              buscar && (
+                <Boton type="button" variante="secundario" onClick={limpiarBusqueda}>
+                  Ver todas las barberías
+                </Boton>
+              )
+            }
+          />
+        ) : (
+          <>
+            <ul className={estilos.lista} aria-label="Barberías">
+              {lista.data.barberias.map((barberia) => (
+                <Fila key={barberia.id} barberia={barberia} alCambiar={recargar} />
+              ))}
+            </ul>
+            {paginas > 1 && (
+              <nav aria-label="Páginas" className={estilos.acciones}>
+                <Boton variante="secundario" disabled={pagina <= 1} onClick={() => setPagina((p) => p - 1)}>
+                  Anterior
+                </Boton>
+                <span>
+                  Página {pagina} de {paginas}
+                </span>
+                <Boton
+                  variante="secundario"
+                  disabled={pagina >= paginas}
+                  onClick={() => setPagina((p) => p + 1)}
+                >
+                  Siguiente
+                </Boton>
+              </nav>
+            )}
+          </>
+        )}
+      </div>
     </>
   );
 }

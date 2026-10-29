@@ -214,7 +214,8 @@ describe('Agenda (/app/agenda)', () => {
     );
     renderizar('/app/agenda');
     const usuario = userEvent.setup();
-    await usuario.click(await screen.findByRole('button', { name: /cita presencial/i }));
+    // Nombre exacto: con la agenda vacía, el estado vacío ofrece también "Registrar cita presencial".
+    await usuario.click(await screen.findByRole('button', { name: 'Cita presencial' }));
     const panel = screen.getByRole('region', { name: /nueva cita presencial/i });
     await usuario.type(within(panel).getByLabelText(/buscar cliente/i), 'ro');
     await usuario.click(await within(panel).findByRole('button', { name: /elegir a rocío huamaní/i }));

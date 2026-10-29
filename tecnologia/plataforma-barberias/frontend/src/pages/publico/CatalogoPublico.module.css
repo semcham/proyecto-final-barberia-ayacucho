@@ -19,6 +19,7 @@
 
 .cabecera p {
   margin: 0;
+  white-space: nowrap;
 }
 
 .barberia h1 {

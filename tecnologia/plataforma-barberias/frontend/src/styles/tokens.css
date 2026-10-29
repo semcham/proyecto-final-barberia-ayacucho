@@ -26,6 +26,10 @@
   --color-superficie-hundida: light-dark(#f2ece2, #13110e);
   --color-borde: light-dark(#e4dacb, #3a322a);
   --color-borde-fuerte: light-dark(#cbbba5, #5a4d40);
+  /* Límite de los controles de formulario (entradas, casillas y select): 3:1 o más sobre fondo y superficies en
+     ambos temas (WCAG 1.4.11). Claro: 3,38–3,98:1; oscuro: 3,37–4,00:1. Solo para controles; los bordes
+     decorativos (tarjetas, separadores) siguen con --color-borde. */
+  --color-borde-control: light-dark(#8f7d63, #7f6f5c);
   --color-cabecera: light-dark(rgb(247 243 236 / 0.86), rgb(19 17 14 / 0.86));
   --color-velo: light-dark(rgb(31 26 21 / 0.45), rgb(0 0 0 / 0.65));
 
@@ -145,8 +149,10 @@
   /* ---------- Medidas ---------- */
   /* Controles: área táctil de al menos 44 px (principio IX, RC15). */
   --alto-control: 2.875rem;
-  --alto-control-sm: 2.5rem;
+  --alto-control-sm: 2.75rem;
   --ancho-contenido: 72rem;
+  /* Panel con sesión en pantallas grandes (100rem o más): aprovecha el ancho sin estirar demasiado las líneas. */
+  --ancho-contenido-amplio: 84rem;
   --ancho-formulario: 28rem;
   --ancho-lateral: 16rem;
 }
