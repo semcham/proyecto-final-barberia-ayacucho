@@ -180,6 +180,8 @@ desplegado y **sin ningún cobro real**. Detalle de las ejecuciones en el
 
 Cada diagrama de `docs/` tiene debajo una línea "Evidencia" con los archivos reales que lo respaldan. Todos usan la [leyenda común](04-modelo-c4/Nivel1-DiagramadeContextodelSistema.md#leyenda-común-de-todos-los-diagramas). La imagen de cada uno se genera desde su código Mermaid y se guarda en `img/` con el nombre indicado.
 
+El índice tiene **32 diagramas**, uno por cada bloque Mermaid de `docs/`. En `img/` hay 31 imágenes: falta generar `solid-modulos.png`.
+
 | Diagrama                                               | Documento                                                                                                       | Imagen (`img/`)                          | Estado de lo que muestra       |
 | ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------- | ---------------------------------------- | ------------------------------ |
 | C4 nivel 1: contexto                                    | [Nivel 1](04-modelo-c4/Nivel1-DiagramadeContextodelSistema.md)                                                  | `c4-nivel1-contexto.png`                 | Implementado y planificado     |
@@ -212,4 +214,5 @@ Cada diagrama de `docs/` tiene debajo una línea "Evidencia" con los archivos re
 | Notificación de una cita                                | [diseño interno §7](03-diseño-de-software/diseño-interno/diseño-interno-de-modulos.md)                          | `secuencia-notificacion-cita.png`        | Planificado (004)              |
 | Recordatorio del día                                    | [diseño interno §7.1](03-diseño-de-software/diseño-interno/diseño-interno-de-modulos.md)                        | `secuencia-recordatorio-del-dia.png`     | Planificado (004)              |
 | Puerto y adaptador de pagos                             | [patrones](03-diseño-de-software/diseño-interno/patrones-de-diseño.md)                                          | `clases-puerto-adaptador-pagos.png`      | Implementado (adaptador real planificado) |
+| SOLID en el proyecto: puertos y adaptadores por módulo  | [principios §2](03-diseño-de-software/diseño-interno/principios-de-diseño.md)                                   | `solid-modulos.png`                      | Implementado (M04 y M05 planificados) |
 | Flujo de SDD                                            | [SDD](05-gestion/03-sdd-spec-kit.md)                                                                            | `flujo-sdd.png`                          | Aplicado                       |
