@@ -60,7 +60,7 @@ Probado en CI (PR05, `redis-caido`) y con el entorno real (`npm run demo:caida -
 | Riesgo                                                    | Mitigación                                                                                      |
 | --------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
 | Datos desactualizados                                     | TTL corto; invalidación al escribir; la disponibilidad definitiva no sale de la caché           |
-| Mezcla de tenants por clave mal construida                | Constructor único de claves en el adaptador; prueba PR09 incluye caché                          |
+| Mezcla de tenants por clave mal construida                | Fábrica única de claves (`ClavesCache`, M06) que exige el `TenantId`; prueba PR09 de la caché   |
 | Condición de carrera "lectura → escritura → invalidación" | Invalidar después de confirmar; guardado condicionado por generación; TTL como red de seguridad |
 | Fuga de datos personales en Redis                         | No se guardan datos personales de clientes en caché                                             |
 | Dependencia excesiva                                      | Si Redis cae, la plataforma sigue funcionando (PR05)                                            |
@@ -68,3 +68,5 @@ Probado en CI (PR05, `redis-caido`) y con el entorno real (`npm run demo:caida -
 ## 6. Cómo se evitan condiciones de carrera en las reservas
 
 Dos clientes ven el mismo horario libre en pantalla (dato posiblemente de caché) y ambos intentan reservar. Ambas solicitudes llegan al backend, cada una abre una transacción e intenta insertar. La **restricción de exclusión** de PostgreSQL permite una y rechaza la otra. La interfaz recibe "horario no disponible" y refresca. Ni Redis ni la interfaz intervienen en la decisión.
+
+Evidencia: `backend/src/shared/cache/` (`claves-cache.ts`, `redis-cache-compartida.ts`, `cache-inactiva.ts`), `shared/resiliencia/interruptor.ts`, `shared/limites/almacen-limites-compartido.ts`, `modules/catalogo-citas/catalogo/application/invalidador-catalogo-publico.ts`; pruebas `backend/test/integration/escalado/cache-catalogo.spec.ts`, `redis-caido.spec.ts`, `limite-compartido.spec.ts`, `aislamiento/aislamiento-cache.spec.ts` y `test/unit/shared/claves-cache.spec.ts`.

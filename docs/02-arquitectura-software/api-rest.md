@@ -1,6 +1,6 @@
 # Diseño de la API REST
 
-Contrato entre la aplicación web y el backend (cuarto punto del enfoque SDD). Las rutas de M01, M02 y M03 están **implementadas** (funcionalidades 001, 002, 003 y 006); las de M04, M05 y parte de M01 y M06 siguen **planificadas** y se confirman al implementarlas. Complemento de la documentación núcleo.
+Contrato entre la aplicación web y el backend (cuarto punto del enfoque SDD). Las rutas de M01, M02, M03 y de salud están **implementadas** (funcionalidades 001, 002, 003 y 006). Las filas marcadas _(planificado)_ no existen en el código: son el diseño de 004, 005 y 007 y se confirmarán al especificarlas. Complemento de la documentación núcleo.
 
 ## 1. Convenciones
 
@@ -8,17 +8,17 @@ Contrato entre la aplicación web y el backend (cuarto punto del enfoque SDD). L
 | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Transporte              | HTTPS obligatorio; cuerpos en JSON (UTF-8)                                                                                                                                       |
 | Versión                 | Prefijo `/api/v1`                                                                                                                                                                |
-| Autenticación           | `Authorization: Bearer <token firmado>`; el token lleva usuario, rol y `tenant_id`                                                                                               |
+| Autenticación           | `Authorization: Bearer <token firmado>` (JWT ES256, 15 min); el token lleva `sub`, `tid`, `rol` y `sid`                                                                         |
 | Tenant                  | **Siempre** se toma del token; nunca de un parámetro del cliente. La ruta pública del catálogo usa el identificador público de la barbería (`slug`) y se resuelve en el servidor |
 | Autorización            | Se valida el rol por endpoint (RBAC) y la pertenencia al tenant (RLS en la base de datos)                                                                                        |
 | Errores                 | Formato único: `{ "codigo": "HORARIO_NO_DISPONIBLE", "mensaje": "…", "detalles": [] }` con códigos HTTP 400, 401, 403, 404, 409, 422, 429 y 503 (balanceador sin réplicas, 006)  |
 | Paginación              | `?pagina=1&tamano=20`; respuesta con `total`                                                                                                                                     |
 | Fechas                  | ISO 8601 con zona horaria (almacenamiento en UTC, presentación en America/Lima)                                                                                                  |
-| Idempotencia            | `Idempotency-Key` en creación de citas y pagos; el webhook usa `provider_event_id` único                                                                                         |
-| Límites                 | Rate limiting por IP y por usuario (HTTP 429); más estricto en login y asistente                                                                                                 |
+| Idempotencia            | `Idempotency-Key` obligatoria en `POST /citas`; la notificación del proveedor usa `evento_id` único (`provider_event`); un pago abierto se reutiliza en vez de duplicarse          |
+| Límites                 | 300 solicitudes por minuto por IP (HTTP 429); más estricto en el inicio de sesión, la activación y las notificaciones del proveedor                                             |
 | CORS                    | Solo el origen de la aplicación web                                                                                                                                              |
-| Webhook                 | Sin token de usuario; se valida la **firma** del proveedor y se rechaza lo no firmado                                                                                            |
-| Enlaces de recordatorio | Públicos pero con **token firmado de un solo uso** y vencimiento                                                                                                                 |
+| Notificación del proveedor | Sin token de usuario; se valida la **firma** HMAC del proveedor y se rechaza lo no firmado (`POST /pagos/notificaciones`)                                                     |
+| Enlaces de recordatorio _(planificado, 004)_ | Públicos pero con **token firmado de un solo uso** y vencimiento                                                                                    |
 
 ## 2. Endpoints por módulo
 
@@ -30,15 +30,19 @@ Roles: **ADM** administrador de la plataforma · **PRO** propietario · **BAR** 
 | -------------------------------------------------- | -------------------------------------------------------------------------------------------------- | ---------- | ----------------- |
 | `POST /auth/login`                                 | Iniciar sesión; con `barberia` (enlace) el cliente entra a esa barbería o se une con su aceptación | RF04, RF05 | PUB               |
 | `POST /auth/barberia`                              | Cambiar la sesión del cliente a otra barbería (ADR-020)                                            | RF05       | CLI               |
+| `POST /auth/refresh`                               | Renovar el token de acceso con la cookie `rt` (y rotarla)                                          | RF04       | PUB (cookie)      |
 | `POST /auth/logout`                                | Cerrar sesión                                                                                      | RF04       | Todos             |
+| `GET /auth/yo`                                     | Usuario autenticado y su barbería                                                                  | RF04       | Todos             |
+| `POST /auth/activar`                               | Fijar la contraseña con el enlace de activación de un solo uso                                     | RF06       | PUB (enlace)      |
 | `POST /barberias`                                  | Registrar barbería y crear tenant (inicia prueba gratuita)                                         | RF01, RF18 | PUB               |
 | `POST /clientes/registro`                          | Registrar cliente con consentimiento desde el enlace de la barbería                                | RF05       | PUB               |
 | `GET/POST /clientes`                               | Buscar clientes y registrar el cliente presencial (consentimiento verbal)                          | RF05       | PRO               |
-| `GET/POST/PATCH /usuarios`                         | Gestionar usuarios y roles de la barbería                                                          | RF06       | PRO               |
+| `GET/POST /usuarios`, `GET/PATCH /usuarios/{id}`   | Gestionar usuarios y roles de la barbería                                                          | RF06       | PRO               |
+| `POST /usuarios/{id}/activacion`                   | Generar de nuevo el enlace de activación                                                           | RF06       | PRO               |
 | `GET/PATCH /barberia`                              | Ver y editar datos comerciales, enlace y antelación de cancelación                                 | RF03       | PRO (BAR lectura) |
 | `PUT/DELETE /plataforma/barberias/{id}/suspension` | Suspender (con motivo) o reactivar la barbería (003, US5)                                          | RF02       | ADM               |
-| `PATCH /clientes/yo/notificaciones`                | Cambiar canal (correo o WhatsApp)                                                                  | RF33       | CLI               |
-| `POST /clientes/yo/solicitudes-datos`              | Pedir acceso, rectificación o eliminación                                                          | RF32       | CLI               |
+| `PATCH /clientes/yo/notificaciones` _(planificado, 004)_ | Cambiar canal (correo o WhatsApp)                                                          | RF33       | CLI               |
+| `POST /clientes/yo/solicitudes-datos` _(planificado, 007)_ | Pedir acceso, rectificación o eliminación                                                | RF32       | CLI               |
 
 ### M02 Catálogo y citas
 
@@ -57,7 +61,7 @@ Roles: **ADM** administrador de la plataforma · **PRO** propietario · **BAR** 
 | `POST /citas/{id}/estado`                                  | Transición válida: aprobar, completar o no asistió                          | RF15 | BAR (las suyas), PRO  |
 | `GET /agenda?fecha=&barbero=`                              | Agenda del día con marcas de conflicto y cancelación tardía                 | RF16 | BAR (la suya), PRO    |
 | `GET /clientes/yo/citas?pagina=&tamano=`                   | Historial del cliente en la barbería de su sesión                           | RF17 | CLI                   |
-| `POST /recordatorios/{token}/responder`                    | Confirmar, reprogramar o cancelar con enlace firmado de un solo uso         | RF34 | PUB (token)           |
+| `POST /recordatorios/{token}/responder` _(planificado, 004)_ | Confirmar, reprogramar o cancelar con enlace firmado de un solo uso       | RF34 | PUB (token)           |
 
 ### M03 Suscripciones y pagos
 
@@ -87,18 +91,17 @@ el período siguiente con otro plan: no hay una ruta aparte.
 | `GET /plataforma/pagos/por-revisar`                                  | Duplicados, importes distintos, aprobados tras rechazo, devoluciones y notificaciones sin pago       | RF25, RF26 | ADM               |
 | `POST /plataforma/barberias/{id}/pagos/{pagoId}/revision/resolucion` | Marcar resuelto un caso con una nota (no mueve dinero)                                               | RF25       | ADM               |
 
-### M04 Asistente IA y reportes · M06 Núcleo
+### M04 Asistente IA y reportes, indicadores y salud
 
 | Método y ruta                       | Propósito                                                                     | RF         | Roles    |
 | ----------------------------------- | ----------------------------------------------------------------------------- | ---------- | -------- |
-| `POST /asistente/mensajes`          | Consulta al asistente (herramientas cerradas)                                 | RF27, RF28 | CLI, PRO |
-| `GET /reportes/citas?desde=&hasta=` | Reporte por período                                                           | RF29       | PRO      |
-| `GET /admin/indicadores`            | Indicadores agregados de uso                                                  | RF31       | ADM      |
-| `GET /admin/auditoria`              | Auditoría de acciones sensibles                                               | RF31       | ADM      |
+| `POST /asistente/mensajes` _(planificado, 005)_ | Consulta al asistente (herramientas cerradas)                     | RF27, RF28 | CLI, PRO |
+| `GET /reportes/citas?desde=&hasta=` _(planificado, 005)_ | Reporte por período                                      | RF29       | PRO      |
+| Indicadores agregados de uso _(planificado, 007; ruta por definir bajo `/plataforma`)_ | —                          | RF31       | ADM      |
 | `GET /salud`                        | Vida: la instancia responde y PostgreSQL acepta consultas                     | RC         | PUB      |
 | `GET /salud/listo`                  | Listo para recibir tráfico: base accesible y al día con las migraciones (006) | RC         | PUB      |
 
-Las notificaciones (M05) no exponen endpoints propios: se disparan por eventos y por el recordatorio programado del día de la cita.
+Las notificaciones (M05, planificadas en 004) no expondrán endpoints propios: se dispararán por eventos y por el recordatorio programado del día de la cita.
 
 ## 3. Reglas de contrato
 
@@ -116,4 +119,6 @@ Las notificaciones (M05) no exponen endpoints propios: se disparan por eventos y
 - **Notificaciones del proveedor (003, PR17):** sin firma, con firma inválida o fuera de la ventana de tiempo, `401` sin efecto y una línea `PAGO_NOTIFICACION_RECHAZADA` en el registro, sin el cuerpo. Una notificación repetida (mismo `evento_id`) responde `200` sin volver a aplicarse.
 - **Comprobantes (003, ADR-023):** solo se sirven con una sesión con permiso, como adjunto con `Cache-Control: no-store` y `X-Content-Type-Options: nosniff`. El tipo se verifica por los bytes, no por el nombre. Nginx admite 6 MB solo en la ruta de subida (16 KB en el resto).
 - El contrato completo de cada funcionalidad está en `specs/<funcionalidad>/contracts/openapi.yaml`; esta tabla es el resumen.
-- El asistente nunca devuelve datos de otro tenant; sus herramientas son las mismas operaciones de arriba con el rol del usuario.
+
+Evidencia: controladores en `backend/src/modules/*/*/presentation/*.controller.ts` y `backend/src/host/salud.controller.ts`; pruebas de contrato en `backend/test/contract/` (`auth`, `usuarios`, `registro-barberia`, `clientes`, `catalogo`, `citas`, `agenda`, `publico`, `suscripcion`) y matrices `rbac.spec.ts`, `rbac-002.spec.ts` y `rbac-003.spec.ts`.
+- _(Planificado, 005)_ El asistente nunca devolverá datos de otro tenant; sus herramientas serán las mismas operaciones de arriba con el rol del usuario.

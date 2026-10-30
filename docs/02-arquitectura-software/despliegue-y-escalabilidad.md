@@ -2,61 +2,53 @@
 
 Decisión: [ADR-006](../01-analisis-de-sistema/07-decisiones-arquitectonicas.md#adr-006-balanceador-de-carga-y-escalado-horizontal). Escenarios EQ-03 y EQ-04. Este documento distingue la **arquitectura objetivo** de la **implementación inicial**. El despliegue se planifica en la nube de **Amazon Web Services (AWS)**, y el balanceador de carga es el **Application Load Balancer (ALB)** del proveedor. Los servicios, la región y los costos son una **propuesta por validar** (ver [tecnologías](tecnologias.md)).
 
-## 1. Diagrama de despliegue (arquitectura objetivo)
+## 1. Diagrama de despliegue (arquitectura objetivo, planificada)
 
-![1. Diagrama de despliegue (arquitectura objetivo)](../../img/despliegue-escalabilidad.png)
+Todo lo de este diagrama está **planificado**: no hay nada desplegado en AWS. Lo que funciona hoy es el entorno local de la sección 2.1.
 
-_Figura. 1. Diagrama de despliegue (arquitectura objetivo)._
+![Despliegue objetivo en AWS (planificado)](../../img/despliegue-escalabilidad.png)
+
+_Figura 1. Despliegue objetivo en AWS (planificado)._
 
 <details>
 <summary>Código fuente del diagrama (Mermaid)</summary>
 
 ```mermaid
 flowchart TB
-    USR["Usuarios (navegador web)"]
-    DNS["Route 53: nombre de dominio"]
-    subgraph EDGE["Entrada (AWS)"]
-        CF["CloudFront + S3: archivos estáticos de la interfaz web"]
-        ALB["Application Load Balancer (HTTPS, certificado ACM)"]
+    USR["Navegador"]
+    PAY["Proveedor de pagos"]
+    subgraph AWS["AWS (despliegue objetivo)"]
+        CDN["CloudFront + S3<br/>interfaz web"]
+        ALB["Balanceador ALB<br/>HTTPS"]
+        I1["Backend 1"]
+        I2["Backend 2…N"]
+        PG[("RDS PostgreSQL")]
+        RD[("ElastiCache Redis")]
     end
-    subgraph AZ["Subredes privadas en dos zonas de disponibilidad"]
-        I1["Instancia 1: backend modular (contenedor)"]
-        I2["Instancia 2: backend modular (contenedor)"]
-        I3["Instancia N: backend modular (contenedor)"]
-    end
-    subgraph DATA["Datos (servicios gestionados)"]
-        PGP[("Amazon RDS PostgreSQL primario")]
-        PGR[("Réplica o Multi-AZ: futuro")]
-        RDS[("ElastiCache for Redis: caché")]
-    end
-    subgraph EXT["Servicios externos"]
-        PAY["Proveedor de pagos"]
-        AI["Proveedor de IA"]
-        MAIL["Servicio de correo"]
-        WA["Servicio de mensajería WhatsApp"]
-    end
-    USR --> DNS
-    DNS --> CF
-    DNS --> ALB
-    ALB -->|"verificación de salud"| I1
+    USR -->|"páginas"| CDN
+    USR -->|"/api"| ALB
+    PAY -->|"notificación firmada"| ALB
+    ALB --> I1
     ALB --> I2
-    ALB --> I3
-    I1 --> PGP
-    I2 --> PGP
-    I3 --> PGP
-    I1 --> RDS
-    I2 --> RDS
-    I3 --> RDS
-    I1 --> PAY
-    I1 --> AI
-    I1 --> MAIL
-    I1 --> WA
-    PAY -->|"webhook"| ALB
-    PGP -.-> PGR
+    I1 --> PG
+    I2 --> PG
+    I1 -.->|"caché"| RD
+    I2 -.->|"caché"| RD
+    I1 -->|"sesión de pago"| PAY
+
+    classDef planificado fill:#e8eef7,stroke:#3b5b8c,color:#1f2d4a
+    classDef datos fill:#e3f2fd,stroke:#1565c0,color:#0d47a1
+    classDef externo fill:#fff3e0,stroke:#ef6c00,color:#e65100
+    class CDN,ALB,I1,I2 planificado
+    class PG,RD datos
+    class PAY externo
 ```
 
 </details>
 
+Leyenda: azul grisáceo = sistema propio; azul claro = datos; naranja = sistema externo. Los proveedores de IA, correo y WhatsApp (planificados, 004 y 005) se omiten para que el diagrama se lea de un vistazo; están en el [C4 nivel 1](../04-modelo-c4/Nivel1-DiagramadeContextodelSistema.md).
+
+Evidencia: decisión [ADR-006](../01-analisis-de-sistema/07-decisiones-arquitectonicas.md#adr-006-balanceador-de-carga-y-escalado-horizontal) (Propuesto); equivalencias local ↔ nube en [ADR-030](../01-analisis-de-sistema/07-decisiones-arquitectonicas.md#adr-030-balanceo-local-con-nginx-como-representación-de-adr-006). No hay código de despliegue en la nube.
 ## 2. Implementación inicial frente a arquitectura objetivo
 
 | Elemento               | Implementación inicial (MVP)                                                                          | Arquitectura objetivo                                                            |
@@ -75,30 +67,57 @@ Se empieza con una instancia y se evoluciona cuando una **necesidad justificada*
 
 La arquitectura objetivo se **representa localmente** con Docker Compose ([ADR-030](../01-analisis-de-sistema/07-decisiones-arquitectonicas.md); contrato en [entorno-compose.md](../../specs/006-escalado-cache-balanceo/contracts/entorno-compose.md)). No se despliega nada en la nube.
 
+La figura 2 muestra cómo se comunican las piezas que **funcionan hoy** en el equipo local. Los números siguen el orden de una reserva y de un pago.
+
+![Comunicación en el entorno local](../../img/comunicacion-entorno-local.png)
+
+_Figura 2. Comunicación en el entorno local (Docker Compose)._
+
+<details>
+<summary>Código fuente del diagrama (Mermaid)</summary>
+
 ```mermaid
-flowchart LR
-    NAV["Navegador o script de medición"]
-    VITE["frontend (Vite, 5173)"]
-    subgraph RED["Red plataforma 172.28.0.0/24"]
-        NGX["nginx (172.28.0.10)<br/>puerto 3000 del equipo<br/>salud pasiva: max_fails=3, fail_timeout=10s"]
-        B1["backend-1 (172.28.0.11)<br/>384 MB"]
-        B2["backend-2 (172.28.0.12)<br/>384 MB"]
-        RDS[("redis (172.28.0.13)<br/>64 MB, sin persistencia")]
-        PG[("db: PostgreSQL 16<br/>512 MB")]
-        PREP["preparar-backend<br/>(una vez: npm ci, build, migraciones)"]
+flowchart TB
+    NAV["Navegador"]
+    subgraph PC["Equipo local: Docker Compose"]
+        FE["frontend<br/>Vite :5173"]
+        PS["pasarela-simulada<br/>:3100"]
+        NGX["nginx<br/>:3000"]
+        B1["backend-1"]
+        B2["backend-2"]
+        PG[("PostgreSQL 16<br/>datos con RLS")]
+        RD[("Redis<br/>caché y límites")]
     end
-    NAV -->|"/api/*"| NGX
-    NAV --> VITE
-    VITE -->|"proxy /api"| NGX
-    NGX --> B1
-    NGX --> B2
-    B1 --> PG
-    B2 --> PG
-    B1 -.->|"caché del catálogo y límite por IP (opcional)"| RDS
-    B2 -.-> RDS
-    PREP --> PG
+    NAV -->|"1 páginas"| FE
+    FE -->|"2 llamadas /api"| NGX
+    NGX -->|"3 reparte"| B1
+    NGX -->|"3 reparte"| B2
+    B1 -->|"4 consultas"| PG
+    B2 -->|"4 consultas"| PG
+    B1 -.->|"5 caché opcional"| RD
+    B2 -.->|"5 caché opcional"| RD
+    B1 -->|"6 crear sesión de pago"| PS
+    NAV -->|"7 aprobar o rechazar"| PS
+    PS -->|"8 notificación firmada"| NGX
+
+    classDef implementado fill:#e8eef7,stroke:#3b5b8c,color:#1f2d4a
+    classDef datos fill:#e3f2fd,stroke:#1565c0,color:#0d47a1
+    classDef externo fill:#fff3e0,stroke:#ef6c00,color:#e65100
+    class FE,NGX,B1,B2 implementado
+    class PG,RD datos
+    class PS externo
 ```
 
+</details>
+
+Leyenda: azul grisáceo = sistema propio; azul = datos; naranja = sistema externo (aquí, simulado). La línea discontinua indica que el sistema funciona sin Redis. Cualquiera de las dos réplicas puede crear la sesión de pago o recibir la notificación (paso 6 desde `backend-2` omitido por claridad).
+
+- **Puertos del equipo:** 3000 (API por Nginx), 5173 (interfaz), 3100 (pasarela simulada), 5433 (PostgreSQL) y 6380 (Redis). Las réplicas no publican puertos.
+- **Red fija** `172.28.0.0/24`: nginx `.10`, backend-1 `.11`, backend-2 `.12`, redis `.13`, pasarela-simulada `.14`.
+- **Memoria:** db 512 MB, backend-1 y backend-2 384 MB cada una, redis 64 MB, pasarela-simulada 64 MB, nginx 32 MB, frontend 512 MB; `preparar-backend` (1 GB) corre una vez: instala, compila y migra, antes de que arranquen las réplicas.
+- **Salud pasiva de Nginx:** `max_fails=3 fail_timeout=10s`, conexión de 1 s; reintenta en la otra réplica solo GET y HEAD.
+
+Evidencia: `docker-compose.yml`, `nginx/templates/default.conf.template`, `frontend/vite.config.ts` (proxy `/api` → `nginx:80`), `backend/simulador-pagos/servidor.ts`; pruebas `backend/test/integration/escalado/balanceador.spec.ts`, `salud-listo.spec.ts` y `redis-caido.spec.ts`.
 | Local                     | Nube (equivalente)                                                                      |
 | ------------------------- | --------------------------------------------------------------------------------------- |
 | Nginx                     | Application Load Balancer, con comprobación activa de salud sobre `/api/v1/salud/listo` |
@@ -130,7 +149,7 @@ El intervalo es `TAREAS_INTERVALO_MS` (5 minutos por defecto).
 | Local                                               | Nube (equivalente)                                                                                                                         |
 | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
 | `pasarela-simulada`                                 | Ambiente de pruebas (sandbox) y luego producción del proveedor real, por HTTPS; las notificaciones entran por el ALB (AWS WAF opcional)    |
-| Comprobantes en PostgreSQL (`payment_receipt_file`) | **Amazon S3** privado y cifrado, detrás del mismo puerto `AlmacenComprobantes`, con enlaces prefirmados de corta duración (ADR-023)        |
+| Comprobantes en PostgreSQL (`payment_receipt_file`) | **Amazon S3** privado y cifrado, detrás del mismo puerto `AlmacenComprobantes`; el backend sigue transmitiendo el archivo y nunca entrega una URL sin sesión (ADR-023) |
 | Tareas en las réplicas con candado de PostgreSQL    | **Amazon EventBridge Scheduler** que dispara la tarea (o la misma solución con candado, que no depende de cuántas réplicas haya) (ADR-024) |
 | `PLATAFORMA_LLAVE_TOTP`, `PAGOS_*` en `.env`        | AWS Secrets Manager                                                                                                                        |
 
@@ -140,10 +159,10 @@ El intervalo es `TAREAS_INTERVALO_MS` (5 minutos por defecto).
 | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Tipo                  | Application Load Balancer (capa 7, HTTP/HTTPS), con nodos en dos zonas de disponibilidad                                                                      |
 | Reparto               | Grupo de destino con algoritmo de reparto del ALB; sin afinidad de sesión (no hace falta: el backend no guarda estado)                                        |
-| Verificación de salud | El ALB consulta `GET /salud` en cada instancia; umbrales de intervalo y de fallos consecutivos configurables (propuesta: cada 10 s y 3 fallos para retirarla) |
+| Verificación de salud | El ALB consulta `GET /api/v1/salud/listo` en cada instancia (responde 200 solo si PostgreSQL responde y las migraciones están al día); propuesta: cada 10 s y 3 fallos para retirarla |
 | Tiempo límite         | Tiempo de inactividad del ALB y del backend definidos para no acumular solicitudes colgadas                                                                   |
 | Despliegue sin corte  | Registrar la instancia nueva, esperar a que esté sana y drenar la anterior (vaciado de conexiones)                                                            |
-| Webhooks              | Entran por el mismo ALB y se procesan por cualquier instancia (idempotencia en base de datos)                                                                 |
+| Notificaciones del proveedor | Entran por el mismo ALB y se procesan por cualquier instancia (idempotencia en base de datos)                                                                 |
 
 Varias instancias del mismo monolito **siguen siendo una arquitectura monolítica**; el balanceador pertenece al despliegue y no es una capa.
 
@@ -177,7 +196,7 @@ La interfaz se publica como archivos estáticos (`npm run build` en `frontend/` 
 | HTTPS          | Terminación TLS en el ALB con certificado de AWS Certificate Manager; redirección de HTTP a HTTPS; cabecera HSTS                                                                                                                                             |
 | CORS           | El backend acepta únicamente los orígenes de la interfaz web (lista explícita); métodos y cabeceras limitados; no se usa `*` con credenciales                                                                                                                |
 | Cookies/Tokens | Token de acceso en cabecera `Authorization` (solo en memoria del navegador); renovación con cookie `rt` `Secure`, `HttpOnly`, `SameSite=Strict`; indicador no secreto `hay_sesion` (ADR-017). Detalle en [seguridad y privacidad](seguridad-y-privacidad.md) |
-| Webhooks       | Ruta pública con verificación de firma y límite de tasa (AWS WAF opcional frente al ALB)                                                                                                                                                                     |
+| Notificaciones del proveedor | Ruta pública `POST /api/v1/pagos/notificaciones` con verificación de firma y límite de tasa (AWS WAF opcional frente al ALB)                                                                                                                                                                     |
 
 ## 6. Alta disponibilidad: lo que NO se afirma
 

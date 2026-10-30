@@ -12,15 +12,14 @@ El backend es **una aplicación principal desplegable como unidad**, organizada 
 
 Cinco módulos de negocio y un núcleo compartido. Se agrupó por **cohesión funcional** para que el equipo maneje pocas piezas; dentro de cada módulo hay **submódulos** (carpetas con sus cuatro capas) que conservan la separación fina y permiten, si el sistema crece, extraer uno sin rehacer el diseño.
 
-| ID  | Módulo                             | Submódulos internos      | Responsabilidad                                                                                                                                                                       | RF                    | Estado      |
-| --- | ---------------------------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------- | ----------- |
-| M01 | Acceso y barberías                 | `identidad`, `barberias` | Cuentas, autenticación, tokens, roles, consentimiento, preferencia de canal, solicitudes de datos; alta y ciclo de vida de barberías, datos comerciales, horarios y estado del tenant | RF01–RF06, RF32, RF33 | Planificado |
-| M02 | Catálogo y citas                   | `catalogo`, `citas`      | Servicios, barberos, disponibilidad configurada; cálculo de disponibilidad, reserva, reprogramación, cancelación, estados, agenda, historial y respuesta al recordatorio              | RF07–RF17, RF34       | Planificado |
-| M03 | Suscripciones y pagos              | `suscripciones`, `pagos` | Planes, prueba gratuita, estados y restricciones; pago de suscripciones, webhooks, transacciones y conciliación                                                                       | RF18–RF26             | Planificado |
-| M04 | Asistente IA y reportes            | `asistente`, `reportes`  | Asistente con herramientas cerradas, límites y registro; reportes por período e indicadores (solo lectura)                                                                            | RF27–RF29             | Planificado |
-| M05 | Notificaciones                     | —                        | Correos y mensajes de WhatsApp al cliente por eventos y recordatorios                                                                                                                 | RF30, RF33, RF34      | Planificado |
-| M06 | Núcleo compartido y observabilidad | —                        | Contexto de solicitud y tenant, bus de eventos, caché, auditoría, registro, métricas, limitación, enlaces firmados                                                                    | RF31                  | Planificado |
-
+| ID  | Módulo                             | Submódulos internos                     | Responsabilidad                                                                                                                                         | RF                    | Estado                                                     |
+| --- | ---------------------------------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------- | ---------------------------------------------------------- |
+| M01 | Acceso y barberías                 | `identidad`, `barberias`, `clientes`    | Cuentas, autenticación, tokens, roles, administrador de la plataforma con segundo factor; alta y estado de la barbería; cuenta del cliente y consentimiento | RF01–RF06             | Implementado (001, 002 y 003); RF32 y RF33 planificados     |
+| M02 | Catálogo y citas                   | `catalogo`, `citas`                     | Servicios, barberos, horario de atención y disponibilidad; horarios libres, reserva, cancelación, estados, agenda e historial                            | RF07–RF12, RF14–RF17  | Implementado (002 y 006); RF13 y RF34 planificados (004)    |
+| M03 | Suscripciones y pagos              | `suscripciones`, `pagos`, `plataforma`  | Planes, prueba gratuita, estados y restricciones; pago con pasarela simulada, transferencia, notificación firmada y conciliación; operaciones del administrador | RF18–RF26             | Implementado (001 y 003), con pasarela simulada            |
+| M04 | Asistente IA y reportes            | `asistente`, `reportes` (previstos)     | Asistente con herramientas cerradas; reportes por período                                                                                              | RF27–RF29             | Planificado (005)                                          |
+| M05 | Notificaciones                     | —                                       | Correos y mensajes de WhatsApp al cliente                                                                                                               | RF30, RF33, RF34      | Planificado (004)                                          |
+| M06 | Núcleo compartido                  | carpetas de `shared/`                   | Tenant, transacción con RLS, auditoría, caché, límites, reloj y zona horaria, tareas programadas, resiliencia                                         | RF31 (auditoría)      | Parcial: eventos y enlaces firmados (004) e indicadores (007) planificados |
 > **Por qué seis y no diez.** Un módulo por cada capacidad aislada aumenta las interfaces, las pruebas de frontera y la coordinación, algo que un equipo pequeño no necesita en el MVP (RC06, RC14). Las capacidades que cambian juntas (por ejemplo, catálogo y citas; suscripciones y pagos) se agrupan. La separación fina se mantiene dentro del módulo como submódulos con su propio puerto, de modo que el sistema sigue siendo escalable: un submódulo puede convertirse en módulo, o en servicio, sin cambiar su contrato.
 
 ## 3. Dependencias permitidas
@@ -43,38 +42,52 @@ Un módulo **solo** puede depender de otro a través de su **interfaz pública**
 1. Todo lo que no tiene ✓ está **prohibido**.
 2. No hay ciclos (se comprueba con la matriz: el grafo es acíclico).
 3. M06 no depende de ningún módulo de negocio.
-4. La comunicación **asíncrona dentro del proceso** se hace con eventos del bus de M06: el submódulo `pagos` publica `PagoConfirmado` y `suscripciones` lo escucha (ambos dentro de M03); M02 publica `CitaCreada` y M05 lo escucha. Quien publica no conoce a quien escucha.
+4. **Hoy toda la comunicación es síncrona**, por la interfaz pública. Dentro de M03, `pagos` actualiza la suscripción en la misma transacción que aprueba el pago (`aplicar-resultado.ts`). Los eventos asíncronos hacia M05 (`CitaCreada` y avisos de suscripción) están **planificados** con la funcionalidad 004.
 5. El **identificador del tenant** (`TenantId`) es un valor compartido del núcleo (M06); por eso M03 no depende de M01. M02 depende de M01 solo para los datos del cliente y del personal (nota ¹), no para el tenant.
-6. La **raíz de composición** (el host de la aplicación) es el único lugar autorizado para ensamblar módulos y aplicar el middleware de tenant, que consulta a M01 (estado del tenant) y M03 (política de suscripción).
+6. La **raíz de composición** (`host/`) es el único lugar autorizado para ensamblar módulos. Su `AuthGuard` valida el token con `ValidarSolicitud` de M01 (que también comprueba el estado de la barbería), y `host/tareas.ts` registra las tareas programadas de M03. La política de suscripción la aplica cada caso de uso de escritura llamando a `SuscripcionesApi.exigirOperacion`.
 7. Entre submódulos del **mismo** módulo se permite llamar a su interfaz interna; hacia otro módulo, solo a su interfaz pública (`index`).
 
-![3. Dependencias permitidas](../../img/modulos-dependencias-permitidas.png)
+![Dependencias permitidas entre módulos](../../img/modulos-dependencias-permitidas.png)
 
-_Figura. 3. Dependencias permitidas._
+_Figura 1. Dependencias permitidas entre módulos._
 
 <details>
 <summary>Código fuente del diagrama (Mermaid)</summary>
 
 ```mermaid
-flowchart LR
-    M01["M01 Acceso y barberías"] --> M03["M03 Suscripciones y pagos"]
-    M02["M02 Catálogo y citas"] --> M03
-    M02 -- "ClientesApi, PersonalApi, BarberiasApi (ADR-020)" --> M01
-    M04["M04 Asistente IA y reportes"] --> M02
-    M04 --> M03
-    M02 -. "evento CitaCreada" .-> M05["M05 Notificaciones"]
-    M03 -. "evento SuscripcionPorVencer" .-> M05
-    M06[("M06 Núcleo compartido")]
-    M01 --> M06
-    M02 --> M06
-    M03 --> M06
-    M04 --> M06
-    M05 --> M06
+flowchart TB
+    HOST["Host<br/>arranque y guardas"]
+    subgraph IMPL["Módulos de negocio"]
+        direction LR
+        M02["M02 Catálogo y citas"]
+        M01["M01 Acceso y barberías"]
+        M03["M03 Suscripciones y pagos"]
+    end
+    M04["M04 Asistente IA y reportes"]
+    M05["M05 Notificaciones"]
+    M06["M06 Núcleo compartido"]
+    HOST --> IMPL
+    M02 -->|"ClientesApi, PersonalApi, BarberiasApi"| M01
+    M01 -->|"exigirOperacion"| M03
+    M02 -->|"exigirOperacion"| M03
+    M04 -.->|"consulta"| IMPL
+    M02 -.->|"evento CitaCreada"| M05
+    IMPL --> M06
+
+    classDef implementado fill:#e8eef7,stroke:#3b5b8c,color:#1f2d4a
+    classDef planificado fill:#e8eef7,stroke:#3b5b8c,color:#1f2d4a
+    classDef externo fill:#fff3e0,stroke:#ef6c00,color:#e65100
+    classDef datos fill:#e3f2fd,stroke:#1565c0,color:#0d47a1
+    classDef rechazo fill:#ffebee,stroke:#c62828,color:#b71c1c
+    class HOST,M01,M02,M03,M06 implementado
+    class M04,M05 planificado
 ```
 
 </details>
 
-_Nota._ Las flechas continuas son llamadas por interfaz pública; las discontinuas son eventos publicados en el bus de M06 (suscripción sin dependencia de código hacia el publicador, salvo el contrato del evento). El evento `PagoConfirmado` ocurre dentro de M03 y por eso no aparece entre módulos.
+Leyenda: azul grisáceo = sistema propio. Flecha continua = llamada que existe hoy por la interfaz pública; flecha discontinua = dependencia planificada (M04 y M05 también dependerán de M06). No hay flechas hacia M02 desde M01 ni desde M03: el grafo no tiene ciclos.
+
+Evidencia: importaciones entre `backend/src/modules/*/index.ts` (por ejemplo, `catalogo-citas/citas/application/reservar-cita.ts` importa `BarberiasApi`, `ClientesApi` y `SuscripcionesApi`); `host/auth.guard.ts`, `host/tareas.ts`; reglas en `backend/.dependency-cruiser.cjs`; prueba `backend/test/architecture/reglas.spec.ts` (PR14).
 
 ## 4. Organización del código
 
@@ -84,8 +97,9 @@ El código de la aplicación vive en `tecnologia/plataforma-barberias/` (`backen
 backend/src/
   modules/
     acceso-barberias/         (M01)
-      identidad/              submódulo
+      identidad/              submódulo (incluye el ingreso del administrador de la plataforma)
       barberias/              submódulo
+      clientes/               submódulo
       index.ts                interfaz pública del módulo (única entrada permitida)
     catalogo-citas/           (M02)
       catalogo/
@@ -95,11 +109,11 @@ backend/src/
         domain/               entidades, objetos de valor, reglas
         infrastructure/       repositorios PostgreSQL, adaptadores
       index.ts
-    suscripciones-pagos/      (M03)  suscripciones/ y pagos/
-    asistente-reportes/       (M04)  asistente/ y reportes/
-    notificaciones/           (M05)
-  shared/                     núcleo compartido (M06)
-  host/                       raíz de composición y middleware
+    suscripciones-pagos/      (M03)  suscripciones/, pagos/ y plataforma/
+                              (M04 y M05: sin carpeta todavía; planificados)
+  shared/                     núcleo compartido (M06): audit, cache, clock, config, http,
+                              limites, persistence, resiliencia, tareas, tenant, tiempo
+  host/                       raíz de composición, guardas, filtro de errores, salud y tareas
 ```
 
 Cada submódulo tiene sus cuatro capas, como se muestra en `citas/`.
@@ -116,11 +130,11 @@ Cada submódulo tiene sus cuatro capas, como se muestra en `citas/`.
 
 | Mecanismo                        | Descripción                                                                   | Verificación                      |
 | -------------------------------- | ----------------------------------------------------------------------------- | --------------------------------- |
-| Interfaz pública por módulo      | Solo `index` se importa desde afuera                                          | Regla de importación en el linter |
+| Interfaz pública por módulo      | Solo `index` se importa desde afuera                                          | Regla de dependency-cruiser (PR14) |
 | Pruebas de arquitectura          | Una prueba falla si un módulo importa algo prohibido por la matriz            | PR14 (en CI)                      |
 | Esquemas de datos por módulo     | Cada módulo es dueño de sus tablas; las demás consultas pasan por su interfaz | Revisión de código                |
 | Revisión de código               | Pull request con checklist de dependencias                                    | Proceso Scrum                     |
-| Eventos para efectos secundarios | Notificaciones y reacciones no se llaman directamente                         | Revisión                          |
+| Eventos para efectos secundarios | _(planificado, 004)_ Las notificaciones no se llamarán directamente           | Revisión                          |
 
 ## 6. Justificación, ventajas y desventajas
 

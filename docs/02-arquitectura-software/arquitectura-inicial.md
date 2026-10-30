@@ -6,52 +6,49 @@ Este documento recoge el punto de partida (Guía 02, arquitectura en capas) y ex
 
 La primera propuesta fue una arquitectura clásica de tres capas. Es válida para un negocio como este porque la plataforma tiene presentación, reglas de negocio y datos claramente distintos.
 
-![1. Propuesta inicial: tres capas](../../img/arquitectura-inicial-tres-capas.png)
+Es la **propuesta de partida**, no lo que está construido: el código sigue la arquitectura de cuatro capas de la sección 2.
 
-_Figura. 1. Propuesta inicial: tres capas._
+![Propuesta inicial de tres capas](../../img/arquitectura-inicial-tres-capas.png)
+
+_Figura 1. Propuesta inicial de tres capas (histórica)._
 
 <details>
 <summary>Código fuente del diagrama (Mermaid)</summary>
 
 ```mermaid
 flowchart TB
-    subgraph A["Actores"]
-        CLI["Cliente"]
-        STAFF["Propietario y barbero"]
-        ADM["Administrador de la plataforma"]
+    USR(["Cliente, personal y administrador<br/>navegador web"]):::persona
+    subgraph P["1. Capa de presentación (frontend)"]
+        UI["Interfaz web React + Vite<br/>pantallas por rol · sesión con token"]
     end
-    subgraph P["Capa de presentación"]
-        UI["Aplicación web responsive"]
-        API["API REST"]
+    subgraph N["2. Capa de lógica de negocio (backend)"]
+        API["API REST NestJS /api/v1<br/>controladores y guardas<br/>(token, rol, tenant)"]
+        SV["Módulos: Acceso y barberías · Catálogo y citas<br/>Suscripciones y pagos · Asistente IA · Notificaciones"]
     end
-    subgraph N["Capa de lógica de negocio"]
-        SV["Servicios: acceso, citas, suscripciones, pagos, IA, notificaciones"]
+    subgraph D["3. Capa de datos"]
+        DB[("PostgreSQL 16<br/>tenant_id en cada fila + RLS")]
+        RC[("Redis<br/>caché y límites")]
     end
-    subgraph D["Capa de datos"]
-        DB[("PostgreSQL")]
-        RC[("Redis")]
-    end
-    subgraph X["Sistemas externos"]
-        PAY["Proveedor de pagos"]
-        AI["Proveedor de IA"]
-        MAIL["Correo"]
-        WA["WhatsApp"]
-    end
-    CLI --> UI
-    STAFF --> UI
-    ADM --> UI
-    UI --> API
-    API --> SV
-    SV --> DB
-    SV --> RC
-    SV --> PAY
-    SV --> AI
-    SV --> MAIL
-    SV --> WA
+    EXT["Proveedores externos<br/>pasarela de pagos · IA · correo · WhatsApp"]:::externo
+    USR -->|"HTTPS"| UI
+    UI -->|"JSON por HTTP con token"| API
+    API -->|"llama"| SV
+    SV -->|"SQL en transacción por barbería"| DB
+    SV -.->|"caché y límites"| RC
+    SV -.->|"sesión de pago, avisos"| EXT
+    classDef persona fill:#ffffff,stroke:#424242,color:#212121
+    classDef app fill:#e8eef7,stroke:#3b5b8c,color:#1f2d4a
+    classDef datos fill:#e3f2fd,stroke:#1565c0,color:#0d47a1
+    classDef externo fill:#fff3e0,stroke:#ef6c00,color:#e65100
+    class UI,API,SV app
+    class DB,RC datos
 ```
 
 </details>
 
+Leyenda: azul grisáceo = capas de la propuesta inicial, que no se construyó así; azul claro = datos; naranja = sistemas externos.
+
+Evidencia: es el punto de partida de la Guía 02; la decisión que lo reemplaza es [ADR-002](../01-analisis-de-sistema/07-decisiones-arquitectonicas.md#adr-002-arquitectura-lógica-de-cuatro-capas). La estructura real está en `backend/src/modules/*/{presentation,application,domain,infrastructure}`.
 **Limitaciones detectadas al analizar la Guía 03:**
 
 | Limitación                                                                                                    | Consecuencia                                                        |
@@ -69,7 +66,7 @@ Se mantiene la idea de separar responsabilidades, pero se divide la lógica de n
 | Presentación         | **Presentación** (interfaz web y controladores de la API)                            | Se mantiene |
 | Lógica de negocio    | **Aplicación** (casos de uso, puertos, transacciones)                                | Se separa   |
 | Lógica de negocio    | **Dominio** (entidades, objetos de valor, reglas e invariantes)                      | Se separa   |
-| Datos                | **Infraestructura** (PostgreSQL, Redis, adaptadores de pagos, IA y correo, registro) | Se amplía   |
+| Datos                | **Infraestructura** (PostgreSQL, Redis, adaptador de pagos; IA y correo planificados) | Se amplía   |
 
 El diagrama completo con las dependencias permitidas está en [enfoque-arquitectonico.md](enfoque-arquitectonico.md#3-diagrama-de-cuatro-capas-y-dependencias-permitidas).
 

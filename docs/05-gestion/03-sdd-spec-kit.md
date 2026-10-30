@@ -2,31 +2,40 @@
 
 **SDD** es la forma de **especificar antes de implementar**: la especificación es el artefacto principal y guía el plan, las tareas y el código. No es un estilo arquitectónico ni un marco de gestión.
 
-## 1. Flujo propuesto
+## 1. Flujo aplicado
 
-![1. Flujo propuesto](../../img/flujo-sdd.png)
+![Flujo de SDD con Spec Kit](../../img/flujo-sdd.png)
 
-_Figura. 1. Flujo propuesto._
+_Figura 1. Flujo de SDD que siguen las funcionalidades 001, 002, 003 y 006._
 
 <details>
 <summary>Código fuente del diagrama (Mermaid)</summary>
 
 ```mermaid
-flowchart LR
-    A["Constitución: principios del proyecto"] --> B["Especificación: qué y por qué"]
-    B --> C["Requisitos y criterios de aceptación"]
-    C --> D["Diseño técnico: plan y ADR"]
-    D --> E["Tareas"]
-    E --> F["Implementación"]
-    F --> G["Verificación contra la especificación"]
-    G -.->|"ajustes"| B
+flowchart TB
+    A["Constitución 1.3.1"] --> B["Especificación<br/>spec.md"]
+    B --> C["Plan y ADR<br/>plan.md"]
+    C --> D["Tareas<br/>tasks.md"]
+    D --> E["Implementación"]
+    E --> F["Verificación<br/>pruebas y quickstart"]
+    F -.->|"ajustes"| B
+
+    classDef implementado fill:#e8eef7,stroke:#3b5b8c,color:#1f2d4a
+    classDef planificado fill:#e8eef7,stroke:#3b5b8c,color:#1f2d4a
+    classDef externo fill:#fff3e0,stroke:#ef6c00,color:#e65100
+    classDef datos fill:#e3f2fd,stroke:#1565c0,color:#0d47a1
+    classDef rechazo fill:#ffebee,stroke:#c62828,color:#b71c1c
+    class A,B,C,D,E,F implementado
 ```
 
 </details>
 
+Leyenda: todos los pasos se aplicaron en las cuatro funcionalidades. Entre la especificación y el plan se usó `/speckit-clarify` cuando hubo dudas, y entre las tareas y la implementación, `/speckit-analyze` para revisar la consistencia.
+
+Evidencia: `.specify/memory/constitution.md` (versión 1.3.1), `specs/001-registro-acceso-barberia/`, `specs/002-catalogo-citas-cliente/`, `specs/003-suscripciones-pagos/` y `specs/006-escalado-cache-balanceo/` (cada una con `spec.md`, `plan.md`, `research.md`, `data-model.md`, `contracts/`, `quickstart.md` y `tasks.md`).
 | Paso                   | Contenido en este proyecto                                                                                                 | Relación con el backlog                 |
 | ---------------------- | -------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- |
-| Constitución           | Reglas: monolito modular, 4 capas, regla de dependencia, aislamiento de tenant, sin datos de tarjeta, pruebas obligatorias | Vincula todas las HU                    |
+| Constitución           | `.specify/memory/constitution.md` (1.3.1, doce principios): monolito modular, 4 capas, aislamiento de tenant, sin datos de tarjeta, pruebas obligatorias | Vincula todas las HU |
 | Especificación         | Por funcionalidad: HU, escenarios, límites                                                                                 | Una especificación por HU o grupo de HU |
 | Requisitos y criterios | RF y criterios de aceptación de [02](../01-analisis-de-sistema/02-historias-del-usuario.md)                                | HU → RF                                 |
 | Diseño técnico         | Decisiones y diagramas ya documentados ([ADR](../01-analisis-de-sistema/07-decisiones-arquitectonicas.md), C4)             | ADR                                     |
@@ -34,20 +43,20 @@ flowchart LR
 | Implementación         | Código por módulo                                                                                                          | Incremento                              |
 | Verificación           | Pruebas PRnn contra EQ y criterios                                                                                         | DoD                                     |
 
-## 2. Estructura de carpetas propuesta
+## 2. Estructura de carpetas
 
 ```text
+.specify/memory/constitution.md       constitución del proyecto (1.3.1)
 specs/
-  constitucion.md
-  001-registro-de-barberia/   (spec.md, plan.md, tasks.md)
-  004-reserva-de-cita/        (spec.md, plan.md, tasks.md)
-  ...
-docs/                         (análisis, arquitectura, diseño, C4, gestión)
-docs/adr/                     (opcional: un archivo por ADR si se separan)
-tecnologia/plataforma-barberias/            (backend/ y frontend/: la aplicación)
+  001-registro-acceso-barberia/       implementada
+  002-catalogo-citas-cliente/         implementada
+  003-suscripciones-pagos/            implementada (pasarela simulada)
+  006-escalado-cache-balanceo/        implementada
+  (004, 005 y 007: planificadas, sin carpeta todavía)
+docs/                                 análisis, arquitectura, diseño, C4, gestión (ADR en 07-decisiones)
+tecnologia/plataforma-barberias/      backend/ y frontend/: la aplicación
 ```
-
-## 3. Spec Kit (herramienta opcional)
+## 3. Spec Kit (herramienta en uso)
 
 Spec Kit es un conjunto de herramientas de código abierto para desarrollo guiado por especificaciones (repositorio `github/spec-kit`). Lo registrado en el README consultado:
 
@@ -58,7 +67,7 @@ Spec Kit es un conjunto de herramientas de código abierto para desarrollo guiad
 | Inicialización            | `specify init my-project --integration copilot`                                                                           | Primaria; verificar                              |
 | Comandos del flujo núcleo | `/speckit-constitution`, `/speckit-specify`, `/speckit-plan`, `/speckit-tasks`, `/speckit-implement`, `/speckit-converge` | Primaria; **la sintaxis cambia entre versiones** |
 
-> **No inventar comandos.** Otras versiones documentan los nombres con punto (`/speckit.constitution`) y comandos adicionales (clarify, analyze). Antes de usarlo, confirmar con `specify --help` en la versión instalada y con el repositorio oficial. Si el equipo no usa Spec Kit, puede aplicar SDD solo con las carpetas y plantillas Markdown anteriores.
+> **Comandos usados en este repositorio:** `/speckit-constitution`, `/speckit-specify`, `/speckit-clarify`, `/speckit-plan`, `/speckit-tasks`, `/speckit-analyze` e `/speckit-implement` (definidos en `.claude/skills/`). Otras versiones de Spec Kit los nombran con punto (`/speckit.constitution`); antes de cambiar de versión, confirmar con `specify --help`.
 
 ## 4. Cómo se conecta con el resto
 
@@ -70,7 +79,7 @@ Spec Kit es un conjunto de herramientas de código abierto para desarrollo guiad
 
 | N.° | Punto SDD                    | Archivo                                                                                                                                   |
 | --- | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | Constitución del proyecto    | Sección 1 de este documento                                                                                                               |
+| 1   | Constitución del proyecto    | `.specify/memory/constitution.md` (1.3.1)                                                                                                 |
 | 2   | Contexto y problema          | [00-contexto](../00-contexto-negocio-y-evidencias.md)                                                                                     |
 | 3   | Actores                      | [01-actores](../01-analisis-de-sistema/01-actores.md)                                                                                     |
 | 4   | Alcance y exclusiones        | [README](../../README.md), [05-restricciones](../01-analisis-de-sistema/05-restricciones.md)                                              |
@@ -85,7 +94,7 @@ Spec Kit es un conjunto de herramientas de código abierto para desarrollo guiad
 | 13  | Diseño de API                | [api-rest](../02-arquitectura-software/api-rest.md)                                                                                       |
 | 14  | Estilo y componentes         | [estilo](../02-arquitectura-software/estilo-arquitectonico.md), [componentes](../02-arquitectura-software/componentes-arquitectonicos.md) |
 | 15  | Seguridad y privacidad       | [seguridad-y-privacidad](../02-arquitectura-software/seguridad-y-privacidad.md)                                                           |
-| 16  | IA con herramientas cerradas | Especificaciones IA-001 e IA-002 (sección 6)                                                                                              |
+| 16  | IA con herramientas cerradas | Especificaciones de ejemplo IA-001 e IA-002 (sección 6; planificadas, 005)                                                                |
 | 17  | Diseño interno               | [diseño interno](../03-diseño-de-software/diseño-interno/)                                                                                |
 | 18  | Modelo C4                    | [modelo C4](../04-modelo-c4/)                                                                                                             |
 | 19  | Despliegue                   | [despliegue-y-escalabilidad](../02-arquitectura-software/despliegue-y-escalabilidad.md)                                                   |
@@ -95,21 +104,23 @@ Spec Kit es un conjunto de herramientas de código abierto para desarrollo guiad
 
 ## 6. Especificaciones de ejemplo
 
+Son ejemplos cortos para la exposición. Las especificaciones completas son los `spec.md` de cada carpeta de `specs/`.
+
 ### US-001 Reserva de cita (HU-10 a HU-12 · RF11, RF12 · EQ de consistencia)
 
 **Como** cliente **quiero** reservar un servicio con un barbero en un horario libre **para** asegurar mi atención.
 
 | Criterio | Dado / Cuando / Entonces                                                                                                            |
 | -------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| CA1      | Dado un horario libre, cuando el cliente confirma, entonces se crea la cita en estado PENDING o CONFIRMED y se publica `CitaCreada` |
+| CA1      | Dado un horario libre, cuando el cliente confirma, entonces se crea la cita en estado CONFIRMADA                                    |
 | CA2      | Dado un horario ya ocupado, cuando otro cliente intenta reservarlo, entonces recibe 409 `HORARIO_NO_DISPONIBLE` y no se crea nada   |
-| CA3      | Dadas 20 solicitudes simultáneas por el mismo horario, entonces solo una cita queda creada                                          |
+| CA3      | Dadas 200 solicitudes simultáneas por el mismo horario, entonces solo una cita queda creada                                         |
 | CA4      | Dada una barbería con suscripción vencida o suspendida, entonces la reserva se rechaza con 403                                      |
 | CA5      | Dado un cliente de otra barbería, entonces no puede ver ni modificar esta cita (RLS)                                                |
 
-Fuera de alcance: cobro de la cita (los pagos son solo de la suscripción). Verificación: prueba de concurrencia en el backend de `tecnologia/plataforma-barberias/`. Estado: **planificado**.
+Fuera de alcance: cobro de la cita (los pagos son solo de la suscripción). Verificación: `backend/test/integration/citas/reservar.spec.ts`, `concurrencia-reservas.spec.ts` (PR16), `suscripciones/restricciones-estado.spec.ts` y `aislamiento/aislamiento-tenant.spec.ts`. Estado: **implementado** (002 y 003; especificación completa en `specs/002-catalogo-citas-cliente/spec.md`).
 
-### IA-001 Interpretar una solicitud de reserva (RF27)
+### IA-001 Interpretar una solicitud de reserva (RF27) · planificado (005)
 
 | Elemento                | Descripción                                                                                                        |
 | ----------------------- | ------------------------------------------------------------------------------------------------------------------ |
@@ -119,10 +130,10 @@ Fuera de alcance: cobro de la cita (los pagos son solo de la suscripción). Veri
 | Reglas                  | La IA **propone**; la reserva solo se crea cuando el cliente confirma y la ejecuta el caso de uso de M02           |
 | Prohibido               | Consultar la base de datos libremente, ejecutar SQL, ver otro tenant, cobrar, inventar horarios                    |
 | Si falla                | Mensaje de contingencia y flujo manual de reserva (EQ de degradación)                                              |
-| Registro                | `ai_conversation` y `ai_message` (intención, herramienta, resultado), sin datos sensibles innecesarios             |
+| Registro                | Intención, herramienta y resultado, sin datos sensibles innecesarios (tablas por definir en 005)                   |
 | Verificación            | Entradas ambiguas, intento de inyección de instrucciones y proveedor caído                                         |
 
-### IA-002 Consulta administrativa (RF28)
+### IA-002 Consulta administrativa (RF28) · planificado (005)
 
 | Elemento                | Descripción                                                                                 |
 | ----------------------- | ------------------------------------------------------------------------------------------- |

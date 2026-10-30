@@ -1,226 +1,168 @@
 # C4 Nivel 4: Diagrama de código
 
-**Propósito.** Mostrar clases e interfaces de componentes críticos. Se documentan dos: **"Reservar cita" (submódulo `citas`, M02)** y **`PaymentGateway` (submódulo `pagos`, M03)**. **Audiencia:** desarrolladores. Es el "zoom" del componente del nivel 3; el diagrama es ilustrativo del diseño y se detallará durante la implementación (estado: planificado).
+**Propósito.** Mostrar clases e interfaces de componentes críticos. Se documentan dos: **"Reservar cita" (submódulo `citas`, M02)** y **el puerto `PaymentGateway` (submódulo `pagos`, M03)**. **Audiencia:** desarrolladores. Es el "zoom" del componente del nivel 3. Los dos diagramas muestran **clases reales** del código (implementado); para que se lean de un vistazo, cada uno muestra solo las clases y los métodos principales.
 
 ## 1. Submódulo `citas` (M02): caso de uso "Reservar cita"
 
-![1. Submódulo `citas` (M02): caso de uso "Reservar cita"](../../img/c4-nivel4-reservar-cita.png)
+![C4 nivel 4: reservar cita](../../img/c4-nivel4-reservar-cita.png)
 
-_Figura. 1. Submódulo `citas` (M02): caso de uso "Reservar cita"._
+_Figura 1. Clases del caso de uso "Reservar cita" (implementado)._
 
 <details>
 <summary>Código fuente del diagrama (Mermaid)</summary>
 
 ```mermaid
 classDiagram
-    direction LR
-
+    direction TB
     class CitasController {
         <<presentación>>
-        +postCita(dto, contexto) Respuesta
     }
     class ReservarCita {
         <<aplicación>>
-        +ejecutar(comando, contexto) CitaDto
+        +ejecutar(actor, comando, clave)
     }
-    class ReservarCitaComando {
-        +barberoId
-        +servicioId
-        +inicio
-    }
-    class CitaRepository {
-        <<interface>>
-        +guardar(cita)
-        +buscarPorId(id)
-        +listarPorBarbero(barberoId, rango)
-    }
-    class SubscriptionPolicy {
-        <<interface M03>>
-        +puedeOperar(tenantId) boolean
+    class SuscripcionesApi {
+        <<interfaz de M03>>
+        +exigirOperacion(tenant, accion)
     }
     class CatalogQuery {
-        <<interface M02>>
-        +servicioActivo(tenantId, servicioId)
-        +horarioDelBarbero(tenantId, barberoId, fecha)
+        <<puerto>>
+        +servicioActivo(id)
+        +barberoOfrece(barbero, servicio)
+        +tramosDelDia(barbero, fecha)
     }
-    class EventBus {
-        <<interface M06>>
-        +publicar(evento)
+    class CitaRepository {
+        <<puerto>>
+        +guardar(cita, idempotencia)
+        +buscarPorIdempotencia(autor, clave)
     }
     class Cita {
         <<dominio>>
-        +CitaId id
-        +TenantId tenantId
-        +EstadoCita estado
-        +confirmar()
-        +cancelar(ahora)
-        +reprogramar(nuevoRango, ahora)
-        +completar()
-        +marcarNoAsistio()
+        +reservar(entrada)$
+        +cancelar(quien, ahora, antelacion)
+        +completar(ahora)
+        +marcarNoAsistio(ahora)
     }
     class RangoHorario {
         <<valor>>
-        +inicio
-        +fin
-        +seSolapaCon(otro) boolean
-        +duracionMinutos() int
-    }
-    class EstadoCita {
-        <<enumeración>>
-        PENDING
-        CONFIRMED
-        COMPLETED
-        NO_SHOW
-        CANCELLED
-    }
-    class HorarioNoDisponible {
-        <<error de dominio>>
+        +seSolapaCon(otro)
+        +duracionMinutos()
     }
     class CitaRepositoryPostgres {
         <<infraestructura>>
-        +guardar(cita)
     }
-    class CitaCreada {
-        <<evento>>
-    }
-
-    CitasController --> ReservarCita : llama
-    ReservarCita ..> ReservarCitaComando : recibe
-    ReservarCita --> SubscriptionPolicy : consulta
-    ReservarCita --> CatalogQuery : consulta
-    ReservarCita --> CitaRepository : usa
-    ReservarCita --> EventBus : publica
+    CitasController --> ReservarCita
+    ReservarCita --> SuscripcionesApi
+    ReservarCita --> CatalogQuery
+    ReservarCita --> CitaRepository
     ReservarCita ..> Cita : crea
-    ReservarCita ..> CitaCreada : emite
     Cita *-- RangoHorario
-    Cita --> EstadoCita
-    CitaRepository <|.. CitaRepositoryPostgres : implementa
-    CitaRepositoryPostgres ..> HorarioNoDisponible : lanza si hay conflicto
+    CitaRepository <|.. CitaRepositoryPostgres
+
+    classDef implementado fill:#e8eef7,stroke:#3b5b8c,color:#1f2d4a
+    cssClass "CitasController,ReservarCita,SuscripcionesApi,CatalogQuery,CitaRepository,Cita,RangoHorario,CitaRepositoryPostgres" implementado
 ```
 
 </details>
 
-**Lectura.** `ReservarCita` (aplicación) solo conoce interfaces; `Cita` y `RangoHorario` (dominio) no conocen nada de infraestructura; `CitaRepositoryPostgres` traduce la violación de la restricción de exclusión a `HorarioNoDisponible`.
+Leyenda: azul grisáceo = sistema propio. **Lectura.** `ReservarCita` (aplicación) solo conoce interfaces; `Cita` y `RangoHorario` (dominio) no conocen nada de infraestructura; `CitaRepositoryPostgres` traduce la violación de la restricción de exclusión a `HorarioNoDisponible` (409). Los estados de la cita son `PENDIENTE`, `CONFIRMADA`, `COMPLETADA`, `NO_ASISTIO` y `CANCELADA` ([diseño interno, 1.1](../03-diseño-de-software/diseño-interno/diseño-interno-de-modulos.md#11-estados-de-la-cita)).
 
 | Clase / interfaz                     | Capa                | Responsabilidad                                                               | Requisito    |
 | ------------------------------------ | ------------------- | ----------------------------------------------------------------------------- | ------------ |
-| `CitasController`                    | Presentación        | Validar formato, recibir contexto, mapear errores a HTTP (409 para conflicto) | RF12         |
-| `ReservarCita`                       | Aplicación          | Orquestar la reserva                                                          | RF12, RF21   |
+| `CitasController`                    | Presentación        | Validar formato (`ReservarCitaDto`), tomar el actor del token, exigir `Idempotency-Key` | RF12   |
+| `ReservarCita`                       | Aplicación          | Orquestar la reserva y auditarla                                              | RF12, RF21   |
 | `Cita`, `RangoHorario`, `EstadoCita` | Dominio             | Invariantes y transiciones                                                    | RF12–RF15    |
 | `CitaRepository`                     | Aplicación (puerto) | Contrato de persistencia                                                      | EQ-09, EQ-16 |
-| `CitaRepositoryPostgres`             | Infraestructura     | Inserción en transacción con tenant fijado                                    | ADR-009      |
+| `CitaRepositoryPostgres`             | Infraestructura     | Inserción en la transacción con tenant fijado                                 | ADR-009      |
+
+Evidencia: `backend/src/modules/catalogo-citas/citas/presentation/citas.controller.ts`, `citas/application/reservar-cita.ts`, `citas/application/ports/cita-repository.ts`, `citas/domain/cita.ts`, `catalogo/domain/rango-horario.ts`, `catalogo/application/ports/catalog-query.ts`, `citas/infrastructure/`; pruebas `backend/test/unit/citas/cita.spec.ts` e `integration/citas/reservar.spec.ts`.
 
 ## 2. Submódulo `pagos` (M03): puerto `PaymentGateway` y casos de uso
 
-![2. Submódulo `pagos` (M03): puerto `PaymentGateway` y casos de uso](../../img/c4-nivel4-pagos.png)
+![C4 nivel 4: pagos](../../img/c4-nivel4-pagos.png)
 
-_Figura. 2. Submódulo `pagos` (M03): puerto `PaymentGateway` y casos de uso._
+_Figura 2. Clases del submódulo `pagos` (implementado, con el adaptador real planificado)._
 
 <details>
 <summary>Código fuente del diagrama (Mermaid)</summary>
 
 ```mermaid
 classDiagram
-    direction LR
-
-    class PagosController {
+    direction TB
+    class SuscripcionController {
         <<presentación>>
-        +iniciar(dto, contexto)
     }
-    class WebhookController {
+    class NotificacionesController {
         <<presentación>>
-        +recibir(cuerpoCrudo, cabeceras)
     }
-    class IniciarPagoDeSuscripcion {
+    class IniciarPago {
         <<aplicación>>
-        +ejecutar(planId, contexto) OrdenDePago
     }
-    class ProcesarConfirmacionDePago {
+    class RecibirNotificacion {
         <<aplicación>>
-        +ejecutar(cuerpoCrudo, cabeceras)
     }
-    class ConciliarPagosPendientes {
+    class ConciliarPagos {
         <<aplicación>>
-        +ejecutar()
+    }
+    class AplicarResultadoDelProveedor {
+        <<aplicación>>
     }
     class PaymentGateway {
-        <<interface>>
-        +crearOrden(monto, referencia) OrdenDePago
-        +verificarNotificacion(cuerpo, cabeceras) NotificacionDePago
-        +consultarPago(referencia) EstadoPago
+        <<puerto>>
+        +crearSesionDePago(solicitud)
+        +consultarPago(referencia)
+        +verificarNotificacion(cuerpo, encabezados)
     }
     class PagoRepository {
-        <<interface>>
-        +guardar(pago)
-        +buscarPorReferencia(ref) Pago
-        +registrarEventoUnico(idEvento) boolean
-        +pendientesAntiguos(desde) lista
+        <<puerto>>
     }
-    class Pago {
-        <<dominio>>
-        +PagoId id
-        +TenantId tenantId
-        +EstadoPago estado
-        +confirmar()
-        +rechazar()
-        +expirar()
+    class EventoProveedorRepository {
+        <<puerto>>
+        +registrar(evento) boolean
     }
-    class EstadoPago {
-        <<enumeración>>
-        PENDING
-        CONFIRMED
-        REJECTED
-        EXPIRED
-    }
-    class CulqiPaymentGateway {
+    class PasarelaSimuladaAdapter {
         <<infraestructura>>
     }
-    class FakePaymentGateway {
-        <<infraestructura pruebas>>
+    class AdaptadorCulqi {
+        <<planificado>>
     }
-    class PagoRepositoryPostgres {
-        <<infraestructura>>
-    }
-    class CircuitBreaker {
-        <<infraestructura>>
-    }
-    class PagoConfirmado {
-        <<evento>>
-    }
+    SuscripcionController --> IniciarPago
+    NotificacionesController --> RecibirNotificacion
+    IniciarPago --> PaymentGateway
+    RecibirNotificacion --> PaymentGateway
+    ConciliarPagos --> PaymentGateway
+    RecibirNotificacion --> AplicarResultadoDelProveedor
+    ConciliarPagos --> AplicarResultadoDelProveedor
+    RecibirNotificacion --> EventoProveedorRepository
+    AplicarResultadoDelProveedor --> PagoRepository
+    PaymentGateway <|.. PasarelaSimuladaAdapter
+    PaymentGateway <|.. AdaptadorCulqi
 
-    PagosController --> IniciarPagoDeSuscripcion
-    WebhookController --> ProcesarConfirmacionDePago
-    IniciarPagoDeSuscripcion --> PaymentGateway
-    IniciarPagoDeSuscripcion --> PagoRepository
-    ProcesarConfirmacionDePago --> PaymentGateway
-    ProcesarConfirmacionDePago --> PagoRepository
-    ProcesarConfirmacionDePago ..> PagoConfirmado : emite
-    ConciliarPagosPendientes --> PaymentGateway
-    ConciliarPagosPendientes --> PagoRepository
-    Pago --> EstadoPago
-    PagoRepository ..> Pago
-    PaymentGateway <|.. CulqiPaymentGateway
-    PaymentGateway <|.. FakePaymentGateway
-    PagoRepository <|.. PagoRepositoryPostgres
-    CulqiPaymentGateway --> CircuitBreaker : protegido por
+    classDef implementado fill:#e8eef7,stroke:#3b5b8c,color:#1f2d4a
+    classDef planificado fill:#f5f5f5,stroke:#9e9e9e,stroke-dasharray:5 5,color:#424242
+    cssClass "SuscripcionController,NotificacionesController,IniciarPago,RecibirNotificacion,ConciliarPagos,AplicarResultadoDelProveedor,PaymentGateway,PagoRepository,EventoProveedorRepository,PasarelaSimuladaAdapter" implementado
+    cssClass "AdaptadorCulqi" planificado
 ```
 
 </details>
 
-**Lectura.** Cambiar de proveedor o agregar un método de pago es escribir otra implementación de `PaymentGateway` (EQ-14, EQ-20). `registrarEventoUnico` usa el índice único de `webhook_event` para la idempotencia (EQ-17). Ninguna clase guarda datos de tarjeta (RC12).
+Leyenda: azul grisáceo = sistema propio; gris discontinuo = adaptador pendiente. **Lectura.** Cambiar de proveedor es escribir otra implementación de `PaymentGateway` y cambiar `PAGOS_PROVEEDOR` (EQ-14, EQ-20). `EventoProveedorRepository.registrar` inserta en `provider_event`, cuya clave primaria `event_id` da la idempotencia (EQ-17). La notificación y la conciliación aplican el resultado con la **misma** función (`AplicarResultadoDelProveedor`). El estado del pago (`PENDIENTE`, `ESPERANDO_COMPROBANTE`, `EN_REVISION`, `APROBADO`, `RECHAZADO`, `ANULADO`, `EXPIRADO`) y sus transiciones están en `pagos/domain/pago.ts` (`transicionDePago`). Ninguna clase guarda datos de tarjeta (RC12).
 
-| Clase / interfaz             | Capa                | Responsabilidad                                                  | Requisito     |
-| ---------------------------- | ------------------- | ---------------------------------------------------------------- | ------------- |
-| `IniciarPagoDeSuscripcion`   | Aplicación          | Crear `Pago` PENDING y pedir la orden al proveedor               | RF23          |
-| `ProcesarConfirmacionDePago` | Aplicación          | Verificar, registrar evento único, confirmar pago, emitir evento | RF24          |
-| `ConciliarPagosPendientes`   | Aplicación          | Consultar al proveedor los pagos sin resolver                    | RF26          |
-| `PaymentGateway`             | Aplicación (puerto) | Contrato con el proveedor                                        | RC05, ADR-007 |
-| `CulqiPaymentGateway`        | Infraestructura     | Adaptador del candidato (por confirmar)                          | ADR-007       |
-| `FakePaymentGateway`         | Infraestructura     | Simulador para pruebas                                           | EQ-20         |
+| Clase / interfaz               | Capa                | Responsabilidad                                                              | Requisito     |
+| ------------------------------ | ------------------- | ---------------------------------------------------------------------------- | ------------- |
+| `IniciarPago`                  | Aplicación          | Crear el pago (o reutilizar el abierto) y pedir la sesión al proveedor       | RF20, RF23    |
+| `RecibirNotificacion`          | Aplicación          | Verificar la firma, encontrar el tenant y aplicar el resultado con el evento | RF24          |
+| `ConciliarPagos`               | Aplicación          | Consultar al proveedor los pagos pendientes de más de 10 min                 | RF26          |
+| `AplicarResultadoDelProveedor` | Aplicación          | Aplicar la transición del pago, el período y la suscripción                  | RF22, RF24    |
+| `PaymentGateway`               | Aplicación (puerto) | Contrato con el proveedor                                                    | RC05, ADR-022 |
+| `PasarelaSimuladaAdapter`      | Infraestructura     | Habla con el simulador por HTTP, con tiempo límite e interruptor             | ADR-022       |
+| Adaptador del proveedor real   | Infraestructura     | _(planificado)_ Depende de credenciales y de Yape confirmado (R15)           | ADR-007       |
+
+Evidencia: `backend/src/modules/suscripciones-pagos/pagos/application/` (`iniciar-pago.ts`, `recibir-notificacion.ts`, `conciliar-pagos.ts`, `aplicar-resultado.ts`), `pagos/application/ports/`, `pagos/infrastructure/pasarela-simulada.adapter.ts` y `fabrica-pasarela.ts`, `pagos/domain/pago.ts`; pruebas `backend/test/unit/pagos/pago.spec.ts`, `integration/pagos/notificaciones.spec.ts` y `gateway-simulado.spec.ts`.
 
 ## 3. Notas
 
-- Los nombres son de diseño; el código real puede variar al implementar, manteniendo las responsabilidades.
-- La IA (`AIProvider`) sigue el mismo patrón: ver [diseño interno, sección 4](../03-diseño-de-software/diseño-interno/diseño-interno-de-modulos.md#4-submódulo-asistente-m04-asistente-ia-y-reportes).
+- Los nombres de los dos diagramas son los del código. Los controladores tienen más rutas de las que se ven aquí (ver [API REST](../02-arquitectura-software/api-rest.md)).
+- La IA (`AIProvider`, planificada en 005) seguirá el mismo patrón de puerto y adaptador: ver [diseño interno, sección 4](../03-diseño-de-software/diseño-interno/diseño-interno-de-modulos.md#4-submódulo-asistente-m04-asistente-ia-y-reportes).
 
 **Anterior:** [Nivel 3](Nivel3-Diagrama-de-Componentes.md).

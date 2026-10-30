@@ -4,88 +4,75 @@
 
 > En C4, **contenedor** es una aplicación o almacén de datos ejecutable por separado (no necesariamente Docker). El backend es **un solo contenedor** (monolito modular); sus módulos se muestran en el nivel 3 como componentes.
 
-**Zoom del nivel 1.** Se mantienen las relaciones del nivel 1: las personas usan la plataforma (ahora, mediante la interfaz web); la plataforma (ahora, el backend) se relaciona con pagos, IA y correo.
+**Zoom del nivel 1.** Se mantienen las relaciones del nivel 1: las personas usan la plataforma (ahora, mediante la interfaz web); la plataforma (ahora, el backend) se relaciona con la pasarela de pagos y, en el futuro, con IA, correo y WhatsApp.
 
-![C4 Nivel 2: Diagrama de contenedores](../../img/c4-nivel2-contenedores.png)
+![C4 Nivel 2: contenedores](../../img/c4-nivel2-contenedores.png)
 
-_Figura. C4 Nivel 2: Diagrama de contenedores._
+_Figura 1. C4 nivel 2: contenedores._
 
 <details>
 <summary>Código fuente del diagrama (Mermaid)</summary>
 
 ```mermaid
 flowchart TB
-    ADM(["Administrador de la plataforma<br/>[Persona]"])
-    OWN(["Propietario de barbería<br/>[Persona]"])
-    BAR(["Barbero<br/>[Persona]"])
-    CLI(["Cliente<br/>[Persona]"])
-
-    subgraph LIMITE["Plataforma SaaS (límite del sistema)"]
-        WEB["Interfaz web<br/>[Contenedor: aplicación de una página, responsive]<br/>Pantallas para los cuatro roles"]
-        API["Backend monolítico modular<br/>[Contenedor: aplicación, varias instancias idénticas]<br/>API REST, 6 módulos, 4 capas"]
-        PG[("PostgreSQL<br/>[Contenedor: base de datos]<br/>Fuente de verdad. Aislamiento por tenant_id y RLS")]
-        RD[("Redis<br/>[Contenedor: caché]<br/>Caché selectiva, claves con tenant")]
+    USR(["Personas<br/>4 roles"])
+    subgraph LIMITE["Plataforma de barberías"]
+        WEB["Interfaz web<br/>React + Vite"]
+        API["Backend<br/>NestJS, monolito modular<br/>2 réplicas en local"]
+        PG[("PostgreSQL 16<br/>fuente de verdad, RLS")]
+        RD[("Redis 7.4<br/>caché y límites")]
     end
+    PAY["Pasarela de pagos<br/>hoy: simulada"]
+    EXT["IA, correo y WhatsApp"]
+    USR -->|"usa [HTTPS]"| WEB
+    WEB -->|"API REST /api/v1 [JSON]"| API
+    API -->|"SQL"| PG
+    API -.->|"caché opcional"| RD
+    API -->|"sesión de pago"| PAY
+    PAY -->|"notificación firmada"| API
+    API -.->|"opcional"| EXT
 
-    PAY["Proveedor de pagos<br/>[Sistema externo]"]
-    AI["Proveedor de IA<br/>[Sistema externo]"]
-    MAIL["Servicio de correo<br/>[Sistema externo]"]
-    WA["Servicio de mensajería WhatsApp<br/>[Sistema externo]"]
-
-    ADM -->|"Usa [HTTPS]"| WEB
-    OWN -->|"Usa [HTTPS]"| WEB
-    BAR -->|"Usa [HTTPS]"| WEB
-    CLI -->|"Usa [HTTPS]"| WEB
-    WEB -->|"Llama a la API [JSON / HTTPS, REST]"| API
-    API -->|"Lee y escribe datos transaccionales [SQL / TCP]"| PG
-    API -->|"Lee y escribe caché selectiva [RESP / TCP]"| RD
-    API <-->|"Cobros y webhook"| PAY
-    API -->|"Consultas"| AI
-    API -->|"Correos"| MAIL
-    API -->|"Mensajes"| WA
-    MAIL -.->|"Avisa la cita"| CLI
-    WA -.->|"Avisa la cita"| CLI
-
-    classDef person fill:#08427b,color:#ffffff,stroke:#052e56
-    classDef container fill:#438dd5,color:#ffffff,stroke:#2e6295
-    classDef store fill:#2f7ec4,color:#ffffff,stroke:#1f5a8e
-    classDef external fill:#999999,color:#ffffff,stroke:#6b6b6b
-    class ADM,OWN,BAR,CLI person
-    class WEB,API container
-    class PG,RD store
-    class PAY,AI,MAIL,WA external
-    style LIMITE stroke-dasharray: 5 5,fill:#ffffff,stroke:#333333
+    classDef persona fill:#ffffff,stroke:#424242,color:#212121
+    classDef implementado fill:#e8eef7,stroke:#3b5b8c,color:#1f2d4a
+    classDef planificado fill:#e8eef7,stroke:#3b5b8c,color:#1f2d4a
+    classDef externo fill:#fff3e0,stroke:#ef6c00,color:#e65100
+    classDef datos fill:#e3f2fd,stroke:#1565c0,color:#0d47a1
+    class USR persona
+    class WEB,API implementado
+    class PG,RD datos
+    class PAY externo
+    class EXT planificado
 ```
 
 </details>
 
-## Leyenda
+Leyenda: la [leyenda común](Nivel1-DiagramadeContextodelSistema.md#leyenda-común-de-todos-los-diagramas). La línea discontinua hacia Redis indica que el backend funciona sin él. El balanceador Nginx no aparece porque es despliegue: está en la [comunicación del entorno local](../02-arquitectura-software/despliegue-y-escalabilidad.md#21-entorno-escalado-local-funcionalidad-006).
 
-Persona (azul oscuro) · Contenedor aplicación (azul medio) · Contenedor almacén de datos (cilindro) · Sistema externo (gris) · Línea discontinua = límite del sistema · Flechas con verbo y protocolo.
+Evidencia: `frontend/` (React 19, Vite 6), `backend/` (NestJS 11), `docker-compose.yml` (servicios `db`, `redis`, `backend-1`, `backend-2`, `pasarela-simulada`), `backend/src/shared/cache/` y `backend/src/shared/persistence/`.
 
 ## Contenedores
 
-| Contenedor                 | Responsabilidad                                                                            | Tecnología (propuesta)            | Origen           | ADR               | Estado      |
-| -------------------------- | ------------------------------------------------------------------------------------------ | --------------------------------- | ---------------- | ----------------- | ----------- |
-| Interfaz web               | Presentación para los cuatro roles; consume la API; validación básica; sin reglas críticas | React 19, Vite 6 y TypeScript; sistema de diseño propio con Radix UI; pantallas con carga diferida | RC01, RC03, AC06 | ADR-002, 014, 016, 017, 018 | Implementado en parte (funcionalidad 001: registro, ingreso, activación, inicio y usuarios) |
-| Backend monolítico modular | Casos de uso, reglas, seguridad, integraciones; 6 módulos con 4 capas; sin estado          | TypeScript con NestJS 11          | Todos los RF     | ADR-001, 002, 011 | Implementado en parte (funcionalidad 001: M01, M03 mínimo y M06) |
-| PostgreSQL                 | Fuente de verdad: datos de negocio, restricciones de exclusión, RLS, auditoría             | PostgreSQL 16                     | RC04, RF12       | ADR-003, 004, 009, 015 | Implementado en parte (tablas y RLS de la funcionalidad 001) |
-| Redis                      | Caché selectiva y contadores de límite de solicitudes                                      | Redis                             | AC01, DA03       | ADR-005           | Planificado |
-
+| Contenedor                 | Responsabilidad                                                                            | Tecnología                                                                 | Origen           | ADR                         | Estado                                                                                                         |
+| -------------------------- | ------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- | ---------------- | --------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| Interfaz web               | Presentación para los cuatro roles y el administrador; consume la API; sin reglas críticas | React 19, Vite 6 y TypeScript; sistema de diseño propio con Radix UI        | RC01, RC03, AC06 | ADR-002, 014, 016, 017, 018 | Implementado (001, 002 y 003): registro, ingreso, panel, catálogo público, reservas, suscripción y `/plataforma` |
+| Backend monolítico modular | Casos de uso, reglas, seguridad e integraciones; módulos con 4 capas; sin estado          | TypeScript con NestJS 11                                                   | Todos los RF     | ADR-001, 002, 011           | Implementado: M01, M02, M03 y M06 (parcial); M04 y M05 planificados                                            |
+| PostgreSQL                 | Fuente de verdad: datos de negocio, restricciones de exclusión, RLS, auditoría             | PostgreSQL 16                                                              | RC04, RF12       | ADR-003, 004, 009, 015      | Implementado: 32 tablas (migraciones 0001 a 0020)                                                              |
+| Redis                      | Caché del catálogo público y contadores del límite por IP                                  | Redis 7.4, sin persistencia                                                | AC01, DA03       | ADR-005, 029                | Implementado (006)                                                                                             |
+| Pasarela simulada          | Hace de proveedor de pagos en local (fuera del monolito; nunca en producción)              | Node 22, `node:http`                                                       | RF23–RF26        | ADR-022                     | Implementado (003)                                                                                             |
 ## Relaciones con sistemas externos (protocolos)
 
 | Relación                       | Protocolo                               | Observación                                                   |
 | ------------------------------ | --------------------------------------- | ------------------------------------------------------------- |
-| Backend ↔ Proveedor de pagos   | HTTPS; webhook firmado hacia el backend | El webhook no lleva token de usuario sino firma del proveedor |
-| Backend → Proveedor de IA      | HTTPS                                   | Sin secretos ni datos innecesarios                            |
-| Backend → Servicio de correo   | SMTP o API HTTPS                        | Correo es el canal base y de respaldo                         |
-| Backend → Servicio de WhatsApp | HTTPS (API del proveedor)               | Solo con consentimiento del cliente                           |
+| Backend ↔ Proveedor de pagos   | HTTP en local con el simulador (HTTPS con el proveedor real); notificación firmada hacia el backend | La notificación no lleva token de usuario sino la firma HMAC del proveedor |
+| Backend → Proveedor de IA _(planificado)_ | HTTPS                        | Sin secretos ni datos innecesarios                            |
+| Backend → Servicio de correo _(planificado)_ | SMTP o API HTTPS          | Correo es el canal base y de respaldo                         |
+| Backend → Servicio de WhatsApp _(planificado)_ | HTTPS (API del proveedor) | Solo con consentimiento del cliente                           |
 
 ## Notas
 
-- **Balanceador de carga:** pertenece al **despliegue**, no a la arquitectura lógica. En la nube es el **Application Load Balancer de AWS**: se ubica entre los usuarios y las instancias del backend y se muestra en [despliegue-y-escalabilidad.md](../02-arquitectura-software/despliegue-y-escalabilidad.md). Las varias instancias son copias del **mismo** contenedor backend.
-- El backend es el **único** componente que accede a PostgreSQL y Redis. Ni la interfaz web ni la IA ni los sistemas externos tienen acceso directo a la base de datos.
-- Los pagos se tratan solo en el backend; la interfaz redirige al flujo alojado del proveedor y no maneja datos de tarjeta (RC12).
+- **Balanceador de carga:** pertenece al **despliegue**, no a la arquitectura lógica. En local es **Nginx** delante de dos réplicas (ADR-030); en la nube sería el **Application Load Balancer de AWS** (planificado). Ver [despliegue-y-escalabilidad.md](../02-arquitectura-software/despliegue-y-escalabilidad.md). Las réplicas son copias del **mismo** contenedor backend.
+- El backend es el **único** componente que accede a PostgreSQL y Redis. Ni la interfaz web ni los sistemas externos tienen acceso directo a la base de datos.
+- Los pagos se tratan solo en el backend; la interfaz redirige a la página alojada del proveedor (hoy, la del simulador) y no maneja datos de tarjeta (RC12).
 - No existe un contenedor de aplicación móvil: queda como evolución futura.
 
 **Anterior:** [Nivel 1](Nivel1-DiagramadeContextodelSistema.md) · **Siguiente:** [Nivel 3 – Componentes](Nivel3-Diagrama-de-Componentes.md).

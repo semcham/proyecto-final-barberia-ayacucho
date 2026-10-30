@@ -45,4 +45,4 @@ Los atributos de calidad (AC) describen **cómo** debe comportarse el sistema, a
 | AC09 | RC05, RC11   | Proveedores externos sustituibles                                                            |
 | AC10 | AC03, AC04   | Sin observabilidad no se verifica nada de lo anterior                                        |
 
-> **Estado de las medidas.** Todas las medidas de los escenarios son **propuestas por validar** mediante pruebas ([04-pruebas](../05-gestion/04-pruebas.md)) y
+> **Estado de las medidas.** Las medidas de los escenarios son **metas propuestas** que se validan con las pruebas de [04-pruebas](../05-gestion/04-pruebas.md). Ya se midieron en local, con resultados registrados en la [trazabilidad](../trazabilidad.md): EQ-01 (horarios libres, PR01), EQ-04 (caída de una réplica, PR04), EQ-05 (caída de Redis, PR05), EQ-06 de pagos (pasarela caída, PR06), EQ-07 a EQ-10, EQ-12 y EQ-13 (seguridad), EQ-16 (reservas simultáneas, PR16), EQ-17 (notificaciones de pago, PR17) y EQ-20 contra el simulador (PR20). Las demás siguen por validar.

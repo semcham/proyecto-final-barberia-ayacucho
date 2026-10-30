@@ -118,6 +118,7 @@ Un ADR registra **qué** se decidió, **por qué**, qué alternativas se descart
 - **Aclaración:** **no se afirma alta disponibilidad por incluir un balanceador.** La alta disponibilidad exige además redundancia del propio balanceador, réplica de PostgreSQL con conmutación, Redis tolerante a fallos y pruebas. Ver [despliegue](../02-arquitectura-software/despliegue-y-escalabilidad.md).
 - **Drivers:** DA03, DA04, DA05.
 - **Consecuencias:** configuración y secretos externos; registros centralizados.
+- **Implementación local (2026-10-19):** el despliegue en AWS está documentado y no se ejecuta. En el entorno local, el balanceador se representa con Nginx delante de dos réplicas del backend, según [ADR-030](#adr-030-balanceo-local-con-nginx-como-representación-de-adr-006).
 
 ## ADR-007 Módulo de pagos desacoplado
 
@@ -132,6 +133,7 @@ Un ADR registra **qué** se decidió, **por qué**, qué alternativas se descart
 - **Proveedor:** candidato Culqi (documentación leída: Yape máx. S/ 500 solo en soles, billeteras QR S/ 6 a S/ 500, webhook `order.status.changed`, token de tarjeta de 5 minutos y un uso). **No se afirma compatibilidad ni condiciones de contratación hasta confirmarlas con el proveedor.** Diferenciar _método de pago_ (Yape, tarjeta) de _proveedor que procesa_.
 - **Drivers:** DA07.
 - **Consecuencias:** el pago de citas por clientes queda fuera del MVP.
+- **Implementación (003, 2026-10-24):** el puerto `PaymentGateway` funciona hoy con una **pasarela simulada** (proceso aparte, notificación del proveedor firmada con HMAC-SHA256, conciliación) y con el pago por transferencia con comprobante, según [ADR-022](#adr-022-pasarela-de-pagos-en-sandbox-o-simulada-detrás-de-paymentgateway-y-transferencia-con-comprobante). El adaptador del proveedor real no está construido. En este documento, "webhook" y "notificación del proveedor" nombran lo mismo: el aviso firmado que el proveedor envía a `POST /api/v1/pagos/notificaciones`.
 
 ## ADR-008 Integración de IA desacoplada
 
@@ -536,7 +538,7 @@ Un ADR registra **qué** se decidió, **por qué**, qué alternativas se descart
      - `nginx` publica el 3000.
      - Todos están en una red con subred fija. Cada contenedor tiene un límite de memoria (unos 1,9 GB de uso estable).
   2. **Salud.** `GET /api/v1/salud/listo` comprueba que PostgreSQL responde y que la última migración aplicada coincide con la del código. La usan el healthcheck de Docker y, en la nube, el ALB. Nginx usa la comprobación pasiva:
-     - `max_fails=1 fail_timeout=10s`;
+     - `max_fails=3 fail_timeout=10s` (se aceptó con `max_fails=1`; el 2026-10-22 se subió a 3 porque un único fallo pasajero de la réplica sana dejaba a Nginx sin réplicas y respondía 503. Una réplica caída se sigue detectando en milisegundos; ver el comentario de `nginx/templates/default.conf.template`);
      - `proxy_connect_timeout 1s`;
      - reintento en la otra réplica solo de GET y HEAD.
   3. **Migraciones una sola vez.** Las aplica `preparar-backend`. Si dos procesos las lanzan a la vez, el bloqueo de PostgreSQL que toma el `Migrator` de Kysely las serializa, y una prueba lo demuestra.

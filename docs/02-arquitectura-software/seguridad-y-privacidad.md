@@ -11,7 +11,7 @@ Decisión base: [ADR-010](../01-analisis-de-sistema/07-decisiones-arquitectonica
 
 ## 2. Matriz rol × operación (RBAC)
 
-✓ permitido · ✓\* permitido solo sobre sus propios recursos · — denegado. PA = Administrador de la plataforma; PR = Propietario (administra todo en su barbería); BA = Barbero; CL = Cliente; AN = Anónimo.
+✓ permitido · ✓\* permitido solo sobre sus propios recursos · — denegado. Las filas marcadas _(planificado)_ describen el diseño; las demás están implementadas y probadas celda por celda (PR08). PA = Administrador de la plataforma; PR = Propietario (administra todo en su barbería); BA = Barbero; CL = Cliente; AN = Anónimo.
 
 | Operación                                                  | AN  | CL                      | BA             | PR                   | PA  |
 | ---------------------------------------------------------- | --- | ----------------------- | -------------- | -------------------- | --- |
@@ -35,11 +35,11 @@ Decisión base: [ADR-010](../01-analisis-de-sistema/07-decisiones-arquitectonica
 | Suspender y reactivar suscripciones; activación manual     | —   | —                       | —              | —                    | ✓   |
 | Revisar comprobantes y resolver pagos por revisar          | —   | —                       | —              | —                    | ✓   |
 | Ver citas, clientes, catálogo o usuarios de una barbería   | —   | —                       | (según su rol) | (según su rol)       | —   |
-| Ver reportes de la barbería                                | —   | —                       | ✓\* (resumen)  | ✓                    | —   |
-| Indicadores agregados de la plataforma y auditoría         | —   | —                       | —              | —                    | ✓   |
-| Asistente de IA (consultas de catálogo y disponibilidad)   | —   | ✓                       | —              | ✓                    | —   |
-| Asistente de IA (consultas administrativas)                | —   | —                       | —              | ✓                    | —   |
-| Solicitar acceso, rectificación o eliminación de datos     | —   | ✓\*                     | —              | ✓\*                  | —   |
+| Ver reportes de la barbería _(planificado, 005)_           | —   | —                       | ✓\* (resumen)  | ✓                    | —   |
+| Indicadores agregados de la plataforma _(planificado, 007)_ | —   | —                       | —              | —                    | ✓   |
+| Asistente de IA: catálogo y disponibilidad _(planificado, 005)_ | —   | ✓                       | —              | ✓                    | —   |
+| Asistente de IA: consultas administrativas _(planificado, 005)_ | —   | —                       | —              | ✓                    | —   |
+| Solicitar acceso, rectificación o eliminación de datos _(planificado, 007)_ | —   | ✓\*                     | —              | ✓\*                  | —   |
 
 La matriz se convierte en una **prueba parametrizada** (PR08): cada celda es un caso. Las matrices detalladas por ruta están en `specs/001-registro-acceso-barberia/contracts/rbac.md`, `specs/002-catalogo-citas-cliente/contracts/rbac.md` y `specs/003-suscripciones-pagos/contracts/rbac.md`; las pruebas de 002 y 003 (`backend/test/contract/rbac-002.spec.ts` y `rbac-003.spec.ts`) leen su tabla y ejecutan cada celda. La de 003 recorre la tabla **completa** (falla si una fila no tiene su caso), con los cuatro roles de barbería, el administrador y sin token, y además comprueba que el token del administrador responde 401 en **todas** las rutas de 001 y 002, leídas de la propia aplicación.
 
@@ -56,14 +56,14 @@ La matriz se convierte en una **prueba parametrizada** (PR08): cada celda es un 
 | Fuerza bruta de contraseñas                             | Limitación de intentos, hash lento con sal                                                                                                                                                                      | EQ-12 / PR12              |
 | Escalada de privilegios                                 | RBAC en la capa de aplicación; rol no modificable por el cliente                                                                                                                                                | EQ-08 / PR08              |
 | Inyección SQL / XSS                                     | Consultas parametrizadas, validación y codificación de salida                                                                                                                                                   | EQ-10 / PR10              |
-| Webhook falso o repetido                                | Firma HMAC-SHA256 con marca de tiempo (ventana de 5 min) comparada en tiempo constante; idempotencia por `evento_id`; límite de tasa; rechazo sin efecto y sin registrar el cuerpo                              | EQ-17 / PR17              |
-| Robo de la cuenta del administrador de la plataforma    | Segundo factor TOTP obligatorio, bloqueo por intentos, sesión propia de 8 h, token sin acceso a rutas de barbería (sección 4.2)                                                                                 | EQ-07, EQ-08 / PR07, PR08 |
+| Notificación de pago falsa o repetida                   | Firma HMAC-SHA256 con marca de tiempo (ventana de 5 min) comparada en tiempo constante; idempotencia por `evento_id`; límite de tasa; rechazo sin efecto y sin registrar el cuerpo                              | EQ-17 / PR17              |
+| Robo de la cuenta del administrador de la plataforma    | Segundo factor TOTP obligatorio, bloqueo por intentos, token de 10 min con sesión de 8 h como máximo, token sin acceso a rutas de barbería (sección 4.2)                                                                                 | EQ-07, EQ-08 / PR07, PR08 |
 | Comprobante malicioso o filtrado                        | Tipo verificado por bytes, tope de 5 MB, nunca servido sin sesión con permiso, sin el nombre original (sección 4.3)                                                                                             | EQ-09, EQ-10 / PR09, PR10 |
 | Pago aplicado dos veces o en otra barbería              | Un pago abierto por suscripción, períodos sin solape (`EXCLUDE`), número de operación aprobado una sola vez, bloqueo de la suscripción y luego del pago                                                         | EQ-17 / PR17, PR09        |
 | Fuga de secretos                                        | Variables de entorno/gestor; escaneo del repositorio; sin secretos en logs ni prompts                                                                                                                           | EQ-11 / PR11              |
-| Prompt injection / exceso de agencia de la IA           | Herramientas cerradas por rol, sin SQL libre, intención estructurada, confirmación para acciones sensibles                                                                                                      | EQ-19 / PR19              |
-| Fuga de datos personales a la IA                        | Enviar solo datos mínimos del tenant autenticado; sin datos de pago; revisión de lo enviado                                                                                                                     | EQ-19 / PR19              |
-| Enlace del recordatorio reenviado, robado o reutilizado | Enlace firmado de un solo uso (`jti` registrado), vence al iniciar la cita, alcance a una cita y un tenant, acción limitada (confirmar, reprogramar o cancelar), sin datos personales en la URL, límite de tasa | EQ-08, EQ-09 / PR28       |
+| _(planificado, 005)_ Prompt injection / exceso de agencia de la IA | Herramientas cerradas por rol, sin SQL libre, intención estructurada, confirmación para acciones sensibles                                                                                                      | EQ-19 / PR19              |
+| _(planificado, 005)_ Fuga de datos personales a la IA   | Enviar solo datos mínimos del tenant autenticado; sin datos de pago; revisión de lo enviado                                                                                                                     | EQ-19 / PR19              |
+| _(planificado, 004)_ Enlace del recordatorio reenviado, robado o reutilizado | Enlace firmado de un solo uso (`jti` registrado), vence al iniciar la cita, alcance a una cita y un tenant, acción limitada (confirmar, reprogramar o cancelar), sin datos personales en la URL, límite de tasa | EQ-08, EQ-09 / PR28       |
 | Datos de tarjeta expuestos                              | No se reciben ni almacenan; se usa el flujo alojado por el proveedor                                                                                                                                            | Revisión de diseño (RC12) |
 | Denegación de servicio / abuso                          | Rate limiting, tiempos límite, balanceo                                                                                                                                                                         | EQ-12 / PR12              |
 | Manipulación de acciones sensibles sin rastro           | Auditoría inmutable para el rol de aplicación                                                                                                                                                                   | EQ-13 / PR13              |
@@ -75,8 +75,44 @@ La matriz se convierte en una **prueba parametrizada** (PR08): cada celda es un 
 - Contraseñas con algoritmo de hash lento y sal: Argon2id en la funcionalidad 001 (ver [tecnologías](tecnologias.md)).
 - Token de acceso de vida corta (15 min) y token de refresco rotativo; cierre de sesión revoca el refresco. Si llega un token de refresco ya rotado, se trata como robo: la sesión se revoca y se audita `SESION_REUTILIZADA`.
 - **Período de gracia (ADR-019):** el token de refresco inmediatamente anterior se acepta **una sola vez** durante 10 s tras la rotación (`REFRESH_GRACIA_SEGUNDOS`, de 0 a 30), para no cerrar la sesión cuando una renovación se interrumpe o se repite (riesgo R18 de la [matriz de riesgos](../05-gestion/05-riesgos.md)); cada uso se audita (`SESION_RENOVADA_EN_GRACIA`). Fuera de la ventana, el segundo uso o el token que la gracia dejó sin efecto revocan la sesión. La renovación bloquea la fila de la sesión y la interfaz serializa las renovaciones entre pestañas (Web Locks).
-- El token contiene `sub`, `role` y `tenant_id`; no contiene datos personales innecesarios.
+- El token contiene `sub`, `tid`, `rol` y `sid`; no contiene datos personales.
 - Mensajes de error genéricos en el inicio de sesión.
+
+#### Inicio de sesión y renovación del token (implementado, 001)
+
+![Inicio de sesión y renovación del token](../../img/secuencia-inicio-sesion.png)
+
+_Figura 1. Inicio de sesión del personal o del cliente y renovación del token._
+
+<details>
+<summary>Código fuente del diagrama (Mermaid)</summary>
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as Usuario
+    participant WEB as Interfaz web
+    participant API as Backend
+    participant BD as PostgreSQL
+    U->>WEB: correo y contraseña
+    WEB->>API: POST /auth/login
+    API->>BD: auth_resolver_cuenta (función de ADR-015)
+    BD-->>API: cuenta, membresía y tenant
+    API->>API: verifica Argon2id y límite de intentos
+    API->>BD: crea auth_session (tenant fijado, RLS)
+    API-->>WEB: token de acceso ES256 (15 min) + cookie rt
+    Note over WEB: el token vive solo en memoria,<br/>la interfaz marca hay_sesion
+    WEB->>API: POST /auth/refresh (cookie rt)
+    API->>BD: auth_buscar_sesion y rota rt
+    API-->>WEB: token nuevo + rt nueva
+    Note over API: rt ya rotada fuera de los 10 s de gracia<br/>→ sesión revocada (SESION_REUTILIZADA)
+```
+
+</details>
+
+El token lleva `sub` (usuario), `tid` (barbería), `rol` y `sid` (sesión). En cada solicitud, `AuthGuard` verifica la firma y comprueba en la base que la sesión siga activa.
+
+Evidencia: `backend/src/modules/acceso-barberias/identidad/presentation/auth.controller.ts`, `identidad/application/iniciar-sesion.ts` y `renovar-sesion.ts`, `identidad/infrastructure/` (`JoseTokenSigner`, `Argon2PasswordHasher`), `backend/migrations/0003_autenticacion_sin_tenant.ts`, `frontend/src/auth/indicadorSesion.ts`; pruebas `backend/test/integration/identidad/autenticacion.spec.ts`, `limite-intentos.spec.ts` y `test/contract/auth.contract.spec.ts`.
 
 ### 4.1 Qué guarda el navegador
 
@@ -100,6 +136,41 @@ Las cookies `rt`, `rtp` y `hay_sesion` son técnicas (necesarias para mantener l
 - **Alta:** solo por la orden `npm run plataforma:crear-admin` (rol dueño de la base), que pide la contraseña sin eco y muestra **una sola vez** la URI `otpauth://` y los códigos de recuperación.
 - **Lo que puede hacer:** listar barberías (sin datos de negocio), suspender y reactivar barberías y suscripciones, activar un plan a mano, revisar comprobantes y resolver pagos por revisar. No puede ver ni cambiar citas, clientes, catálogo ni usuarios (FR-038). Sus escrituras corren con el tenant de la barbería de la ruta y RLS, y quedan en el `audit_log` de esa barbería con él como actor y el motivo.
 
+#### Ingreso del administrador con segundo factor (implementado, 003)
+
+![Ingreso del administrador con segundo factor](../../img/secuencia-ingreso-administrador.png)
+
+_Figura 2. Ingreso del administrador de la plataforma en dos pasos._
+
+<details>
+<summary>Código fuente del diagrama (Mermaid)</summary>
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor AD as Administrador
+    participant WEB as Interfaz /plataforma
+    participant API as Backend
+    participant BD as PostgreSQL
+    AD->>WEB: correo y contraseña
+    WEB->>API: POST /plataforma/auth/ingresar
+    API->>BD: lee platform_admin (rol barberias_plataforma)
+    API->>API: verifica Argon2id y límite de intentos
+    API->>BD: crea platform_challenge (5 min)
+    API-->>WEB: desafío
+    AD->>WEB: código TOTP o de recuperación
+    WEB->>API: POST /plataforma/auth/segundo-factor
+    API->>API: descifra el secreto (AES-256-GCM) y valida (±1 paso)
+    API->>BD: crea platform_session (UNIQUE admin_id, totp_step)
+    API-->>WEB: token de plataforma sin tid (10 min) + cookie rtp
+    Note over API: 5 fallos en 15 min → 429<br/>todo queda en platform_audit_log
+```
+
+</details>
+
+Con ese token solo responden las rutas `/plataforma/*`; en cualquier ruta de barbería da 401. La sesión se renueva con `POST /plataforma/auth/renovar` hasta un máximo de 8 h.
+
+Evidencia: `backend/src/modules/acceso-barberias/identidad/presentation/plataforma-auth.controller.ts`, `identidad/application/plataforma/`, `identidad/infrastructure/totp-node.ts`, `backend/migrations/0016_plataforma.ts`, `backend/scripts/crear-admin-plataforma.ts`; pruebas `backend/test/integration/identidad/segundo-factor.spec.ts`, `host/token-plataforma.spec.ts`, `test/unit/identidad/totp.spec.ts` y `test/contract/rbac-003.spec.ts`.
 ### 4.3 Comprobantes de transferencia (003, ADR-023)
 
 - El tipo se decide por los **primeros bytes** (JPEG, PNG o PDF), no por el nombre ni por el `Content-Type`; un archivo de otro tipo o de más de 5 MB se rechaza sin guardarse. Nginx admite 6 MB solo en la ruta de subida.
@@ -124,20 +195,20 @@ Las cookies `rt`, `rtp` y `hay_sesion` son técnicas (necesarias para mantener l
 
 | Principio / obligación                                     | Medida de diseño                                                                                                                                                                                              | Estado      |
 | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
-| Consentimiento previo, informado, expreso e inequívoco     | Registro `consent_record` (fecha, versión del texto) antes de crear el perfil (RF05)                                                                                                                          | Planificado |
-| Finalidad y proporcionalidad                               | Solo nombre, correo, número de WhatsApp (opcional) y datos de la cita                                                                                                                                         | Planificado |
-| Consentimiento para mensajes por WhatsApp                  | Casilla expresa y separada; se registra en `consent_record` antes de enviar; el cliente puede cambiar de canal o retirarlo (RF33)                                                                             | Planificado |
-| Contenido de los mensajes                                  | Solo barbería, servicio, fecha y hora; sin datos sensibles ni enlaces de autenticación                                                                                                                        | Planificado |
-| Derechos de acceso, rectificación, cancelación y oposición | Flujo `data_request` con seguimiento (RF32)                                                                                                                                                                   | Planificado |
-| Seguridad del tratamiento                                  | Cifrado en tránsito, hash de contraseñas, RLS, auditoría                                                                                                                                                      | Planificado |
+| Consentimiento previo, informado, expreso e inequívoco     | Registro `consent_record` (fecha, versión del texto, método e IP) antes de crear el perfil (RF05)                                                                                                             | Implementado (002) |
+| Finalidad y proporcionalidad                               | Solo nombre, correo, teléfono y datos de la cita; el número de WhatsApp opcional llegará con 004                                                                                                               | Implementado (002) |
+| Consentimiento para mensajes por WhatsApp                  | Casilla expresa y separada; se registra en `consent_record` antes de enviar; el cliente puede cambiar de canal o retirarlo (RF33)                                                                             | Planificado (004) |
+| Contenido de los mensajes                                  | Solo barbería, servicio, fecha y hora; sin datos sensibles ni enlaces de autenticación                                                                                                                        | Planificado (004) |
+| Derechos de acceso, rectificación, cancelación y oposición | Flujo de solicitudes con seguimiento (RF32); sin tablas todavía                                                                                                                                               | Planificado (007) |
+| Seguridad del tratamiento                                  | Hash de contraseñas (Argon2id), RLS, auditoría y comprobantes privados; cifrado en tránsito (HTTPS) en la nube                                                                                               | Implementado en local; HTTPS planificado |
 | Respaldos                                                  | Diarios (propuesta); la normativa menciona al menos semanales según fuente secundaria                                                                                                                         | Planificado |
-| Trazabilidad de accesos                                    | Auditoría de acciones sensibles                                                                                                                                                                               | Planificado |
+| Trazabilidad de accesos                                    | Auditoría de acciones sensibles (`audit_log`, `platform_audit_log`)                                                                                                                                          | Implementado (001–003) |
 | Incidentes graves                                          | Procedimiento de notificación a la ANPD en 48 h (según fuente secundaria; verificar)                                                                                                                          | Por validar |
 | Inscripción de bancos de datos (RNPDP)                     | Evaluar antes de operar                                                                                                                                                                                       | Por validar |
 | Roles responsable / encargado                              | Barbería = responsable de los datos de sus clientes; plataforma = encargada. Para los datos de las barberías como clientes de la plataforma, la plataforma es responsable. **Por validar con asesoría legal** | Por validar |
 | Oficial de Datos Personales                                | Evaluar si corresponde según tamaño de empresa; **no se afirma**                                                                                                                                              | Por validar |
 
-### Privacidad en el asistente de IA
+### Privacidad en el asistente de IA _(planificado, 005)_
 
 - Solo recibe datos del tenant y rol autenticados, el mínimo necesario.
 - No recibe secretos, contraseñas ni datos de pago.
@@ -147,7 +218,7 @@ Las cookies `rt`, `rtp` y `hay_sesion` son técnicas (necesarias para mantener l
 
 ## 6. Auditoría
 
-Se registran: alta, suspensión y reactivación de barberías; cambios de rol; cambios de plan; inicios de sesión fallidos repetidos; acciones de IA con herramientas sensibles; solicitudes de datos personales; confirmaciones de pago. Cada registro tiene actor, acción, recurso, tenant, fecha y origen. Sin datos sensibles innecesarios.
+Se registran hoy: alta, suspensión y reactivación de barberías; cambios de rol y de usuarios; cambios de plan; accesos denegados a otra barbería (`ACCESO_TENANT_AJENO`); pagos y comprobantes. Planificado: acciones de IA con herramientas sensibles (005) y solicitudes de datos personales (007). Cada registro tiene actor, acción, recurso, tenant, fecha y origen. Sin datos sensibles innecesarios.
 
 La funcionalidad 002 agrega 12 acciones (R19): `CLIENTE_REGISTRADO`, `CLIENTE_UNIDO`, `CLIENTE_PRESENCIAL_REGISTRADO`, `BARBERIA_CAMBIADA`, `ENLACE_CAMBIADO`, `SERVICIO_DESACTIVADO`, `BARBERO_DESACTIVADO`, `BLOQUEO_CON_CONFLICTO`, `CAMBIO_CON_CONFLICTO`, `CITA_RESERVADA`, `CITA_CANCELADA` y `CITA_ESTADO_CAMBIADO`. El recurso va siempre como `tipo:identificador` (nunca nombres, teléfonos ni correos); la suite PR13 lo comprueba para cada una.
 
