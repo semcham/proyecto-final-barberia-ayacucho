@@ -409,7 +409,7 @@ Evidencia: `backend/src/modules/suscripciones-pagos/suscripciones/domain/suscrip
 | `NotificationChannel`                    | Aplicación (puerto)           | `enviar(destinatario, mensaje)`                                                                      |
 | Adaptadores de correo y `WhatsAppSender` | Infraestructura (adaptadores) | Implementan el puerto; protegidos por el `Interruptor` de M06                                        |
 
-**Dependencias propuestas.** M05 solo dependerá de M06. El evento de M02 llevará los datos mínimos de contacto y de la cita.
+**Dependencias (revisión de ADR-013, Aceptada el 2026-11-04).** M05 dependerá de M06 (eventos y tareas) y de M01, **solo para leer**, al enviar: el canal, el consentimiento vigente y el correo del destinatario. El evento de M02 lleva los datos mínimos de la cita, **sin datos de contacto**.
 
 ![Notificación de una cita (planificada)](../../../img/secuencia-notificacion-cita.png)
 

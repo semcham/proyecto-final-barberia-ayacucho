@@ -1,6 +1,44 @@
 <!--
 Sync Impact Report
 ==================
+Version change: 1.3.1 → 1.4.0
+Bump rationale: MINOR. Se amplía materialmente la guía del principio III con una cuarta excepción
+acotada, "acciones por enlace de la cita", y se nombran las tablas técnicas de intentos, sin eliminar
+ni redefinir nada: todo lo que cumplía la 1.3.1 (funcionalidades 001, 002, 003 y 006) sigue
+cumpliendo. Enmienda aprobada por el responsable el 2026-11-04, junto con ADR-032, al aprobar el
+plan de la funcionalidad 004.
+
+Modified principles:
+  - III. Aislamiento por barbería (NO NEGOCIABLE) — se añade la excepción acotada "acciones por
+    enlace de la cita": el recordatorio (RF34) puede incluir enlaces para confirmar, reprogramar o
+    cancelar UNA cita sin sesión; la barbería y la cita salen solo del dato firmado del enlace,
+    verificado antes de leer nada; la acción usa el rol de la aplicación sin BYPASSRLS, con el
+    tenant fijado y RLS; un enlace sirve para una cita, una acción y un uso, vence a la hora de
+    inicio, deja de valer si la cita cambia y no puede reconstruirse a partir de lo guardado; los
+    rechazos se limitan por origen con un contador en PostgreSQL. Se agrega el párrafo "Tablas
+    técnicas de intentos" (login_attempt, de 001, y action_link_attempt, de 004), que regulariza
+    login_attempt, ausente de la lista cerrada de la 1.3.1. Origen:
+    specs/004-notificaciones-reprogramacion/research.md R06 a R08 y Complexity Tracking del plan.
+Added principles: ninguno
+Added sections: ninguna
+Removed sections: ninguna
+
+Templates requiring updates:
+  ✅ .specify/templates/plan-template.md — puerta III (versión 1.4.0, cuarta excepción)
+  ✅ .specify/templates/spec-template.md y tasks-template.md — revisados; sin cambios necesarios
+  ✅ docs/01-analisis-de-sistema/07-decisiones-arquitectonicas.md — ADR-032, ADR-025 y ADR-026
+     Aceptados; ADR-013 revisado y Aceptado (con M05 → M01 de solo lectura)
+  ✅ docs/02-arquitectura-software/multi-tenancy-y-datos.md — §1.3 con las cuatro excepciones y las
+     tablas técnicas de intentos
+  ✅ docs/02-arquitectura-software/estilo-arquitectonico.md y componentes-arquitectonicos.md —
+     matriz de dependencias con M05 → M01
+  ✅ specs/004-notificaciones-reprogramacion/plan.md — puertas III y XI en verde
+  ✅ specs/001, 002, 003 y 006 — sin cambios: no usan la excepción nueva
+
+Follow-up TODOs: ninguno. La excepción solo puede usarse dentro de lo que describe ADR-032; PR28 y
+PR09 (aislamiento-avisos) la verifican al implementar 004.
+
+--- Historial: informe de la versión 1.3.1 ---
 Version change: 1.3.0 → 1.3.1
 Bump rationale: PATCH. Aclaración del alcance de la excepción "operaciones de la plataforma" del
 principio III, sin ampliar lo que permite: nombra las tablas de la plataforma (sin barbería y sin
@@ -225,6 +263,22 @@ intercambiables.
   administrador (ingreso, segundo factor y salida) MAY auditarse en `platform_audit_log` sin
   barbería. El rol de la aplicación MUST NOT leer `provider_event` (solo insertar eventos) ni
   `platform_admin`. La decisión se registra en ADR-031.
+  **Tablas técnicas de intentos:** `login_attempt` (desde 001) y `action_link_attempt` (004) no
+  pertenecen a ninguna barbería; MAY no tener `tenant_id` ni RLS, y MUST guardar solo un resumen
+  criptográfico del origen (nunca correos, IP en claro ni datos de negocio), con purga a las 24 h.
+- **Excepción acotada: acciones por enlace de la cita.** El recordatorio de una cita (RF34) MAY
+  incluir enlaces que permitan al cliente, sin sesión, confirmar su asistencia, reprogramar o
+  cancelar **esa** cita. La barbería y la cita MUST obtenerse **solo** del dato firmado del enlace,
+  después de verificar su firma, y MUST NOT tomarse de la ruta, la consulta, el cuerpo ni otros
+  encabezados. Antes de verificar la firma, el sistema MUST NOT leer datos de ninguna barbería. La
+  acción MUST ejecutarse con el rol de la aplicación, sin `BYPASSRLS`, en una transacción con el
+  tenant del enlace fijado y con RLS, y MUST aplicar las mismas reglas que la operación equivalente
+  con sesión. Cada enlace MUST servir para una sola cita, una sola acción y un solo uso, MUST vencer
+  como máximo a la hora de inicio de la cita, MUST dejar de valer si la cita cambia y MUST guardarse
+  solo de forma que no pueda reconstruirse a partir de lo guardado. Las respuestas MUST mostrar solo
+  los datos mínimos de la cita y MUST NOT revelar datos del cliente ni si una cita existe. Los
+  intentos rechazados MUST limitarse por origen, con su contador en PostgreSQL. La decisión se
+  registra en ADR-032.
 
 **Razón:** ADR-003 y ADR-010; `tenant_id` por sí solo no basta. Una fuga entre barberías (R01)
 es el riesgo más grave del sistema. La primera excepción existe porque RF10 exige mostrar el
@@ -234,7 +288,9 @@ tener la sesión de esa barbería; se limita a crear o elegir su propia membres�
 porque el administrador de la plataforma cobra y revisa pagos de todas las barberías sin pertenecer
 a ninguna, y porque los pagos confirmados por el proveedor y los vencimientos llegan sin sesión; se
 limita a metadatos de pago y estado, sin `BYPASSRLS`, y toda escritura sigue protegida por la RLS de
-la barbería afectada.
+la barbería afectada. La cuarta existe porque el recordatorio del día debe poder responderse desde el
+celular sin iniciar sesión (HU28), incluso por un cliente presencial sin cuenta; se limita a una
+cita, una acción y un uso, verifica la firma antes de leer nada y no omite RLS.
 
 ### IV. Citas sin duplicados garantizadas por la base de datos
 
@@ -409,4 +465,4 @@ implementación. La excepción existe solo porque la plataforma de CI impone la 
   alternativa más simple descartada, y registrarse como ADR.
 - La guía de ejecución del proyecto está en `README.md` y en `docs/`.
 
-**Version**: 1.3.1 | **Ratified**: 2026-10-15 | **Last Amended**: 2026-10-24
+**Version**: 1.4.0 | **Ratified**: 2026-10-15 | **Last Amended**: 2026-11-04

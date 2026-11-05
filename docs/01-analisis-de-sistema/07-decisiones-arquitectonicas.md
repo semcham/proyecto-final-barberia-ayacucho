@@ -1,6 +1,6 @@
 # 07. Decisiones arquitectónicas (ADR)
 
-Un ADR registra **qué** se decidió, **por qué**, qué alternativas se descartaron y qué consecuencias trae. Todas las decisiones nacen de un driver ([06](06-driver-arquitectonicos.md)). Estado: **Propuesto** (pendiente de aprobación del equipo), salvo ADR-020 y ADR-021, **Aceptados** por el responsable el 2026-10-17, ADR-029 y ADR-030 (funcionalidad 006), **Aceptados** por el responsable el 2026-10-19, y ADR-022, ADR-023, ADR-024 y ADR-031 (funcionalidad 003), **Aceptados** por el responsable el 2026-10-24.
+Un ADR registra **qué** se decidió, **por qué**, qué alternativas se descartaron y qué consecuencias trae. Todas las decisiones nacen de un driver ([06](06-driver-arquitectonicos.md)). Estado: **Propuesto** (pendiente de aprobación del equipo), salvo ADR-020 y ADR-021, **Aceptados** por el responsable el 2026-10-17, ADR-029 y ADR-030 (funcionalidad 006), **Aceptados** por el responsable el 2026-10-19, ADR-022, ADR-023, ADR-024 y ADR-031 (funcionalidad 003), **Aceptados** por el responsable el 2026-10-24, y ADR-013 (revisado), ADR-025, ADR-026 y ADR-032 (funcionalidad 004), **Aceptados** por el responsable el 2026-11-04.
 
 ## 1. Tabla resumen
 
@@ -18,7 +18,7 @@ Un ADR registra **qué** se decidió, **por qué**, qué alternativas se descart
 | ADR-010 | Autenticación, autorización y aislamiento de datos                      | DA01, DA11             | Proteger datos entre barberías y por rol                                                                 | JWT firmado con tenant y rol, RBAC, RLS, auditoría                                                                                                                                                                                                         |
 | ADR-011 | Clean Architecture como enfoque interno (evolución de 3 a 4 capas)      | DA06, DA10             | Dominio independiente de frameworks y proveedores                                                        | Regla de dependencia hacia el interior; abstracciones donde hay riesgo                                                                                                                                                                                     |
 | ADR-012 | Resiliencia ante servicios externos                                     | DA05, DA07, DA08, DA12 | Los servicios externos fallan                                                                            | Reintentos, circuit breaker, degradación, conciliación                                                                                                                                                                                                     |
-| ADR-013 | Notificaciones multicanal al cliente (correo y WhatsApp)                | DA05, DA09, DA11       | El cliente debe recibir la fecha de su cita por el canal que elija, sin acoplar el núcleo a un proveedor | Puerto `NotificationChannel` con adaptadores de correo y WhatsApp; consentimiento; respaldo por correo                                                                                                                                                     |
+| ADR-013 | Notificaciones multicanal al cliente (correo y WhatsApp)                | DA05, DA09, DA11       | El cliente debe recibir la fecha de su cita por el canal que elija, sin acoplar el núcleo a un proveedor | Puerto `NotificationChannel` con adaptadores de correo y WhatsApp; consentimiento; respaldo por correo; recordatorio único 2 h antes; M05 → M01 de solo lectura. **Aceptado (2026-11-04), revisado; aún no implementado (planificado, 004)**                                                 |
 | ADR-014 | Frontend con React, Vite y TypeScript                                   | DA06, DA10             | Poco código obligatorio, ecosistema amplio y tipos compartidos con el backend                            | Interfaz web de una sola página que consume la API REST                                                                                                                                                                                                    |
 | ADR-015 | Autenticación antes de conocer el tenant y RLS en `user_account`        | DA01, DA11             | Iniciar sesión exige leer datos protegidos por RLS sin conocer aún la barbería                           | Rol `barberias_auth` NOLOGIN BYPASSRLS dueño de solo 3 funciones acotadas; RLS en `user_account`                                                                                                                                                           |
 | ADR-016 | Sistema de diseño propio con componentes accesibles de Radix            | DA06, DA10             | Interfaz coherente, accesible (WCAG AA) y liviana sin depender de una librería de componentes completa   | Tokens CSS, tema claro y oscuro, Radix solo para comportamiento, fuentes autohospedadas, SVG propios                                                                                                                                                       |
@@ -30,9 +30,12 @@ Un ADR registra **qué** se decidió, **por qué**, qué alternativas se descart
 | ADR-022 | Pasarela de pagos en sandbox o simulada y transferencia con comprobante | DA05, DA07, DA12       | Cobrar con Yape sin depender de que el proveedor confirme a tiempo, y probar sus fallos                  | Puerto `PaymentGateway` con simulador por HTTP y adaptador real por configuración; notificación firmada, idempotente y atómica; garantías de dinero en PostgreSQL; transferencia revisada. **Aceptado (2026-10-24)**                                       |
 | ADR-023 | Almacenamiento privado de los comprobantes                              | DA01, DA11             | Comprobantes con datos personales, aislados por barbería y nunca servidos sin sesión                     | `bytea` con RLS detrás de `AlmacenComprobantes`; descarga solo con sesión, como adjunto; S3 en la nube. **Aceptado (2026-10-24)**                                                                                                                          |
 | ADR-024 | Tareas programadas sin duplicados entre instancias                      | DA04, DA05             | Vencer suscripciones y conciliar pagos con dos réplicas sin repetir efectos                              | Ejecutor en cada réplica con candado de PostgreSQL y transiciones condicionales por barbería. **Aceptado (2026-10-24)**                                                                                                                                    |
+| ADR-025 | Salida transaccional de eventos (outbox) en PostgreSQL                  | DA04, DA05, DA09       | Ningún aviso de una operación guardada puede perderse ni duplicarse con dos réplicas                    | `outbox_event` escrito en la misma transacción; despacho con `SKIP LOCKED` y manejadores idempotentes; reintentos y circuito. **Aceptado (2026-11-04); aún no implementado (planificado, 004)**                                                                                                |
+| ADR-026 | Correo y WhatsApp detrás de `NotificationChannel`                       | DA05, DA09, DA11       | Enviar de forma verificable sin proveedores contratados y sin cambiar las reglas al contratarlos         | SMTP con `nodemailer` contra Mailpit (producción por verificar); WhatsApp simulado en proceso aparte; suite de contrato del puerto. **Aceptado (2026-11-04); aún no implementado (planificado, 004)**                                                                                            |
 | ADR-029 | Caché compartida con claves por barbería y límite general compartido    | DA01, DA03, DA05       | Varias réplicas necesitan la misma caché del catálogo y el mismo conteo por IP, sin mezclar barberías    | Redis sin persistencia; claves solo con `ClavesCache` y `TenantId`; nada por `slug`; invalidación tras confirmar con generación; contadores por IP con respaldo por instancia. **Aceptado (2026-10-19)**                                                   |
 | ADR-030 | Balanceo local con Nginx como representación de ADR-006                 | DA03, DA04, DA05       | Demostrar reparto y tolerancia a la caída de una réplica sin costo de nube                               | Nginx con dos réplicas de IP fija, comprobación pasiva, XFF sobrescrito, `/salud/listo`; equivale al ALB documentado. **Aceptado (2026-10-19)**                                                                                                            |
 | ADR-031 | Operaciones del administrador de la plataforma fuera de las barberías   | DA01, DA11             | El administrador opera sobre todas las barberías sin pertenecer a ninguna                                | Identidad y token de plataforma sin tenant, con TOTP obligatorio; lectura entre barberías con un rol `NOBYPASSRLS` por columna; escrituras con el tenant fijado. **Aceptado (2026-10-24), con la enmienda 1.3.0 y la aclaración 1.3.1 de la constitución** |
+| ADR-032 | Acciones sobre una cita por enlace firmado, sin sesión                  | DA01, DA11             | RF34 exige confirmar, reprogramar o cancelar desde el recordatorio sin iniciar sesión                    | Enlace HMAC con tenant, cita, acción, versión y vencimiento; verificación antes de leer; `barberias_app` con RLS; uso único por hash. **Aceptado (2026-11-04), con la enmienda 1.4.0 de la constitución; aún no implementado (planificado, 004)** |
 
 ---
 
@@ -209,7 +212,7 @@ Un ADR registra **qué** se decidió, **por qué**, qué alternativas se descart
 
 ## ADR-013 Notificaciones multicanal al cliente (correo y WhatsApp)
 
-- **Estado:** Propuesto.
+- **Estado:** Aceptado (decisión del responsable, 2026-11-04), con la revisión del plan de la funcionalidad 004 que se resume al final de este ADR. Antes estaba Propuesto.
 - **Contexto:** El cliente debe saber la fecha y hora de su cita (confirmación, recordatorio, cancelación o reprogramación) por su **número de WhatsApp** o por su **correo electrónico**. WhatsApp depende de un proveedor externo con condiciones propias (consentimiento previo del usuario, plantillas de mensaje aprobadas, costos), **por verificar con su documentación oficial**; el correo es más simple y barato.
 - **Problema:** ¿Cómo notificar por más de un canal sin acoplar las reglas de citas a un proveedor y sin que un fallo de envío afecte la reserva?
 - **Alternativas:** (a) solo correo; (b) llamar al proveedor de WhatsApp directamente desde el caso de uso de reservas; (c) **puerto `NotificationChannel` con adaptadores `EmailSender` y `WhatsAppSender`, activados por eventos**.
@@ -220,6 +223,15 @@ Un ADR registra **qué** se decidió, **por qué**, qué alternativas se descart
 - **Riesgos:** R17 (condiciones del proveedor de WhatsApp), R16 (consentimiento). **Mitigación:** consentimiento registrado, respaldo por correo, simulador del canal en pruebas, evaluar proveedor antes de contratar.
 - **Drivers:** DA05, DA09, DA11.
 - **Consecuencias:** WhatsApp se implementa **solo si el proveedor lo permite**; el MVP puede salir con correo. Ver [diseño interno](../03-diseño-de-software/diseño-interno/diseño-interno-de-modulos.md#7-m05-notificaciones).
+- **Revisión (2026-11-04, funcionalidad 004): aceptada, aún no implementada.** Nada de lo que sigue tiene código todavía: está planificado en 004. La decisión de fondo no cambia. Se precisa:
+  1. **Adaptadores:** `canal-correo-smtp` (Mailpit en desarrollo y pruebas; producción por verificar) y `canal-whatsapp-simulado`, contra un simulador en proceso aparte. El proveedor real de WhatsApp será otro adaptador (ADR-026).
+  2. **Eventos:** `CitaCreada`, `CitaCancelada` y `CitaReprogramada`, más `RecordatorioDeCita` y los cuatro avisos de suscripción al propietario. Todos por la salida transaccional de M06 (ADR-025).
+  3. **Recordatorio:** uno solo, **2 h antes, fijo**. El configurable por barbería y el de 24 h quedan como evolución futura. Sus acciones van por enlace firmado de un solo uso (ADR-032).
+  4. **Número de WhatsApp:** campo propio del cliente en cada barbería, propuesto con su teléfono; cambiarlo exige un consentimiento nuevo.
+  5. **Respaldo:** tras 3 fallos de WhatsApp, o con su circuito abierto, se envía por correo una sola vez.
+  6. **Avisos al personal:** por correo al propietario y al barbero con usuario vinculado cuando el **cliente** cancela o reprograma (HU13, HU28).
+  7. **Matriz de módulos: M05 → M01, solo lectura**, por la interfaz pública (`ClientesApi.contactoParaAvisos`, `PersonalApi.correoDe`, `BarberiasApi.correoDelPropietario`). El consentimiento debe estar **vigente al enviar**, y un recordatorio se envía horas después de publicarse; además, la salida de eventos no guarda datos de contacto. Se descartaron copiar el contacto y el consentimiento en el evento (no respeta un retiro intermedio) y mover el consentimiento de WhatsApp a M05 (lo separa del consentimiento de datos de M01). M01 no llama a M05: el grafo sigue sin ciclos, y PR14 lo verifica con la regla `matriz-m05`. Ver [estilo arquitectónico §3](../02-arquitectura-software/estilo-arquitectonico.md#3-dependencias-permitidas).
+  8. Detalle en `specs/004-notificaciones-reprogramacion/decisiones/ADR-013-revision.md`.
 
 ## ADR-014 Frontend con React, Vite y TypeScript
 
@@ -494,6 +506,96 @@ Un ADR registra **qué** se decidió, **por qué**, qué alternativas se descart
 - **Drivers:** DA04, DA05.
 - **Consecuencias:** la funcionalidad 004 reutiliza el ejecutor para los recordatorios (principio VII: "sin duplicados entre instancias"). Detalle en `specs/003-suscripciones-pagos/research.md` R08.
 
+## ADR-025 Salida transaccional de eventos (outbox) en PostgreSQL
+
+- **Estado:** Aceptado (decisión del responsable, 2026-11-04). Registrado el 2026-11-04 con el plan de la funcionalidad 004. **Aún no implementado (planificado, 004):** no existen todavía `outbox_event`, el bus ni el despacho.
+- **Contexto:**
+  - El principio VII exige que M05 reaccione a eventos, que el envío sea asíncrono y que un fallo de envío nunca bloquee ni revierta la operación. El principio I exige que los efectos entre módulos vayan por eventos del bus de M06, que no existía.
+  - La especificación de 004 exige que ningún aviso de una operación guardada se pierda ni se duplique con dos réplicas (FR-010 a FR-012, SC-005), también si una réplica cae después de guardar.
+  - Hay dos réplicas detrás de Nginx (ADR-030), y Redis no puede ser fuente de verdad (principio VIII).
+- **Problema:** ¿cómo publicar un hecho de la cita o de la suscripción y entregarlo a M05 sin perderlo, sin duplicar sus efectos y sin demorar la operación?
+- **Alternativas:**
+  - (a) Enviar después del COMMIT con `uow.alConfirmar`: si la réplica cae entre el COMMIT y el envío, el aviso se pierde.
+  - (b) Enviar dentro de la transacción: demora la operación y un fallo de envío la revertiría.
+  - (c) Cola en Redis o BullMQ: Redis sería la fuente de verdad de trabajos que no se pueden perder.
+  - (d) `LISTEN/NOTIFY` solo: no persiste.
+  - (e) Un intermediario de mensajes: infraestructura nueva, y sigue haciendo falta escribir junto a la operación.
+  - (f) **Salida transaccional en PostgreSQL**, con despacho en cualquier réplica y manejadores idempotentes.
+- **Decisión:** opción (f), en M06 (`shared/eventos/`), sin reglas de negocio.
+  1. **Publicar.** `INSERT` en `outbox_event`, con el tenant de la transacción en curso, en la misma transacción que la operación. `reemplazar` y `anular` manejan los eventos programados por clave (el recordatorio).
+  2. **Despachar.** Tras el COMMIT, la misma réplica intenta despachar (mejor esfuerzo). La tarea `despachar-eventos` del ejecutor de ADR-024 (cada 15 s, con un intervalo propio por tarea) recoge el resto. Lista los pendientes con `barberias_plataforma` (solo columnas técnicas) y abre una transacción por evento, con su tenant y `barberias_app`: `FOR UPDATE SKIP LOCKED`, manejador y `PROCESADO` en el mismo COMMIT.
+  3. **Manejador de M05.** Crea un aviso por destinatario con `UNIQUE (tenant_id, event_id, recipient_kind, recipient_ref)`.
+  4. **Enviar.** Se reclama el aviso (`ENVIANDO` con un plazo de 2 min y `SKIP LOCKED`), se envía fuera de la transacción por `NotificationChannel` con una clave de idempotencia y se anota el resultado.
+  5. **Reintentos y circuito (ADR-012).**
+     - Tiempo límite: 5 s para el correo y 3 s para WhatsApp.
+     - Esperas: 30 s, 2 min, 10 min, 30 min y 1 h, con ±20 % de variación; hasta 6 intentos.
+     - WhatsApp pasa a correo tras 3 fallos o con su circuito abierto.
+     - Circuito: el `Interruptor` de M06 por canal (5 fallos en 60 s).
+     - Descarte: los recordatorios al llegar la hora de inicio; los demás avisos quedan fallidos a las 24 h.
+  6. **Retención:** 30 días para los eventos procesados o anulados y 90 días para los avisos. La afinación por tipo queda para la funcionalidad 007.
+- **Si una réplica cae:**
+  - antes del COMMIT, no hubo operación ni evento;
+  - después del COMMIT y antes del despacho, la otra réplica lo despacha;
+  - durante el despacho, se revierte y queda pendiente;
+  - con el aviso reclamado y sin enviar, se retoma al vencer el plazo.
+
+  En ninguno de esos casos hay pérdida ni duplicado. **Si cae después de que el canal aceptó y antes de anotarlo, el aviso puede repetirse:** no se afirma "exactamente una vez" hacia un sistema externo. La clave de idempotencia lo mitiga: el simulador de WhatsApp deduplica, y el correo lleva un `Message-ID` estable.
+- **Justificación:** es la única opción con atomicidad junto a la operación, persistencia ante caídas y sin infraestructura nueva. PostgreSQL sigue siendo la fuente de verdad (ADR-004), y se reutilizan ADR-024 y la lectura de plataforma de ADR-031.
+- **Ventajas:** ningún evento se pierde; la operación no espera al proveedor; funciona con una o varias réplicas; se puede auditar por SQL.
+- **Desventajas:** latencia de segundos si falla el despacho inmediato; una tabla que crece y se purga; una consulta por réplica cada 15 s.
+- **Riesgos:** un manejador que siempre falla deja eventos pendientes. **Mitigación:** a los 10 intentos se registra un error para revisar, y nunca se borra un evento sin procesar.
+- **Pruebas:** `salida-eventos-dos-instancias` (100 operaciones → 100 avisos), `salida-eventos-caida`, `correo-caido` (PR06) y unitarias del ejecutor con intervalo por tarea.
+- **Drivers:** DA04, DA05, DA09.
+- **Consecuencias:**
+  - el ejecutor de ADR-024 acepta un intervalo por tarea;
+  - `barberias_plataforma` leerá cinco columnas técnicas de `outbox_event` y de `notification` (lista cerrada ampliada; PR09 `lectura-plataforma`), cuando existan esas tablas (planificado, 004);
+  - [componentes §3](../02-arquitectura-software/componentes-arquitectonicos.md#3-comunicación-entre-módulos) pasa a comunicación por eventos al implementar.
+  - Detalle en `specs/004-notificaciones-reprogramacion/decisiones/ADR-025-salida-transaccional.md` y `contracts/eventos.md`.
+
+## ADR-026 Correo y WhatsApp detrás de `NotificationChannel`
+
+- **Estado:** Aceptado (decisión del responsable, 2026-11-04). Registrado el 2026-11-04 con el plan de la funcionalidad 004. **Aún no implementado (planificado, 004):** no existen todavía los adaptadores, el simulador de WhatsApp, la suite de contrato ni los servicios de Compose, y `nodemailer` no está instalado.
+- **Contexto:**
+  - ADR-013 decide el puerto `NotificationChannel` con correo y WhatsApp.
+  - El backlog (§3.1) acordó correo real con un buzón de pruebas en desarrollo y WhatsApp simulado hasta contratar un proveedor.
+  - Las condiciones de la WhatsApp Business Platform están **por verificar** (R17, RC16), y no hay proveedor de correo de producción elegido.
+  - El simulador de pagos (ADR-022) permitió medir PR06 y PR20 sin proveedor real.
+- **Problema:** ¿cómo enviar correo y WhatsApp de forma verificable sin depender de proveedores no contratados y sin cambiar las reglas de los avisos al contratarlos?
+- **Alternativas:**
+  - **Correo:** (a) API HTTP de un proveedor concreto; (b) volcar los correos a un archivo; (c) **SMTP contra Mailpit en desarrollo y pruebas, y cualquier SMTP con TLS en producción**.
+  - **WhatsApp:** (d) contratar ya un proveedor; (e) doble en memoria dentro del monolito; (f) **simulador en proceso aparte con modos de falla**.
+  - **Librería SMTP:** (g) **`nodemailer`**; (h) cliente SMTP propio sobre `node:net` y `node:tls`.
+- **Decisión:** (c), (f) y (g).
+  1. **Puerto** `NotificationChannel.enviar(mensaje)` con dos errores: `CanalNoDisponible` (temporal) y `DestinatarioInvalido` (permanente).
+  2. **Correo:**
+     - SMTP con `nodemailer`, con **versión exacta fija** en `package.json`, como el resto del proyecto;
+     - texto simple, `Message-ID` estable por aviso y tiempo límite de 5 s;
+     - **Mailpit** como servicio de Compose (SMTP 1025, web 8025) y en Testcontainers para las pruebas;
+     - el proveedor de producción queda **por verificar**.
+  3. **WhatsApp:**
+     - adaptador HTTP contra `backend/simulador-whatsapp/`, un proceso aparte con `node:http` y servicio de Compose de 64 MB;
+     - deduplica por `Idempotency-Key`;
+     - modos: `normal`, `lento`, `caido`, `colgado`, `rechazar`, `limite` y `fallar_n`;
+     - nunca se despliega en producción, y PR14 impide que `src/` lo importe.
+  4. **Suite de contrato** `notification-channel.contract.ts`: la misma batería para cada adaptador. Corre contra Mailpit y el simulador; la variante de un proveedor real se omite sin credenciales.
+- **Justificación:**
+  - reproduce el patrón de 003 y permite medir PR06 y PR27 en local;
+  - cambiar de proveedor es configuración más un adaptador que pasa la suite (EQ-14);
+  - se eligió `nodemailer` frente a un cliente propio porque TLS, autenticación y la codificación de SMTP tienen casos difíciles que una implementación nueva tendría que probar desde cero.
+- **Ventajas:** sin costos ni cuentas; pruebas deterministas; fallas a voluntad.
+- **Desventajas:** no demuestra la entrega real (entregabilidad, plantillas de WhatsApp); suma dos servicios a Compose (menos de 100 MB); `nodemailer` es una dependencia nueva.
+- **Riesgos:**
+  - R17: plantillas aprobadas y ventana de 24 h de WhatsApp que el simulador no impone. **Mitigación:** quedan por verificar y se documentan como diferencia conocida.
+  - Entregabilidad en producción (SPF, DKIM): por verificar al elegir el proveedor.
+  - **La CI actual no tiene escaneo de dependencias** (`.github/workflows/plataforma-barberias.yml` no ejecuta `npm audit` ni otra herramienta, y no hay Dependabot). Revisar `nodemailer` con ese escaneo exige agregarlo: queda como tarea de la fase 1 de 004.
+- **Drivers:** DA05, DA09, DA11.
+- **Consecuencias:**
+  - `docker-compose.yml` sumará `mailpit` y `whatsapp-simulado` (planificado, 004; la imagen de Mailpit la descarga el responsable);
+  - `.env.example` suma `SMTP_*`, `CORREO_REMITENTE`, `WHATSAPP_*` y `URL_PUBLICA`;
+  - PR14 suma reglas;
+  - `tecnologias.md` lista Mailpit y `nodemailer` al implementar.
+  - Detalle en `specs/004-notificaciones-reprogramacion/decisiones/ADR-026-correo-y-whatsapp.md` y `contracts/notification-channel.md`.
+
 ## ADR-029 Caché compartida con claves por barbería y límite general compartido
 
 - **Estado:** Aceptado (decisión del responsable, 2026-10-19). Registrado el 2026-10-18 con la funcionalidad 006.
@@ -600,3 +702,52 @@ Un ADR registra **qué** se decidió, **por qué**, qué alternativas se descart
   - **Enmienda de la constitución 1.3.0** (MINOR): tercera excepción acotada del principio III, "operaciones de la plataforma". Aplicada el 2026-10-24 con la aprobación del responsable, junto con este ADR, y propagada a `.specify/templates/plan-template.md` y a [multi-tenancy y datos](../02-arquitectura-software/multi-tenancy-y-datos.md).
   - **Aclaración 1.3.1** (PATCH, 2026-10-24, tras el análisis de consistencia): nombra las seis tablas de la plataforma sin barbería ni datos de negocio, admite la auditoría del acceso del administrador sin barbería y prohíbe al rol de la aplicación leer `provider_event` y `platform_admin`. Con ella, `barberias_plataforma` queda sin escrituras.
   - Con el código se actualizan [multi-tenancy y datos](../02-arquitectura-software/multi-tenancy-y-datos.md) (rol de plataforma y tablas globales), [seguridad y privacidad](../02-arquitectura-software/seguridad-y-privacidad.md) (segundo factor), `.specify/templates/plan-template.md` (puerta III) y la [trazabilidad](../trazabilidad.md).
+
+## ADR-032 Acciones sobre una cita por enlace firmado, sin sesión
+
+- **Estado:** Aceptado (decisión del responsable, 2026-11-04), junto con la enmienda 1.4.0 de la constitución (principio III, cuarta excepción acotada "acciones por enlace de la cita"), ya aplicada en `.specify/memory/constitution.md`. Registrado el 2026-11-04 con el plan de la funcionalidad 004. **Aún no implementado (planificado, 004):** la excepción está aprobada, pero no existen todavía los enlaces, las rutas `/enlaces/accion*`, `appointment_link_use` ni `action_link_attempt`.
+- **Contexto:**
+  - RF34 y HU28 exigen que el recordatorio permita **confirmar, reprogramar o cancelar sin iniciar sesión**, con enlaces de un solo uso, que vencen y alcanzan una sola cita de una sola barbería. El cliente presencial con correo no tiene cuenta.
+  - El principio III (1.3.1) tomaba el tenant solo del token, y ninguna excepción cubría una acción sin token.
+  - `barberias_auth` tiene `BYPASSRLS`, y el responsable pidió no usar roles que omitan RLS.
+- **Problema:** ¿cómo identificar la barbería y la cita de una acción sin sesión, sin aceptar datos del cliente, sin leer entre barberías y sin omitir RLS?
+- **Alternativas:**
+  - (a) Exigir iniciar sesión: contradice HU28 y deja fuera al cliente presencial.
+  - (b) Token aleatorio guardado y buscado sin tenant: lectura entre barberías con un dato del cliente, o una función con `BYPASSRLS`.
+  - (c) Token de sesión de corta vida por correo: credencial con alcance de cuenta.
+  - (d) Barbería en la ruta con un código: el tenant saldría de la ruta.
+  - (e) **Enlace firmado con HMAC** que contiene el tenant, la cita, la acción, la versión de la cita, el vencimiento y una parte aleatoria, verificado antes de leer nada.
+- **Decisión:** opción (e).
+  1. **Tenant y cita** solo del dato firmado (HMAC-SHA256, llave `ENLACES_LLAVE` de 32 bytes en `.env`, con el separador de dominio `enlace-accion-v1`), tras verificar la firma en tiempo constante. Nunca de la ruta, la consulta, el cuerpo ni otros encabezados.
+  2. **Rol:** `barberias_app`, sin `BYPASSRLS`, con `app.tenant_id` fijado al tenant del enlace y RLS. No se usan `barberias_auth` ni `barberias_plataforma`.
+  3. **Cómo se guarda:**
+     - al emitirlo, nada;
+     - al usarlo, solo el SHA-256 del token en `appointment_link_use`, en la misma transacción que la acción.
+     - Lo guardado no permite reconstruir el enlace.
+     - El token viaja en el fragmento de la URL (`/e#…`) y en el encabezado `X-Enlace-Accion`, nunca en la ruta, así que no queda en los registros.
+  4. **Uso único atómico:** `UNIQUE (link_hash)`. De dos usos simultáneos, uno solo tiene efecto. Si la acción falla, se revierte y el enlace sigue sin usar.
+  5. **Vencimiento y revocación:** vence a la hora de inicio. Cancelar, reprogramar, completar o marcar como no asistió sube `appointment.version` e invalida los enlaces anteriores. Confirmar no la cambia.
+  6. **Alcance:** una cita, una acción y una barbería, con los mismos casos de uso y reglas que la vía con sesión.
+  7. **Limitación de intentos:**
+     - límite por IP en `/enlaces/accion*` (30 por minuto, contador no crítico de 006);
+     - **contador de rechazos en PostgreSQL** (`action_link_attempt`, SHA-256 de la IP con sal), con los **mismos valores de `login_attempt`** (`politica-intentos.ts`): bloqueo tras 5 rechazos en 60 s, de 60 s la primera racha, duplicándose en cada racha hasta 900 s, con 24 h de historial.
+  8. **Datos mínimos:** barbería, servicio, nombre visible del barbero, fecha y hora, la acción y, para cancelar, desde cuándo sería tardía. Un único mensaje de rechazo que no revela si la cita existe.
+- **Justificación:**
+  - no lee nada antes de verificar quién emitió el enlace;
+  - no omite RLS ni guarda secretos;
+  - limita el alcance a una cita y una acción.
+  - La firma de 256 bits hace imposible adivinar un enlace; los contadores son defensa en profundidad.
+- **Ventajas:** sin búsqueda entre barberías; la revocación no escribe nada; funciona con una o varias réplicas; sirve al cliente presencial con correo.
+- **Desventajas:** quien tenga el enlace (si el cliente reenvía el correo) puede actuar sobre esa cita hasta su inicio; cambiar la llave invalida los enlaces en curso.
+- **Riesgos:**
+  - **Filtración del enlace.** **Mitigación:** una cita y una acción, vencimiento corto, datos mínimos y auditoría con la vía `ENLACE`.
+  - **Fuga de la llave.** **Mitigación:** solo en `.env`, rotable con el byte de formato.
+- **Pruebas:**
+  - `enlaces-acciones` y `enlaces-rechazos` (PR28);
+  - `aislamiento-avisos` (PR09): enlace firmado para A con una cita de B, y token alterado sin consultas a la base;
+  - `enlaces-limite`;
+  - PR14: `EnlacesFirmados` confinado.
+- **Drivers:** DA01, DA11.
+- **Consecuencias:**
+  - **Enmienda de la constitución 1.4.0** (MINOR): cuarta excepción acotada del principio III y las tablas técnicas de intentos (`login_attempt` y `action_link_attempt`). Aplicada el 2026-11-04 con la aprobación del responsable y propagada a `.specify/templates/plan-template.md` y a [multi-tenancy y datos](../02-arquitectura-software/multi-tenancy-y-datos.md).
+  - Detalle en `specs/004-notificaciones-reprogramacion/decisiones/ADR-032-acciones-por-enlace.md` y `contracts/enlaces-de-accion.md`.

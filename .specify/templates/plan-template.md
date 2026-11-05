@@ -40,7 +40,7 @@
 
 _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
-Gates from `.specify/memory/constitution.md` (v1.3.1). Mark each ✅ / ❌ (justify ❌ in
+Gates from `.specify/memory/constitution.md` (v1.4.0). Mark each ✅ / ❌ (justify ❌ in
 Complexity Tracking and record an ADR):
 
 - [ ] **I. Six modules**: work fits in M01–M06 (no new module); cross-module calls only via
@@ -49,7 +49,7 @@ Complexity Tracking and record an ADR):
       infrastructure per submodule; domain imports no framework/DB/Redis/provider SDK
 - [ ] **III. Tenant isolation**: `tenant_id` from the signed token only (never from client
       input); RLS on every business table; repositories filter by tenant; cache keys/events include
-      tenant. Only three exceptions: (1) public read-only lookups by barbershop slug (catalog, free
+      tenant. Only four exceptions: (1) public read-only lookups by barbershop slug (catalog, free
       slots), public columns only, no writes, no RLS bypass for the app role (ADR-021); (2) membership
       selection by slug before the session exists (client sign-up, login from the barbershop link,
       joining or switching barbershop), only after verifying identity or creating the account, writing
@@ -62,7 +62,15 @@ Complexity Tracking and record an ADR):
       read by exact key, never from client input; only the named platform tables (`provider_event`,
       `scheduled_job_run`, `platform_session`, `platform_challenge`, `platform_admin`,
       `platform_audit_log`) may lack `tenant_id`, hold no business data, and the app role may only
-      insert into `provider_event` and never read `platform_admin` (ADR-031)
+      insert into `provider_event` and never read `platform_admin` (ADR-031); the technical attempt
+      tables `login_attempt` and `action_link_attempt` (the latter planned in 004, not yet implemented)
+      may also lack `tenant_id`, storing only a hash of the origin, purged after 24 h; (4) appointment
+      action links (accepted, planned in 004, not yet implemented): a reminder link lets the client
+      confirm, reschedule or cancel ONE appointment without a session; tenant and appointment come
+      only from the signed link, verified before reading anything; app role without `BYPASSRLS`,
+      tenant fixed and RLS; one appointment, one action, one use, expires at the start time, invalid
+      once the appointment changes, never reconstructible from what is stored; minimal data; rejected
+      attempts limited per origin with a PostgreSQL counter (ADR-032)
 - [ ] **IV. No duplicate appointments**: PostgreSQL exclusion constraint + transaction;
       conflict mapped to "horario no disponible"
 - [ ] **V. Payments**: subscriptions only; `PaymentGateway` port; no card data stored;

@@ -32,17 +32,19 @@ Un módulo **solo** puede depender de otro a través de su **interfaz pública**
 | M02 Catálogo y citas        | ✓ ¹ | —   | ✓   |     |     | ✓   |
 | M03 Suscripciones y pagos   |     |     | —   |     |     | ✓   |
 | M04 Asistente IA y reportes |     | ✓   | ✓   | —   |     | ✓   |
-| M05 Notificaciones          |     |     |     |     | —   | ✓   |
+| M05 Notificaciones          | ✓ ² |     |     |     | —   | ✓   |
 | M06 Núcleo compartido       |     |     |     |     |     | —   |
 
 ¹ Agregado por [ADR-020](../01-analisis-de-sistema/07-decisiones-arquitectonicas.md#adr-020-cuenta-de-cliente-con-membresía-y-sesión-por-barbería) (Aceptado el 2026-10-17, funcionalidad 002). M02 llama a M01 solo por su interfaz pública: `ClientesApi`, que identifica al cliente de la sesión y da nombre y teléfono para la agenda, `PersonalApi`, que comprueba que un usuario es personal activo para vincularlo a un barbero, y `BarberiasApi`, que da la zona horaria, la antelación de cancelación y los datos públicos de la barbería. M01 no llama a M02.
+
+² Agregado por la revisión de [ADR-013](../01-analisis-de-sistema/07-decisiones-arquitectonicas.md#adr-013-notificaciones-multicanal-al-cliente-correo-y-whatsapp) (Aceptada el 2026-11-04, funcionalidad 004; **planificado**, todavía sin código). M05 llama a M01 **solo para leer**, por su interfaz pública, al momento de enviar un aviso: el canal, el número de WhatsApp y si el consentimiento está vigente (`ClientesApi.contactoParaAvisos`), el correo del personal (`PersonalApi.correoDe`) y el del propietario (`BarberiasApi.correoDelPropietario`). Así se respeta un retiro del consentimiento ocurrido entre la cita y su recordatorio, y la salida de eventos no guarda datos de contacto. M05 no escribe en M01, y M01 no llama a M05.
 
 **Reglas.**
 
 1. Todo lo que no tiene ✓ está **prohibido**.
 2. No hay ciclos (se comprueba con la matriz: el grafo es acíclico).
 3. M06 no depende de ningún módulo de negocio.
-4. **Hoy toda la comunicación es síncrona**, por la interfaz pública. Dentro de M03, `pagos` actualiza la suscripción en la misma transacción que aprueba el pago (`aplicar-resultado.ts`). Los eventos asíncronos hacia M05 (`CitaCreada` y avisos de suscripción) están **planificados** con la funcionalidad 004.
+4. **Hoy toda la comunicación es síncrona**, por la interfaz pública. Dentro de M03, `pagos` actualiza la suscripción en la misma transacción que aprueba el pago (`aplicar-resultado.ts`). Los eventos asíncronos hacia M05 (`CitaCreada` y avisos de suscripción) están **planificados** con la funcionalidad 004, mediante la salida transaccional de M06 ([ADR-025](../01-analisis-de-sistema/07-decisiones-arquitectonicas.md#adr-025-salida-transaccional-de-eventos-outbox-en-postgresql), Aceptado el 2026-11-04): M02 y M03 publican en su propia transacción y nadie llama directamente a M05.
 5. El **identificador del tenant** (`TenantId`) es un valor compartido del núcleo (M06); por eso M03 no depende de M01. M02 depende de M01 solo para los datos del cliente y del personal (nota ¹), no para el tenant.
 6. La **raíz de composición** (`host/`) es el único lugar autorizado para ensamblar módulos. Su `AuthGuard` valida el token con `ValidarSolicitud` de M01 (que también comprueba el estado de la barbería), y `host/tareas.ts` registra las tareas programadas de M03. La política de suscripción la aplica cada caso de uso de escritura llamando a `SuscripcionesApi.exigirOperacion`.
 7. Entre submódulos del **mismo** módulo se permite llamar a su interfaz interna; hacia otro módulo, solo a su interfaz pública (`index`).
@@ -72,6 +74,7 @@ flowchart TB
     M02 -->|"exigirOperacion"| M03
     M04 -.->|"consulta"| IMPL
     M02 -.->|"evento CitaCreada"| M05
+    M05 -.->|"canal y consentimiento (lectura, planificada 004)"| M01
     IMPL --> M06
 
     classDef implementado fill:#e8eef7,stroke:#3b5b8c,color:#1f2d4a
@@ -85,7 +88,7 @@ flowchart TB
 
 </details>
 
-Leyenda: azul grisáceo = sistema propio. Flecha continua = llamada que existe hoy por la interfaz pública; flecha discontinua = dependencia planificada (M04 y M05 también dependerán de M06). No hay flechas hacia M02 desde M01 ni desde M03: el grafo no tiene ciclos.
+Leyenda: azul grisáceo = sistema propio. Flecha continua = llamada que existe hoy por la interfaz pública; flecha discontinua = dependencia planificada (M04 y M05 también dependerán de M06; M05 → M01 es solo de lectura, nota ²). No hay flechas hacia M02 desde M01 ni desde M03, ni hacia M05 desde M01: el grafo no tiene ciclos. La imagen de `img/` se regenera desde este código: la versión actual todavía no muestra M05 → M01.
 
 Evidencia: importaciones entre `backend/src/modules/*/index.ts` (por ejemplo, `catalogo-citas/citas/application/reservar-cita.ts` importa `BarberiasApi`, `ClientesApi` y `SuscripcionesApi`); `host/auth.guard.ts`, `host/tareas.ts`; reglas en `backend/.dependency-cruiser.cjs`; prueba `backend/test/architecture/reglas.spec.ts` (PR14).
 

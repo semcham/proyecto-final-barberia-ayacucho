@@ -1,0 +1,306 @@
+openapi: 3.1.0
+info:
+  title: Plataforma de barberías · 004 Notificaciones y reprogramación
+  version: 0.4.0
+  description: >
+    Contrato de las rutas nuevas de la funcionalidad 004. Prefijo /api/v1. Errores con el formato común
+    { codigo, mensaje, detalles } (001). Las horas van en ISO 8601 con el desplazamiento de la barbería, como
+    en 002. Las rutas con sesión toman la barbería solo del token (principio III). Las rutas /enlaces/accion*
+    no tienen sesión: la barbería y la cita salen SOLO del enlace firmado que llega en el encabezado
+    X-Enlace-Accion (cuarta excepción del principio III, constitución 1.4.0, y ADR-032, aprobados el 2026-11-04); nunca
+    de la ruta, la consulta ni el cuerpo.
+servers:
+  - url: /api/v1
+tags:
+  - name: Citas (cliente y propietario)
+  - name: Canal de aviso (cliente)
+  - name: Acciones por enlace (sin sesión)
+paths:
+  /citas/{id}/reprogramar:
+    post:
+      tags: [Citas (cliente y propietario)]
+      summary: Reprogramar una cita activa (RF13; FR-001 a FR-007). CLIENTE (sus citas) y PROPIETARIO
+      description: >
+        Mueve la misma cita a otra hora (y, si se indica, a otro barbero que ofrezca el servicio), con las
+        reglas de una reserva nueva de 002. Atómica: si la hora no está libre, la cita conserva su hora. El
+        cliente necesita la antelación mínima de cancelación de su barbería; el propietario no. Reprogramar a
+        la hora y el barbero que ya tiene la cita no cambia nada ni envía avisos.
+      security: [{ barberia: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ReprogramarCitaRequest" }
+      responses:
+        "200":
+          description: Cita reprogramada (o sin cambios)
+          content:
+            application/json: { schema: { $ref: "#/components/schemas/CitaReprogramada" } }
+        "403": { $ref: "#/components/responses/SuscripcionNoPermite" }
+        "404": { $ref: "#/components/responses/NoEncontrado" }
+        "409": { $ref: "#/components/responses/ConflictoDeHorario" }
+        "422": { $ref: "#/components/responses/ReprogramacionInvalida" }
+
+  /clientes/yo/aviso:
+    get:
+      tags: [Canal de aviso (cliente)]
+      summary: Canal de aviso del cliente en la barbería del token (RF33). Solo CLIENTE
+      security: [{ barberia: [] }]
+      responses:
+        "200":
+          description: Preferencia actual y el texto del consentimiento vigente
+          content:
+            application/json: { schema: { $ref: "#/components/schemas/PreferenciaAviso" } }
+    put:
+      tags: [Canal de aviso (cliente)]
+      summary: Elegir correo o WhatsApp (FR-016 a FR-019). Solo CLIENTE
+      description: >
+        Para WHATSAPP exige un número válido y aceptaWhatsapp=true con la versión vigente del texto: se
+        registra un consentimiento nuevo. Cambiar el número retira el consentimiento anterior y exige uno
+        nuevo. Para CORREO no cambia el consentimiento (retirarlo es DELETE).
+      security: [{ barberia: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CambiarPreferenciaAvisoRequest" }
+      responses:
+        "200":
+          description: Preferencia guardada
+          content:
+            application/json: { schema: { $ref: "#/components/schemas/PreferenciaAviso" } }
+        "422":
+          description: >
+            VALIDACION (número inválido) o CONSENTIMIENTO_REQUERIDO (WhatsApp sin aceptar, o con una versión
+            del texto que ya no es la vigente). El canal no cambia.
+          content:
+            application/json: { schema: { $ref: "#/components/schemas/Error" } }
+  /clientes/yo/aviso/consentimiento-whatsapp:
+    delete:
+      tags: [Canal de aviso (cliente)]
+      summary: Retirar el consentimiento de WhatsApp (FR-018). El canal vuelve a CORREO. Solo CLIENTE
+      security: [{ barberia: [] }]
+      responses:
+        "204": { description: Retirado (o no había ninguno vigente) }
+
+  /enlaces/accion:
+    get:
+      tags: [Acciones por enlace (sin sesión)]
+      summary: Datos mínimos de la cita de un enlace válido (FR-026). No consume el enlace
+      security: [{ enlaceAccion: [] }]
+      responses:
+        "200":
+          description: Enlace válido
+          content:
+            application/json: { schema: { $ref: "#/components/schemas/EnlaceAccion" } }
+        "410": { $ref: "#/components/responses/EnlaceNoValido" }
+        "429": { $ref: "#/components/responses/DemasiadosIntentos" }
+  /enlaces/accion/confirmar:
+    post:
+      tags: [Acciones por enlace (sin sesión)]
+      summary: Confirmar asistencia (FR-028). Consume el enlace en la misma transacción
+      security: [{ enlaceAccion: [] }]
+      responses:
+        "200":
+          description: Asistencia confirmada
+          content:
+            application/json: { schema: { $ref: "#/components/schemas/ResultadoAccion" } }
+        "410": { $ref: "#/components/responses/EnlaceNoValido" }
+        "429": { $ref: "#/components/responses/DemasiadosIntentos" }
+  /enlaces/accion/cancelar:
+    post:
+      tags: [Acciones por enlace (sin sesión)]
+      summary: Cancelar la cita (FR-029). Mismas reglas que la cancelación del cliente de 002
+      security: [{ enlaceAccion: [] }]
+      responses:
+        "200":
+          description: Cita cancelada (con la marca de tardía si corresponde)
+          content:
+            application/json: { schema: { $ref: "#/components/schemas/ResultadoAccion" } }
+        "410": { $ref: "#/components/responses/EnlaceNoValido" }
+        "429": { $ref: "#/components/responses/DemasiadosIntentos" }
+  /enlaces/accion/reprogramar:
+    post:
+      tags: [Acciones por enlace (sin sesión)]
+      summary: Reprogramar la cita (FR-030). Mismas reglas que la reprogramación del cliente
+      description: >
+        Si la hora no está libre o falta la antelación, la transacción se revierte y el enlace NO se consume:
+        el cliente puede elegir otra hora.
+      security: [{ enlaceAccion: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ReprogramarCitaRequest" }
+      responses:
+        "200":
+          description: Cita reprogramada
+          content:
+            application/json: { schema: { $ref: "#/components/schemas/ResultadoAccion" } }
+        "409": { $ref: "#/components/responses/ConflictoDeHorario" }
+        "410": { $ref: "#/components/responses/EnlaceNoValido" }
+        "422": { $ref: "#/components/responses/ReprogramacionInvalida" }
+        "429": { $ref: "#/components/responses/DemasiadosIntentos" }
+
+components:
+  securitySchemes:
+    barberia:
+      type: http
+      scheme: bearer
+      description: Token de barbería de 001/002 (con tid). El de plataforma se rechaza.
+    enlaceAccion:
+      type: apiKey
+      in: header
+      name: X-Enlace-Accion
+      description: >
+        Enlace de acción firmado (contracts/enlaces-de-accion.md). Nunca va en la ruta ni en la consulta,
+        para que no quede en los registros. Sirve para una cita, una acción y un uso.
+
+  responses:
+    NoEncontrado:
+      description: La cita no existe en la barbería del token o no es del cliente (sin revelar cuál)
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    SuscripcionNoPermite:
+      description: SUSCRIPCION_NO_PERMITE (003); reprogramar toma una hora nueva, como una reserva
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    ConflictoDeHorario:
+      description: >
+        HORARIO_NO_DISPONIBLE (restricción de exclusión del barbero), CITA_SOLAPADA_DEL_CLIENTE o
+        CITA_CAMBIO (la cita cambió mientras tanto). La cita conserva su hora.
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    ReprogramacionInvalida:
+      description: >
+        RESERVA_INVALIDA con el motivo de 002 (FUERA_DE_DISPONIBILIDAD, EN_BLOQUEO, HORA_PASADA,
+        FUERA_DEL_HORIZONTE, SERVICIO_INACTIVO, BARBERO_NO_OFRECE_SERVICIO) o SIN_ANTELACION_PARA_REPROGRAMAR
+        (solo cliente), cuyo detalle trae puedeCancelar=true para que la interfaz ofrezca cancelar.
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    EnlaceNoValido:
+      description: >
+        ENLACE_NO_VALIDO: el mismo código y mensaje para firma inválida, vencido, ya usado, de otra acción o de
+        una cita cancelada, reprogramada o iniciada (FR-025). No revela si la cita existe. El mensaje ofrece
+        iniciar sesión para gestionar las citas.
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    DemasiadosIntentos:
+      description: >
+        DEMASIADOS_INTENTOS (límite por IP y contador de rechazos, FR-031), con reintentarEnSegundos. Mismos
+        valores de login_attempt: 5 rechazos en 60 s; espera de 60 s que se duplica por racha hasta 900 s.
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+  schemas:
+    Error:
+      type: object
+      required: [codigo, mensaje]
+      properties:
+        codigo: { type: string }
+        mensaje: { type: string }
+        detalles: { type: array, items: { type: object } }
+
+    ReprogramarCitaRequest:
+      type: object
+      additionalProperties: false
+      required: [inicio]
+      properties:
+        inicio: { type: string, format: date-time, description: "Hora nueva, con el desplazamiento de la barbería" }
+        barberoId:
+          type: string
+          format: uuid
+          description: Otro barbero que ofrezca el servicio; si falta, el mismo de la cita
+
+    CitaReprogramada:
+      type: object
+      required: [cita, cambio]
+      properties:
+        cita: { $ref: "#/components/schemas/CitaConConfirmacion" }
+        cambio:
+          type: boolean
+          description: false si la cita ya estaba en esa hora y con ese barbero (sin avisos)
+        inicioAnterior: { type: string, format: date-time }
+
+    CitaConConfirmacion:
+      description: >
+        Esquema Cita de 002 ampliado con la marca de asistencia (también en /agenda y /clientes/yo/citas).
+      type: object
+      required: [id, servicio, barbero, inicio, fin, estado]
+      properties:
+        id: { type: string, format: uuid }
+        barberia: { type: string }
+        servicio: { type: string }
+        barbero: { type: string }
+        inicio: { type: string, format: date-time }
+        fin: { type: string, format: date-time }
+        estado: { type: string, enum: [PENDIENTE, CONFIRMADA, COMPLETADA, NO_ASISTIO, CANCELADA] }
+        confirmadaPorClienteEn:
+          type: [string, "null"]
+          format: date-time
+          description: Nula = "sin confirmar" en la agenda (FR-028)
+
+    PreferenciaAviso:
+      type: object
+      required: [canal, numeroPropuesto, consentimientoVigente, textoConsentimiento]
+      properties:
+        canal: { type: string, enum: [CORREO, WHATSAPP] }
+        numeroWhatsapp: { type: [string, "null"] }
+        numeroPropuesto:
+          type: string
+          description: El teléfono de contacto del perfil, para proponerlo (FR-017)
+        consentimientoVigente: { type: boolean }
+        aceptadoEn: { type: [string, "null"], format: date-time }
+        textoConsentimiento:
+          description: Texto base vigente (contracts/texto-consentimiento-whatsapp.md, versión 2026-11), por validar con asesoría legal
+          type: object
+          required: [version, texto]
+          properties:
+            version: { type: string }
+            texto: { type: string }
+
+    CambiarPreferenciaAvisoRequest:
+      type: object
+      additionalProperties: false
+      required: [canal]
+      properties:
+        canal: { type: string, enum: [CORREO, WHATSAPP] }
+        numeroWhatsapp: { type: string, pattern: '^\+?[0-9 ]{6,20}$' }
+        aceptaWhatsapp: { type: boolean }
+        versionTexto: { type: string }
+
+    EnlaceAccion:
+      description: Solo datos mínimos (FR-013, FR-026); nunca nombre, correo ni teléfono del cliente
+      type: object
+      required: [accion, cita]
+      properties:
+        accion: { type: string, enum: [CONFIRMAR, REPROGRAMAR, CANCELAR] }
+        cita:
+          type: object
+          required: [barberia, servicio, barbero, inicio, fin, zonaHoraria]
+          properties:
+            barberia: { type: string }
+            servicio: { type: string }
+            barbero: { type: string }
+            inicio: { type: string, format: date-time }
+            fin: { type: string, format: date-time }
+            zonaHoraria: { type: string }
+            cancelacionTardiaDesde: { type: string, format: date-time }
+        reprogramacion:
+          description: Solo para REPROGRAMAR; lo que necesita la pantalla de disponibilidad pública de 002
+          type: object
+          required: [slug, servicioId]
+          properties:
+            slug: { type: string }
+            servicioId: { type: string, format: uuid }
+            barberoId: { type: string, format: uuid }
+
+    ResultadoAccion:
+      type: object
+      required: [accion, cita]
+      properties:
+        accion: { type: string, enum: [CONFIRMAR, REPROGRAMAR, CANCELAR] }
+        cita:
+          type: object
+          required: [estado, inicio]
+          properties:
+            estado: { type: string }
+            inicio: { type: string, format: date-time }
+            cancelacionTardia: { type: boolean }
+            confirmadaPorClienteEn: { type: [string, "null"], format: date-time }
