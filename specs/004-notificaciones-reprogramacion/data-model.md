@@ -109,7 +109,7 @@ Consentimiento expreso para WhatsApp, separado de `consent_record` (FR-017, FR-0
 | `payload`          | `jsonb`        | Datos mínimos de la cita o de la suscripción; **sin correo, teléfono ni número de WhatsApp** |
 | `replace_key`      | `varchar(96)`  | Clave de reemplazo opcional (`recordatorio:<citaId>`, `prueba-por-terminar:<id>`)          |
 | `available_at`     | `timestamptz`  | Desde cuándo puede despacharse (`now()` o el momento del recordatorio)                    |
-| `status`           | `varchar(12)`  | `CHECK (status IN ('PENDIENTE', 'PROCESADO', 'ANULADO'))`                                  |
+| `status`           | `varchar(14)`  | `CHECK (status IN ('PENDIENTE', 'PROCESADO', 'ANULADO', 'SIN_MANEJADOR'))`                 |
 | `attempts`         | `smallint`     | Intentos de despacho fallidos del manejador                                               |
 | `next_attempt_at`  | `timestamptz`  | Para reintentar un manejador que falló                                                    |
 | `created_at`, `processed_at` | `timestamptz` |                                                                                  |
@@ -123,9 +123,9 @@ Consentimiento expreso para WhatsApp, separado de `consent_record` (FR-017, FR-0
 - `barberias_app`: `SELECT, INSERT` y `UPDATE (status, attempts, next_attempt_at, processed_at)`.
 - `barberias_plataforma`: `SELECT (id, tenant_id, status, available_at, next_attempt_at)` y política `plataforma_lectura FOR SELECT TO barberias_plataforma USING (true)`. Solo esas columnas: ni `type` ni `payload`.
 
-**Estados:** `PENDIENTE → PROCESADO` (el manejador terminó en la misma transacción) · `PENDIENTE → ANULADO` (reemplazado o anulado por su clave). Ambos finales.
+**Estados:** `PENDIENTE → PROCESADO` (el manejador terminó en la misma transacción) · `PENDIENTE → ANULADO` (reemplazado o anulado por su clave) · `PENDIENTE → SIN_MANEJADOR` (su tipo no tiene suscriptor: se escribe una advertencia y no se reintenta; decisión del responsable, 2026-11-04). Los tres son finales.
 
-**Retención:** los eventos procesados o anulados se purgan a los 30 días por la tarea de despacho (decisión del responsable, 2026-11-04; research R17).
+**Retención:** los eventos procesados, anulados o sin manejador se purgan a los 30 días por la tarea de despacho (decisión del responsable, 2026-11-04; research R17).
 
 ## 4. M05 · Avisos (migración `0024_avisos`)
 

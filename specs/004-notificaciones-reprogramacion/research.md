@@ -96,7 +96,8 @@ Código revisado para este plan (2026-11-04):
     - bloqueo tras **5 rechazos en 60 s**;
     - espera de **60 s** la primera racha, que se **duplica** en cada racha siguiente de 5 (60, 120, 240, 480) hasta **900 s** (15 min);
     - historial de **24 h**.
-  - La regla se reutiliza como función pura de dominio; la diferencia con el inicio de sesión es la clave (IP sola, porque un enlace rechazado no tiene cuenta).
+  - **Una sola regla, sin copias (decisión del responsable, 2026-11-04).** `PoliticaIntentos` sigue en `acceso-barberias/identidad/domain/politica-intentos.ts` y se **expone por la interfaz pública de M01** (`acceso-barberias/index.ts`), que ya reexporta otras piezas de dominio (`Permisos`). Es la opción que el responsable prefería si PR14 lo permitía, y lo permite: la regla `matriz-m02` de `.dependency-cruiser.cjs` deja que M02 importe `acceso-barberias/index.ts`, y M02 → M01 ya figura en la matriz (ADR-020). No hace falta moverla a una pieza compartida.
+  - M02 la usa desde su **capa de aplicación**, no desde su dominio: el dominio de un módulo no importa la interfaz de otro, que arrastra el módulo de NestJS. La diferencia con el inicio de sesión es solo la clave (IP sola, porque un enlace rechazado no tiene cuenta).
   - La tabla se purga a las 24 h, como `login_attempt`.
 - **Justificación:** el principio VIII exige que los contadores de seguridad vivan en PostgreSQL. La firma de 256 bits ya hace imposible adivinar un enlace, así que el contador es defensa en profundidad contra el abuso. Sigue el patrón probado de `login_attempt` (`0006`).
 - **Aprobado (2026-11-04):** `action_link_attempt` es una tabla técnica sin barbería. La 1.3.1 solo nombraba las tablas de la plataforma; la enmienda 1.4.0, aplicada, la nombra explícitamente y regulariza `login_attempt`, que existe desde 001 y tampoco figuraba en la lista.
@@ -139,7 +140,11 @@ Código revisado para este plan (2026-11-04):
 - **Librería: `nodemailer` (decisión del responsable, 2026-11-04).**
   - **Motivo:** SMTP en producción exige STARTTLS o TLS implícito, autenticación, codificación de cabeceras y del cuerpo (tildes y ñ en `utf-8`) y el manejo de las respuestas del servidor. `nodemailer` lo resuelve desde hace años y no arrastra dependencias de terceros. Un cliente propio sobre `node:net` y `node:tls` sería viable para Mailpit, pero tendría que probar desde cero cada uno de esos casos para producción.
   - **Versión exacta fija** en `package.json` (sin `^` ni `~`), como el resto del proyecto (por ejemplo, `@nestjs/core` 11.2.7 y `kysely` 0.28.17). La versión y la licencia se verifican al instalarla, en la fase 1, y quedan anotadas en `tecnologias.md`.
-  - **Revisión con el escaneo de dependencias de la CI: hoy ese escaneo no existe.** `.github/workflows/plataforma-barberias.yml` ejecuta `npm ci`, Prettier, lint, build y las pruebas, pero no `npm audit` ni otra herramienta, y no hay Dependabot ni CodeQL. Para cumplir lo pedido, la **fase 1** agrega un paso de escaneo (`npm audit --omit=dev --audit-level=high` en el backend y el frontend). Hasta que ese paso exista y pase, no se afirma que `nodemailer` esté revisado por la CI.
+  - **Tipos:** `@types/nodemailer` como devDependency, también con versión exacta fija (aprobado por el responsable el 2026-11-04).
+  - **Revisión con el escaneo de dependencias de la CI: hoy ese escaneo no existe.** `.github/workflows/plataforma-barberias.yml` ejecuta `npm ci`, Prettier, lint, build y las pruebas, pero no `npm audit` ni otra herramienta, y no hay Dependabot ni CodeQL. Procedimiento de la **fase 1** (decisión del responsable, 2026-11-04):
+    1. **Antes** de tocar la CI, se ejecuta `npm audit --omit=dev` en el backend y el frontend y se decide cada hallazgo de nivel alto o crítico: **con arreglo, se corrige** (versión fija); **sin arreglo, se documenta la excepción con fecha**, paquete, aviso y motivo, en `docs/02-arquitectura-software/tecnologias.md`.
+    2. Después se agrega el paso `npm audit --omit=dev --audit-level=high` a la CI: **audita solo producción y falla desde nivel alto**. Una excepción documentada se excluye de forma individual, nunca bajando el nivel.
+    3. Hasta que ese paso exista y pase, no se afirma que `nodemailer` esté revisado por la CI.
 - **Alternativa descartada:** el cliente SMTP mínimo propio, por el motivo de arriba.
 - **Alternativa descartada:** la API HTTP de un proveedor concreto. Ataría el adaptador a un proveedor que no está elegido.
 
@@ -152,10 +157,11 @@ Código revisado para este plan (2026-11-04):
     - `rechazar` (número no válido);
     - `limite` (429, demasiados mensajes);
     - `fallar_n` (falla los N primeros envíos).
-  - **Suite de contrato** `test/contract/notification-channel.contract.ts`: una sola batería que se corre contra cada adaptador:
-    - el correo contra Mailpit en Testcontainers;
-    - WhatsApp contra el simulador arrancado en el proceso de prueba;
+  - **Suite de contrato** `test/contract/notification-channel.contract.ts`: una sola batería **escrita para correr con cualquier canal** (recibe la fábrica del adaptador y cómo leer lo enviado), que se corre contra cada adaptador:
+    - el correo contra Mailpit en Testcontainers, **desde la fase 1**;
+    - WhatsApp contra el simulador arrancado en el proceso de prueba, **agregado en la fase 5**, sin cambiar los casos;
     - una variante de proveedor real que se omite sin credenciales, como `gateway-sandbox` en 003.
+  - **Cuándo se construye (decisión del responsable, 2026-11-04):** el simulador, su adaptador y su servicio de Compose se hacen en la **fase 5**, donde WhatsApp se usa por primera vez. Las fases 1 a 4 envían solo por correo.
   - Detalle en [contracts/notification-channel.md](contracts/notification-channel.md).
 - **Justificación:** el mismo patrón del simulador de pagos (ADR-022), con el que PR06 y PR20 se pudieron medir en 003. Cuando se contrate un proveedor real, su adaptador debe pasar la misma suite.
 - **Alternativa descartada:** un doble en memoria dentro del monolito. No prueba el tiempo límite, el circuito ni los errores de red, y PR14 no podría separar el simulador del código de producción.
@@ -207,8 +213,9 @@ Código revisado para este plan (2026-11-04):
     1. Pide `GET /enlaces/accion` con el encabezado `X-Enlace-Accion` y muestra los datos mínimos.
     2. Para confirmar o cancelar, pide confirmación y envía `POST`.
     3. Para reprogramar, reutiliza la consulta pública de horarios por enlace (`/publico/{slug}/horarios`) con el slug y el servicio que devuelve la API, y envía `POST /enlaces/accion/reprogramar`.
-  - **Canal de aviso:** en el área del cliente, con el número propuesto con su teléfono y la casilla de consentimiento con el texto y su versión.
+  - **Canal de aviso (decisión del responsable, 2026-11-04):** pantalla con **ruta propia `/mis-avisos`**, solo para `CLIENTE` y con un enlace desde Mis citas; el número aparece propuesto con su teléfono, junto a la casilla de consentimiento con el texto y su versión.
   - **Agenda:** muestra "confirmada por el cliente" o "sin confirmar".
+  - **Accesibilidad (decisión del responsable, 2026-11-04):** cada pantalla nueva se revisa a 360 px y en escritorio, en ambos temas y solo con teclado, y con la **extensión axe DevTools del navegador**, de forma manual y **sin agregar dependencias**. El resultado (fecha, pantalla, tema y hallazgos) se anota en el quickstart.
 - **Justificación:** línea de corte 2: se reutiliza la pantalla de disponibilidad de 002. La página del enlace no guarda el token (ni en almacenamiento local ni en el historial: se quita del fragmento al leerlo).
 
 ## R16 · Pruebas, dos réplicas y librerías
@@ -217,7 +224,7 @@ Código revisado para este plan (2026-11-04):
   - Las pruebas de dos réplicas usan **dos instancias de la aplicación en el mismo proceso** contra un PostgreSQL de Testcontainers, como `vencimiento-dos-replicas` de 003.
   - La caída se simula de dos formas: deteniendo una instancia después del COMMIT y antes del despacho, o después de reclamar un aviso y antes de enviarlo.
   - En Compose, `npm run demo:avisos` reproduce el recorrido con Nginx y las dos réplicas, deteniendo y volviendo a levantar Mailpit.
-- **Librerías:** `nodemailer` es la única nueva, aprobada con versión exacta fija (R10). Mailpit es una imagen de Docker, no una dependencia del código. Ninguna otra.
+- **Librerías:** `nodemailer` (dependencia) y `@types/nodemailer` (devDependency), las dos aprobadas con versión exacta fija (R10). Mailpit es una imagen de Docker, no una dependencia del código. Ninguna otra: axe se revisa con la extensión del navegador.
 - **Docker (decisión del responsable, 2026-11-04):** en esta fase no se descarga ni se ejecuta nada de Docker. El responsable verifica que Docker guarde las imágenes en D: y descarga la de Mailpit cuando llegue la fase 1. Las pruebas que usan Mailpit en Testcontainers necesitan esa imagen ya descargada.
 
 ## R17 · Retención de eventos y avisos

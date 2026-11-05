@@ -30,7 +30,7 @@ Esperado: todo en verde, con las pruebas nombradas en el plan ("Pruebas por esce
 | 3    | `docker compose start mailpit` y esperar 1 minuto                                                               | **Un** correo de reprogramación con la hora anterior y la nueva; ninguno repetido                     | |
 | 4    | El cliente A intenta reprogramar a una hora ocupada                                                             | 409 `HORARIO_NO_DISPONIBLE`; la cita conserva su hora; ningún correo nuevo                             | |
 | 5    | Con una cita a menos de la antelación mínima, el cliente A intenta reprogramarla                                | 422 `SIN_ANTELACION_PARA_REPROGRAMAR` y la interfaz ofrece cancelar; el propietario sí puede           | |
-| 6    | El cliente B elige WhatsApp: el número aparece propuesto con su teléfono; acepta el consentimiento              | 200; el consentimiento queda con fecha, hora, versión del texto y número                               | |
+| 6    | El cliente B abre "Cómo recibo mis avisos" desde Mis citas (`/mis-avisos`) y elige WhatsApp: el número aparece propuesto con su teléfono; acepta el consentimiento | 200; el consentimiento queda con fecha, hora, versión del texto y número                               | |
 | 7    | El cliente B reserva                                                                                            | La confirmación aparece en el simulador (`GET /mensajes?para=`), no en Mailpit                         | |
 | 8    | `npm run whatsapp:modo -- caido`; el propietario cancela la cita de B                                           | Tras los reintentos, el aviso llega a Mailpit **una vez** (respaldo). La cancelación respondió al instante | |
 | 9    | El cliente B retira el consentimiento; se reserva otra cita para B                                              | La confirmación llega por correo; 0 mensajes nuevos en el simulador                                    | |
@@ -49,7 +49,19 @@ Esperado: todo en verde, con las pruebas nombradas en el plan ("Pruebas por esce
 - Un token alterado en un solo carácter responde `ENLACE_NO_VALIDO` sin consultas a la base: la prueba cuenta las consultas.
 - `GET /clientes/yo/aviso` con el token de otra barbería devuelve la preferencia de esa barbería, nunca la de la primera.
 
-## 4. Lo que esta guía no demuestra
+## 4. Revisión manual de la interfaz
+
+Una fila por pantalla nueva o cambiada (tareas de revisión de las fases 2, 4 y 5 en [tasks.md](tasks.md)). Se revisa a 360 px y en escritorio, en tema claro y oscuro, solo con teclado, y con la **extensión axe DevTools del navegador** (manual, sin dependencias nuevas). Si un hallazgo no se corrige, se anota el motivo.
+
+| Fecha | Pantalla                                 | 360 px | Escritorio | Claro | Oscuro | Teclado | axe (hallazgos y corrección o motivo) |
+| ----- | ---------------------------------------- | ------ | ---------- | ----- | ------ | ------- | ------------------------------------- |
+|       | Reprogramar desde Mis citas              |        |            |       |        |         |                                       |
+|       | Reprogramar desde la Agenda              |        |            |       |        |         |                                       |
+|       | Página del enlace `/e`                   |        |            |       |        |         |                                       |
+|       | Agenda con la marca de confirmación      |        |            |       |        |         |                                       |
+|       | Canal de aviso `/mis-avisos`             |        |            |       |        |         |                                       |
+
+## 5. Lo que esta guía no demuestra
 
 - La entrega en un buzón real o en un WhatsApp real: no hay proveedor de producción (ver "Lo que NO se afirmará" en el [plan](plan.md)).
 - La ausencia de duplicados cuando una réplica cae **en medio del envío** al canal (ADR-025).

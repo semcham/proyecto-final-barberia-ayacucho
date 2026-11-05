@@ -50,7 +50,9 @@
 - **Lo que no se afirma:** que exista un proveedor real de WhatsApp o de correo, ni que los mensajes lleguen a buzones reales.
 - **Drivers:** DA05, DA09, DA11.
 - **Consecuencias:**
-  - `docker-compose.yml` suma `mailpit` y `whatsapp-simulado` (la imagen de Mailpit la descarga el responsable, después de verificar que Docker guarda las imágenes en D:);
+  - `docker-compose.yml` suma `mailpit` en la fase 1 y `whatsapp-simulado` en la fase 5, junto con el simulador y su adaptador (la imagen de Mailpit la descarga el responsable, después de verificar que Docker guarda las imágenes en D:);
+  - `backend/package.json` suma `nodemailer` y `@types/nodemailer` (devDependency), los dos con versión exacta fija;
+  - la suite de contrato está escrita para cualquier canal: corre con Mailpit desde la fase 1, y en la fase 5 se le agrega el simulador de WhatsApp;
   - `.env.example` suma `SMTP_*`, `CORREO_REMITENTE`, `WHATSAPP_*` y `URL_PUBLICA`;
   - PR14 suma reglas: simulador fuera del monolito y adaptadores solo por el puerto;
   - `tecnologias.md` lista Mailpit y `nodemailer` (con su versión exacta) al implementar.

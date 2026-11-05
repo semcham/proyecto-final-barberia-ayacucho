@@ -18,6 +18,7 @@ El tenant del evento es **el de la transacción en curso** (`TenantContext`), nu
 3. **Orden.** No se garantiza orden global. Dentro de una cita, los avisos se componen con los datos del propio evento (hora anterior y nueva), así que el orden de llegada no cambia el contenido.
 4. **Manejador que falla.** El evento sigue `PENDIENTE`, con `attempts + 1` y `next_attempt_at` según la espera creciente. A los 10 intentos queda pendiente y se registra un error para revisar. Nunca se borra un evento sin procesar.
 5. **Despacho.** Ocurre (a) tras el COMMIT, en la réplica que publicó, para ese tenant, y (b) en la tarea `despachar-eventos`, cada 15 s, bajo el candado del ejecutor (ADR-024). La tarea lista los pendientes con `barberias_plataforma` (solo `id`, `tenant_id`, `status`, `available_at`, `next_attempt_at`) y procesa cada evento en una transacción con su tenant y `barberias_app`.
+6. **Evento sin manejador (decisión del responsable, 2026-11-04).** Si el tipo del evento no tiene ningún suscriptor registrado, el despacho lo marca `SIN_MANEJADOR`, escribe una advertencia en el registro (solo el tipo y el `id`, nunca el `payload`) y **no lo reintenta**. Pasa, por ejemplo, con `CitaReprogramada` entre las fases 2 y 3 de la implementación. Se purga a los 30 días, como los procesados.
 
 ## 3. Catálogo de eventos de 004
 
