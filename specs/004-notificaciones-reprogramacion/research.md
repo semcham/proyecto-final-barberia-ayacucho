@@ -98,7 +98,7 @@ Código revisado para este plan (2026-11-04):
     - historial de **24 h**.
   - **Una sola regla, sin copias (decisión del responsable, 2026-11-04).** `PoliticaIntentos` sigue en `acceso-barberias/identidad/domain/politica-intentos.ts` y se **expone por la interfaz pública de M01** (`acceso-barberias/index.ts`), que ya reexporta otras piezas de dominio (`Permisos`). Es la opción que el responsable prefería si PR14 lo permitía, y lo permite: la regla `matriz-m02` de `.dependency-cruiser.cjs` deja que M02 importe `acceso-barberias/index.ts`, y M02 → M01 ya figura en la matriz (ADR-020). No hace falta moverla a una pieza compartida.
   - M02 la usa desde su **capa de aplicación**, no desde su dominio: el dominio de un módulo no importa la interfaz de otro, que arrastra el módulo de NestJS. La diferencia con el inicio de sesión es solo la clave (IP sola, porque un enlace rechazado no tiene cuenta).
-  - La tabla se purga a las 24 h, como `login_attempt`.
+  - La tabla se purga a las 24 h. A diferencia de `login_attempt`, que solo borra de forma oportunista al registrar un fallo, la purga de `action_link_attempt` también la ejecuta una tarea programada del ejecutor de ADR-024 (`purgar-intentos-enlaces`, cada hora), para que no queden filas viejas si dejan de llegar rechazos.
 - **Justificación:** el principio VIII exige que los contadores de seguridad vivan en PostgreSQL. La firma de 256 bits ya hace imposible adivinar un enlace, así que el contador es defensa en profundidad contra el abuso. Sigue el patrón probado de `login_attempt` (`0006`).
 - **Aprobado (2026-11-04):** `action_link_attempt` es una tabla técnica sin barbería. La 1.3.1 solo nombraba las tablas de la plataforma; la enmienda 1.4.0, aplicada, la nombra explícitamente y regulariza `login_attempt`, que existe desde 001 y tampoco figuraba en la lista.
 - **Alternativas descartadas:**
@@ -143,7 +143,9 @@ Código revisado para este plan (2026-11-04):
   - **Tipos:** `@types/nodemailer` como devDependency, también con versión exacta fija (aprobado por el responsable el 2026-11-04).
   - **Revisión con el escaneo de dependencias de la CI: hoy ese escaneo no existe.** `.github/workflows/plataforma-barberias.yml` ejecuta `npm ci`, Prettier, lint, build y las pruebas, pero no `npm audit` ni otra herramienta, y no hay Dependabot ni CodeQL. Procedimiento de la **fase 1** (decisión del responsable, 2026-11-04):
     1. **Antes** de tocar la CI, se ejecuta `npm audit --omit=dev` en el backend y el frontend y se decide cada hallazgo de nivel alto o crítico: **con arreglo, se corrige** (versión fija); **sin arreglo, se documenta la excepción con fecha**, paquete, aviso y motivo, en `docs/02-arquitectura-software/tecnologias.md`.
-    2. Después se agrega el paso `npm audit --omit=dev --audit-level=high` a la CI: **audita solo producción y falla desde nivel alto**. Una excepción documentada se excluye de forma individual, nunca bajando el nivel.
+    2. Después se agrega el escaneo a la CI: **audita solo producción y falla desde nivel alto**. `npm audit` no puede ignorar avisos concretos, así que la forma del paso depende del resultado del punto 1 (decisión del responsable, 2026-11-04):
+       - **sin ningún hallazgo alto sin arreglo:** el paso es `npm audit --omit=dev --audit-level=high` y **no se agrega nada más**;
+       - **con al menos un hallazgo alto sin arreglo:** se aprueba **`audit-ci`** como devDependency, con versión exacta fija, y el paso lo usa con nivel alto, solo producción y una **excepción por aviso, cada una con fecha de vencimiento** (al vencer, el paso vuelve a fallar y obliga a revisarla). Nunca se baja el nivel.
     3. Hasta que ese paso exista y pase, no se afirma que `nodemailer` esté revisado por la CI.
 - **Alternativa descartada:** el cliente SMTP mínimo propio, por el motivo de arriba.
 - **Alternativa descartada:** la API HTTP de un proveedor concreto. Ataría el adaptador a un proveedor que no está elegido.
@@ -229,7 +231,7 @@ Código revisado para este plan (2026-11-04):
 
 ## R17 · Retención de eventos y avisos
 
-- **Decisión (responsable, 2026-11-04):** los eventos procesados o anulados se purgan a los **30 días**, y los avisos a los **90 días**. La purga la hace la tarea de despacho, en lotes pequeños. La afinación por tipo (por ejemplo, conservar más los avisos de pago) queda para la funcionalidad 007 (RF31, RF32).
+- **Decisión (responsable, 2026-11-04):** los eventos procesados, anulados o sin manejador se purgan a los **30 días**, y los avisos a los **90 días**. La purga de los eventos la hace la tarea de despacho de M06 (`despachar-eventos`), y la de los avisos, la tarea de envío de M05 (`enviar-avisos`), cada una sobre sus propias tablas y en lotes pequeños. La afinación por tipo (por ejemplo, conservar más los avisos de pago) queda para la funcionalidad 007 (RF31, RF32).
 - **Justificación:** los eventos procesados no aportan nada después de entregarse; los avisos sirven como constancia de lo enviado ante un reclamo del cliente, sin guardar el texto ni datos de contacto.
 - **Alternativa descartada:** conservar todo sin plazo. Contradice la minimización de la Ley N.° 29733 (principio de privacidad de la constitución).
 

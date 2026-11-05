@@ -1,6 +1,46 @@
 <!--
 Sync Impact Report
 ==================
+Version change: 1.4.0 → 1.4.1
+Bump rationale: PATCH. Tres aclaraciones que corrigen el texto de la 1.4.0 para que coincida con
+el sistema y con la especificación de 004, sin ampliar lo que se permite. Aprobada por el
+responsable el 2026-11-04 tras el análisis de consistencia de la funcionalidad 004 (hallazgos C1 a
+C3).
+
+Modified principles:
+  - III. Aislamiento por barbería (NO NEGOCIABLE):
+    - "Tablas técnicas de intentos" (C1): la 1.4.0 decía que ambas tablas guardan solo un resumen
+      criptográfico del origen, pero login_attempt (migración 0006) guarda la IP en claro y no
+      tiene purga programada. Ahora se describe tal como es (SHA-256 del correo, IP en claro y
+      fecha; borrado oportunista de lo mayor a 24 h al registrar un fallo y borrado de los fallos
+      del par al ingresar bien), y action_link_attempt guarda el origen solo como hash con sal
+      (ENLACES_SAL_IP). Pasar login_attempt a hash de IP queda como mejora planificada para 007; el
+      código de inicio de sesión no cambia en 004.
+    - Tercera excepción (C3): se aclara que los trabajos en segundo plano pueden listar los
+      pendientes de sus propias tablas leyendo solo columnas técnicas (identificador, tenant_id,
+      estado y fechas), sin leer su contenido, y procesar cada uno con su tenant y RLS. Es lo que ya
+      hace ADR-024 en 003 y lo que necesitan el despacho y el envío de avisos de 004 (ADR-025).
+  - VII. Notificaciones con consentimiento y sin bloqueo (C2): la lista de datos mínimos de los
+    mensajes pasa a ser la real de la especificación de 004: barbería, servicio, nombre visible del
+    barbero, fecha y hora, hora anterior y enlaces de acción; en los avisos al propietario, además,
+    plan, período y motivo. Se aclara que el cuerpo nunca lleva teléfonos, correos ni datos de pago.
+Added principles: ninguno
+Added sections: ninguna
+Removed sections: ninguna
+
+Templates requiring updates:
+  ✅ .specify/templates/plan-template.md — puertas III y VII (versión 1.4.1)
+  ✅ .specify/templates/spec-template.md y tasks-template.md — revisados; sin cambios necesarios
+  ✅ docs/02-arquitectura-software/multi-tenancy-y-datos.md — casos especiales: tablas técnicas
+     de intentos y trabajos en segundo plano
+  ✅ docs/05-gestion/02-backlog-y-sprints.md — mejora "login_attempt con hash de IP" asignada a 007
+  ✅ specs/004-notificaciones-reprogramacion/ — plan (Constitution Check con la 1.4.1), spec
+     (FR-012, FR-035, SC-005), tasks y la propuesta decisiones/enmienda-constitucion-1.4.1.md
+  ✅ specs/001, 002, 003 y 006 — sin cambios: la 1.4.1 describe lo que ya hacen
+
+Follow-up TODOs: login_attempt con hash de IP (funcionalidad 007).
+
+--- Historial: informe de la versión 1.4.0 ---
 Version change: 1.3.1 → 1.4.0
 Bump rationale: MINOR. Se amplía materialmente la guía del principio III con una cuarta excepción
 acotada, "acciones por enlace de la cita", y se nombran las tablas técnicas de intentos, sin eliminar
@@ -256,6 +296,10 @@ intercambiables.
   y con RLS, y MUST auditarse en esa barbería. MUST NOT ver ni modificar citas, clientes, catálogo
   ni usuarios. Las notificaciones del proveedor de pagos y los trabajos en segundo plano MAY
   localizar el tenant con esa misma lectura, por una clave exacta, nunca con datos del cliente.
+  Los trabajos en segundo plano MAY además **listar** los elementos pendientes de sus propias tablas
+  leyendo solo columnas técnicas (identificador, `tenant_id`, estado y fechas), sin leer su
+  contenido (por ejemplo, el cuerpo de un evento o los datos de un aviso), y MUST procesar cada
+  elemento en una transacción con su tenant fijado y con RLS.
   **Tablas de la plataforma:** `provider_event`, `scheduled_job_run`, `platform_session`,
   `platform_challenge`, `platform_admin` y `platform_audit_log` no pertenecen a ninguna barbería ni
   contienen datos de negocio; por eso MAY no tener `tenant_id` ni RLS por barbería, y MUST NOT
@@ -264,8 +308,13 @@ intercambiables.
   barbería. El rol de la aplicación MUST NOT leer `provider_event` (solo insertar eventos) ni
   `platform_admin`. La decisión se registra en ADR-031.
   **Tablas técnicas de intentos:** `login_attempt` (desde 001) y `action_link_attempt` (004) no
-  pertenecen a ninguna barbería; MAY no tener `tenant_id` ni RLS, y MUST guardar solo un resumen
-  criptográfico del origen (nunca correos, IP en claro ni datos de negocio), con purga a las 24 h.
+  pertenecen a ninguna barbería; MAY no tener `tenant_id` ni RLS, y MUST NOT guardar correos en
+  claro ni datos de negocio. `login_attempt` guarda, tal como está hoy, el SHA-256 del correo, la
+  IP **en claro** y la fecha; sus filas de más de 24 h se borran de forma oportunista al registrar
+  un fallo nuevo, y un ingreso correcto borra los fallos de ese par cuenta e IP (sin una purga
+  programada). `action_link_attempt` MUST guardar el origen solo como hash con sal
+  (`ENLACES_SAL_IP`), nunca la IP en claro, con purga a las 24 h. Pasar `login_attempt` a un hash
+  de la IP queda como mejora planificada para la funcionalidad 007.
 - **Excepción acotada: acciones por enlace de la cita.** El recordatorio de una cita (RF34) MAY
   incluir enlaces que permitan al cliente, sin sesión, confirmar su asistencia, reprogramar o
   cancelar **esa** cita. La barbería y la cita MUST obtenerse **solo** del dato firmado del enlace,
@@ -341,7 +390,12 @@ uso autorizados.
   falla, MUST usarse el correo como respaldo.
 - El envío MUST ser asíncrono, con reintentos y circuit breaker. Un fallo de notificación MUST
   NOT bloquear ni revertir la reserva ni ninguna otra operación.
-- Los mensajes MUST contener solo los datos mínimos (barbería, servicio, fecha y hora).
+- Los mensajes MUST contener solo los datos mínimos. Sobre una cita: nombre de la barbería,
+  servicio, nombre visible del barbero, fecha y hora, la hora anterior si se reprogramó y los
+  enlaces de acción del recordatorio. En los avisos al propietario sobre su suscripción: además, el
+  plan, el período y el motivo (de un rechazo o de una activación manual). El cuerpo de un mensaje
+  MUST NOT incluir teléfonos, correos ni datos de pago (de tarjeta, de cuentas, números de
+  operación completos ni datos de comprobantes).
 - Los recordatorios MUST ejecutarse sin duplicados entre instancias.
 
 **Razón:** ADR-012, ADR-013, RC08 y RC16.
@@ -465,4 +519,4 @@ implementación. La excepción existe solo porque la plataforma de CI impone la 
   alternativa más simple descartada, y registrarse como ADR.
 - La guía de ejecución del proyecto está en `README.md` y en `docs/`.
 
-**Version**: 1.4.0 | **Ratified**: 2026-10-15 | **Last Amended**: 2026-11-04
+**Version**: 1.4.1 | **Ratified**: 2026-10-15 | **Last Amended**: 2026-11-04

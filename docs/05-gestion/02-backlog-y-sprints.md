@@ -75,6 +75,7 @@ Plan aprobado el 2026-10-17. Cubre los **34 RF** con las funcionalidades 002 a 0
 - **Notificaciones (RF30, RF33, RF34):** el **correo** es el canal real (Mailpit en desarrollo). **WhatsApp** existe como canal detrás de `NotificationChannel` (adaptador simulado), con consentimiento registrado y respaldo por correo; su conexión a un proveedor real queda para cuando se contrate (ADR-013).
 - **Despliegue en AWS:** **documentado, no ejecutado** ([despliegue y escalabilidad](../02-arquitectura-software/despliegue-y-escalabilidad.md)). La escalabilidad se demuestra en Docker Compose (006).
 - **Asistente de IA:** OpenRouter solo en desarrollo, con la clave únicamente en el backend y sin datos personales reales; en CI, proveedor simulado (ADR-027).
+- **Mejora asignada a 007 (constitución 1.4.1, 2026-11-04):** pasar `login_attempt` a un **hash de la IP con sal**, como `action_link_attempt`. Hoy guarda la IP en claro y se borra de forma oportunista (migración `0006`, `identidad/infrastructure/kysely-intentos-repository.ts`). Exige migrar la tabla y ajustar el repositorio de intentos de M01 y el del administrador; 004 no cambia el código de inicio de sesión.
 
 ### 3.2 Líneas de corte
 

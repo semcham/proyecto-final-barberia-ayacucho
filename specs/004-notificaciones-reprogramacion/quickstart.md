@@ -61,6 +61,17 @@ Una fila por pantalla nueva o cambiada (tareas de revisión de las fases 2, 4 y 
 |       | Agenda con la marca de confirmación      |        |            |       |        |         |                                       |
 |       | Canal de aviso `/mis-avisos`             |        |            |       |        |         |                                       |
 
+### Medición manual de SC-002 (reprogramar en menos de 1 minuto)
+
+Con cronómetro, tres intentos por vía, a 360 px y en escritorio. Se mide desde que la pantalla de partida está abierta hasta que aparece la confirmación de la nueva hora. Es una medición en local con una sola persona: no representa a usuarios reales.
+
+| Fecha | Vía                                    | Ancho      | Intento 1 | Intento 2 | Intento 3 | ¿Todos < 1 min? |
+| ----- | -------------------------------------- | ---------- | --------- | --------- | --------- | --------------- |
+|       | Desde Mis citas (con sesión)           | 360 px     |           |           |           |                 |
+|       | Desde Mis citas (con sesión)           | Escritorio |           |           |           |                 |
+|       | Desde el enlace del recordatorio (`/e`) | 360 px     |           |           |           |                 |
+|       | Desde el enlace del recordatorio (`/e`) | Escritorio |           |           |           |                 |
+
 ## 5. Lo que esta guía no demuestra
 
 - La entrega en un buzón real o en un WhatsApp real: no hay proveedor de producción (ver "Lo que NO se afirmará" en el [plan](plan.md)).

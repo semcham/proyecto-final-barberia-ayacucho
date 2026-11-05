@@ -171,7 +171,7 @@ ENVIANDO con claimed_until vencido ──▶ se vuelve a reclamar (posible dupli
 - `barberias_app`: `SELECT, INSERT` y `UPDATE (channel_used, status, attempts, next_attempt_at, claimed_until, sent_at, last_error)`.
 - `barberias_plataforma`: `SELECT (id, tenant_id, status, next_attempt_at, claimed_until)` con política `plataforma_lectura`.
 
-**Retención:** 90 días (decisión del responsable, 2026-11-04; la afinación por tipo, en 007).
+**Retención:** 90 días (decisión del responsable, 2026-11-04; la afinación por tipo, en 007). La purga la hace la tarea `enviar-avisos` de M05; la de `outbox_event`, la tarea `despachar-eventos` de M06.
 
 ## 5. Tabla técnica: `action_link_attempt` (migración `0025_intentos_enlaces`, aprobada con la enmienda 1.4.0)
 
@@ -181,7 +181,7 @@ ENVIANDO con claimed_until vencido ──▶ se vuelve a reclamar (posible dupli
 | `ip_hash`      | `char(64)`    | SHA-256 de la IP con una sal de `.env` (no la IP)    |
 | `attempted_at` | `timestamptz` | `DEFAULT now()`                                      |
 
-Índice `(ip_hash, attempted_at)`. Sin barbería ni datos de negocio o personales, como `login_attempt` (`0006`); la constitución 1.4.0 la nombra. Se purga a las 24 h. La regla de bloqueo es la de `login_attempt` (5 rechazos en 60 s; espera de 60 s que se duplica por racha hasta 900 s), con la IP como clave. **Permisos:** `SELECT, INSERT, DELETE` para `barberias_app`.
+Índice `(ip_hash, attempted_at)`. Sin barbería ni datos de negocio o personales; la constitución 1.4.1 la nombra. A diferencia de `login_attempt` (`0006`), no guarda la IP en claro. Se purga a las 24 h con la tarea programada `purgar-intentos-enlaces`. La regla de bloqueo es la de `login_attempt` (5 rechazos en 60 s; espera de 60 s que se duplica por racha hasta 900 s), con la IP como clave. **Permisos:** `SELECT, INSERT, DELETE` para `barberias_app`.
 
 ## 6. Auditoría (`audit_log`, sin cambios de esquema)
 

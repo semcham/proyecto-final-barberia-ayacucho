@@ -40,7 +40,7 @@
 
 _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
-Gates from `.specify/memory/constitution.md` (v1.4.0). Mark each ✅ / ❌ (justify ❌ in
+Gates from `.specify/memory/constitution.md` (v1.4.1). Mark each ✅ / ❌ (justify ❌ in
 Complexity Tracking and record an ADR):
 
 - [ ] **I. Six modules**: work fits in M01–M06 (no new module); cross-module calls only via
@@ -59,12 +59,16 @@ Complexity Tracking and record an ADR):
       read-only, column-level role without `BYPASSRLS`; each write targets one barbershop named in the
       route, with its tenant fixed, RLS and audit in that barbershop; never appointments, clients,
       catalog or users; provider webhooks and background jobs may locate the tenant through that same
-      read by exact key, never from client input; only the named platform tables (`provider_event`,
+      read by exact key, never from client input; background jobs may also list pending items of their
+      own tables reading only technical columns (id, `tenant_id`, status, dates), never their content,
+      and process each one with its tenant and RLS; only the named platform tables (`provider_event`,
       `scheduled_job_run`, `platform_session`, `platform_challenge`, `platform_admin`,
       `platform_audit_log`) may lack `tenant_id`, hold no business data, and the app role may only
       insert into `provider_event` and never read `platform_admin` (ADR-031); the technical attempt
       tables `login_attempt` and `action_link_attempt` (the latter planned in 004, not yet implemented)
-      may also lack `tenant_id`, storing only a hash of the origin, purged after 24 h; (4) appointment
+      may also lack `tenant_id` and never store emails in clear or business data; `login_attempt`
+      keeps the IP in clear with opportunistic deletion after 24 h (moving it to an IP hash is planned
+      for 007); `action_link_attempt` stores the origin only as a salted hash, purged after 24 h; (4) appointment
       action links (accepted, planned in 004, not yet implemented): a reminder link lets the client
       confirm, reschedule or cancel ONE appointment without a session; tenant and appointment come
       only from the signed link, verified before reading anything; app role without `BYPASSRLS`,
@@ -78,7 +82,9 @@ Complexity Tracking and record an ADR):
 - [ ] **VI. AI**: `AIProvider` port; closed role-based tools calling use cases; no free SQL,
       no direct DB/repository access
 - [ ] **VII. Notifications**: `NotificationChannel` port driven by events; WhatsApp consent
-      recorded; async; failure never blocks the operation; email fallback
+      recorded; async; failure never blocks the operation; email fallback; messages carry only
+      barbershop, service, barber's visible name, date and time, previous time and action links (owner
+      subscription notices: also plan, period and reason); never phones, emails or payment data
 - [ ] **VIII. Redis**: cache (TTL + invalidation) and non-critical counters only (general
       rate limit, loss-tolerant); security or cost counters (login attempts, AI quota) and security
       state stay in PostgreSQL; never source of truth; system works if Redis is down

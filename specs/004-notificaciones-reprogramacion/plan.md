@@ -6,7 +6,7 @@
 
 **Estado del plan**: **aprobado (2026-11-04).** El responsable aprobó la enmienda 1.4.0 de la constitución, ADR-025, ADR-026, ADR-032 y la revisión de ADR-013, y respondió las cinco preguntas abiertas. La **fase 0** (gobierno) está aplicada:
 
-- constitución 1.4.0 con su Sync Impact Report;
+- constitución 1.4.0 con su Sync Impact Report, y luego su aclaración **1.4.1** (PATCH, tras el análisis de consistencia: tablas técnicas de intentos como son hoy, datos mínimos reales de los mensajes y listado de pendientes por columnas técnicas);
 - puerta III de la plantilla del plan;
 - los ADR en `docs/01-analisis-de-sistema/07-decisiones-arquitectonicas.md`;
 - `multi-tenancy-y-datos.md`;
@@ -50,7 +50,7 @@ La parte delicada es el **principio III**. Una acción por enlace ocurre sin tok
 | `0022`    | M01    | `customer_notification_preference` y `whatsapp_consent`                                                             |
 | `0023`    | M02    | `appointment.version` y `appointment.client_confirmed_at`; `appointment_reschedule`; `appointment_link_use`; nuevos `GRANT UPDATE` |
 | `0024`    | M05    | `notification` (avisos por destinatario), RLS y lectura de plataforma por columna                                  |
-| `0025`    | —      | `action_link_attempt` (intentos rechazados por IP), tabla técnica sin barbería, nombrada en la constitución 1.4.0 (research R07) |
+| `0025`    | —      | `action_link_attempt` (intentos rechazados por IP), tabla técnica sin barbería, nombrada en la constitución 1.4.1, con el hash de la IP con sal y purga cada hora de lo mayor a 24 h (research R07) |
 
 Redis no guarda nada de 004 (principio VIII). Los contadores de seguridad de los enlaces viven en PostgreSQL.
 
@@ -92,7 +92,7 @@ Redis no guarda nada de 004 (principio VIII). Los contadores de seguridad de los
 
 _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
-Primera verificación con la constitución **1.3.1**, antes de la investigación y tras el diseño: III y XI no pasaban. **Segunda verificación (2026-11-04), con la constitución 1.4.0** y los ADR aprobados, abajo:
+Primera verificación con la constitución **1.3.1**, antes de la investigación y tras el diseño: III y XI no pasaban. **Segunda verificación (2026-11-04), con la constitución 1.4.0** y los ADR aprobados. **Tercera verificación (2026-11-04), con la aclaración 1.4.1**, tras el análisis de consistencia (C1 a C3); el resultado es el de abajo:
 
 - [x] **I. Seis módulos.** Todo queda en los módulos existentes, sin crear ninguno:
   - M02: reprogramación, acciones por enlace y marca de asistencia;
@@ -113,7 +113,7 @@ Primera verificación con la constitución **1.3.1**, antes de la investigación
   - los eventos y los avisos llevan el tenant;
   - nada va a la caché.
 
-  `action_link_attempt` es una tabla técnica sin barbería, como `login_attempt`; la 1.4.0 nombra a las dos.
+  `action_link_attempt` es una tabla técnica sin barbería, como `login_attempt`; la 1.4.1 describe las dos tal como son: `login_attempt` guarda hoy la IP en claro (mejora planificada para 007) y `action_link_attempt` guardará solo el hash de la IP con sal. El listado de pendientes del despacho y del envío lee solo columnas técnicas, como permite la 1.4.1 en la tercera excepción.
 - [x] **IV. Sin citas duplicadas.**
   - La reprogramación es un `UPDATE` del período en una transacción. Lo protegen las mismas restricciones `appointment_no_overlap_barber` y `appointment_no_overlap_customer`, y el conflicto se traduce a "horario no disponible".
   - El candado consultivo por barbero de 002 se toma para el barbero anterior y el nuevo, en orden fijo (research R03).
@@ -134,7 +134,7 @@ Primera verificación con la constitución **1.3.1**, antes de la investigación
 - [x] **XI. ADR.** ADR-025, ADR-026 y ADR-032 están registrados y **Aceptados** (2026-11-04) en `07-decisiones-arquitectonicas.md`, y ADR-013 pasó a **Aceptado** con su revisión, antes de implementar. Los documentos afectados (constitución, plantilla, multi-tenancy, estilo, componentes y diseño interno) se actualizaron en el mismo cambio.
 - [x] **XII. Ubicación.** Todo el código va en `tecnologia/plataforma-barberias/`, incluido el simulador (`backend/simulador-whatsapp/`).
 
-**Resultado (2026-11-04, constitución 1.4.0): pasa.** Las doce puertas están en verde. La excepción nueva solo puede usarse dentro de lo que describe ADR-032; PR28 y PR09 (`aislamiento-avisos`) la verificarán al implementar. Queda lista para `/speckit-tasks`.
+**Resultado (2026-11-04, constitución 1.4.1): pasa.** El principio VII ya lista los datos que llevan los mensajes de 004 (barbería, servicio, barbero, fecha y hora, hora anterior, enlaces y, al propietario, plan, período y motivo). Las doce puertas están en verde. La excepción nueva solo puede usarse dentro de lo que describe ADR-032; PR28 y PR09 (`aislamiento-avisos`) la verificarán al implementar. Queda lista para `/speckit-tasks`.
 
 ## Project Structure
 
@@ -156,6 +156,7 @@ specs/004-notificaciones-reprogramacion/
 │   └── texto-consentimiento-whatsapp.md # texto base, versión 2026-11, por validar con asesoría legal
 ├── decisiones/                          # detalle de las decisiones ACEPTADAS el 2026-11-04 (aplicadas en docs/ y .specify/)
 │   ├── enmienda-constitucion-1.4.0.md
+│   ├── enmienda-constitucion-1.4.1.md   # aclaración PATCH tras el análisis (C1 a C3)
 │   ├── ADR-025-salida-transaccional.md
 │   ├── ADR-026-correo-y-whatsapp.md
 │   ├── ADR-032-acciones-por-enlace.md
@@ -178,7 +179,7 @@ tecnologia/plataforma-barberias/
 │   │   └── demo-avisos.ts                   # npm run demo:avisos (dos réplicas, correo caído y vuelto)
 │   ├── src/
 │   │   ├── host/
-│   │   │   ├── tareas.ts                    # + despachar-eventos, enviar-avisos, avisar-fin-de-prueba
+│   │   │   ├── tareas.ts                    # + despachar-eventos, enviar-avisos, purgar-intentos-enlaces, avisar-fin-de-prueba
 │   │   │   └── eventos.ts                   # suscribe los manejadores de M05 en el bus de M06
 │   │   ├── shared/                          # M06
 │   │   │   ├── eventos/                     # BusDeEventos (publicar, reemplazar, anular), despachador, salida-postgres
@@ -258,15 +259,15 @@ sequenceDiagram
 | Fase | Contenido                                                                                                                                                                                                                                                                  | Bloquea a       | Recorte                    |
 | ---- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------- | -------------------------- |
 | 0    | **Gobierno (sin código) · HECHA el 2026-11-04:** enmienda 1.4.0, ADR-025, ADR-026, ADR-032 y la revisión de ADR-013 aprobados y aplicados en la constitución, la plantilla, `07-decisiones-arquitectonicas.md`, `multi-tenancy-y-datos.md` y la matriz (`estilo-arquitectonico.md`, `componentes-arquitectonicos.md` y `diseño-interno-de-modulos.md` §7); Constitution Check en verde | Todas           | —                          |
-| 1    | **Base:** revisión previa de `npm audit` (lo alto con arreglo se corrige; sin arreglo, excepción documentada con fecha) y luego **escaneo de dependencias en la CI** (solo producción, falla desde nivel alto); migraciones `0021`–`0025`; bus de eventos de M06 con despacho e intervalo por tarea (un tipo sin manejador queda `SIN_MANEJADOR`); enlaces firmados de M06; esqueleto de M05 con el puerto, el adaptador de correo (`nodemailer` y `@types/nodemailer` con versión fija) y la **suite de contrato independiente del canal**, que en esta fase corre con Mailpit; Compose (`mailpit`; la imagen la descarga el responsable); reglas de PR14; PR09 `lectura-plataforma` con las columnas nuevas | 2–6             | Nunca                      |
-| 2    | **US1 Reprogramar (P1):** `ReprogramarCita`, rutas del cliente y del propietario, interfaz (Mis citas y Agenda), PR16 de reprogramación                                                                                                                                      | 4               | Nunca                      |
+| 1    | **Base:** revisión previa de `npm audit` (lo alto con arreglo se corrige) y luego **escaneo de dependencias en la CI** (solo producción, falla desde nivel alto). Si queda un hallazgo alto **sin** arreglo, se aprueba `audit-ci` como devDependency con versión fija y una excepción por aviso con fecha de vencimiento; si no, no se agrega nada; migraciones `0021`–`0025`; bus de eventos de M06 con despacho e intervalo por tarea (un tipo sin manejador queda `SIN_MANEJADOR`); enlaces firmados de M06; esqueleto de M05 con el puerto, el adaptador de correo (`nodemailer` y `@types/nodemailer` con versión fija) y la **suite de contrato independiente del canal**, que en esta fase corre con Mailpit; Compose (`mailpit`; la imagen la descarga el responsable); reglas de PR14; PR09 `lectura-plataforma` con las columnas nuevas | 2–6             | Nunca                      |
+| 2    | **US1 Reprogramar (P1):** `ReprogramarCita`, rutas del cliente y del propietario, interfaz (Mis citas y Agenda), PR16 de reprogramación                                                                                                                                      | 3, 4            | Nunca                      |
 | 3    | **US2 Avisos de la cita (P1):** eventos `CitaCreada`, `CitaCancelada` y `CitaReprogramada`; manejadores de M05; envío con reintentos y circuito; avisos al personal; PR27 (correo), PR06 (correo caído), salida de eventos con dos instancias y con caída                  | 4, 5, 6         | Nunca                      |
-| 4    | **US3 Recordatorio y enlaces (P2):** recordatorio programado; enlaces de acción; rutas `/enlaces`; página `/e`; marca en la agenda; contador de rechazos; PR28                                                                                                                | —               | Línea de corte 2 ya aplicada (reutiliza la disponibilidad de 002) |
+| 4    | **US3 Recordatorio y enlaces (P2):** recordatorio programado; enlaces de acción; rutas `/enlaces`; página `/e`; marca en la agenda; contador de rechazos; PR28                                                                                                                | 5               | Línea de corte 2 ya aplicada (reutiliza la disponibilidad de 002) |
 | 5    | **US4 Canal y consentimiento (P2):** **simulador de WhatsApp en proceso aparte** (nunca en producción) con su adaptador y su servicio de Compose, agregado a la misma suite de contrato; preferencia y consentimiento de WhatsApp en M01, con el texto base `2026-11`; respaldo por correo; pantalla en la ruta propia `/mis-avisos`, enlazada desde Mis citas; PR18 y PR27 (WhatsApp) | —               | Nunca (RF33)               |
 | 6    | **US5 Avisos de suscripción (P3) · PRIMER RECORTE:** eventos de M03 en sus transiciones existentes; tarea `avisar-fin-de-prueba`; plantillas; pruebas. **Grupo de tareas separado:** si el calendario aprieta, se omite completo sin afectar a las fases 1–5             | —               | **Primero que se recorta** |
 | 7    | **Cierre:** documentación (ver "Documentos que se actualizan"), suite completa, recorrido del [quickstart](quickstart.md) y demostración con dos réplicas                                                                                                                     | —               | Nunca                      |
 
-**Dependencias.** La fase 3 necesita el bus de la fase 1, y la 2 publica el evento de reprogramación que la 3 consume. Por eso la 2 deja el evento publicado aunque nadie lo maneje todavía: hasta la fase 3, el despacho lo marca `SIN_MANEJADOR`, escribe una advertencia y no lo reintenta. La 4 usa la reprogramación (2) y el envío (3). La 5 agrega el simulador de WhatsApp y cambia cómo se elige el canal en el envío (3). La 6 solo agrega publicadores en M03 y plantillas en M05.
+**Dependencias.** La fase 3 depende de la 1 (bus) y de la 2: consume el evento de reprogramación que publica la 2, y sus pruebas de avisos y de correo caído reprograman citas. La 2 deja el evento publicado aunque nadie lo maneje todavía: hasta la fase 3, el despacho lo marca `SIN_MANEJADOR`, escribe una advertencia y no lo reintenta. La 4 usa la reprogramación (2) y el envío (3). La 5 depende de la 3 (envío y elección de canal) y de la 4 (su prueba de consentimiento retirado entre la cita y el recordatorio usa el recordatorio); agrega el simulador de WhatsApp y cambia cómo se elige el canal en el envío. La 6 solo agrega publicadores en M03 y plantillas en M05.
 
 **Líneas de corte** (backlog §3.2): 1) plantillas en texto simple (ya en el diseño); 2) reprogramar desde el enlace reutiliza la disponibilidad de 002 (ya en el diseño); 3) sin panel de envíos (ya en el diseño). **Se suma, por decisión del responsable (2026-11-04):** la fase 6 (US5) es la primera que se recorta.
 
@@ -362,7 +363,8 @@ Con 2 fases L y 3 fases M, el plan completo no cabe en 4 días sin recortes. Se 
 
 | Documento                                                      | Cambio                                                                                     |
 | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| `.specify/memory/constitution.md`                              | Enmienda 1.4.0 con su Sync Impact Report                                                   |
+| `.specify/memory/constitution.md`                              | Enmienda 1.4.0 con su Sync Impact Report, y aclaración 1.4.1 (C1 a C3)                     |
+| `docs/05-gestion/02-backlog-y-sprints.md` §3.1                 | Mejora para 007: `login_attempt` con hash de IP (constitución 1.4.1)                       |
 | `.specify/templates/plan-template.md`                          | Puerta III con la cuarta excepción y las tablas técnicas de intentos                       |
 | `docs/01-analisis-de-sistema/07-decisiones-arquitectonicas.md` | ADR-025, ADR-026 y ADR-032 nuevos; ADR-013 revisado y Aceptado; filas de la tabla resumen  |
 | `docs/02-arquitectura-software/estilo-arquitectonico.md`       | Matriz: M05 → M01 (solo lectura, nota ²); regla 4; diagrama de dependencias               |
