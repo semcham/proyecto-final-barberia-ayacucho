@@ -7,6 +7,7 @@ import type { components as Componentes001 } from '../../api/schema';
 import type { components as Componentes002 } from '../../api/schema-002';
 import { apiSuscripcion, type EstadoSuscripcion, type Plan, type Suscripcion } from '../../api/suscripcion';
 import { EncabezadoPagina } from '../../components/app/EncabezadoPagina';
+import { Icono } from '../../components/Icono';
 import { Alerta, Boton, EtiquetaEstado, Tarjeta } from '../../components/ui';
 import type { TonoEtiqueta } from '../../components/ui/EtiquetaEstado';
 import { salirA } from '../../navegacion';
@@ -97,28 +98,31 @@ function Avisos({ suscripcion }: { suscripcion: Suscripcion }) {
   const avisos = suscripcion.avisos;
   if (avisos.length === 0) return null;
   return (
-    <div className={estilos.aviso}>
-      {avisos.includes('EN_GRACIA') && (
-        <p>
-          Tu período terminó. Tienes hasta el {formatoFecha(suscripcion.finGracia)} para pagar sin que tu
-          barbería deje de recibir reservas.
-        </p>
-      )}
-      {avisos.includes('PRUEBA_POR_TERMINAR') && (
-        <p>Tu prueba gratuita está por terminar. Elige un plan para seguir recibiendo reservas.</p>
-      )}
-      {avisos.includes('VENCIDA') && (
-        <p>
-          Tu suscripción venció: tu barbería no recibe reservas nuevas. Al pagar, vuelve a recibirlas de
-          inmediato.
-        </p>
-      )}
-      {avisos.includes('SUSPENDIDA') && (
-        <p>
-          Tu suscripción está suspendida
-          {suscripcion.motivoSuspension ? `: ${suscripcion.motivoSuspension}` : '.'}
-        </p>
-      )}
+    <div className={estilos.avisoImportante}>
+      <Icono nombre="alerta" tamano={18} />
+      <div>
+        {avisos.includes('EN_GRACIA') && (
+          <p>
+            Tu período terminó. Tienes hasta el {formatoFecha(suscripcion.finGracia)} para pagar sin que tu
+            barbería deje de recibir reservas.
+          </p>
+        )}
+        {avisos.includes('PRUEBA_POR_TERMINAR') && (
+          <p>Tu prueba gratuita está por terminar. Elige un plan para seguir recibiendo reservas.</p>
+        )}
+        {avisos.includes('VENCIDA') && (
+          <p>
+            Tu suscripción venció: tu barbería no recibe reservas nuevas. Al pagar, vuelve a recibirlas de
+            inmediato.
+          </p>
+        )}
+        {avisos.includes('SUSPENDIDA') && (
+          <p>
+            Tu suscripción está suspendida
+            {suscripcion.motivoSuspension ? `: ${suscripcion.motivoSuspension}` : '.'}
+          </p>
+        )}
+      </div>
     </div>
   );
 }
@@ -140,13 +144,16 @@ function AvisoLimites({ plan }: { plan: Plan }) {
   };
   if (enUso.usuarios <= plan.maxUsuarios && enUso.barberos <= plan.maxBarberos) return null;
   return (
-    <p className={estilos.aviso} role="note">
-      El plan {plan.nombre} permite {plural(plan.maxUsuarios, 'usuario', 'usuarios')} y{' '}
-      {plural(plan.maxBarberos, 'barbero', 'barberos')}, y hoy tienes{' '}
-      {plural(enUso.usuarios, 'usuario', 'usuarios')} y {plural(enUso.barberos, 'barbero', 'barberos')}{' '}
-      activos. Nada se desactiva solo, pero cuando empiece ese plan no podrás crear ni reactivar usuarios o
-      barberos hasta quedar dentro del límite.
-    </p>
+    <div className={estilos.avisoImportante} role="note">
+      <Icono nombre="alerta" tamano={18} />
+      <p>
+        El plan {plan.nombre} permite {plural(plan.maxUsuarios, 'usuario', 'usuarios')} y{' '}
+        {plural(plan.maxBarberos, 'barbero', 'barberos')}, y hoy tienes{' '}
+        {plural(enUso.usuarios, 'usuario', 'usuarios')} y {plural(enUso.barberos, 'barbero', 'barberos')}{' '}
+        activos. Nada se desactiva solo, pero cuando empiece ese plan no podrás crear ni reactivar usuarios o
+        barberos hasta quedar dentro del límite.
+      </p>
+    </div>
   );
 }
 
@@ -180,16 +187,20 @@ function ElegirPlan({ planes }: { planes: Plan[] }) {
       <fieldset className={estilos.casillas}>
         <legend>Planes</legend>
         {planes.map((p) => (
-          <label key={p.id}>
+          <label key={p.id} className={estilos.opcion}>
             <input
               type="radio"
               name="plan"
               value={p.id}
               checked={elegido === p.id}
               onChange={() => setElegido(p.id)}
-            />{' '}
-            <strong>{p.nombre}</strong> · {formatoSoles(p.precioCentimos)} al mes ·{' '}
-            {plural(p.maxUsuarios, 'usuario', 'usuarios')} y {plural(p.maxBarberos, 'barbero', 'barberos')}
+            />
+            <span className={estilos.elementoNombre}>
+              {p.nombre} · {formatoSoles(p.precioCentimos)} al mes
+            </span>
+            <span className={estilos.elementoDetalle}>
+              {plural(p.maxUsuarios, 'usuario', 'usuarios')} y {plural(p.maxBarberos, 'barbero', 'barberos')}
+            </span>
           </label>
         ))}
       </fieldset>
@@ -199,6 +210,7 @@ function ElegirPlan({ planes }: { planes: Plan[] }) {
       {transferir.isError && <Alerta>{mensajeDeError(transferir.error)}</Alerta>}
       <div className={estilos.acciones}>
         <Boton
+          icono="celular"
           disabled={!plan || !conYape}
           cargando={pagar.isPending || pagar.isSuccess}
           textoCargando="Abriendo Yape…"
@@ -208,6 +220,7 @@ function ElegirPlan({ planes }: { planes: Plan[] }) {
         </Boton>
         <Boton
           variante="secundario"
+          icono="dinero"
           disabled={!plan || !conTransferencia}
           cargando={transferir.isPending}
           textoCargando="Preparando…"
@@ -250,7 +263,8 @@ function ResultadoDelPago({ pagoId }: { pagoId: string }) {
         Tu pago sigue pendiente de confirmación. Te avisaremos aquí apenas el proveedor lo confirme.
       </p>
     ) : (
-      <p role="status" aria-busy="true">
+      <p role="status" aria-busy="true" className={estilos.estadoCarga}>
+        <span className="girador" aria-hidden="true" />
         Confirmando tu pago con el proveedor…
       </p>
     );

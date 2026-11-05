@@ -9,7 +9,7 @@ import type { components } from '../../api/schema-002';
 import { EncabezadoPagina } from '../../components/app/EncabezadoPagina';
 import { type CitaAfectada, citasEnConflicto, ModalConflictos } from '../../components/app/ModalConflictos';
 import { Alerta, Boton, Campo, EstadoVacio, EtiquetaEstado, Tarjeta, useAvisos } from '../../components/ui';
-import { Cargando } from './Cargando';
+import { CargandoLista } from './Cargando';
 import { mensajeDeError, useZonaBarberia } from './datos-barberia';
 import estilos from './Panel.module.css';
 
@@ -57,6 +57,7 @@ export default function Servicios() {
     register,
     handleSubmit,
     reset,
+    setFocus,
     formState: { errors },
   } = useForm<Formulario>({ resolver: zodResolver(esquema), defaultValues: VACIO });
 
@@ -121,6 +122,8 @@ export default function Servicios() {
       duracion: servicio.duracionMinutos,
       descripcion: servicio.descripcion ?? '',
     });
+    // En el celular el formulario queda arriba de la lista: el foco lo lleva a la vista.
+    setFocus('nombre');
   };
 
   const titulo = editando ? 'Editar servicio' : 'Nuevo servicio';
@@ -150,16 +153,20 @@ export default function Servicios() {
               <Campo
                 id="precio"
                 etiqueta="Precio (S/)"
+                icono="dinero"
                 inputMode="decimal"
                 placeholder="25.00"
+                ayuda="En soles, con punto decimal."
                 registro={register('precio')}
                 error={errors.precio?.message}
               />
               <Campo
                 id="duracion"
                 etiqueta="Duración (minutos)"
+                icono="reloj"
                 type="number"
                 inputMode="numeric"
+                ayuda="De 5 en 5 minutos."
                 registro={register('duracion')}
                 error={errors.duracion?.message}
               />
@@ -172,7 +179,12 @@ export default function Servicios() {
             />
             {guardar.isError && <Alerta>{mensajeDeError(guardar.error)}</Alerta>}
             <div className={estilos.acciones}>
-              <Boton type="submit" cargando={guardar.isPending} textoCargando="Guardando…">
+              <Boton
+                type="submit"
+                icono={editando ? 'check' : 'mas'}
+                cargando={guardar.isPending}
+                textoCargando="Guardando…"
+              >
                 {editando ? 'Guardar cambios' : 'Agregar servicio'}
               </Boton>
               {editando && (
@@ -193,7 +205,7 @@ export default function Servicios() {
 
         <section aria-label="Lista de servicios">
           {lista.isPending ? (
-            <Cargando />
+            <CargandoLista texto="Cargando los servicios…" />
           ) : lista.isError ? (
             <Alerta>{mensajeDeError(lista.error)}</Alerta>
           ) : lista.data.length === 0 ? (
@@ -212,17 +224,26 @@ export default function Servicios() {
                       S/ {servicio.precio} · {servicio.duracionMinutos} min
                     </span>
                   </div>
-                  <div className={estilos.acciones}>
+                  <div className={estilos.elementoAcciones}>
                     <EtiquetaEstado tono={servicio.activo ? 'exito' : 'neutro'}>
                       {servicio.activo ? 'Activo' : 'Inactivo'}
                     </EtiquetaEstado>
-                    <Boton type="button" variante="secundario" tamano="sm" onClick={() => editar(servicio)}>
+                    <Boton
+                      type="button"
+                      variante="secundario"
+                      tamano="sm"
+                      icono="editar"
+                      aria-label={`Editar ${servicio.nombre}`}
+                      onClick={() => editar(servicio)}
+                    >
                       Editar
                     </Boton>
                     <Boton
                       type="button"
                       variante={servicio.activo ? 'peligro' : 'secundario'}
                       tamano="sm"
+                      icono={servicio.activo ? 'bloquear' : 'check'}
+                      aria-label={`${servicio.activo ? 'Desactivar' : 'Activar'} ${servicio.nombre}`}
                       onClick={() => cambiarEstado.mutate({ servicio, activo: !servicio.activo })}
                     >
                       {servicio.activo ? 'Desactivar' : 'Activar'}

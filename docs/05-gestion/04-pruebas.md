@@ -92,6 +92,8 @@ Con Docker Compose y el simulador: el recorrido completo de la [guía rápida de
 
 En una corrida posterior del frontend (lote 1 de mejoras de interfaz) una prueba de `historial-pagos` falló una vez por tiempo y pasó 4 de 4 al ejecutarla sola: se registra como prueba inestable.
 
+En el lote 2 de mejoras de interfaz (2026-11-04) volvió a pasar lo mismo: en tres corridas completas, la prueba "muestra cada pago con el texto de su estado…" de `historial-pagos` falló una vez (tardó 6,1 s; el límite por prueba es de 5 s) y las otras dos corridas quedaron en 133 de 133. Sola pasó 4 de 4. No se guardó el mensaje del fallo; por la duración, todo indica el límite de tiempo. Sigue registrada como inestable.
+
 Evidencia: `backend/test/` (`unit/`, `integration/`, `contract/`, `architecture/`), `frontend/src/**/*.spec.tsx`, `specs/003-suscripciones-pagos/quickstart.md` §6.
 
 ## 3. Datos y entornos

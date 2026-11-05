@@ -121,7 +121,7 @@ export function FormularioUnion({
       />
       <CasillaPolitica registro={register('aceptaPolitica')} error={errors.aceptaPolitica} />
       {error && <Alerta>{error}</Alerta>}
-      <Boton type="submit" bloque cargando={isSubmitting} textoCargando="Uniéndote…">
+      <Boton type="submit" bloque iconoFinal="flecha" cargando={isSubmitting} textoCargando="Uniéndote…">
         Unirme y continuar
       </Boton>
     </form>

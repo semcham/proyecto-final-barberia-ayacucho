@@ -83,7 +83,7 @@ function PasoCredenciales({ alContinuar }: { alContinuar: (desafio: string) => v
         error={errors.contrasena?.message}
       />
       {error && <Alerta>{error}</Alerta>}
-      <Boton type="submit" bloque cargando={isSubmitting} textoCargando="Verificando…">
+      <Boton type="submit" bloque iconoFinal="flecha" cargando={isSubmitting} textoCargando="Verificando…">
         Continuar
       </Boton>
     </form>

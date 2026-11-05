@@ -121,8 +121,8 @@ describe('Historial de pagos (/app/suscripcion)', () => {
     expect(filas[0]).toHaveTextContent('pago duplicado (en revisión)');
     expect(filas[1]).toHaveTextContent('aprobado');
     expect(filas[1]).toHaveTextContent('Transferencia');
-    expect(filas[1]).toHaveTextContent('operación terminada en 89AB');
-    expect(filas[1]).toHaveTextContent(/período del/);
+    expect(filas[1]).toHaveTextContent('Operación terminada en 89AB');
+    expect(filas[1]).toHaveTextContent(/Período del/);
     expect(filas[2]).toHaveTextContent('rechazado');
     expect(filas[2]).toHaveTextContent('Motivo: El voucher no se lee');
     expect(filas[3]).toHaveTextContent('comprobante en revisión');

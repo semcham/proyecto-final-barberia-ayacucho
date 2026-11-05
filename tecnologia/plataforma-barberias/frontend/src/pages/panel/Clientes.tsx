@@ -9,7 +9,7 @@ import { EncabezadoPagina } from '../../components/app/EncabezadoPagina';
 import { Icono } from '../../components/Icono';
 import { Alerta, Boton, Campo, EstadoVacio, EtiquetaEstado, Tarjeta, useAvisos } from '../../components/ui';
 import { VERSION_POLITICA_DATOS } from '../../legal';
-import { Cargando } from './Cargando';
+import { CargandoLista } from './Cargando';
 import { mensajeDeError } from './datos-barberia';
 import estilos from './Panel.module.css';
 
@@ -128,7 +128,7 @@ export function FormularioClientePresencial({
       </fieldset>
       {registrar.isError && <Alerta>{mensajeDeError(registrar.error)}</Alerta>}
       <div className={estilos.acciones}>
-        <Boton type="submit" cargando={registrar.isPending} textoCargando="Registrando…">
+        <Boton type="submit" icono="mas" cargando={registrar.isPending} textoCargando="Registrando…">
           Registrar cliente
         </Boton>
       </div>
@@ -159,19 +159,26 @@ export function BuscadorClientes({
         <label htmlFor="buscar-cliente" className="campo__etiqueta">
           {etiqueta}
         </label>
-        <input
-          id="buscar-cliente"
-          type="search"
-          className="entrada"
-          autoComplete="off"
-          value={texto}
-          onChange={(evento) => setTexto(evento.target.value)}
-        />
+        <div className="campo__control">
+          <span className="campo__icono">
+            <Icono nombre="buscar" />
+          </span>
+          <input
+            id="buscar-cliente"
+            type="search"
+            className="entrada entrada--con-icono"
+            autoComplete="off"
+            aria-describedby="buscar-cliente-ayuda"
+            value={texto}
+            onChange={(evento) => setTexto(evento.target.value)}
+          />
+        </div>
+        <p id="buscar-cliente-ayuda" className="campo__ayuda">
+          Escribe al menos 2 letras del nombre o dígitos del teléfono.
+        </p>
       </div>
-      {buscar.length < 2 ? (
-        <p className={estilos.aviso}>Escribe al menos 2 letras del nombre o dígitos del teléfono.</p>
-      ) : resultados.isPending ? (
-        <Cargando />
+      {buscar.length < 2 ? null : resultados.isPending ? (
+        <CargandoLista texto="Buscando clientes…" filas={2} />
       ) : resultados.isError ? (
         <Alerta>{mensajeDeError(resultados.error)}</Alerta>
       ) : resultados.data.length === 0 ? (
@@ -188,7 +195,7 @@ export function BuscadorClientes({
                 <span className={estilos.elementoNombre}>{cliente.nombre}</span>
                 <span className={estilos.elementoDetalle}>{cliente.telefono}</span>
               </div>
-              <div className={estilos.acciones}>
+              <div className={estilos.elementoAcciones}>
                 <EtiquetaEstado tono={cliente.origen === 'PRESENCIAL' ? 'contorno' : 'acento'}>
                   {cliente.origen === 'PRESENCIAL' ? 'Presencial' : 'Con cuenta'}
                 </EtiquetaEstado>
@@ -197,6 +204,7 @@ export function BuscadorClientes({
                     type="button"
                     variante="secundario"
                     tamano="sm"
+                    icono="check"
                     aria-label={`Elegir a ${cliente.nombre}`}
                     onClick={() => onElegir(cliente)}
                   >

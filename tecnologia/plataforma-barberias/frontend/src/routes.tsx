@@ -4,7 +4,7 @@ import { PantallaCarga } from './auth/PantallaCarga';
 import { RutaProtegida } from './auth/RutaProtegida';
 import { Icono } from './components/Icono';
 import { Logo } from './components/Logo';
-import { ProveedorAvisos } from './components/ui';
+import { clasesBoton, ProveedorAvisos } from './components/ui';
 import estilos from './pages/Portada.module.css';
 
 // Rutas de la aplicación. Se usan <Routes> (no el router de datos): la aplicación no necesita loaders ni actions.
@@ -77,11 +77,12 @@ function Portada() {
         <h1>Barberías Ayacucho</h1>
         <p className={estilos.bajada}>Gestiona tu barbería, tus barberos y tus citas desde el celular.</p>
         <div className={estilos.acciones}>
-          <Link to="/registro" className="boton boton--primario">
+          <Link to="/registro" className={clasesBoton()}>
             Registra tu barbería gratis
             <Icono nombre="flecha" tamano={18} />
           </Link>
-          <Link to="/ingresar" className="boton boton--secundario">
+          <Link to="/ingresar" className={clasesBoton({ variante: 'secundario' })}>
+            <Icono nombre="usuario" tamano={18} />
             Ingresar
           </Link>
         </div>
@@ -99,7 +100,8 @@ function NoEncontrada() {
         <h1>Página no encontrada</h1>
         <p className={estilos.bajada}>La dirección que abriste no existe o cambió.</p>
         <div className={estilos.acciones}>
-          <Link to="/" className="boton boton--secundario">
+          <Link to="/" className={clasesBoton({ variante: 'secundario' })}>
+            <Icono nombre="inicio" tamano={18} />
             Volver al inicio
           </Link>
         </div>

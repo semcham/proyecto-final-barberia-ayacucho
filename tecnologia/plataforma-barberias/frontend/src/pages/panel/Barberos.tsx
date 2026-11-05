@@ -10,7 +10,7 @@ import type { components } from '../../api/schema-002';
 import { EncabezadoPagina } from '../../components/app/EncabezadoPagina';
 import { type CitaAfectada, citasEnConflicto, ModalConflictos } from '../../components/app/ModalConflictos';
 import { Alerta, Boton, Campo, EstadoVacio, EtiquetaEstado, Tarjeta, useAvisos } from '../../components/ui';
-import { Cargando } from './Cargando';
+import { CargandoLista } from './Cargando';
 import { mensajeDeError, useZonaBarberia } from './datos-barberia';
 import estilos from './Panel.module.css';
 
@@ -71,6 +71,7 @@ export default function Barberos() {
     register,
     handleSubmit,
     reset,
+    setFocus,
     formState: { errors },
   } = useForm<Formulario>({ resolver: zodResolver(esquema), defaultValues: VACIO });
 
@@ -129,6 +130,8 @@ export default function Barberos() {
   const editar = (barbero: Barbero) => {
     setEditando(barbero);
     reset({ nombre: barbero.nombre, servicioIds: barbero.servicioIds, usuarioId: barbero.usuarioId ?? '' });
+    // En el celular el formulario queda arriba de la lista: el foco lo lleva a la vista.
+    setFocus('nombre');
   };
 
   const nombreServicio = new Map((servicios.data ?? []).map((s) => [s.id, s.nombre]));
@@ -191,7 +194,12 @@ export default function Barberos() {
             </div>
             {guardar.isError && <Alerta>{mensajeBarbero(guardar.error)}</Alerta>}
             <div className={estilos.acciones}>
-              <Boton type="submit" cargando={guardar.isPending} textoCargando="Guardando…">
+              <Boton
+                type="submit"
+                icono={editando ? 'check' : 'mas'}
+                cargando={guardar.isPending}
+                textoCargando="Guardando…"
+              >
                 {editando ? 'Guardar cambios' : 'Agregar barbero'}
               </Boton>
               {editando && (
@@ -212,7 +220,7 @@ export default function Barberos() {
 
         <section aria-label="Lista de barberos">
           {barberos.isPending ? (
-            <Cargando />
+            <CargandoLista texto="Cargando los barberos…" />
           ) : barberos.isError ? (
             <Alerta>{mensajeDeError(barberos.error)}</Alerta>
           ) : barberos.data.length === 0 ? (
@@ -236,17 +244,26 @@ export default function Barberos() {
                         ` · Usuario: ${nombrePersona.get(barbero.usuarioId) ?? 'vinculado'}`}
                     </span>
                   </div>
-                  <div className={estilos.acciones}>
+                  <div className={estilos.elementoAcciones}>
                     <EtiquetaEstado tono={barbero.activo ? 'exito' : 'neutro'}>
                       {barbero.activo ? 'Activo' : 'Inactivo'}
                     </EtiquetaEstado>
-                    <Boton type="button" variante="secundario" tamano="sm" onClick={() => editar(barbero)}>
+                    <Boton
+                      type="button"
+                      variante="secundario"
+                      tamano="sm"
+                      icono="editar"
+                      aria-label={`Editar a ${barbero.nombre}`}
+                      onClick={() => editar(barbero)}
+                    >
                       Editar
                     </Boton>
                     <Boton
                       type="button"
                       variante={barbero.activo ? 'peligro' : 'secundario'}
                       tamano="sm"
+                      icono={barbero.activo ? 'bloquear' : 'check'}
+                      aria-label={`${barbero.activo ? 'Desactivar' : 'Reactivar'} a ${barbero.nombre}`}
                       onClick={() => cambiarEstado.mutate({ barbero, activo: !barbero.activo })}
                     >
                       {barbero.activo ? 'Desactivar' : 'Reactivar'}

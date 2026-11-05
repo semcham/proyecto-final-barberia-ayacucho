@@ -8,6 +8,7 @@ import { apiComprobantesPlataforma, type ComprobantePorRevisar, type Revision } 
 import { EncabezadoPagina } from '../../components/app/EncabezadoPagina';
 import { useArchivoLocal } from '../../components/archivo-local';
 import { Alerta, Boton, Campo, EstadoVacio, EtiquetaEstado, Tarjeta, useAvisos } from '../../components/ui';
+import { CargandoLista } from '../panel/Cargando';
 import estilos from '../panel/Panel.module.css';
 
 // T084 · Comprobantes por revisar del administrador de la plataforma (US3; FR-022 a FR-024; R05, R09). La cola
@@ -71,6 +72,8 @@ function Revisar({ item, alTerminar }: { item: ComprobantePorRevisar; alTerminar
         <Boton
           type="button"
           variante={modo === 'APROBAR' ? 'primario' : 'secundario'}
+          icono="check"
+          aria-pressed={modo === 'APROBAR'}
           onClick={() => setModo('APROBAR')}
         >
           Aprobar
@@ -78,6 +81,8 @@ function Revisar({ item, alTerminar }: { item: ComprobantePorRevisar; alTerminar
         <Boton
           type="button"
           variante={modo === 'RECHAZAR' ? 'peligro' : 'secundario'}
+          icono="cerrar"
+          aria-pressed={modo === 'RECHAZAR'}
           onClick={() => setModo('RECHAZAR')}
         >
           Rechazar
@@ -100,7 +105,7 @@ function Revisar({ item, alTerminar }: { item: ComprobantePorRevisar; alTerminar
             registro={aprobar.register('importe')}
             error={aprobar.formState.errors.importe?.message}
           />
-          <Boton type="submit" cargando={revision.isPending} textoCargando="Aprobando…">
+          <Boton type="submit" icono="check" cargando={revision.isPending} textoCargando="Aprobando…">
             Confirmar la aprobación
           </Boton>
         </form>
@@ -121,7 +126,13 @@ function Revisar({ item, alTerminar }: { item: ComprobantePorRevisar; alTerminar
             registro={rechazar.register('motivo')}
             error={rechazar.formState.errors.motivo?.message}
           />
-          <Boton type="submit" variante="peligro" cargando={revision.isPending} textoCargando="Rechazando…">
+          <Boton
+            type="submit"
+            variante="peligro"
+            icono="cerrar"
+            cargando={revision.isPending}
+            textoCargando="Rechazando…"
+          >
             Confirmar el rechazo
           </Boton>
         </form>
@@ -212,11 +223,11 @@ function ElementoDeLaCola({ item, alTerminar }: { item: ComprobantePorRevisar; a
           </p>
         )}
         <div className={estilos.acciones}>
-          <Boton type="button" variante="secundario" onClick={() => void verArchivo()}>
+          <Boton type="button" variante="secundario" icono="documento" onClick={() => void verArchivo()}>
             Ver comprobante
           </Boton>
           {!numeroCompleto && (
-            <Boton type="button" variante="fantasma" onClick={() => void verNumero()}>
+            <Boton type="button" variante="fantasma" icono="ojo" onClick={() => void verNumero()}>
               Ver número completo
             </Boton>
           )}
@@ -250,7 +261,7 @@ export default function ComprobantesPlataforma() {
       {cola.isError ? (
         <Alerta>{mensajeDeError(cola.error)}</Alerta>
       ) : !cola.data ? (
-        <p aria-busy="true">Cargando la cola…</p>
+        <CargandoLista texto="Cargando los comprobantes…" />
       ) : cola.data.length === 0 ? (
         <EstadoVacio
           icono="check"

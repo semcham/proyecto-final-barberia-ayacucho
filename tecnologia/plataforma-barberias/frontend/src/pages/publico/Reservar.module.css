@@ -1,31 +1,89 @@
-/* Confirmación de la reserva: datos de la cita en filas término/valor y acciones apiladas. */
+/* Confirmación de la reserva dentro de la tarjeta de MarcoAcceso: encabezado con icono y h1, datos de la cita
+   en filas término/valor y acciones apiladas (en el celular, a todo el ancho y al alcance del pulgar). */
+
+.seccion {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-5);
+}
+
+.encabezado {
+  display: flex;
+  align-items: center;
+  gap: var(--espacio-3);
+}
+
+.seccion .encabezado h1 {
+  margin: 0;
+}
+
+.icono {
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 2.75rem;
+  height: 2.75rem;
+  border: 1px solid var(--color-acento-borde);
+  border-radius: var(--radio);
+  background: var(--color-acento-suave);
+  color: var(--color-enlace);
+}
+
+.icono[data-tono='exito'] {
+  border-color: var(--color-exito-borde);
+  background: var(--color-exito-fondo);
+  color: var(--color-exito);
+}
+
+.icono[data-tono='neutro'] {
+  border-color: var(--color-neutro-borde);
+  background: var(--color-neutro-fondo);
+  color: var(--color-neutro);
+}
+
+.texto {
+  margin: 0;
+  color: var(--color-texto-suave);
+}
 
 .datos {
   display: flex;
   flex-direction: column;
-  gap: var(--espacio-3);
-  margin: 0 0 var(--espacio-5);
+  margin: 0;
 }
 
 .datos > div {
   display: flex;
   justify-content: space-between;
   gap: var(--espacio-4);
+  padding: var(--espacio-3) 0;
+  border-bottom: 1px solid var(--color-borde);
+}
+
+.datos > div:first-child {
+  padding-top: 0;
+}
+
+.datos > div:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
 }
 
 .datos dt {
+  flex-shrink: 0;
   color: var(--color-texto-suave);
 }
 
 .datos dd {
   margin: 0;
-  font-weight: 600;
+  min-width: 0;
+  font-weight: var(--peso-fuerte);
   text-align: right;
+  overflow-wrap: anywhere;
 }
 
 .acciones {
   display: flex;
   flex-direction: column;
   gap: var(--espacio-3);
-  margin-top: var(--espacio-5);
 }

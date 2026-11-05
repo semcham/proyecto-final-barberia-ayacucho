@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { apiSuscripcion, type Pago } from '../../api/suscripcion';
 import { Alerta, Boton, EstadoVacio, EtiquetaEstado, Tarjeta } from '../../components/ui';
 import type { TonoEtiqueta } from '../../components/ui/EtiquetaEstado';
+import { CargandoLista } from './Cargando';
 import { mensajeDeError } from './datos-barberia';
 import estilos from './Panel.module.css';
 import { MEDIOS_PAGO, textoDelPago } from './textos-pagos';
@@ -31,13 +32,17 @@ function FilaDePago({ pago }: { pago: Pago }) {
         <span className={estilos.elementoNombre}>
           {pago.plan.nombre} · {soles.format(pago.importeCentimos / 100)} · {MEDIOS_PAGO[pago.medio]}
         </span>
-        <span className={estilos.elementoDetalle}>
-          {dia.format(new Date(pago.creadoEn))}
-          {pago.periodo?.iniciaEn && pago.periodo.terminaEn
-            ? ` · período del ${dia.format(new Date(pago.periodo.iniciaEn))} al ${dia.format(new Date(pago.periodo.terminaEn))}`
-            : ''}
-          {pago.numeroOperacionFinal ? ` · operación terminada en ${pago.numeroOperacionFinal}` : ''}
-        </span>
+        {/* Un dato por línea: en el celular, una sola línea con "·" se vuelve difícil de leer. */}
+        <span className={estilos.elementoDetalle}>{dia.format(new Date(pago.creadoEn))}</span>
+        {pago.periodo?.iniciaEn && pago.periodo.terminaEn && (
+          <span className={estilos.elementoDetalle}>
+            Período del {dia.format(new Date(pago.periodo.iniciaEn))} al{' '}
+            {dia.format(new Date(pago.periodo.terminaEn))}
+          </span>
+        )}
+        {pago.numeroOperacionFinal && (
+          <span className={estilos.elementoDetalle}>Operación terminada en {pago.numeroOperacionFinal}</span>
+        )}
         {pago.estado === 'RECHAZADO' && pago.motivoRechazo && (
           <span className={estilos.elementoDetalle}>Motivo: {pago.motivoRechazo}</span>
         )}
@@ -63,7 +68,7 @@ export function HistorialDePagos() {
 
   let contenido;
   if (historial.isError) contenido = <Alerta>{mensajeDeError(historial.error)}</Alerta>;
-  else if (!historial.data) contenido = <p aria-busy="true">Cargando el historial…</p>;
+  else if (!historial.data) contenido = <CargandoLista texto="Cargando el historial…" />;
   else if (historial.data.total === 0) {
     contenido = (
       <EstadoVacio
@@ -81,11 +86,12 @@ export function HistorialDePagos() {
           ))}
         </ul>
         {paginas > 1 && (
-          <nav aria-label="Páginas del historial" className={estilos.acciones}>
+          <nav aria-label="Páginas del historial" className={estilos.paginacion}>
             <Boton
               type="button"
               variante="secundario"
               tamano="sm"
+              icono="chevronIzquierda"
               disabled={pagina === 1}
               onClick={() => setPagina((p) => p - 1)}
             >
@@ -98,6 +104,7 @@ export function HistorialDePagos() {
               type="button"
               variante="secundario"
               tamano="sm"
+              iconoFinal="chevronDerecha"
               disabled={pagina >= paginas}
               onClick={() => setPagina((p) => p + 1)}
             >
@@ -110,7 +117,7 @@ export function HistorialDePagos() {
   }
 
   return (
-    <Tarjeta titulo="Historial de pagos" descripcion="Del más reciente al más antiguo." icono="calendario">
+    <Tarjeta titulo="Historial de pagos" descripcion="Del más reciente al más antiguo." icono="dinero">
       {contenido}
     </Tarjeta>
   );

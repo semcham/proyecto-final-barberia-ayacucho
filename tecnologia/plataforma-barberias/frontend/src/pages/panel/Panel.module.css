@@ -107,12 +107,113 @@
 }
 
 .elementoNombre {
-  font-weight: 600;
+  font-weight: var(--peso-fuerte);
 }
 
 .elementoDetalle {
   color: var(--color-texto-suave);
   font-size: var(--texto-sm);
+}
+
+/* Estado y acciones de un elemento. En el celular bajan a su propia fila, a todo el ancho: la etiqueta a la
+   izquierda y los botones a la derecha, en lugar de repartirse en filas desiguales. */
+.elementoAcciones {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--espacio-2);
+}
+
+@media (max-width: 35.99rem) {
+  .elementoAcciones {
+    width: 100%;
+  }
+
+  .elementoAcciones > :first-child {
+    margin-right: auto;
+  }
+}
+
+/* Opción elegible en tarjeta (por ejemplo, un plan): toda la tarjeta es el área táctil del radio. */
+.opcion {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: var(--espacio-3);
+  row-gap: var(--espacio-1);
+  padding: var(--espacio-3) var(--espacio-4);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio);
+  background: var(--color-superficie);
+  cursor: pointer;
+  transition:
+    border-color var(--transicion),
+    background-color var(--transicion);
+}
+
+.opcion:hover {
+  border-color: var(--color-borde-fuerte);
+}
+
+.opcion:has(input:checked) {
+  border-color: var(--color-acento-borde);
+  background: var(--color-acento-suave);
+}
+
+.opcion:has(input:focus-visible) {
+  border-color: var(--color-enlace);
+  box-shadow: var(--anillo-foco);
+}
+
+.opcion input {
+  grid-row: span 2;
+  margin-top: 0.2rem;
+  accent-color: var(--color-enlace);
+}
+
+.opcion input:focus-visible {
+  outline: none;
+}
+
+/* Aviso que pide atención (suscripción vencida, en gracia o suspendida): más visible que .aviso. */
+.avisoImportante {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--espacio-3);
+  padding: var(--espacio-3) var(--espacio-4);
+  border: 1px solid var(--color-aviso-borde);
+  border-radius: var(--radio);
+  background: var(--color-aviso-fondo);
+  font-size: var(--texto-sm);
+}
+
+.avisoImportante > svg {
+  margin-top: 0.1rem;
+  color: var(--color-aviso);
+}
+
+.avisoImportante p {
+  margin: 0;
+}
+
+/* Espera breve con indicador (por ejemplo, la confirmación del pago). */
+.estadoCarga {
+  display: flex;
+  align-items: center;
+  gap: var(--espacio-3);
+  margin: 0;
+  color: var(--color-texto-suave);
+}
+
+.estadoCarga .girador {
+  color: var(--color-enlace);
+}
+
+/* Paginación: en el celular, los dos botones a los lados y la página al centro. */
+.paginacion {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--espacio-3);
 }
 
 .casillas {
@@ -127,7 +228,7 @@
 
 .casillas legend {
   margin-bottom: var(--espacio-2);
-  font-weight: 500;
+  font-weight: var(--peso-medio);
 }
 
 .secciones {

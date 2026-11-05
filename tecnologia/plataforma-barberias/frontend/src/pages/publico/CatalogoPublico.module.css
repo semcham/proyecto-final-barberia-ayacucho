@@ -90,18 +90,33 @@
   cursor: pointer;
 }
 
+.servicio:hover {
+  border-color: var(--color-borde-fuerte);
+}
+
 .servicio[data-elegido] {
   border-color: var(--color-acento-borde);
   background: var(--color-acento-suave);
 }
 
+/* Con teclado, el foco del radio se ve en toda la tarjeta del servicio. */
+.servicio:has(input:focus-visible) {
+  border-color: var(--color-enlace);
+  box-shadow: var(--anillo-foco);
+}
+
 .servicio input {
   grid-row: span 3;
   margin-top: 0.2rem;
+  accent-color: var(--color-enlace);
+}
+
+.servicio input:focus-visible {
+  outline: none;
 }
 
 .servicioNombre {
-  font-weight: 600;
+  font-weight: var(--peso-fuerte);
 }
 
 .servicioDetalle,
@@ -134,16 +149,40 @@
 }
 
 .resumen {
-  margin: 0 0 var(--espacio-4);
+  margin: 0;
 }
 
+/* En el celular los botones ocupan todo el ancho (uno por fila si no caben dos). */
 .acciones {
   display: flex;
   flex-wrap: wrap;
   gap: var(--espacio-3);
 }
 
+.acciones > * {
+  flex: 1 1 12rem;
+}
+
+/* Tu selección: en el celular queda fija sobre el borde inferior mientras se baja por la lista de horas. */
+@media (max-width: 47.99rem) {
+  .seleccion {
+    position: sticky;
+    bottom: var(--espacio-3);
+    z-index: var(--capa-cabecera);
+    box-shadow: var(--sombra-lg);
+  }
+}
+
+@media (min-width: 48rem) {
+  .acciones > * {
+    flex: 0 0 auto;
+  }
+}
+
 .noDisponible {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
   max-width: 36rem;
 }
 

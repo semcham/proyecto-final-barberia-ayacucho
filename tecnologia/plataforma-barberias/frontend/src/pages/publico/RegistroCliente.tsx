@@ -159,7 +159,13 @@ export default function RegistroCliente() {
             <Alerta>{mensajeDeError(registro.error)}</Alerta>
           ))}
 
-        <Boton type="submit" bloque cargando={registro.isPending} textoCargando="Creando tu cuenta…">
+        <Boton
+          type="submit"
+          bloque
+          iconoFinal="flecha"
+          cargando={registro.isPending}
+          textoCargando="Creando tu cuenta…"
+        >
           Crear mi cuenta
         </Boton>
       </form>

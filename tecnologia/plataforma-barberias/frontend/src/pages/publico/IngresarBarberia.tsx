@@ -107,7 +107,7 @@ export default function IngresarBarberia() {
             error={errors.contrasena?.message}
           />
           {error && <Alerta>{error}</Alerta>}
-          <Boton type="submit" bloque cargando={isSubmitting} textoCargando="Ingresando…">
+          <Boton type="submit" bloque iconoFinal="flecha" cargando={isSubmitting} textoCargando="Ingresando…">
             Ingresar
           </Boton>
         </form>

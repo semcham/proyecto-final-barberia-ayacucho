@@ -176,6 +176,8 @@ desplegado y **sin ningún cobro real**. Detalle de las ejecuciones en el
 | Matriz de permisos de 003                         | `contracts/rbac.md`                                                                                                      | AC04 / EQ-08                        | PR08 `rbac-003`: la tabla completa, 120 celdas (en verde)                                                                                                 | Implementado                                                      |
 | Interfaz del propietario y del administrador      | `frontend/src/pages/panel/` (suscripción, transferencia, historial), `pages/plataforma/`                                 | RF19–RF25, RF02                     | Vitest + MSW: 133 pruebas en total (en verde)                                                                                                             | Implementado; cronometraje con una persona pendiente              |
 
+**Lote 2 de mejoras de interfaz** (solo presentación y accesibilidad; sin cambios de lógica, API, rutas ni permisos): catálogo público, reserva, registro e ingreso del cliente; activación, portada y página 404; Servicios, Barberos, Clientes, Suscripción, Transferencia e Historial de pagos; Inicio, Comprobantes, Pagos por revisar e ingreso de la plataforma. Vitest: 133 de 133 en verde. Lighthouse y axe no se ejecutaron en este lote.
+
 ## 5. Diagramas y su evidencia
 
 Cada diagrama de `docs/` tiene debajo una línea "Evidencia" con los archivos reales que lo respaldan. Todos usan la [leyenda común](04-modelo-c4/Nivel1-DiagramadeContextodelSistema.md#leyenda-común-de-todos-los-diagramas). La imagen de cada uno se genera desde su código Mermaid y se guarda en `img/` con el nombre indicado.

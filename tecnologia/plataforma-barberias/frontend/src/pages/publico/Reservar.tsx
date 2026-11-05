@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useId, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { clavesConsulta } from '../../api/claves';
 import { ApiError, esRestriccionDeSuscripcion, llamarApi } from '../../api/client';
@@ -9,11 +9,11 @@ import { PantallaCarga } from '../../auth/PantallaCarga';
 import { RutaProtegida } from '../../auth/RutaProtegida';
 import { useSesion } from '../../auth/SesionProvider';
 import { ConfirmarCancelacion } from '../../components/app/ConfirmarCancelacion';
+import { Icono, type NombreIcono } from '../../components/Icono';
 import { MarcoAcceso } from '../../components/MarcoAcceso';
 import { Alerta } from '../../components/ui/Alerta';
 import { Boton, clasesBoton } from '../../components/ui/Boton';
-import { EstadoVacio } from '../../components/ui/EstadoVacio';
-import { Tarjeta } from '../../components/ui/Tarjeta';
+import { Esqueleto, EsqueletoTexto } from '../../components/ui/Esqueleto';
 import { fechaDeBarberia, fechaIsoDeBarberia, horaConEtiqueta, horaDeBarberia } from '../../hora-barberia';
 import estilos from './Reservar.module.css';
 import { FormularioUnion, mensajeDeError } from './Union';
@@ -76,9 +76,17 @@ export default function Reservar() {
       />
     );
   } else if (union) {
-    contenido = <FormularioUnion mensaje={union} alUnirse={(datos) => asegurarBarberia(slug, datos)} />;
+    contenido = (
+      <SeccionCita titulo="Únete a esta barbería" icono="tienda">
+        <FormularioUnion mensaje={union} alUnirse={(datos) => asegurarBarberia(slug, datos)} />
+      </SeccionCita>
+    );
   } else if (errorCambio) {
-    contenido = <Alerta>{errorCambio}</Alerta>;
+    contenido = (
+      <SeccionCita titulo="No pudimos preparar tu reserva" icono="alerta" tono="neutro">
+        <Alerta>{errorCambio}</Alerta>
+      </SeccionCita>
+    );
   } else {
     return <PantallaCarga />;
   }
@@ -138,10 +146,21 @@ function ConfirmarReserva({ slug, seleccion }: { slug: string; seleccion: Solici
   });
 
   if (catalogo.isPending || operativo.isPending) {
-    return <p aria-busy="true">Cargando los datos de tu cita…</p>;
+    return (
+      <div aria-busy="true" className={estilos.seccion}>
+        <span className="sr-only">Cargando los datos de tu cita…</span>
+        <Esqueleto ancho="70%" alto="2rem" />
+        <EsqueletoTexto lineas={6} />
+        <Esqueleto alto="var(--alto-control)" />
+      </div>
+    );
   }
   if (catalogo.isError) {
-    return <Alerta>{mensajeDeError(catalogo.error)}</Alerta>;
+    return (
+      <SeccionCita titulo="No pudimos cargar tu cita" icono="alerta" tono="neutro">
+        <Alerta>{mensajeDeError(catalogo.error)}</Alerta>
+      </SeccionCita>
+    );
   }
 
   const { barberia, servicios, barberos } = catalogo.data;
@@ -150,19 +169,18 @@ function ConfirmarReserva({ slug, seleccion }: { slug: string; seleccion: Solici
   const barbero = barberos.find((b) => b.id === seleccion.barberoId);
   const inicioValido = !Number.isNaN(Date.parse(seleccion.inicio));
   const volver = (
-    <Link to={`/b/${slug}`} className={clasesBoton({ variante: 'secundario' })}>
+    <Link to={`/b/${slug}`} className={clasesBoton({ variante: 'secundario', bloque: true })}>
+      <Icono nombre="chevronIzquierda" tamano={18} />
       Volver a la barbería
     </Link>
   );
 
   if (!servicio || !barbero || !inicioValido) {
     return (
-      <EstadoVacio
-        icono="calendario"
-        titulo="Esta selección ya no está disponible"
-        descripcion="Elige de nuevo el servicio, el barbero y la hora."
-        accion={volver}
-      />
+      <SeccionCita titulo="Esta selección ya no está disponible" icono="calendario" tono="neutro">
+        <p className={estilos.texto}>Elige de nuevo el servicio, el barbero y la hora.</p>
+        {volver}
+      </SeccionCita>
     );
   }
 
@@ -173,17 +191,22 @@ function ConfirmarReserva({ slug, seleccion }: { slug: string; seleccion: Solici
   // Si la consulta del estado falla, la reserva sigue: el servidor la rechaza con su mensaje si no procede.
   if (operativo.data && !operativo.data.aceptaReservas) {
     return (
-      <EstadoVacio
-        icono="calendario"
+      <SeccionCita
         titulo={operativo.data.mensaje ?? 'Esta barbería no acepta reservas por ahora'}
-        descripcion={`${barberia.nombre} no está recibiendo reservas en línea en este momento. Vuelve a intentarlo más tarde o comunícate con la barbería.`}
-        accion={volver}
-      />
+        icono="calendario"
+        tono="neutro"
+      >
+        <p className={estilos.texto}>
+          {barberia.nombre} no está recibiendo reservas en línea en este momento. Vuelve a intentarlo más
+          tarde o comunícate con la barbería.
+        </p>
+        {volver}
+      </SeccionCita>
     );
   }
 
   return (
-    <Tarjeta titulo="Confirma tu cita" icono="calendario">
+    <SeccionCita titulo="Confirma tu cita" icono="calendario">
       <DatosCita
         filas={[
           ['Barbería', barberia.nombre],
@@ -200,6 +223,7 @@ function ConfirmarReserva({ slug, seleccion }: { slug: string; seleccion: Solici
         <Boton
           type="button"
           bloque
+          icono="calendarioCheck"
           cargando={reserva.isPending}
           textoCargando="Reservando…"
           onClick={() => reserva.mutate()}
@@ -208,7 +232,7 @@ function ConfirmarReserva({ slug, seleccion }: { slug: string; seleccion: Solici
         </Boton>
         {volver}
       </div>
-    </Tarjeta>
+    </SeccionCita>
   );
 }
 
@@ -227,10 +251,10 @@ function CitaReservada({ cita: reservada, zona }: { cita: Cita; zona: string }) 
   const cancelada = cita.estado === 'CANCELADA';
 
   return (
-    <Tarjeta
+    <SeccionCita
       titulo={cancelada ? 'Tu cita fue cancelada' : 'Tu cita está confirmada'}
       icono={cancelada ? 'cerrar' : 'check'}
-      destacada={!cancelada}
+      tono={cancelada ? 'neutro' : 'exito'}
     >
       <DatosCita
         filas={[
@@ -254,10 +278,17 @@ function CitaReservada({ cita: reservada, zona }: { cita: Cita; zona: string }) 
       {cancelar.isError && <Alerta>{mensajeDeError(cancelar.error)}</Alerta>}
       <div className={estilos.acciones}>
         <Link to="/mis-citas" className={clasesBoton({ bloque: true })}>
+          <Icono nombre="calendario" tamano={18} />
           Ver mis citas
         </Link>
         {!cancelada && (
-          <Boton type="button" variante="secundario" bloque onClick={() => setConfirmando(true)}>
+          <Boton
+            type="button"
+            variante="secundario"
+            bloque
+            icono="cerrar"
+            onClick={() => setConfirmando(true)}
+          >
             Cancelar cita
           </Boton>
         )}
@@ -272,7 +303,36 @@ function CitaReservada({ cita: reservada, zona }: { cita: Cita; zona: string }) 
           onCerrar={() => setConfirmando(false)}
         />
       )}
-    </Tarjeta>
+    </SeccionCita>
+  );
+}
+
+/**
+ * Contenido de la reserva dentro de la tarjeta de MarcoAcceso: el título es el h1 de la pantalla (el titular
+ * del panel de marca es solo un párrafo y en el celular no se ve).
+ */
+function SeccionCita({
+  titulo,
+  icono,
+  tono = 'acento',
+  children,
+}: {
+  titulo: string;
+  icono: NombreIcono;
+  tono?: 'acento' | 'exito' | 'neutro';
+  children: ReactNode;
+}) {
+  const idTitulo = useId();
+  return (
+    <section aria-labelledby={idTitulo} className={estilos.seccion}>
+      <div className={estilos.encabezado}>
+        <span className={estilos.icono} data-tono={tono}>
+          <Icono nombre={icono} />
+        </span>
+        <h1 id={idTitulo}>{titulo}</h1>
+      </div>
+      {children}
+    </section>
   );
 }
 

@@ -6,7 +6,9 @@ import { z } from 'zod';
 import { ApiError } from '../../api/client';
 import { apiSuscripcion, type Pago, type PagoIniciado, type Suscripcion } from '../../api/suscripcion';
 import { useArchivoLocal } from '../../components/archivo-local';
+import { Icono } from '../../components/Icono';
 import { Alerta, Boton, Campo, CampoArchivo, Tarjeta } from '../../components/ui';
+import { CargandoLista } from './Cargando';
 import { mensajeDeError } from './datos-barberia';
 import estilos from './Panel.module.css';
 
@@ -144,7 +146,7 @@ function FormularioComprobante({ pagoId, alSubir }: { pagoId: string; alSubir: (
       </div>
       {subir.isError && <Alerta>{mensajeDeSubida(subir.error)}</Alerta>}
       <div className={estilos.acciones}>
-        <Boton type="submit" cargando={subir.isPending} textoCargando="Enviando…">
+        <Boton type="submit" icono="subir" cargando={subir.isPending} textoCargando="Enviando…">
           Enviar comprobante
         </Boton>
       </div>
@@ -166,7 +168,7 @@ function VerMiComprobante({ pagoId }: { pagoId: string }) {
   };
   return (
     <div className={estilos.acciones}>
-      <Boton type="button" variante="secundario" onClick={() => void abrir()}>
+      <Boton type="button" variante="secundario" icono="documento" onClick={() => void abrir()}>
         Ver el comprobante enviado
       </Boton>
       {archivo.url && (
@@ -189,7 +191,9 @@ function EsperandoComprobante({ pago }: { pago: Pago }) {
     staleTime: Infinity,
   });
   if (datos.isError) return <Alerta>{mensajeDeError(datos.error)}</Alerta>;
-  if (!datos.data?.transferencia) return <p aria-busy="true">Cargando los datos de la transferencia…</p>;
+  if (!datos.data?.transferencia) {
+    return <CargandoLista texto="Cargando los datos de la transferencia…" filas={4} />;
+  }
   return (
     <>
       <DatosTransferencia datos={datos.data.transferencia} />
@@ -220,6 +224,7 @@ function Rechazado({ pago }: { pago: Pago }) {
       <div className={estilos.acciones}>
         <Boton
           type="button"
+          icono="subir"
           cargando={otra.isPending}
           textoCargando="Preparando…"
           onClick={() => otra.mutate()}
@@ -252,7 +257,8 @@ export function SeccionTransferencia({ suscripcion }: { suscripcion: Suscripcion
   } else if (conTransferencia?.estado === 'EN_REVISION') {
     contenido = (
       <div className={estilos.formulario}>
-        <p role="status" className={estilos.aviso}>
+        <p role="status" className={estilos.estadoCarga}>
+          <Icono nombre="reloj" tamano={18} />
           Tu comprobante está en revisión
           {conTransferencia.numeroOperacionFinal
             ? ` (operación terminada en ${conTransferencia.numeroOperacionFinal})`

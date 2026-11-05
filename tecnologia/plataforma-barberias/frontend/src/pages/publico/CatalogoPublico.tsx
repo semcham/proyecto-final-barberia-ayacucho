@@ -10,6 +10,7 @@ import { Icono } from '../../components/Icono';
 import { Logo } from '../../components/Logo';
 import { Alerta } from '../../components/ui/Alerta';
 import { Boton, clasesBoton } from '../../components/ui/Boton';
+import { Esqueleto } from '../../components/ui/Esqueleto';
 import { EstadoVacio } from '../../components/ui/EstadoVacio';
 import { Tarjeta } from '../../components/ui/Tarjeta';
 import {
@@ -56,6 +57,18 @@ export default function CatalogoPublico() {
               ? 'El enlace no existe, cambió o la barbería no está atendiendo reservas. Pide el enlace actualizado a la barbería.'
               : mensajeDeError(catalogo.error)}
           </p>
+          {!noDisponible && (
+            <Boton
+              type="button"
+              variante="secundario"
+              icono="recargar"
+              cargando={catalogo.isFetching}
+              textoCargando="Intentando…"
+              onClick={() => void catalogo.refetch()}
+            >
+              Intentar de nuevo
+            </Boton>
+          )}
         </section>
       </main>
     );
@@ -218,9 +231,12 @@ function ContenidoCatalogo({ catalogo, slug }: { catalogo: Catalogo; slug: strin
           {!servicio ? (
             <p className={estilos.ayuda}>Elige un servicio para ver las horas libres.</p>
           ) : horarios.isPending ? (
-            <p aria-busy="true" className={estilos.ayuda}>
-              Buscando horas libres…
-            </p>
+            <div aria-busy="true" className={estilos.horas}>
+              <span className="sr-only">Buscando horas libres…</span>
+              {Array.from({ length: 8 }, (_, i) => (
+                <Esqueleto key={i} alto="var(--alto-control-sm)" />
+              ))}
+            </div>
           ) : horarios.isError ? (
             <Alerta>{mensajeDeError(horarios.error)}</Alerta>
           ) : horas.length === 0 ? (
@@ -256,19 +272,21 @@ function ContenidoCatalogo({ catalogo, slug }: { catalogo: Catalogo; slug: strin
       </div>
 
       {servicio && hora && barberoElegido && destino && (
-        <Tarjeta titulo="Tu selección" icono="calendario" destacada>
+        // En el celular queda fija abajo: el botón para reservar se ve apenas se elige la hora.
+        <Tarjeta titulo="Tu selección" icono="calendario" destacada className={estilos.seleccion}>
           <p className={estilos.resumen}>
             {servicio.nombre} con {barberoElegido.nombre}, {fechaDeBarberia(hora.inicio, zona)} a las{' '}
             {horaConEtiqueta(hora.inicio, zona)}.
           </p>
           <div className={estilos.acciones}>
             {esCliente ? (
-              <Boton type="button" iconoFinal="flecha" onClick={() => navegar(destino)}>
+              <Boton type="button" icono="calendarioCheck" onClick={() => navegar(destino)}>
                 Reservar esta hora
               </Boton>
             ) : (
               <>
                 <Link to={`/b/${slug}/registro`} state={{ desde: destino }} className={clasesBoton()}>
+                  <Icono nombre="calendarioCheck" tamano={18} />
                   Crear cuenta y reservar
                 </Link>
                 <Link
@@ -276,6 +294,7 @@ function ContenidoCatalogo({ catalogo, slug }: { catalogo: Catalogo; slug: strin
                   state={{ desde: destino }}
                   className={clasesBoton({ variante: 'secundario' })}
                 >
+                  <Icono nombre="usuario" tamano={18} />
                   Ya tengo cuenta
                 </Link>
               </>

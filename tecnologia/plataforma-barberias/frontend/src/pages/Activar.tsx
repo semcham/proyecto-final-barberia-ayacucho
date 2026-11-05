@@ -5,7 +5,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { z } from 'zod';
 import { ApiError, llamarApi } from '../api/client';
 import { Alerta } from '../components/ui/Alerta';
-import { Boton } from '../components/ui/Boton';
+import { Boton, clasesBoton } from '../components/ui/Boton';
 import { CampoContrasena } from '../components/ui/Campo';
 import { Icono } from '../components/Icono';
 import { IndicadorFortaleza } from '../components/IndicadorFortaleza';
@@ -65,7 +65,10 @@ export default function Activar() {
           <h1>Activa tu cuenta</h1>
         </div>
         <Alerta>{ENLACE_INVALIDO}</Alerta>
-        <Link to="/ingresar" className={`boton boton--secundario boton--bloque ${estilos.enlaceAccion}`}>
+        <Link
+          to="/ingresar"
+          className={clasesBoton({ variante: 'secundario', bloque: true, className: estilos.enlaceAccion })}
+        >
           Ir a ingresar
         </Link>
       </MarcoAcceso>
@@ -118,7 +121,7 @@ export default function Activar() {
           error={errors.confirmacion?.message}
         />
         {error && <Alerta>{error}</Alerta>}
-        <Boton type="submit" bloque cargando={isSubmitting} textoCargando="Activando…">
+        <Boton type="submit" bloque iconoFinal="flecha" cargando={isSubmitting} textoCargando="Activando…">
           Activar mi cuenta
         </Boton>
       </form>

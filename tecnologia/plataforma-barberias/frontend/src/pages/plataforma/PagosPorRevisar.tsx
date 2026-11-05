@@ -7,6 +7,7 @@ import { apiPagosPorRevisar, type PagoPorRevisar } from '../../api/plataforma';
 import { EncabezadoPagina } from '../../components/app/EncabezadoPagina';
 import { Alerta, Boton, Campo, EstadoVacio, EtiquetaEstado, Tarjeta, useAvisos } from '../../components/ui';
 import type { TonoEtiqueta } from '../../components/ui/EtiquetaEstado';
+import { CargandoLista } from '../panel/Cargando';
 import estilos from '../panel/Panel.module.css';
 
 // T091 · Pagos por revisar del administrador de la plataforma (US4; FR-025a): pagos duplicados, importes
@@ -100,7 +101,7 @@ function Resolver({
       />
       {resolver.isError && <Alerta>{mensajeDeError(resolver.error)}</Alerta>}
       <div className={estilos.acciones}>
-        <Boton type="submit" cargando={resolver.isPending} textoCargando="Guardando…">
+        <Boton type="submit" icono="check" cargando={resolver.isPending} textoCargando="Guardando…">
           Marcar como resuelto
         </Boton>
       </div>
@@ -158,7 +159,7 @@ export default function PagosPorRevisarPagina() {
       {lista.isError ? (
         <Alerta>{mensajeDeError(lista.error)}</Alerta>
       ) : !lista.data ? (
-        <p aria-busy="true">Cargando los casos…</p>
+        <CargandoLista texto="Cargando los casos…" />
       ) : lista.data.length === 0 ? (
         <EstadoVacio icono="check" titulo="No hay pagos por revisar" descripcion="Todo está al día." />
       ) : (
