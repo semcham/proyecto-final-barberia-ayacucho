@@ -22,6 +22,18 @@ Cinco módulos de negocio y un núcleo compartido. Se agrupó por **cohesión fu
 | M06 | Núcleo compartido                  | carpetas de `shared/`                   | Tenant, transacción con RLS, auditoría, caché, límites, reloj y zona horaria, tareas programadas, resiliencia                                         | RF31 (auditoría)      | Parcial: eventos y enlaces firmados (004) e indicadores (007) planificados |
 > **Por qué seis y no diez.** Un módulo por cada capacidad aislada aumenta las interfaces, las pruebas de frontera y la coordinación, algo que un equipo pequeño no necesita en el MVP (RC06, RC14). Las capacidades que cambian juntas (por ejemplo, catálogo y citas; suscripciones y pagos) se agrupan. La separación fina se mantiene dentro del módulo como submódulos con su propio puerto, de modo que el sistema sigue siendo escalable: un submódulo puede convertirse en módulo, o en servicio, sin cambiar su contrato.
 
+### 2.1 Vista general: monolito modular y capas
+
+El sistema es un monolito modular y cada módulo se organiza en cuatro capas con dependencias hacia el interior.
+
+![Vista general: monolito modular y capas](../../img/monolito-capas-estilo.png)
+
+_Figura 1. Vista general de la arquitectura: monolito modular con cuatro capas._
+
+Fuente editable: img/monolito-capas-estilo.svg.
+
+Leyenda: borde punteado = límite de módulo; borde discontinuo con relleno = planificado, sin código todavía (M04 y M05); flecha verde = uso entre módulos por su interfaz pública; flecha morada = la infraestructura implementa los puertos de la aplicación.
+
 ## 3. Dependencias permitidas
 
 Un módulo **solo** puede depender de otro a través de su **interfaz pública** (ver [componentes](componentes-arquitectonicos.md)). Nunca accede a sus tablas ni a sus clases internas. La siguiente matriz indica con ✓ que la fila **puede llamar** a la columna.
@@ -51,7 +63,7 @@ Un módulo **solo** puede depender de otro a través de su **interfaz pública**
 
 ![Dependencias permitidas entre módulos](../../img/modulos-dependencias-permitidas.png)
 
-_Figura 1. Dependencias permitidas entre módulos._
+_Figura 2. Dependencias permitidas entre módulos._
 
 <details>
 <summary>Código fuente del diagrama (Mermaid)</summary>

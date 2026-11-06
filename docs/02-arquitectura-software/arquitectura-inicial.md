@@ -17,31 +17,62 @@ _Figura 1. Propuesta inicial de tres capas (histórica)._
 
 ```mermaid
 flowchart TB
-    USR(["Cliente, personal y administrador<br/>navegador web"]):::persona
-    subgraph P["1. Capa de presentación (frontend)"]
-        UI["Interfaz web React + Vite<br/>pantallas por rol · sesión con token"]
+    subgraph ACT["ACTORES"]
+        direction TB
+        CLI(["Cliente"])
+        BAR(["Barbero"])
+        OWN(["Propietario"])
+        ADM(["Administrador<br/>de la plataforma"])
     end
-    subgraph N["2. Capa de lógica de negocio (backend)"]
-        API["API REST NestJS /api/v1<br/>controladores y guardas<br/>(token, rol, tenant)"]
-        SV["Módulos: Acceso y barberías · Catálogo y citas<br/>Suscripciones y pagos · Asistente IA · Notificaciones"]
+
+    subgraph PRE["CAPA DE PRESENTACIÓN"]
+        direction TB
+        WEB["Aplicación web<br/>React + Vite · pantallas por rol"]
+        API["API REST<br/>NestJS /api/v1 · token, rol y barbería"]
     end
-    subgraph D["3. Capa de datos"]
-        DB[("PostgreSQL 16<br/>tenant_id en cada fila + RLS")]
-        RC[("Redis<br/>caché y límites")]
+
+    subgraph NEG["CAPA DE LÓGICA DE NEGOCIO (monolito modular)"]
+        direction TB
+        M01["M01<br/>Acceso y barberías"]
+        M02["M02<br/>Catálogo y citas"]
+        M03["M03<br/>Suscripciones y pagos"]
+        M04["M04<br/>Asistente IA<br/>y reportes"]
+        M05["M05<br/>Notificaciones"]
+        M06["M06<br/>Núcleo compartido"]
     end
-    EXT["Proveedores externos<br/>pasarela de pagos · IA · correo · WhatsApp"]:::externo
-    USR -->|"HTTPS"| UI
-    UI -->|"JSON por HTTP con token"| API
-    API -->|"llama"| SV
-    SV -->|"SQL en transacción por barbería"| DB
-    SV -.->|"caché y límites"| RC
-    SV -.->|"sesión de pago, avisos"| EXT
+
+    subgraph DAT["CAPA DE DATOS"]
+        direction TB
+        PG[("Base de datos PostgreSQL 16<br/>tenant_id en cada fila + RLS")]
+        RD[("Caché Redis<br/>(no guarda datos del negocio)")]
+    end
+
+    subgraph EXT["SISTEMAS EXTERNOS"]
+        direction TB
+        PAY["Proveedor de pagos<br/>usado por M03<br/>hoy: pasarela simulada"]
+        AI["Proveedor de IA<br/>usado por M04"]
+        MAIL["Servicio de correo<br/>usado por M05"]
+        WA["Servicio de WhatsApp<br/>usado por M05"]
+    end
+
+    WEB -->|"JSON por HTTP con token"| API
+    ACT -->|"HTTPS"| PRE
+    PRE -->|"llama a los módulos"| NEG
+    NEG -->|"SQL en transacción por barbería;<br/>caché y límites"| DAT
+    NEG -->|"cobro de la suscripción,<br/>consultas y avisos"| EXT
+
     classDef persona fill:#ffffff,stroke:#424242,color:#212121
     classDef app fill:#e8eef7,stroke:#3b5b8c,color:#1f2d4a
     classDef datos fill:#e3f2fd,stroke:#1565c0,color:#0d47a1
     classDef externo fill:#fff3e0,stroke:#ef6c00,color:#e65100
-    class UI,API,SV app
-    class DB,RC datos
+    classDef planificado fill:#e8eef7,stroke:#3b5b8c,color:#1f2d4a,stroke-dasharray:6 4
+    classDef extplan fill:#fff3e0,stroke:#ef6c00,color:#e65100,stroke-dasharray:6 4
+    class CLI,BAR,OWN,ADM persona
+    class WEB,API,M01,M02,M03,M06 app
+    class M04,M05 planificado
+    class PG,RD datos
+    class PAY externo
+    class AI,MAIL,WA extplan
 ```
 
 </details>
@@ -61,11 +92,11 @@ Evidencia: es el punto de partida de la Guía 02; la decisión que lo reemplaza 
 
 Se mantiene la idea de separar responsabilidades, pero se divide la lógica de negocio en **Aplicación** y **Dominio**, y se agrupa todo lo técnico en **Infraestructura**, con la **regla de dependencia hacia el interior**.
 
-| Tres capas (Guía 02) | Cuatro capas (Guía 03)                                                               | Cambio      |
-| -------------------- | ------------------------------------------------------------------------------------ | ----------- |
-| Presentación         | **Presentación** (interfaz web y controladores de la API)                            | Se mantiene |
-| Lógica de negocio    | **Aplicación** (casos de uso, puertos, transacciones)                                | Se separa   |
-| Lógica de negocio    | **Dominio** (entidades, objetos de valor, reglas e invariantes)                      | Se separa   |
+| Tres capas (Guía 02) | Cuatro capas (Guía 03)                                                                | Cambio      |
+| -------------------- | ------------------------------------------------------------------------------------- | ----------- |
+| Presentación         | **Presentación** (interfaz web y controladores de la API)                             | Se mantiene |
+| Lógica de negocio    | **Aplicación** (casos de uso, puertos, transacciones)                                 | Se separa   |
+| Lógica de negocio    | **Dominio** (entidades, objetos de valor, reglas e invariantes)                       | Se separa   |
 | Datos                | **Infraestructura** (PostgreSQL, Redis, adaptador de pagos; IA y correo planificados) | Se amplía   |
 
 El diagrama completo con las dependencias permitidas está en [enfoque-arquitectonico.md](enfoque-arquitectonico.md#3-diagrama-de-cuatro-capas-y-dependencias-permitidas).
