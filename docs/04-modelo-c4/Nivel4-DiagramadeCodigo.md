@@ -6,66 +6,13 @@
 
 ![C4 nivel 4: reservar cita](../../img/c4-nivel4-reservar-cita.png)
 
-_Figura 1. Clases del caso de uso "Reservar cita" (implementado)._
+_Figura 1. Clases del caso de uso "Reservar cita" (M02) y de la API pública de Suscripciones (M03) que exige la operación (implementado)._
 
-<details>
-<summary>Código fuente del diagrama (Mermaid)</summary>
+Fuente editable: img/c4-nivel4-reservar-cita.svg.
 
-```mermaid
-classDiagram
-    direction TB
-    class CitasController {
-        <<presentación>>
-    }
-    class ReservarCita {
-        <<aplicación>>
-        +ejecutar(actor, comando, clave)
-    }
-    class SuscripcionesApi {
-        <<interfaz de M03>>
-        +exigirOperacion(tenant, accion)
-    }
-    class CatalogQuery {
-        <<puerto>>
-        +servicioActivo(id)
-        +barberoOfrece(barbero, servicio)
-        +tramosDelDia(barbero, fecha)
-    }
-    class CitaRepository {
-        <<puerto>>
-        +guardar(cita, idempotencia)
-        +buscarPorIdempotencia(autor, clave)
-    }
-    class Cita {
-        <<dominio>>
-        +reservar(entrada)$
-        +cancelar(quien, ahora, antelacion)
-        +completar(ahora)
-        +marcarNoAsistio(ahora)
-    }
-    class RangoHorario {
-        <<valor>>
-        +seSolapaCon(otro)
-        +duracionMinutos()
-    }
-    class CitaRepositoryPostgres {
-        <<infraestructura>>
-    }
-    CitasController --> ReservarCita
-    ReservarCita --> SuscripcionesApi
-    ReservarCita --> CatalogQuery
-    ReservarCita --> CitaRepository
-    ReservarCita ..> Cita : crea
-    Cita *-- RangoHorario
-    CitaRepository <|.. CitaRepositoryPostgres
+Leyenda: columnas = capas de Clean Architecture; recuadro = módulo (carpeta de `backend/src/modules/`); flecha continua = el uso de una clase por otra; flecha discontinua = crea o devuelve; flecha discontinua con triángulo hueco = implementa una interfaz; rombo = composición.
 
-    classDef implementado fill:#e8eef7,stroke:#3b5b8c,color:#1f2d4a
-    cssClass "CitasController,ReservarCita,SuscripcionesApi,CatalogQuery,CitaRepository,Cita,RangoHorario,CitaRepositoryPostgres" implementado
-```
-
-</details>
-
-Leyenda: azul grisáceo = sistema propio. **Lectura.** `ReservarCita` (aplicación) solo conoce interfaces; `Cita` y `RangoHorario` (dominio) no conocen nada de infraestructura; `CitaRepositoryPostgres` traduce la violación de la restricción de exclusión a `HorarioNoDisponible` (409). Los estados de la cita son `PENDIENTE`, `CONFIRMADA`, `COMPLETADA`, `NO_ASISTIO` y `CANCELADA` ([diseño interno, 1.1](../03-diseño-de-software/diseño-interno/diseño-interno-de-modulos.md#11-estados-de-la-cita)).
+**Lectura.** `ReservarCita` (aplicación) solo conoce interfaces; `Cita` y `RangoHorario` (dominio) no conocen nada de infraestructura; `CitaRepositoryPostgres` traduce la violación de la restricción de exclusión a `HorarioNoDisponible` (409). Los estados de la cita son `PENDIENTE`, `CONFIRMADA`, `COMPLETADA`, `NO_ASISTIO` y `CANCELADA` ([diseño interno, 1.1](../03-diseño-de-software/diseño-interno/diseño-interno-de-modulos.md#11-estados-de-la-cita)).
 
 | Clase / interfaz                     | Capa                | Responsabilidad                                                               | Requisito    |
 | ------------------------------------ | ------------------- | ----------------------------------------------------------------------------- | ------------ |
@@ -74,8 +21,11 @@ Leyenda: azul grisáceo = sistema propio. **Lectura.** `ReservarCita` (aplicaci�
 | `Cita`, `RangoHorario`, `EstadoCita` | Dominio             | Invariantes y transiciones                                                    | RF12–RF15    |
 | `CitaRepository`                     | Aplicación (puerto) | Contrato de persistencia                                                      | EQ-09, EQ-16 |
 | `CitaRepositoryPostgres`             | Infraestructura     | Inserción en la transacción con tenant fijado                                 | ADR-009      |
+| `SuscripcionesApi`                   | Aplicación (API pública de M03) | Única entrada de los otros módulos a Suscripciones; `exigirOperacion(tenantId, accion)` delega en `ExigirOperacion`. La llaman M01 y M02 | RF21 |
+| `ExigirOperacion`                    | Aplicación          | Leer la suscripción del tenant y exigir que su estado permita la acción; si no, 403 `SUSCRIPCION_NO_PERMITE` | RF21 |
+| `PoliticaDeOperacion`                | Dominio             | Qué acciones permite cada estado de la suscripción (`permite`, `exigir`)       | RF21         |
 
-Evidencia: `backend/src/modules/catalogo-citas/citas/presentation/citas.controller.ts`, `citas/application/reservar-cita.ts`, `citas/application/ports/cita-repository.ts`, `citas/domain/cita.ts`, `catalogo/domain/rango-horario.ts`, `catalogo/application/ports/catalog-query.ts`, `citas/infrastructure/`; pruebas `backend/test/unit/citas/cita.spec.ts` e `integration/citas/reservar.spec.ts`.
+Evidencia: `backend/src/modules/catalogo-citas/citas/presentation/citas.controller.ts`, `citas/application/reservar-cita.ts`, `citas/application/ports/cita-repository.ts`, `citas/domain/cita.ts`, `catalogo/domain/rango-horario.ts`, `catalogo/application/ports/catalog-query.ts`, `citas/infrastructure/`; `backend/src/modules/suscripciones-pagos/suscripciones-api.ts` y `suscripciones-pagos/suscripciones/{application,domain,infrastructure}` (`exigir-operacion.ts`, `politica-de-operacion.ts`, `kysely-suscripcion-repository.ts`); pruebas `backend/test/unit/citas/cita.spec.ts` e `integration/citas/reservar.spec.ts`.
 
 ## 2. Submódulo `pagos` (M03): puerto `PaymentGateway` y casos de uso
 
