@@ -9,7 +9,7 @@
 ![Estilo](https://img.shields.io/badge/estilo-monolito%20modular-2da44e)
 ![Multi-tenancy](https://img.shields.io/badge/multi--tenancy-tenant__id%20%2B%20RLS-d29922)
 ![Modelo](<https://img.shields.io/badge/modelo-C4%20(4%20niveles)-0969da>)
-![Estado](<https://img.shields.io/badge/estado-001%2C%20002%2C%20003%20y%20006%20implementadas-2da44e>)
+![Estado](https://img.shields.io/badge/estado-001%2C%20002%2C%20003%20y%20006%20implementadas-2da44e)
 
 _Una sola plataforma web para que muchas barberías administren sus servicios, barberos, horarios y citas, con datos aislados por barbería._
 
@@ -123,7 +123,7 @@ proyecto-final-barberia-ayacucho/
 │   │   ├── 01-actores.md
 │   │   ├── 02-historias-del-usuario.md        HU01–HU28
 │   │   ├── 03-requisitos-funcionales.md       RF01–RF34
-│   │   ├── 04-atributos-de-calidad.md         AC01–AC10
+│   │   ├── 04-atributos-de-calidad.md         AC01–AC06
 │   │   ├── 05-restricciones.md                RC01–RC16
 │   │   ├── 06-driver-arquitectonicos.md       DA01–DA12
 │   │   ├── 07-decisiones-arquitectonicas.md   ADR-001–ADR-024 y ADR-029–ADR-031
@@ -223,20 +223,20 @@ Si el sistema crece, un submódulo puede promoverse a módulo (o extraerse como 
 
 ## 🧭 4. Vista rápida de la arquitectura
 
-| Aspecto                     | Decisión                                                                             |
-| --------------------------- | ------------------------------------------------------------------------------------ |
-| Estilo                      | Monolito modular, 6 módulos (con submódulos) y dependencias permitidas explícitas    |
-| Capas                       | Presentación, aplicación, dominio e infraestructura                                  |
-| Aislamiento entre barberías | `tenant_id` firmado en el token + Row-Level Security                                 |
-| Reservas sin duplicados     | Restricción de exclusión en PostgreSQL (`EXCLUDE USING gist`)                        |
-| Caché                       | Redis como caché selectiva y para contadores no críticos (límite general de solicitudes); nunca fuente de verdad. Contadores de seguridad y de costo en PostgreSQL |
-| Pagos                       | Puerto `PaymentGateway` con una pasarela **simulada**; notificación firmada e idempotente; conciliación; transferencia con comprobante |
-| Administrador de la plataforma | Fuera de las barberías, con segundo factor (TOTP) y rol de base de solo lectura (ADR-031) |
-| IA (planificado)            | Puerto `AIProvider`, herramientas cerradas por rol, sin SQL libre                    |
-| Notificaciones (planificado) | Puerto `NotificationChannel` (correo y WhatsApp), asíncrono, con respaldo por correo |
-| Despliegue                  | Local: Nginx + dos réplicas del backend con Docker Compose (ADR-030). Nube (planificado): AWS con Application Load Balancer (ADR-006) |
-| Interfaz web                | React + Vite + TypeScript; sistema de diseño propio (tema claro y oscuro) con Radix UI; WCAG 2.2 AA; pantallas con carga diferida (ADR-014, 016, 018) |
-| Sesión en el navegador      | Token de acceso solo en memoria; renovación con cookie HttpOnly; indicador `hay_sesion` (ADR-010, 017) |
+| Aspecto                        | Decisión                                                                                                                                                           |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Estilo                         | Monolito modular, 6 módulos (con submódulos) y dependencias permitidas explícitas                                                                                  |
+| Capas                          | Presentación, aplicación, dominio e infraestructura                                                                                                                |
+| Aislamiento entre barberías    | `tenant_id` firmado en el token + Row-Level Security                                                                                                               |
+| Reservas sin duplicados        | Restricción de exclusión en PostgreSQL (`EXCLUDE USING gist`)                                                                                                      |
+| Caché                          | Redis como caché selectiva y para contadores no críticos (límite general de solicitudes); nunca fuente de verdad. Contadores de seguridad y de costo en PostgreSQL |
+| Pagos                          | Puerto `PaymentGateway` con una pasarela **simulada**; notificación firmada e idempotente; conciliación; transferencia con comprobante                             |
+| Administrador de la plataforma | Fuera de las barberías, con segundo factor (TOTP) y rol de base de solo lectura (ADR-031)                                                                          |
+| IA (planificado)               | Puerto `AIProvider`, herramientas cerradas por rol, sin SQL libre                                                                                                  |
+| Notificaciones (planificado)   | Puerto `NotificationChannel` (correo y WhatsApp), asíncrono, con respaldo por correo                                                                               |
+| Despliegue                     | Local: Nginx + dos réplicas del backend con Docker Compose (ADR-030). Nube (planificado): AWS con Application Load Balancer (ADR-006)                              |
+| Interfaz web                   | React + Vite + TypeScript; sistema de diseño propio (tema claro y oscuro) con Radix UI; WCAG 2.2 AA; pantallas con carga diferida (ADR-014, 016, 018)              |
+| Sesión en el navegador         | Token de acceso solo en memoria; renovación con cookie HttpOnly; indicador `hay_sesion` (ADR-010, 017)                                                             |
 
 ## ▶️ Cómo ejecutar la aplicación
 

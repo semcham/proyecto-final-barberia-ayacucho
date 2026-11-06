@@ -4,45 +4,106 @@ Los atributos de calidad (AC) describen **cómo** debe comportarse el sistema, a
 
 ## 1. Catálogo de atributos
 
-| ID   | Atributo                     | Qué significa para la plataforma                                                                           | Prioridad | Escenarios                 |
-| ---- | ---------------------------- | ---------------------------------------------------------------------------------------------------------- | --------- | -------------------------- |
-| AC01 | Rendimiento                  | Consultas de disponibilidad y reservas con tiempos aceptables en horas pico                                | Alta      | EQ-01, EQ-02               |
-| AC02 | Escalabilidad                | Soportar más barberías y usuarios añadiendo instancias del mismo backend                                   | Media     | EQ-03                      |
-| AC03 | Disponibilidad y resiliencia | Seguir operando ante fallos de una instancia, de Redis o de servicios externos                             | Alta      | EQ-04, EQ-05, EQ-06, EQ-22 |
-| AC04 | Seguridad                    | Autenticación, autorización, aislamiento entre barberías, validación, secretos, límites de uso y auditoría | Alta      | EQ-07 a EQ-13              |
-| AC05 | Mantenibilidad               | Evolucionar módulos y cambiar proveedores sin reescribir el núcleo                                         | Alta      | EQ-14                      |
-| AC06 | Usabilidad                   | Reserva simple desde celular, con pocos pasos                                                              | Media     | EQ-15                      |
-| AC07 | Consistencia de datos        | Sin reservas duplicadas; pagos sin efectos repetidos                                                       | Alta      | EQ-16, EQ-17               |
-| AC08 | Privacidad                   | Cumplir la Ley N.° 29733 y su reglamento: consentimiento, minimización, derechos; IA con datos mínimos     | Alta      | EQ-18, EQ-19               |
-| AC09 | Interoperabilidad            | Integrar pagos, IA, correo y WhatsApp mediante puertos y adaptadores intercambiables                       | Media     | EQ-20                      |
-| AC10 | Observabilidad               | Registrar, medir y rastrear solicitudes para diagnosticar fallos                                           | Media     | EQ-21                      |
+Son **seis**, solo los necesarios para el proyecto (ver "Cambio de catálogo" al final de esta sección).
 
-## 2. Subatributos de seguridad (mínimos exigidos)
+| ID   | Atributo                           | Qué significa para la plataforma                                                                                                                                                                                         | Prioridad | Escenarios                        |
+| ---- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------- | --------------------------------- |
+| AC01 | Seguridad y privacidad             | Autenticación, autorización, aislamiento entre barberías, validación, secretos, límites de uso y auditoría; cumplir la Ley N.° 29733 y su reglamento (consentimiento, minimización, derechos); IA con datos mínimos      | Alta      | EQ-07 a EQ-13, EQ-18, EQ-19       |
+| AC02 | Consistencia de datos              | Sin reservas duplicadas; pagos sin efectos repetidos                                                                                                                                                                     | Alta      | EQ-16, EQ-17                      |
+| AC03 | Disponibilidad y resiliencia       | Seguir operando ante fallos de una instancia, de Redis o de servicios externos; recuperar los datos; y diagnosticar fallos con registros, identificador de correlación y métricas (observabilidad, táctica T10, parcial) | Alta      | EQ-04, EQ-05, EQ-06, EQ-21, EQ-22 |
+| AC04 | Mantenibilidad e interoperabilidad | Evolucionar módulos y cambiar proveedores sin reescribir el núcleo; integrar pagos, IA, correo y WhatsApp mediante puertos y adaptadores intercambiables                                                                 | Alta      | EQ-14, EQ-20                      |
+| AC05 | Rendimiento y escalabilidad        | Consultas de disponibilidad y reservas con tiempos aceptables en horas pico; soportar más barberías y usuarios añadiendo instancias del mismo backend                                                                    | Media     | EQ-01, EQ-02, EQ-03               |
+| AC06 | Usabilidad y accesibilidad         | Reserva simple desde celular, con pocos pasos; interfaz que cumple WCAG 2.2 A y AA. Evidencia: ADR-016, ADR-018, PR29 y PR30                                                                                             | Media     | EQ-15                             |
 
-| Subatributo              | Escenario | Táctica principal |
-| ------------------------ | --------- | ----------------- |
-| Autenticación            | EQ-07     | T06               |
-| Autorización por rol     | EQ-08     | T06               |
-| Aislamiento multi-tenant | EQ-09     | T11               |
-| Validación de entradas   | EQ-10     | T07               |
-| Gestión de secretos      | EQ-11     | T14               |
-| Límite de solicitudes    | EQ-12     | T05               |
-| Auditoría                | EQ-13     | T17               |
-| Protección de datos      | EQ-18     | T11, T06          |
+> **Cambio de catálogo (2026-11-06).** A pedido del docente ("solo los necesarios para el proyecto"), los diez atributos anteriores se agruparon en seis. Los escenarios EQ-01 a EQ-22 conservan su número, su medida y su estado; solo cambia el atributo al que pertenecen.
+>
+> | Antes                                                   | Ahora                                          |
+> | ------------------------------------------------------- | ---------------------------------------------- |
+> | AC04 Seguridad + AC08 Privacidad                        | **AC01** Seguridad y privacidad                |
+> | AC07 Consistencia de datos                              | **AC02** Consistencia de datos                 |
+> | AC03 Disponibilidad y resiliencia + AC10 Observabilidad | **AC03** Disponibilidad y resiliencia          |
+> | AC05 Mantenibilidad + AC09 Interoperabilidad            | **AC04** Mantenibilidad e interoperabilidad    |
+> | AC01 Rendimiento + AC02 Escalabilidad                   | **AC05** Rendimiento y escalabilidad           |
+> | AC06 Usabilidad                                         | **AC06** Usabilidad y accesibilidad (mismo ID) |
+
+## 2. Subatributos de seguridad y privacidad (mínimos exigidos)
+
+| Subatributo                      | Escenario | Táctica principal                                                     |
+| -------------------------------- | --------- | --------------------------------------------------------------------- |
+| Autenticación                    | EQ-07     | T06                                                                   |
+| Autorización por rol             | EQ-08     | T06                                                                   |
+| Aislamiento multi-tenant         | EQ-09     | T11                                                                   |
+| Validación de entradas           | EQ-10     | T07                                                                   |
+| Gestión de secretos              | EQ-11     | T14                                                                   |
+| Límite de solicitudes            | EQ-12     | T05                                                                   |
+| Auditoría                        | EQ-13     | T17                                                                   |
+| Protección de datos              | EQ-18     | T11, T06                                                              |
+| Privacidad en el asistente de IA | EQ-19     | T06, T11 y herramientas cerradas por rol (ADR-008); planificado (005) |
 
 ## 3. Origen de los atributos
 
-| AC   | Se deriva de | Evidencia o razón                                                                            |
-| ---- | ------------ | -------------------------------------------------------------------------------------------- |
-| AC01 | RF11, RF12   | Las reservas se concentran en horas pico (hipótesis a validar con campo)                     |
-| AC02 | Modelo SaaS  | Varias barberías sobre una misma instalación (OB4)                                           |
-| AC03 | RF18–RF24    | Dependencia de proveedores externos de pagos e IA                                            |
-| AC04 | Multi-tenant | Datos de clientes de varias barberías conviven en una base                                   |
-| AC05 | RC06, RC14   | Equipo universitario, recursos limitados                                                     |
-| AC06 | Contexto     | A nivel nacional el 90 % de usuarios de Internet usa celular (D-02); en Ayacucho por validar |
-| AC07 | RF12, RF24   | Reserva duplicada y pago duplicado son fallos de negocio                                     |
-| AC08 | RC08         | Ley N.° 29733 y D. S. N.° 016-2024-JUS                                                       |
-| AC09 | RC05, RC11   | Proveedores externos sustituibles                                                            |
-| AC10 | AC03, AC04   | Sin observabilidad no se verifica nada de lo anterior                                        |
+| AC   | Se deriva de                  | Evidencia o razón                                                                                                           |
+| ---- | ----------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| AC01 | Multi-tenant; RC08            | Datos de clientes de varias barberías conviven en una base; Ley N.° 29733 y D. S. N.° 016-2024-JUS                          |
+| AC02 | RF12, RF24                    | Reserva duplicada y pago duplicado son fallos de negocio                                                                    |
+| AC03 | RF18–RF24, RF31               | Dependencia de proveedores externos de pagos e IA; sin registros ni métricas no se puede diagnosticar ni verificar lo demás |
+| AC04 | RC05, RC06, RC11, RC14        | Equipo universitario con recursos limitados; proveedores externos sustituibles                                              |
+| AC05 | RF11, RF12; modelo SaaS (OB4) | Las reservas se concentran en horas pico (hipótesis a validar con campo); varias barberías sobre una misma instalación      |
+| AC06 | RC01; contexto (D-02)         | A nivel nacional el 90 % de usuarios de Internet usa celular (D-02); en Ayacucho por validar                                |
 
 > **Estado de las medidas.** Las medidas de los escenarios son **metas propuestas** que se validan con las pruebas de [04-pruebas](../05-gestion/04-pruebas.md). Ya se midieron en local, con resultados registrados en la [trazabilidad](../trazabilidad.md): EQ-01 (horarios libres, PR01), EQ-04 (caída de una réplica, PR04), EQ-05 (caída de Redis, PR05), EQ-06 de pagos (pasarela caída, PR06), EQ-07 a EQ-10, EQ-12 y EQ-13 (seguridad), EQ-16 (reservas simultáneas, PR16), EQ-17 (notificaciones de pago, PR17) y EQ-20 contra el simulador (PR20). Las demás siguen por validar.
+
+## 4. Qué módulos sostienen cada atributo
+
+Cada celda dice qué hace ese módulo por el atributo, con la táctica de [tácticas arquitectónicas](../02-arquitectura-software/tacticas-arquitectonicas.md). Verificado contra [componentes arquitectónicos](../02-arquitectura-software/componentes-arquitectonicos.md) y el código el 2026-11-06. M04 y M05 no tienen código: todo lo suyo es **planificado**. "—" quiere decir que el módulo no aporta al atributo de forma propia.
+
+| AC   | M01 Acceso y barberías                                                                                                                       | M02 Catálogo y citas                                                           | M03 Suscripciones y pagos                                                                                            | M04 Asistente IA _(planificado, 005)_                   | M05 Notificaciones _(planificado, 004)_                                                   | M06 Núcleo compartido                                                                                                                     | Interfaz web                                                                      |
+| ---- | -------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- | ----------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| AC01 | Autenticación y roles, intentos de ingreso (`login_attempt`), consentimiento (`consent_record`), administrador con segundo factor (T05, T06) | Sus tablas con RLS (T11) y validación de sus DTO (T07)                         | Notificación del proveedor firmada con HMAC; comprobantes privados; lectura de plataforma de solo lectura (T06, T11) | Herramientas cerradas por rol y datos mínimos (ADR-008) | Envío por WhatsApp solo con consentimiento vigente; enlaces de acción firmados (ADR-032)  | `TenantContext` y `UnitOfWork` con RLS (T11), `AuditLog` (T17), configuración de secretos (T14)                                           | Token de acceso solo en memoria y renovación en cookie `HttpOnly` (ADR-010)       |
+| AC02 | —                                                                                                                                            | Restricción de exclusión de citas e `Idempotency-Key` de la reserva (T09, T08) | `provider_event.event_id` idempotente y `EXCLUDE` de los períodos (T08, T09)                                         | Reservar solo a través de los casos de uso de M02       | Un aviso por evento y destinatario, sin duplicados entre réplicas (ADR-025)               | Transacción por solicitud (`UnitOfWork`); tareas programadas con candado de PostgreSQL (`EjecutorTareas`, ADR-024)                        | —                                                                                 |
+| AC03 | —                                                                                                                                            | Catálogo público que sigue respondiendo sin Redis, leyendo de PostgreSQL (T12) | Interruptor del adaptador de pagos, transferencia como alternativa y conciliación (T03, T04, T12)                    | Degradación al flujo manual de reserva (T12)            | Un fallo de envío no bloquea la cita; respaldo por correo y reintentos (ADR-025, ADR-026) | `Interruptor` (T04), caché con respaldo (T12), registros con identificador de correlación (T10, parcial: métricas y alertas planificadas) | —                                                                                 |
+| AC04 | Cuatro capas e interfaz pública (`index.ts`, `api-publica.ts`)                                                                               | Cuatro capas e interfaz pública; repositorios detrás de puertos                | Puertos `PaymentGateway` y `AlmacenComprobantes` (T16), con suite de contrato                                        | Puerto `AIProvider` (T16)                               | Puerto `NotificationChannel` con suite de contrato (T16, ADR-026)                         | Una sola interfaz pública, sin reglas de negocio (regla `m06-solo-por-interfaz-publica`); todo verificado con dependency-cruiser (T13)    | Tipos de la API generados desde los contratos (`npm run gen:api`)                 |
+| AC05 | —                                                                                                                                            | Catálogo público en caché; los horarios libres se calculan sin caché (T01)     | —                                                                                                                    | —                                                       | Envío fuera de la transacción de la operación                                             | `CacheCompartida` y `ClavesCache` con tenant (T01)                                                                                        | Carga diferida por pantalla (ADR-018); JavaScript inicial medido en PR30          |
+| AC06 | —                                                                                                                                            | —                                                                              | —                                                                                                                    | —                                                       | —                                                                                         | —                                                                                                                                         | Sistema de diseño accesible con Radix, tema claro y oscuro (ADR-016); PR29 y PR30 |
+
+Fuera de los módulos, el **host y el despliegue** sostienen AC03 y AC05 con servicios sin estado (T18) y Nginx con dos réplicas en local (T02), y AC01 con el límite general de solicitudes (`ThrottlerModule`, T05).
+
+## 5. Cómo se mide cada atributo
+
+La **herramienta principal** de cada atributo es una decisión del responsable (2026-11-06). **Usada** quiere decir que la herramienta está en el repositorio o en [tecnologías](../02-arquitectura-software/tecnologias.md) y ya produjo una medición; **Planificada**, que todavía no se ha usado en este proyecto. La evidencia es la que existe hoy, comprobada en el repositorio el 2026-11-06; las rutas de `backend/` son relativas a `tecnologia/plataforma-barberias/`. El detalle de cada escenario (versión, entorno, preparación, configuración, umbral, comando y evidencia) está en su **ficha de medición** en [08](08-escenarios-atributos-calidad.md).
+
+| AC   | Herramienta principal                                                           | Estado                                              | Complementos (estado)                                                                                                                                                                                   | Evidencia hasta hoy                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| ---- | ------------------------------------------------------------------------------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| AC01 | Jest + Testcontainers                                                           | Usada                                               | OWASP ZAP, escaneo base (Planificada); gitleaks, secretos (Planificada); `npm audit` en la CI (Planificado: se agrega en la fase 1 de 004; aún no está en `.github/workflows/plataforma-barberias.yml`) | `npm run test:int`: `backend/test/integration/identidad/autenticacion.spec.ts`, `aislamiento/token-tenant.spec.ts`, `aislamiento/`, `pagos/canarios.spec.ts`, `host/entradas.spec.ts`, `identidad/limite-intentos.spec.ts`, `escalado/limite-compartido.spec.ts`, `auditoria.spec.ts`, `clientes/cuenta-cliente.spec.ts` y `presencial.spec.ts`; `backend/test/contract/rbac-002.spec.ts` y `rbac-003.spec.ts`. Sin medir: EQ-11 y EQ-19 |
+| AC02 | k6 para 200 solicitudes simultáneas, más una consulta SQL que cuenta duplicados | k6: Planificada. Jest + Testcontainers: Usada       | —                                                                                                                                                                                                       | `backend/test/integration/citas/concurrencia-reservas.spec.ts` (200 solicitudes → 1 cita; cuenta con `SELECT count(*)`), `escalado/balanceador.spec.ts` (por Nginx) y `pagos/notificaciones.spec.ts`                                                                                                                                                                                                                                     |
+| AC03 | k6 con carga constante mientras se detiene un contenedor con Docker Compose     | k6: Planificada. Docker Compose: Usado              | Prometheus + Grafana para observar, táctica T10 (Planificada)                                                                                                                                           | `npm run demo:caida -- --objetivo replica` y `--objetivo redis` (`backend/scripts/demo-caida.ts`, 006); `backend/test/integration/escalado/redis-caido.spec.ts`; `pagos/proveedor-caido.spec.ts` (003). Sin medir: EQ-21 y EQ-22                                                                                                                                                                                                         |
+| AC04 | dependency-cruiser                                                              | Usada                                               | Pruebas de contrato (Usadas, `backend/test/contract/`); cobertura con `jest --coverage` (Planificada: no hay script ni configuración); SonarQube o SonarCloud, opcional (Planificada)                   | `npm run test:arch`: 19 reglas de `backend/.dependency-cruiser.cjs` sin violaciones (292 módulos, 1334 dependencias) y 24 de 24 pruebas de `backend/test/architecture/`; `backend/test/contract/payment-gateway.contract.ts`, corrida por `backend/test/integration/pagos/gateway-simulado.spec.ts`                                                                                                                                      |
+| AC05 | k6                                                                              | Planificada                                         | Script propio `npm run medir:horarios` como medición preliminar (Usada); `EXPLAIN ANALYZE` de PostgreSQL (Planificada)                                                                                  | `npm run medir:horarios` (`backend/scripts/medir-horarios.ts`): PR01 en 006, resultados en `specs/006-escalado-cache-balanceo/quickstart.md`; sus resultados no cambian. Sin medir: EQ-02 y EQ-03                                                                                                                                                                                                                                        |
+| AC06 | Lighthouse 12.3 y axe-core 4.10                                                 | Usadas (en 001; no están instaladas en el proyecto) | Cuestionario SUS (Planificado); cronometraje con una persona (Planificado)                                                                                                                              | [Tecnologías](../02-arquitectura-software/tecnologias.md) §5.1: Lighthouse (2026-10-16, mediana de 3 pasadas) y axe-core (30 estados) sobre las pantallas de 001 (PR29, PR30). **Pendientes:** Lighthouse y axe sobre las pantallas de 002 (T130 de 002), de 003 y del lote 2 de mejoras de interfaz, que no se ejecutaron (trazabilidad); PR15 con usuarios, sin medir                                                                  |
+
+**k6.** Se ejecuta como **programa aparte** o con la imagen oficial de Docker `grafana/k6`; no se agrega ninguna dependencia a `package.json`. Su licencia es **AGPL-3.0**: se usa como herramienta externa, sin enlazarla al código de la plataforma (ver [tecnologías](../02-arquitectura-software/tecnologias.md) §5.5). **Los scripts de k6 no existen todavía**; su ubicación propuesta es `tecnologia/plataforma-barberias/carga/k6/` (por ejemplo `eq-01-horarios.js`), con los resultados en `tecnologia/plataforma-barberias/carga/resultados/`.
+
+## 6. Procedimiento general de medición (propuesto)
+
+> Es una **propuesta**, no lo que se hizo hasta hoy. Las mediciones ya registradas (PR01, PR04, PR05 de 006) siguieron el método de su guía rápida y sus resultados no cambian.
+
+1. **Mismo entorno en cada repetición:** Docker Compose de `tecnologia/plataforma-barberias/` (dos réplicas, Nginx, PostgreSQL y Redis), con los mismos límites de memoria y `PUBLICO_LIMITE_POR_MINUTO` alto, como piden `medir-horarios.ts` y `demo-caida.ts`.
+2. **Mismos datos:** sembrar con el script del escenario y borrar al terminar, para que cada repetición parta igual.
+3. **Tres repeticiones** por escenario y variante; se informa la **mediana** de las tres y también la peor.
+4. **Umbral de aprobación:** el de la fila "Medida" del escenario, sin cambiarlo. Si no se cumple, se anota tal como salió (criterio de cierre de [04-pruebas](../05-gestion/04-pruebas.md) §4).
+5. **Resultados guardados con fecha:** el JSON de la herramienta (`AAAA-MM-DD-eq-nn-variante.json`) y una fila en la guía rápida de la funcionalidad o en [04-pruebas](../05-gestion/04-pruebas.md), con la versión de la herramienta y el commit medido.
+
+## 7. Alternativas del sector (no usadas ni planificadas)
+
+> ⚠️ **Esta lista no describe el proyecto.** Son herramientas estándar del sector que podrían reemplazar a las de la tabla anterior. **Ninguna se ha usado ni se planea usar**; se dejan solo como referencia para comparar.
+
+| Necesidad                         | Alternativas del sector                                |
+| --------------------------------- | ------------------------------------------------------ |
+| Carga y escalado (AC05)           | Apache JMeter, Gatling, Locust, Artillery              |
+| Fallas y resiliencia (AC03)       | Toxiproxy, Pumba, Chaos Mesh                           |
+| Seguridad dinámica (AC01)         | Burp Suite, Nuclei                                     |
+| Dependencias vulnerables (AC01)   | Snyk, OWASP Dependency-Check, Dependabot, Trivy        |
+| Secretos en el repositorio (AC01) | TruffleHog, detect-secrets                             |
+| Calidad del código (AC04)         | Code Climate, Codacy, madge                            |
+| Usabilidad y accesibilidad (AC06) | Pa11y, WAVE, WebPageTest                               |
+| Observabilidad (AC03)             | OpenTelemetry con Jaeger, Elastic Stack (ELK), Datadog |
