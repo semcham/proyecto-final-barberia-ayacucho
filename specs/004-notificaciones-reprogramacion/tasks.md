@@ -81,7 +81,7 @@
 - [X] T033 Crear `backend/src/modules/notificaciones/infrastructure/canal-correo-smtp.ts` con `nodemailer`: texto simple `utf-8`, `Message-ID` a partir de la clave de idempotencia, tiempo límite de 5 s, `Interruptor` de M06, y sin registrar el texto ni el destino; y `backend/src/modules/notificaciones/infrastructure/fabrica-canales.ts` (contracts/notification-channel.md §2; principio VII, FR-032)
 - [X] T034 Importar `NotificacionesModule` en `backend/src/host/app.module.ts`, crear `backend/src/host/eventos.ts` (raíz de composición de las suscripciones al bus, vacía por ahora) y registrar `despachar-eventos` con `EVENTOS_INTERVALO_MS` en `backend/src/host/tareas.ts` (ADR-025; FR-011)
 - [X] T035 Implementar en `backend/.dependency-cruiser.cjs` las reglas de T020 (PR14)
-- [ ] T036 Cierre de fase 1: `npm run lint`, `npm run build`, `npm test`, `npm run test:int` y `npm run test:arch` en el backend, y `npm run lint`, `npm run build` y `npm test` en el frontend; Prettier sin cambios; CI en verde con el paso de escaneo de dependencias de T002 (`.github/workflows/plataforma-barberias.yml`). Un commit: `feat(004): base de notificaciones (fase 1)` (principio X)
+- [X] T036 Cierre de fase 1: `npm run lint`, `npm run build`, `npm test`, `npm run test:int` y `npm run test:arch` en el backend, y `npm run lint`, `npm run build` y `npm test` en el frontend; Prettier sin cambios; CI en verde con el paso de escaneo de dependencias de T002 (`.github/workflows/plataforma-barberias.yml`). Un commit: `feat(004): base de notificaciones (fase 1)` (principio X)
 
 **Checkpoint**: tablas con RLS, bus y enlaces probados, M05 con el correo y la CI con escaneo de dependencias.
 

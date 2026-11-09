@@ -43,7 +43,7 @@ Plataforma **web** SaaS en la que varias barberías gestionan servicios, barbero
 | Decisión            | Detalle                                                                                                   |
 | ------------------- | --------------------------------------------------------------------------------------------------------- |
 | Plataforma          | **Solo web** (navegador, diseño responsive). La aplicación móvil nativa queda como **evolución futura**.  |
-| Pagos               | Solo la **suscripción de las barberías**. El pago de citas por parte de los clientes queda fuera del MVP. |
+| Pagos               | Solo la **suscripción de las barberías**. El pago de citas por parte de los clientes queda fuera del MVP; el adelanto de reserva (RF35, planificado en 008) lo paga el cliente por QR directo a la barbería, sin pasar por la plataforma (ADR-033, pendiente de la enmienda 1.5.0 del principio V). |
 | Estilo              | **Monolito modular** de 6 módulos (5 de negocio + núcleo compartido).                                     |
 | Organización lógica | **4 capas** con enfoque **Clean Architecture**.                                                           |
 | Multi-tenancy       | **Base compartida** con `tenant_id` + **Row-Level Security** en PostgreSQL.                               |
@@ -121,8 +121,8 @@ proyecto-final-barberia-ayacucho/
 │   │
 │   ├── 01-analisis-de-sistema/                qué necesita el sistema
 │   │   ├── 01-actores.md
-│   │   ├── 02-historias-del-usuario.md        HU01–HU28
-│   │   ├── 03-requisitos-funcionales.md       RF01–RF34
+│   │   ├── 02-historias-del-usuario.md        HU01–HU29
+│   │   ├── 03-requisitos-funcionales.md       RF01–RF35
 │   │   ├── 04-atributos-de-calidad.md         AC01–AC06
 │   │   ├── 05-restricciones.md                RC01–RC16
 │   │   ├── 06-driver-arquitectonicos.md       DA01–DA12

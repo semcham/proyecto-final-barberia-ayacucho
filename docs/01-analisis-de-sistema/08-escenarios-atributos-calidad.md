@@ -2,7 +2,7 @@
 
 Un escenario de atributo de calidad es una descripción **concreta y medible** de cómo debe responder el sistema ante un estímulo para cumplir un atributo de calidad. Una descripción general ("debe ser rápido") no es un escenario. Cada escenario sigue las **seis partes de la Guía 04** (fuente del estímulo, estímulo, artefacto, entorno, respuesta y medida de la respuesta) y agrega **Verificación** y **Estado**, como en el archivo de ejemplo de la guía. Debajo de cada escenario, su **ficha de medición** dice con qué herramienta y versión se mide, en qué entorno, con qué preparación y configuración, contra qué umbral, con qué comando, qué evidencia queda y en qué estado está. Lo que todavía no existe dice "por definir". Resumen por atributo: [04-atributos-de-calidad.md](04-atributos-de-calidad.md) §5.
 
-> **Las medidas numéricas son metas propuestas** que se comprueban con las pruebas indicadas (la prueba PRnn corresponde al escenario EQ-nn; ver [pruebas](../05-gestion/04-pruebas.md)). La fila **Estado** dice si ya se midió en local, con qué funcionalidad, o si sigue **por medir**; los resultados completos están en la [trazabilidad](../trazabilidad.md). Ningún escenario se ha medido en la nube. Catálogo de atributos: [04-atributos-de-calidad.md](04-atributos-de-calidad.md).
+> **Las medidas numéricas son metas propuestas** que se comprueban con las pruebas indicadas (la prueba PRnn corresponde al escenario EQ-nn, salvo EQ-23 y EQ-24, que se prueban con PR31 y PR32 porque PR23 a PR30 ya tenían otro uso; ver [pruebas](../05-gestion/04-pruebas.md)). La fila **Estado** dice si ya se midió en local, con qué funcionalidad, o si sigue **por medir**; los resultados completos están en la [trazabilidad](../trazabilidad.md). Ningún escenario se ha medido en la nube. Catálogo de atributos: [04-atributos-de-calidad.md](04-atributos-de-calidad.md).
 
 **Convenciones de las fichas.** Las rutas de `backend/` son relativas a `tecnologia/plataforma-barberias/` y los comandos `npm run …` se ejecutan desde `tecnologia/plataforma-barberias/backend/`. "Docker Compose" es el entorno de `tecnologia/plataforma-barberias/docker-compose.yml`: Nginx 1.27 en el puerto 3000, réplicas `backend-1` y `backend-2` (Node 22), PostgreSQL 16 y Redis 7.4. "Pruebas" es Jest 29.7.0 con Testcontainers 12.2.1 (PostgreSQL real con RLS), en local y en la CI (`.github/workflows/plataforma-barberias.yml`, paso `npm run test:int`). Los scripts de k6 **no existen**: sus nombres y su carpeta (`tecnologia/plataforma-barberias/carga/k6/`) son una propuesta. El procedimiento general (tres repeticiones, mediana, resultados con fecha) está en [04](04-atributos-de-calidad.md) §6.
 
@@ -10,8 +10,8 @@ Un escenario de atributo de calidad es una descripción **concreta y medible** d
 
 | Atributo                                | Escenarios                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| AC01 Seguridad y privacidad             | [EQ-07](#eq-07-seguridad-autenticación), [EQ-08](#eq-08-seguridad-autorización-por-rol), [EQ-09](#eq-09-seguridad-aislamiento-multi-tenant), [EQ-10](#eq-10-seguridad-validación-de-entradas), [EQ-11](#eq-11-seguridad-gestión-de-secretos), [EQ-12](#eq-12-seguridad-límite-de-solicitudes), [EQ-13](#eq-13-seguridad-auditoría), [EQ-18](#eq-18-privacidad-consentimiento-y-derechos-sobre-los-datos), [EQ-19](#eq-19-privacidad-privacidad-en-el-asistente-de-ia) |
-| AC02 Consistencia de datos              | [EQ-16](#eq-16-consistencia-reservas-simultáneas-del-mismo-horario), [EQ-17](#eq-17-consistencia-notificación-de-pago-repetida)                                                                                                                                                                                                                                                                                                                                       |
+| AC01 Seguridad y privacidad             | [EQ-07](#eq-07-seguridad-autenticación), [EQ-08](#eq-08-seguridad-autorización-por-rol), [EQ-09](#eq-09-seguridad-aislamiento-multi-tenant), [EQ-10](#eq-10-seguridad-validación-de-entradas), [EQ-11](#eq-11-seguridad-gestión-de-secretos), [EQ-12](#eq-12-seguridad-límite-de-solicitudes), [EQ-13](#eq-13-seguridad-auditoría), [EQ-18](#eq-18-privacidad-consentimiento-y-derechos-sobre-los-datos), [EQ-19](#eq-19-privacidad-privacidad-en-el-asistente-de-ia), [EQ-23](#eq-23-seguridad-comprobantes-privados-del-adelanto-de-reserva) |
+| AC02 Consistencia de datos              | [EQ-16](#eq-16-consistencia-reservas-simultáneas-del-mismo-horario), [EQ-17](#eq-17-consistencia-notificación-de-pago-repetida), [EQ-24](#eq-24-consistencia-el-adelanto-no-confirma-la-cita-dos-veces)                                                                                                                                                                                                                                                                                                                                       |
 | AC03 Disponibilidad y resiliencia       | [EQ-04](#eq-04-disponibilidad-falla-de-una-instancia), [EQ-05](#eq-05-disponibilidad-caída-de-redis), [EQ-06](#eq-06-disponibilidad-falla-del-proveedor-de-ia-de-pagos-o-de-mensajería), [EQ-21](#eq-21-observabilidad-diagnóstico-de-una-solicitud-fallida), [EQ-22](#eq-22-disponibilidad-recuperación-ante-pérdida-de-datos)                                                                                                                                       |
 | AC04 Mantenibilidad e interoperabilidad | [EQ-14](#eq-14-mantenibilidad-cambio-de-proveedor-sin-tocar-reglas-de-negocio), [EQ-20](#eq-20-interoperabilidad-integración-mediante-puertos)                                                                                                                                                                                                                                                                                                                        |
 | AC05 Rendimiento y escalabilidad        | [EQ-01](#eq-01-rendimiento-consulta-de-disponibilidad-en-hora-pico), [EQ-02](#eq-02-rendimiento-creación-de-cita-bajo-carga), [EQ-03](#eq-03-escalabilidad-agregar-una-instancia)                                                                                                                                                                                                                                                                                     |
@@ -611,6 +611,60 @@ Un escenario de atributo de calidad es una descripción **concreta y medible** d
 | **Evidencia**             | Acta del simulacro con fecha, horas de inicio y fin y conteos (ubicación por definir)                                                                                                                |
 | **Estado**                | **Planificada.** Por medir. **Opción de menor costo:** el simulacro en local con Docker, sin nube                                                                                                    |
 
+## EQ-23. Seguridad: Comprobantes privados del adelanto de reserva
+
+| Elemento                | Descripción                                                                                                                                                      |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Atributo de calidad** | Seguridad y privacidad: comprobantes del adelanto (AC01)                                                                                                         |
+| **Fuente**              | Cliente o usuario de otra barbería, o visitante sin sesión                                                                                                       |
+| **Estímulo**            | Intenta ver el número de operación o la captura del adelanto de una cita ajena, o registra un número de operación ya usado                                       |
+| **Artefacto**           | M02 (cita pendiente), M03 (comprobantes privados, ADR-023), RLS                                                                                                  |
+| **Entorno / condición** | Operación normal, varias barberías con adelanto activo                                                                                                           |
+| **Respuesta esperada**  | Solo el cliente de la cita y el personal de esa barbería ven el comprobante, siempre con sesión; el número de operación repetido se rechaza                       |
+| **Medida**              | 0 accesos a comprobantes de otra cita o de otra barbería; 100 % de los números de operación repetidos rechazados _(propuesta por validar)_                       |
+| **Verificación**        | PR31: pruebas de aislamiento y de número repetido sobre los comprobantes del adelanto                                                                            |
+| **Estado**              | Por medir (planificado, 008)                                                                                                                                     |
+
+**Ficha de medición**
+
+| Campo                     | Detalle                                                                                                           |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| **Herramienta y versión** | Jest + Testcontainers (la principal del atributo)                                                                 |
+| **Entorno**               | Pruebas                                                                                                           |
+| **Preparación**           | Dos barberías con el adelanto activo y citas pendientes con comprobante: por definir en 008                        |
+| **Configuración**         | Por definir en 008                                                                                                |
+| **Métrica y umbral**      | 0 accesos a comprobantes ajenos; 100 % de los números de operación repetidos rechazados                           |
+| **Comando**               | Por definir                                                                                                       |
+| **Evidencia**             | Por definir                                                                                                       |
+| **Estado**                | **Planificada** (RF35 no tiene código todavía; 008)                                                               |
+
+## EQ-24. Consistencia: El adelanto no confirma la cita dos veces
+
+| Elemento                | Descripción                                                                                                                                                       |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Atributo de calidad** | Consistencia de datos (AC02)                                                                                                                                      |
+| **Fuente**              | Propietario (dos pestañas o dos réplicas) y la tarea programada de vencimiento                                                                                    |
+| **Estímulo**            | El propietario confirma el mismo adelanto dos veces a la vez, o lo confirma mientras el vencimiento cancela la cita                                               |
+| **Artefacto**           | M02 (`Cita.aprobar()`, transición de estado), M03, tareas programadas (ADR-024), avisos de 004                                                                     |
+| **Entorno / condición** | Dos instancias del backend                                                                                                                                        |
+| **Respuesta esperada**  | La cita pasa de pendiente a confirmada una sola vez y se envía un solo aviso; si la cita ya se canceló por vencimiento, la confirmación se rechaza                |
+| **Medida**              | Exactamente 1 transición y 1 aviso por cita; 0 citas que queden confirmadas y canceladas a la vez _(propuesta por validar)_                                       |
+| **Verificación**        | PR32: prueba de concurrencia de la confirmación y del vencimiento, con comprobación en la base de datos                                                          |
+| **Estado**              | Por medir (planificado, 008)                                                                                                                                      |
+
+**Ficha de medición**
+
+| Campo                     | Detalle                                                                                                           |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| **Herramienta y versión** | k6 (versión por fijar) y una consulta SQL que cuenta duplicados; Jest + Testcontainers                            |
+| **Entorno**               | Pruebas, con dos instancias en proceso                                                                            |
+| **Preparación**           | Una barbería con el adelanto activo y una cita pendiente con el pago registrado: por definir en 008               |
+| **Configuración**         | Confirmaciones simultáneas de la misma cita, y una confirmación a la vez que el vencimiento: por definir en 008     |
+| **Métrica y umbral**      | Exactamente 1 transición y 1 aviso por cita; 0 citas confirmadas y canceladas a la vez                            |
+| **Comando**               | Por definir                                                                                                       |
+| **Evidencia**             | Por definir                                                                                                       |
+| **Estado**                | **Planificada** (RF35 no tiene código todavía; 008)                                                               |
+
 ## Resumen de escenarios
 
 | Código | Atributo de calidad                     | Qué se busca comprobar                                    |
@@ -637,3 +691,5 @@ Un escenario de atributo de calidad es una descripción **concreta y medible** d
 | EQ-20  | AC04 Mantenibilidad e interoperabilidad | Adaptadores intercambiables por contrato                  |
 | EQ-21  | AC03 Disponibilidad y resiliencia       | Diagnóstico de extremo a extremo                          |
 | EQ-22  | AC03 Disponibilidad y resiliencia       | Restaurar desde respaldo dentro de RPO y RTO              |
+| EQ-23  | AC01 Seguridad y privacidad             | Comprobantes del adelanto privados y sin número repetido  |
+| EQ-24  | AC02 Consistencia de datos              | El adelanto confirma la cita una sola vez                 |

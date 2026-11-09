@@ -36,6 +36,7 @@ Un ADR registra **qué** se decidió, **por qué**, qué alternativas se descart
 | ADR-030 | Balanceo local con Nginx como representación de ADR-006                 | DA03, DA04, DA05       | Demostrar reparto y tolerancia a la caída de una réplica sin costo de nube                               | Nginx con dos réplicas de IP fija, comprobación pasiva, XFF sobrescrito, `/salud/listo`; equivale al ALB documentado. **Aceptado (2026-10-19)**                                                                                                            |
 | ADR-031 | Operaciones del administrador de la plataforma fuera de las barberías   | DA01, DA11             | El administrador opera sobre todas las barberías sin pertenecer a ninguna                                | Identidad y token de plataforma sin tenant, con TOTP obligatorio; lectura entre barberías con un rol `NOBYPASSRLS` por columna; escrituras con el tenant fijado. **Aceptado (2026-10-24), con la enmienda 1.3.0 y la aclaración 1.3.1 de la constitución** |
 | ADR-032 | Acciones sobre una cita por enlace firmado, sin sesión                  | DA01, DA11             | RF34 exige confirmar, reprogramar o cancelar desde el recordatorio sin iniciar sesión                    | Enlace HMAC con tenant, cita, acción, versión y vencimiento; verificación antes de leer; `barberias_app` con RLS; uso único por hash. **Aceptado (2026-11-04), con la enmienda 1.4.0 de la constitución; aún no implementado (planificado, 004)**          |
+| ADR-033 | Adelanto de reserva por QR de la barbería con verificación manual       | DA02, DA07, DA11       | RF35 exige un adelanto para que nadie reserve "por jugar", sin que la plataforma cobre dinero de citas   | Cita `PENDIENTE` con el horario retenido; QR de Yape o Plin de la barbería; número de operación no repetible; confirmación del propietario; vencimiento automático. **Propuesto (2026-11-09), con la enmienda 1.5.0 propuesta; planificado (008)**          |
 
 ---
 
@@ -135,7 +136,7 @@ Un ADR registra **qué** se decidió, **por qué**, qué alternativas se descart
 - **Riesgos:** R07, R08, R15. **Mitigación:** idempotencia por identificador de evento, conciliación, ambiente de pruebas.
 - **Proveedor:** candidato Culqi (documentación leída: Yape máx. S/ 500 solo en soles, billeteras QR S/ 6 a S/ 500, webhook `order.status.changed`, token de tarjeta de 5 minutos y un uso). **No se afirma compatibilidad ni condiciones de contratación hasta confirmarlas con el proveedor.** Diferenciar _método de pago_ (Yape, tarjeta) de _proveedor que procesa_.
 - **Drivers:** DA07.
-- **Consecuencias:** el pago de citas por clientes queda fuera del MVP.
+- **Consecuencias:** el pago de citas por clientes queda fuera del MVP. _(2026-11-09: el adelanto de reserva de RF35 se paga por QR directo a la barbería, sin pasar por la plataforma; ver [ADR-033](#adr-033-adelanto-de-reserva-por-qr-de-la-barbería-con-verificación-manual), pendiente de la enmienda 1.5.0 del principio V.)_
 - **Implementación (003, 2026-10-24):** el puerto `PaymentGateway` funciona hoy con una **pasarela simulada** (proceso aparte, notificación del proveedor firmada con HMAC-SHA256, conciliación) y con el pago por transferencia con comprobante, según [ADR-022](#adr-022-pasarela-de-pagos-en-sandbox-o-simulada-detrás-de-paymentgateway-y-transferencia-con-comprobante). El adaptador del proveedor real no está construido. En este documento, "webhook" y "notificación del proveedor" nombran lo mismo: el aviso firmado que el proveedor envía a `POST /api/v1/pagos/notificaciones`.
 
 ## ADR-008 Integración de IA desacoplada
@@ -752,3 +753,34 @@ Un ADR registra **qué** se decidió, **por qué**, qué alternativas se descart
 - **Consecuencias:**
   - **Enmienda de la constitución 1.4.0** (MINOR): cuarta excepción acotada del principio III y las tablas técnicas de intentos (`login_attempt` y `action_link_attempt`). Aplicada el 2026-11-04 con la aprobación del responsable y propagada a `.specify/templates/plan-template.md` y a [multi-tenancy y datos](../02-arquitectura-software/multi-tenancy-y-datos.md).
   - Detalle en `specs/004-notificaciones-reprogramacion/decisiones/ADR-032-acciones-por-enlace.md` y `contracts/enlaces-de-accion.md`.
+
+## ADR-033 Adelanto de reserva por QR de la barbería con verificación manual
+
+- **Estado:** Propuesto (2026-11-09). Requiere la **enmienda 1.5.0 del principio V** de la constitución, propuesta abajo y **todavía no aplicada**. Planificado para la funcionalidad 008; no hay código.
+- **Contexto:**
+  - RF35 y HU29, pedidos por la profesora: si la reserva no exige un adelanto, cualquiera reserva "por jugar" y la barbería pierde ese horario. Hay que avisar al cliente y al propietario y ofrecer al menos un QR de pago.
+  - El principio V limita los pagos a la suscripción de las barberías y deja fuera el pago de citas por clientes (ver ADR-007).
+  - La plataforma no debe tocar el dinero de las barberías ni manejar datos de tarjeta (RC12).
+- **Problema:** ¿cómo exigir un adelanto que retenga el horario sin que la plataforma cobre ni procese dinero de las citas?
+- **Alternativas:**
+  - (a) Sin adelanto: no resuelve las reservas "por jugar".
+  - (b) Cobrar el adelanto con una pasarela detrás de `PaymentGateway`: la plataforma procesaría dinero de las citas, con comisiones y dependencia del proveedor.
+  - (c) **QR de Yape o Plin de la propia barbería**, con la confirmación manual del propietario.
+- **Decisión:** opción (c).
+  1. **Activación:** la barbería activa el adelanto una vez: elige monto fijo en soles o porcentaje del servicio, el tiempo para pagar (por ejemplo, 30 minutos) y sube su QR de Yape o Plin.
+  2. **Reserva:** la cita queda en `PENDIENTE` y el horario queda retenido. El cliente ve el QR, el monto y el código de su reserva, paga desde su app y registra el número de operación (y, si quiere, la captura).
+  3. **Confirmación:** el propietario recibe un aviso, comprueba el pago en su propia app y lo confirma: la cita pasa a `CONFIRMADA` (`Cita.aprobar()`) y el cliente recibe un aviso.
+  4. **Vencimiento:** si vence el tiempo sin pago, la cita se cancela sola, se libera el horario y se avisa a los dos.
+  5. **Día de la cita y cancelación:** el adelanto se descuenta del precio. Si el cliente cancela con tiempo, la barbería lo devuelve; si cancela tarde o no asiste, lo retiene.
+  6. **Reutiliza:** el estado `PENDIENTE` y `Cita.aprobar()`, la cancelación tardía (RF14), los comprobantes privados con detección de número repetido (003, ADR-023), las tareas programadas (ADR-024) y las notificaciones de 004 (ADR-025, ADR-026).
+- **Justificación:** el dinero va directo a la barbería; la plataforma no lo toca, no cobra comisión ni maneja datos de tarjeta, así que RC12 queda intacta.
+- **Ventajas:** sin proveedor ni contrato nuevo; usa piezas ya construidas o planificadas; el cliente paga con la app que ya usa.
+- **Desventajas:** **la verificación es manual** (limitación declarada): depende de que el propietario compruebe el pago en su app.
+- **Riesgos:**
+  - **Comprobante falso o reutilizado.** **Mitigación:** número de operación no repetible, comparar el monto y la hora, y la confirmación del propietario.
+  - Qué pasa si el cliente ya registró el pago y el propietario no lo confirma antes de que venza el tiempo: **por definir en la especificación de 008**.
+- **Evolución:** cobrar el adelanto con una pasarela real queda como evolución, con el puerto `PaymentGateway` ya preparado (ADR-007, ADR-022).
+- **Drivers:** DA02, DA07, DA11.
+- **Consecuencias:**
+  - **Enmienda 1.5.0 propuesta** (MINOR) del principio V, para aprobar antes de implementar 008. Texto propuesto: _"Los pagos que procesa la plataforma MUST limitarse a la suscripción de las barberías. El adelanto de una cita MAY registrarse y verificarse cuando el cliente lo paga directamente a la barbería (QR de la barbería): la plataforma MUST NOT recibir, retener ni transferir ese dinero, MUST NOT cobrar comisión y MUST NOT manejar datos de tarjeta; la confirmación la hace el propietario. Las reglas del proveedor, del webhook firmado y de la conciliación se aplican a los pagos que procesa la plataforma. Cobrar citas a través de la plataforma sigue fuera del alcance."_
+  - Mientras la enmienda no se apruebe, las exclusiones del pago de citas (README, contexto, requisitos, MVP y guion) llevan la nota "pendiente de la enmienda 1.5.0".
