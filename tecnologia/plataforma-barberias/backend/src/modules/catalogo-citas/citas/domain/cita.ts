@@ -1,4 +1,9 @@
-import { DatoInvalido, ReservaInvalida, TransicionInvalida } from '../../catalogo/domain/errores';
+import {
+  DatoInvalido,
+  ReservaInvalida,
+  SinAntelacionParaReprogramar,
+  TransicionInvalida,
+} from '../../catalogo/domain/errores';
 import { RangoHorario } from '../../catalogo/domain/rango-horario';
 import { type EstadoCita, ocupaHorario } from './estado-cita';
 
@@ -25,6 +30,31 @@ export interface DatosCita {
   creadoPor: string;
   /** Quién canceló, cuándo y por qué (FR-039); null mientras no esté cancelada. */
   cancelacion?: Cancelacion | null;
+  /**
+   * 004: sube al reprogramar, cancelar, completar o marcar no asistió; invalida los enlaces de acción emitidos
+   * con la versión anterior. 1 si no se indica (cita recién reservada).
+   */
+  version?: number;
+  /** 004: cuándo el cliente confirmó su asistencia por el enlace; null = "sin confirmar" (FR-028). */
+  confirmadaPorClienteEn?: Date | null;
+}
+
+/** Quién reprograma: el cliente (sus citas, con antelación) o el propietario (cualquiera, sin antelación). */
+export interface QuienReprograma {
+  rol: 'CLIENTE' | 'PROPIETARIO';
+  usuarioId: string;
+}
+
+/** Barbero e inicio de la cita antes de reprogramarla. */
+export interface PosicionDeCita {
+  barberoId: string;
+  inicio: Date;
+}
+
+export interface ResultadoReprogramacion {
+  /** false si la cita ya estaba en esa hora y con ese barbero: no cambia nada ni se avisa. */
+  cambio: boolean;
+  anterior: PosicionDeCita;
 }
 
 export interface Cancelacion {
@@ -53,6 +83,10 @@ const MOTIVO_MAXIMO = 200;
  * T116 · Cancelación (RF14; FR-036 a FR-039): `cancelar` desde PENDIENTE o CONFIRMADA. El cliente, hasta
  * la hora de inicio; es tardía si `inicio − ahora < antelación` de la barbería. El propietario cancela
  * cualquier cita activa y nunca genera una cancelación tardía.
+ *
+ * 004 (T046) · Reprogramación (RF13; FR-001 a FR-007): `reprogramar` mueve la MISMA cita a otra hora (y quizá
+ * a otro barbero), con la duración copiada al reservar. Queda CONFIRMADA, con la versión + 1 y sin la
+ * confirmación del cliente. Que la hora nueva no choque con otra cita lo garantiza PostgreSQL (principio IV).
  */
 export class Cita {
   private constructor(private datos: DatosCita) {}
@@ -118,6 +152,51 @@ export class Cita {
     return this.datos.cancelacion ?? null;
   }
 
+  get version(): number {
+    return this.datos.version ?? 1;
+  }
+
+  get confirmadaPorClienteEn(): Date | null {
+    return this.datos.confirmadaPorClienteEn ?? null;
+  }
+
+  /**
+   * Mueve la cita a `destino` (FR-001 a FR-007). Solo una cita PENDIENTE o CONFIRMADA que aún no empezó. El
+   * cliente necesita la antelación de cancelación de la barbería (con exactamente esa antelación, sí puede);
+   * el propietario no. A la misma hora y con el mismo barbero no cambia nada.
+   */
+  reprogramar(
+    destino: PosicionDeCita,
+    quien: QuienReprograma,
+    ahora: Date,
+    antelacionMinutos: number,
+  ): ResultadoReprogramacion {
+    const anterior: PosicionDeCita = { barberoId: this.datos.barberoId, inicio: this.datos.rango.inicio };
+    if (!this.ocupaHorario() || this.empezo(ahora)) {
+      throw new TransicionInvalida(this.datos.estado, 'REPROGRAMADA');
+    }
+    if (destino.barberoId === anterior.barberoId && destino.inicio.getTime() === anterior.inicio.getTime()) {
+      return { cambio: false, anterior };
+    }
+    if (
+      quien.rol === 'CLIENTE' &&
+      ahora.getTime() > this.cancelacionTardiaDesde(antelacionMinutos).getTime()
+    ) {
+      throw new SinAntelacionParaReprogramar();
+    }
+    if (destino.inicio.getTime() <= ahora.getTime()) throw new ReservaInvalida('HORA_PASADA');
+    this.datos = {
+      ...this.datos,
+      barberoId: destino.barberoId,
+      rango: RangoHorario.desde(destino.inicio, this.datos.servicio.duracionMin),
+      // Una cita reprogramada queda confirmada y sin la marca de asistencia del cliente (FR-007).
+      estado: 'CONFIRMADA',
+      confirmadaPorClienteEn: null,
+      version: this.version + 1,
+    };
+    return { cambio: true, anterior };
+  }
+
   ocupaHorario(): boolean {
     return ocupaHorario(this.datos.estado);
   }
@@ -134,6 +213,7 @@ export class Cita {
     this.transicion('CANCELADA', this.ocupaHorario() && !(esCliente && this.empezo(ahora)));
     this.datos = {
       ...this.datos,
+      version: this.version + 1,
       cancelacionTardia:
         esCliente && ahora.getTime() > this.cancelacionTardiaDesde(antelacionMinutos).getTime(),
       cancelacion: { por: quien.usuarioId, en: ahora, motivo: limpio || null },
@@ -148,11 +228,13 @@ export class Cita {
   /** CONFIRMADA → COMPLETADA, solo desde la hora de inicio (no se completa una cita futura). */
   completar(ahora: Date): void {
     this.transicion('COMPLETADA', this.datos.estado === 'CONFIRMADA' && this.empezo(ahora));
+    this.datos = { ...this.datos, version: this.version + 1 };
   }
 
   /** CONFIRMADA → NO_ASISTIO, solo desde la hora de inicio. */
   marcarNoAsistio(ahora: Date): void {
     this.transicion('NO_ASISTIO', this.datos.estado === 'CONFIRMADA' && this.empezo(ahora));
+    this.datos = { ...this.datos, version: this.version + 1 };
   }
 
   /** Aplica la transición de la barbería hacia `destino` (POST /citas/{id}/estado). */

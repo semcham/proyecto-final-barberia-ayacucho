@@ -81,6 +81,7 @@ interface Escenario {
   citaFutura: string;
   citaPasada: string;
   citaIntacta: string;
+  citaAReprogramar: string;
   bloqueoId: string;
 }
 
@@ -110,6 +111,23 @@ describe('Restricciones por estado de la suscripción (T054)', () => {
       expect(presencial.status).toBe(enLinea.status);
       expect(presencial.body).toMatchObject(enLinea.status === 201 ? {} : { codigo: enLinea.body.codigo });
       return enLinea;
+    },
+    // 004 (T042): reprogramar toma una hora nueva, como una reserva; el cliente y el propietario.
+    ReprogramarCita: async (s) => {
+      const fecha = fechaEnDias(7);
+      const delCliente = await prueba.agente
+        .post(`/api/v1/citas/${s.citaAReprogramar}/reprogramar`)
+        .set(como(s.cliente))
+        .send({ inicio: horaLima(fecha, '14:00') });
+      const delPropietario = await prueba.agente
+        .post(`/api/v1/citas/${s.citaAReprogramar}/reprogramar`)
+        .set(como(s.propietario))
+        .send({ inicio: horaLima(fecha, '15:00') });
+      expect(delPropietario.status).toBe(delCliente.status);
+      expect(delPropietario.body).toMatchObject(
+        delCliente.status === 200 ? { cambio: true } : { codigo: delCliente.body.codigo },
+      );
+      return delCliente;
     },
     CancelarCita: (s) =>
       prueba.agente.post(`/api/v1/citas/${s.citaFutura}/cancelar`).set(como(s.propietario)),
@@ -220,6 +238,7 @@ describe('Restricciones por estado de la suscripción (T054)', () => {
     const citaFutura = await cita(new Date(horaLima(fechaEnDias(5), '12:00')));
     const citaPasada = await cita(new Date(horaLima(fechaEnDias(-1), '12:00')));
     const citaIntacta = await cita(new Date(horaLima(fechaEnDias(6), '12:00')));
+    const citaAReprogramar = await cita(new Date(horaLima(fechaEnDias(7), '12:00')));
     const inicioBloqueo = new Date(Date.now() + 11 * DIA);
     const bloqueoId = await sembrarBloqueo({
       tenantId,
@@ -247,6 +266,7 @@ describe('Restricciones por estado de la suscripción (T054)', () => {
       citaFutura,
       citaPasada,
       citaIntacta,
+      citaAReprogramar,
       bloqueoId,
     };
   }
@@ -308,8 +328,13 @@ describe('Restricciones por estado de la suscripción (T054)', () => {
     expect(rows[0]).toEqual({
       servicios: permitido('CONFIGURAR_CATALOGO') ? 2 : 1,
       barberos: permitido('CONFIGURAR_CATALOGO') ? 3 : 2,
-      citas: permitido('RESERVAR') ? 5 : 3,
+      // Reprogramar no crea filas: mueve la cita sembrada (6 = 4 sembradas + 2 reservas).
+      citas: permitido('RESERVAR') ? 6 : 4,
     });
+    // La cita a reprogramar solo cambió de hora si el estado acepta reservas (la movió el propietario a las 15:00).
+    const movida = (await seed.query('SELECT starts_at FROM appointment WHERE id = $1', [s.citaAReprogramar]))
+      .rows[0].starts_at;
+    expect(movida).toEqual(new Date(horaLima(fechaEnDias(7), permitido('RESERVAR') ? '15:00' : '12:00')));
   });
 
   it('SC-008: una barbería vencida que paga acepta reservas en la solicitud siguiente, sin esperar a la tarea', async () => {

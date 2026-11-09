@@ -107,6 +107,31 @@ export class IdempotenciaConflicto extends ErrorDeAplicacion {
   }
 }
 
+/**
+ * 004 (FR-006): al cliente le falta antelación para reprogramar (la misma de cancelación). La interfaz ofrece
+ * cancelar la cita en su lugar (`puedeCancelar`). El propietario nunca recibe este error.
+ */
+export class SinAntelacionParaReprogramar extends ErrorDeAplicacion {
+  readonly codigo = 'SIN_ANTELACION_PARA_REPROGRAMAR';
+  constructor() {
+    super(
+      'Ya no se puede reprogramar esta cita: falta menos que la antelación mínima de la barbería. Puedes cancelarla.',
+      [{ puedeCancelar: true }],
+    );
+  }
+}
+
+/**
+ * 004 (research R01): la cita cambió mientras se reprogramaba (otra reprogramación, una cancelación o un cambio
+ * de estado confirmado antes). Nada se modificó; la cita conserva lo que tenga ahora.
+ */
+export class CitaCambio extends ErrorDeAplicacion {
+  readonly codigo = 'CITA_CAMBIO';
+  constructor() {
+    super('La cita cambió mientras tanto. Vuelve a abrirla para ver su estado actual.');
+  }
+}
+
 export class TransicionInvalida extends ErrorDeAplicacion {
   readonly codigo = 'TRANSICION_INVALIDA';
   constructor(desde: string, hacia: string) {

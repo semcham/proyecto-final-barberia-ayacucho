@@ -44,3 +44,66 @@ export const manejadoresBase = [
     HttpResponse.json({ aceptaReservas: true, mensaje: null }),
   ),
 ];
+
+/** Cita mínima que devuelve POST /citas/{id}/reprogramar (CitaConConfirmacion de 004). */
+interface CitaReprogramable {
+  id: string;
+  servicio: string;
+  barbero: string;
+  inicio: string;
+  fin: string;
+  estado: string;
+  [campo: string]: unknown;
+}
+
+/**
+ * 004 (T045): respuestas de POST /citas/{id}/reprogramar (200, 409 y 422). Cada una guarda los cuerpos que
+ * recibe en `solicitudes`, para que la prueba compruebe qué se envió.
+ */
+export const reprogramacion = {
+  /** 200: la cita queda a la hora pedida (30 min), confirmada y sin la confirmación del cliente. */
+  exito: (cita: CitaReprogramable, solicitudes: unknown[] = []) =>
+    http.post(`/api/v1/citas/${cita.id}/reprogramar`, async ({ request }) => {
+      const cuerpo = (await request.json()) as { inicio: string; barberoId?: string };
+      solicitudes.push(cuerpo);
+      const fin = new Date(Date.parse(cuerpo.inicio) + 30 * 60_000);
+      return HttpResponse.json({
+        cita: {
+          ...cita,
+          inicio: cuerpo.inicio,
+          fin: `${new Date(fin.getTime() - 5 * 3_600_000).toISOString().slice(0, 19)}-05:00`,
+          estado: 'CONFIRMADA',
+          confirmadaPorClienteEn: null,
+        },
+        cambio: true,
+        inicioAnterior: cita.inicio,
+      });
+    }),
+  /** 409: la hora se ocupó mientras tanto; la cita conserva su hora. */
+  ocupada: (citaId: string, solicitudes: unknown[] = []) =>
+    http.post(`/api/v1/citas/${citaId}/reprogramar`, async ({ request }) => {
+      solicitudes.push(await request.json());
+      return HttpResponse.json(
+        {
+          codigo: 'HORARIO_NO_DISPONIBLE',
+          mensaje: 'Ese horario ya no está disponible. Elige otra hora.',
+          detalles: [],
+        },
+        { status: 409 },
+      );
+    }),
+  /** 422: el cliente ya no tiene la antelación mínima; la interfaz ofrece cancelar. */
+  sinAntelacion: (citaId: string, solicitudes: unknown[] = []) =>
+    http.post(`/api/v1/citas/${citaId}/reprogramar`, async ({ request }) => {
+      solicitudes.push(await request.json());
+      return HttpResponse.json(
+        {
+          codigo: 'SIN_ANTELACION_PARA_REPROGRAMAR',
+          mensaje:
+            'Ya no se puede reprogramar esta cita: falta menos que la antelación mínima de la barbería. Puedes cancelarla.',
+          detalles: [{ puedeCancelar: true }],
+        },
+        { status: 422 },
+      );
+    }),
+};

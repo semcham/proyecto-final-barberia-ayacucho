@@ -50,6 +50,9 @@ export const ESTADO_POR_CODIGO: Record<string, number> = {
   PLAN_NO_CONTRATABLE: 422,
   IMPORTE_DISTINTO: 422,
   PAGO_EN_LINEA_NO_DISPONIBLE: 503,
+  // Funcionalidad 004 (specs/004-notificaciones-reprogramacion/contracts/openapi.yaml, T047).
+  CITA_CAMBIO: 409,
+  SIN_ANTELACION_PARA_REPROGRAMAR: 422,
 };
 
 function desdeHttp(estado: number): CuerpoError {

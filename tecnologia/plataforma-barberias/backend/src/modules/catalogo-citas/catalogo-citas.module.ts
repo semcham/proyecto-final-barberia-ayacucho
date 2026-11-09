@@ -55,6 +55,8 @@ import { CancelarCita } from './citas/application/cancelar-cita';
 import { ConsultarHistorial } from './citas/application/consultar-historial';
 import { ConsultarAgenda } from './citas/application/consultar-agenda';
 import { CitaRepository } from './citas/application/ports/cita-repository';
+import { ReglasDeHorario } from './citas/application/reglas-de-horario';
+import { ReprogramarCita } from './citas/application/reprogramar-cita';
 import { ReservarCita } from './citas/application/reservar-cita';
 import { CitaRepositoryPostgres } from './citas/infrastructure/cita-repository-postgres';
 import { AgendaController } from './citas/presentation/agenda.controller';
@@ -112,7 +114,11 @@ import { HistorialController } from './citas/presentation/historial.controller';
     InvalidadorCatalogoPublico,
     ConsultarHorarios,
     { provide: CitaRepository, useClass: CitaRepositoryPostgres },
+    // 004 (T049): reglas de una hora nueva, compartidas por la reserva y la reprogramación.
+    ReglasDeHorario,
     ReservarCita,
+    // Reprogramación (004, US1).
+    ReprogramarCita,
     // Agenda y estados (US4).
     CambiarEstadoCita,
     ConsultarAgenda,

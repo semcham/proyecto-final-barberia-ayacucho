@@ -70,8 +70,10 @@ describe('Operaciones con la política de la suscripción (PR14, T055)', () => {
     fuentes.map((f) => cuerpoDeClase(f, nombre)).find((c) => c !== null) ?? null;
 
   it('el contrato lista los casos de uso de M01 y M02', () => {
-    expect(casos.size).toBe(14);
+    // 15: los 14 de 003 más ReprogramarCita, que agregó 004 (T042, T051).
+    expect(casos.size).toBe(15);
     expect(casos.get('ReservarCita')).toBe('RESERVAR');
+    expect(casos.get('ReprogramarCita')).toBe('RESERVAR');
     expect(casos.get('RegenerarActivacion')).toBe('GESTIONAR_USUARIOS');
   });
 

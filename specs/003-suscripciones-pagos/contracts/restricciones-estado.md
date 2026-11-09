@@ -27,6 +27,7 @@ esta tabla: sus usuarios no pueden iniciar sesión (001).
 | Caso de uso                                                | Módulo          | Acción                |
 | ---------------------------------------------------------- | --------------- | --------------------- |
 | `ReservarCita` (cliente y presencial)                      | M02 `citas`     | `RESERVAR`            |
+| `ReprogramarCita` (cliente y propietario; agregada por 004) | M02 `citas`     | `RESERVAR`            |
 | `CancelarCita`                                             | M02 `citas`     | `GESTIONAR_CITAS`     |
 | `CambiarEstadoCita`                                        | M02 `citas`     | `GESTIONAR_CITAS`     |
 | `CrearServicio`, `ActualizarServicio`                      | M02 `catalogo`  | `CONFIGURAR_CATALOGO` |
@@ -38,3 +39,8 @@ esta tabla: sus usuarios no pueden iniciar sesión (001).
 `CancelarCita` y `CambiarEstadoCita` también llaman a `exigirOperacion` (con `GESTIONAR_CITAS`, que
 hoy es ✓ en todos los estados). Así, la prueba de arquitectura exige la llamada en **todo** caso de
 uso de escritura listado, y un cambio futuro de la política no necesita tocar M02.
+
+**Nota (004):** la fila `ReprogramarCita` la agregó la funcionalidad 004 (T051): reprogramar toma una hora
+nueva, así que exige `RESERVAR` como una reserva (specs/004-notificaciones-reprogramacion/contracts/rbac.md,
+US1-7). La prueba de arquitectura `operaciones-con-politica` y la de integración `restricciones-estado` la
+recorren como a las demás.

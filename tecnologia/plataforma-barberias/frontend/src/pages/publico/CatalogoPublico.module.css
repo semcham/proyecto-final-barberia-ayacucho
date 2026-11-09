@@ -142,12 +142,6 @@
   font-size: var(--texto-sm);
 }
 
-.horas {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(5rem, 1fr));
-  gap: var(--espacio-2);
-}
-
 .resumen {
   margin: 0;
 }

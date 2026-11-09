@@ -27,7 +27,10 @@ type CodigoError003 =
   | 'COMPROBANTE_YA_EN_REVISION'
   | 'MEDIO_NO_DISPONIBLE_PARA_EL_PLAN'
   | 'PLAN_NO_CONTRATABLE';
-export type CodigoError = CuerpoError['codigo'] | CodigoError002 | CodigoError006 | CodigoError003;
+/** Códigos de la funcionalidad 004 (specs/004-notificaciones-reprogramacion/contracts/openapi.yaml). */
+type CodigoError004 = 'CITA_CAMBIO' | 'SIN_ANTELACION_PARA_REPROGRAMAR';
+export type CodigoError =
+  CuerpoError['codigo'] | CodigoError002 | CodigoError006 | CodigoError003 | CodigoError004;
 
 const BASE = '/api/v1';
 

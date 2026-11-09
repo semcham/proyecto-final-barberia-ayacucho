@@ -1,0 +1,25 @@
+/* Reprogramar una cita (004): el diálogo es más ancho que una confirmación para que quepan las horas. */
+
+@media (min-width: 40rem) {
+  .dialogo {
+    width: min(36rem, calc(100vw - 2rem));
+  }
+}
+
+.formulario {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-4);
+  margin-top: var(--espacio-5);
+}
+
+.fila {
+  display: grid;
+  gap: var(--espacio-3);
+}
+
+@media (min-width: 30rem) {
+  .fila {
+    grid-template-columns: 1fr 1fr;
+  }
+}

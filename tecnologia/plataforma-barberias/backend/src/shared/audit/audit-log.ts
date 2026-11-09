@@ -27,6 +27,8 @@ export type AccionAuditada =
   | 'CITA_RESERVADA'
   | 'CITA_CANCELADA'
   | 'CITA_ESTADO_CAMBIADO'
+  // 004 (FR-035): recurso `cita:<id>;<vía>;<antes>><después>` (horas en UTC, AAAAMMDDTHHMMZ).
+  | 'CITA_REPROGRAMADA'
   // Funcionalidad 003 (FR-031, FR-037).
   | 'PAGO_INICIADO'
   | 'PAGO_APROBADO'

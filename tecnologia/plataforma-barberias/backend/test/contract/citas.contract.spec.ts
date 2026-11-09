@@ -1,5 +1,6 @@
+import { randomUUID } from 'node:crypto';
 import { type AppDePrueba, crearApp } from '../helpers/app';
-import { erroresDeContrato002 } from '../helpers/contrato';
+import { erroresDeContrato002, erroresDeContrato004 } from '../helpers/contrato';
 import {
   type BarberiaParaReservar,
   barberiaParaReservar,
@@ -9,7 +10,7 @@ import {
 } from '../helpers/reservas';
 import { sembrarUsuario } from '../helpers/fixtures';
 import { sesionCliente, tokenPara } from '../helpers/sesiones';
-import { cerrarPools } from '../helpers/test-db';
+import { cerrarPools, poolDe } from '../helpers/test-db';
 
 // T081 · Contrato (specs/002-catalogo-citas-cliente/contracts/openapi.yaml) de POST /citas.
 
@@ -121,5 +122,59 @@ describe('Contrato 002: POST /citas', () => {
       .set({ Authorization: `Bearer ${tokenBarbero}` })
       .expect(403);
     expect(erroresDeContrato002('/citas/{id}/cancelar', 'post', 403, prohibido.body)).toEqual([]);
+  });
+
+  // T041 · POST /citas/{id}/reprogramar (004, RF13): specs/004-notificaciones-reprogramacion/contracts/openapi.yaml.
+  it('POST /citas/{id}/reprogramar (004): 200 con CitaReprogramada (con y sin cambio), 403, 404, 409 y 422', async () => {
+    const ruta = (id: string) => `/api/v1/citas/${id}/reprogramar`;
+    const contrato = '/citas/{id}/reprogramar';
+    const dia = fechaEnDias(5);
+    const reserva = await reservar({
+      servicioId: e.servicioId,
+      barberoId: e.barberoId,
+      inicio: horaLima(dia, '10:00'),
+    }).expect(201);
+    const mover = (inicio: string, conToken = token, id = reserva.body.id) =>
+      prueba.agente
+        .post(ruta(id))
+        .set({ Authorization: `Bearer ${conToken}` })
+        .send({ inicio });
+
+    const movida = await mover(horaLima(dia, '12:00')).expect(200);
+    expect(erroresDeContrato004(contrato, 'post', 200, movida.body)).toEqual([]);
+    expect(movida.body).toMatchObject({
+      cambio: true,
+      inicioAnterior: horaLima(dia, '10:00'),
+      cita: { confirmadaPorClienteEn: null },
+    });
+
+    const igual = await mover(horaLima(dia, '12:00')).expect(200);
+    expect(erroresDeContrato004(contrato, 'post', 200, igual.body)).toEqual([]);
+    expect(igual.body.cambio).toBe(false);
+
+    const otro = await sesionCliente(e.barberia.tenantId);
+    await reservar(
+      { servicioId: e.servicioId, barberoId: e.barberoId, inicio: horaLima(dia, '15:00') },
+      nuevaClave(),
+      otro.token,
+    ).expect(201);
+    const ocupada = await mover(horaLima(dia, '15:00')).expect(409);
+    expect(erroresDeContrato004(contrato, 'post', 409, ocupada.body)).toEqual([]);
+
+    const pasada = await mover(horaLima(fechaEnDias(-1), '10:00')).expect(422);
+    expect(erroresDeContrato004(contrato, 'post', 422, pasada.body)).toEqual([]);
+
+    const ajena = await mover(horaLima(dia, '16:00'), otro.token).expect(404);
+    expect(erroresDeContrato004(contrato, 'post', 404, ajena.body)).toEqual([]);
+
+    // Una barbería vencida no acepta reprogramaciones (la política se consulta antes de buscar la cita).
+    const g = await barberiaParaReservar();
+    await poolDe('seed').query(`UPDATE subscription SET status = 'EXPIRED' WHERE tenant_id = $1`, [
+      g.barberia.tenantId,
+    ]);
+    const duenio = await tokenPara(g.barberia.tenantId, g.barberia.propietarioId, 'PROPIETARIO');
+    const vencida = await mover(horaLima(dia, '16:00'), duenio, randomUUID()).expect(403);
+    expect(erroresDeContrato004(contrato, 'post', 403, vencida.body)).toEqual([]);
+    expect(vencida.body.codigo).toBe('SUSCRIPCION_NO_PERMITE');
   });
 });

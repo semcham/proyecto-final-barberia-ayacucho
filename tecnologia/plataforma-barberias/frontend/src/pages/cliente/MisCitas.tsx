@@ -6,6 +6,7 @@ import { llamarApi } from '../../api/client';
 import type { components } from '../../api/schema-002';
 import { useSesion } from '../../auth/SesionProvider';
 import { ConfirmarCancelacion } from '../../components/app/ConfirmarCancelacion';
+import { ReprogramarCita } from '../../components/app/ReprogramarCita';
 import { Logo } from '../../components/Logo';
 import {
   Alerta,
@@ -39,7 +40,7 @@ const ESTADO: Record<Cita['estado'], { texto: string; tono: TonoEtiqueta }> = {
 /**
  * Historial del cliente en la barbería de su sesión (HU16, RF17): sus citas por fecha, de la más reciente a
  * la más antigua, paginado y sin filtros (tercera línea de corte). Las citas activas futuras se pueden
- * cancelar, con el aviso de si la cancelación sería tardía (FR-038).
+ * cancelar, con el aviso de si la cancelación sería tardía (FR-038), y reprogramar (004, RF13).
  */
 export default function MisCitas() {
   const { usuario, cerrarSesion } = useSesion();
@@ -48,6 +49,7 @@ export default function MisCitas() {
   const barberia = usuario?.barberia;
   const [pagina, setPagina] = useState(1);
   const [porCancelar, setPorCancelar] = useState<Cita | null>(null);
+  const [porReprogramar, setPorReprogramar] = useState<Cita | null>(null);
   // "Ahora" fijo durante la visita: decide qué citas futuras se pueden cancelar.
   const [ahora] = useState(() => Date.now());
 
@@ -146,14 +148,24 @@ export default function MisCitas() {
                       <EtiquetaEstado tono="aviso">Cancelación tardía</EtiquetaEstado>
                     )}
                     {activa && futura && (
-                      <Boton
-                        type="button"
-                        variante="peligro"
-                        tamano="sm"
-                        onClick={() => setPorCancelar(cita)}
-                      >
-                        Cancelar
-                      </Boton>
+                      <>
+                        <Boton
+                          type="button"
+                          variante="secundario"
+                          tamano="sm"
+                          onClick={() => setPorReprogramar(cita)}
+                        >
+                          Reprogramar
+                        </Boton>
+                        <Boton
+                          type="button"
+                          variante="peligro"
+                          tamano="sm"
+                          onClick={() => setPorCancelar(cita)}
+                        >
+                          Cancelar
+                        </Boton>
+                      </>
                     )}
                   </div>
                 </li>
@@ -187,6 +199,22 @@ export default function MisCitas() {
         </nav>
       )}
 
+      {porReprogramar && catalogo.data && (
+        <ReprogramarCitaDelCliente
+          cita={porReprogramar}
+          catalogo={catalogo.data}
+          onCerrar={() => setPorReprogramar(null)}
+          onReprogramada={() => {
+            setPorReprogramar(null);
+            void consultas.invalidateQueries({ queryKey: ['mis-citas'] });
+          }}
+          onCancelar={() => {
+            setPorReprogramar(null);
+            setPorCancelar(porReprogramar);
+          }}
+        />
+      )}
+
       {porCancelar && (
         <ConfirmarCancelacion
           cita={porCancelar}
@@ -198,5 +226,49 @@ export default function MisCitas() {
         />
       )}
     </main>
+  );
+}
+
+/**
+ * Reprogramación del cliente (004, RF13): el servicio y los barberos salen del catálogo de su barbería. La
+ * cita guarda los nombres copiados al reservar; si el servicio ya no se ofrece con ese nombre, el diálogo lo
+ * explica y ofrece cancelar.
+ */
+function ReprogramarCitaDelCliente({
+  cita,
+  catalogo,
+  onCerrar,
+  onReprogramada,
+  onCancelar,
+}: {
+  cita: Cita;
+  catalogo: Catalogo;
+  onCerrar: () => void;
+  onReprogramada: () => void;
+  onCancelar: () => void;
+}) {
+  const avisar = useAvisos();
+  const zona = catalogo.barberia.zonaHoraria;
+  const servicioId = catalogo.servicios.find((s) => s.nombre === cita.servicio)?.id ?? null;
+  const barberos = catalogo.barberos.filter((b) => servicioId !== null && b.servicioIds.includes(servicioId));
+  return (
+    <ReprogramarCita
+      cita={cita}
+      servicioId={servicioId}
+      barberos={barberos}
+      barberoActualId={barberos.find((b) => b.nombre === cita.barbero)?.id ?? null}
+      zona={zona}
+      comoCliente
+      onCerrar={onCerrar}
+      onCancelar={onCancelar}
+      onReprogramada={({ cita: nueva }) => {
+        avisar({
+          tono: 'exito',
+          titulo: 'Cita reprogramada',
+          descripcion: `${fechaDeBarberia(nueva.inicio, zona)}, ${horaDeBarberia(nueva.inicio, zona)} con ${nueva.barbero}.`,
+        });
+        onReprogramada();
+      }}
+    />
   );
 }

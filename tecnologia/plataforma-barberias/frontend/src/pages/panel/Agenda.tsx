@@ -6,6 +6,7 @@ import type { components } from '../../api/schema-002';
 import { useSesion } from '../../auth/SesionProvider';
 import { ConfirmarCancelacion } from '../../components/app/ConfirmarCancelacion';
 import { EncabezadoPagina } from '../../components/app/EncabezadoPagina';
+import { ReprogramarCita } from '../../components/app/ReprogramarCita';
 import {
   Alerta,
   Boton,
@@ -45,7 +46,8 @@ const ESTADO: Record<EstadoCita, { texto: string; tono: TonoEtiqueta }> = {
 /**
  * Agenda del día (HU14, RF16; HU16, RF15). Lista por fecha (primera línea de corte, sin calendario). El
  * propietario ve toda la barbería y filtra por barbero; el barbero ve la suya. Las acciones de estado
- * aparecen desde la hora de inicio de la cita. El propietario registra citas presenciales.
+ * aparecen desde la hora de inicio de la cita. El propietario registra citas presenciales y reprograma las
+ * citas activas que aún no empiezan (004, RF13).
  */
 export default function Agenda() {
   const { usuario } = useSesion();
@@ -89,6 +91,15 @@ export default function Agenda() {
       avisar({ tono: 'error', titulo: 'No se pudo cambiar el estado', descripcion: mensajeDeError(error) });
       void consultas.invalidateQueries({ queryKey: ['agenda'] });
     },
+  });
+
+  // Reprogramación del propietario (004, RF13): cualquier cita activa que no empezó, sin regla de antelación.
+  const [porReprogramar, setPorReprogramar] = useState<CitaAgenda | null>(null);
+  const servicios = useQuery({
+    queryKey: clavesConsulta.servicios,
+    queryFn: () => llamarApi<Servicio[]>('/servicios'),
+    // Solo al abrir una reprogramación: la agenda no necesita los servicios para mostrarse.
+    enabled: esPropietario && porReprogramar !== null,
   });
 
   // Cancelación del propietario (RF14): cualquier cita activa, nunca tardía para el cliente.
@@ -171,6 +182,15 @@ export default function Agenda() {
             onCerrar={() => setPorCancelar(null)}
           />
         )}
+        {porReprogramar && servicios.data && barberos.data && (
+          <ReprogramarCitaDelPropietario
+            cita={porReprogramar}
+            servicios={servicios.data}
+            barberos={barberos.data}
+            zona={zona}
+            onCerrar={() => setPorReprogramar(null)}
+          />
+        )}
         <section aria-label="Citas del día">
           {agenda.isPending ? (
             <Cargando />
@@ -238,14 +258,26 @@ export default function Agenda() {
                         </>
                       )}
                       {esPropietario && (cita.estado === 'CONFIRMADA' || cita.estado === 'PENDIENTE') && (
-                        <Boton
-                          type="button"
-                          variante="peligro"
-                          tamano="sm"
-                          onClick={() => setPorCancelar(cita)}
-                        >
-                          Cancelar
-                        </Boton>
+                        <>
+                          {!llego && (
+                            <Boton
+                              type="button"
+                              variante="secundario"
+                              tamano="sm"
+                              onClick={() => setPorReprogramar(cita)}
+                            >
+                              Reprogramar
+                            </Boton>
+                          )}
+                          <Boton
+                            type="button"
+                            variante="peligro"
+                            tamano="sm"
+                            onClick={() => setPorCancelar(cita)}
+                          >
+                            Cancelar
+                          </Boton>
+                        </>
                       )}
                     </div>
                   </li>
@@ -256,6 +288,52 @@ export default function Agenda() {
         </section>
       </div>
     </>
+  );
+}
+
+/**
+ * Reprogramación desde la agenda (004, RF13): el servicio activo con el nombre copiado en la cita y los barberos
+ * activos que lo ofrecen; por defecto, el barbero de la cita.
+ */
+function ReprogramarCitaDelPropietario({
+  cita,
+  servicios,
+  barberos,
+  zona,
+  onCerrar,
+}: {
+  cita: CitaAgenda;
+  servicios: Servicio[];
+  barberos: Barbero[];
+  zona: string;
+  onCerrar: () => void;
+}) {
+  const avisar = useAvisos();
+  const consultas = useQueryClient();
+  const servicioId = servicios.find((s) => s.activo && s.nombre === cita.servicio)?.id ?? null;
+  const elegibles = barberos.filter(
+    (b) => b.activo && servicioId !== null && b.servicioIds.includes(servicioId),
+  );
+  return (
+    <ReprogramarCita
+      cita={cita}
+      servicioId={servicioId}
+      barberos={elegibles}
+      barberoActualId={cita.barberoId}
+      zona={zona}
+      comoCliente={false}
+      onCerrar={onCerrar}
+      onReprogramada={({ cita: nueva }) => {
+        avisar({
+          tono: 'exito',
+          titulo: 'Cita reprogramada',
+          descripcion: `${fechaDeBarberia(nueva.inicio, zona)}, ${horaDeBarberia(nueva.inicio, zona)} con ${nueva.barbero}.`,
+        });
+        void consultas.invalidateQueries({ queryKey: ['agenda'] });
+        void consultas.invalidateQueries({ queryKey: ['horarios-panel'] });
+        onCerrar();
+      }}
+    />
   );
 }
 

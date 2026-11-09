@@ -3,7 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { v7 as uuidv7 } from 'uuid';
 import { type Actor, BarberiasApi, ClientesApi, type ConfiguracionAgenda } from '../../../acceso-barberias';
 import { SuscripcionesApi } from '../../../suscripciones-pagos';
-import { AuditLog, Clock, Configuracion, TenantId, UnitOfWork, ZonaHoraria } from '../../../../shared';
+import { AuditLog, Clock, TenantId, UnitOfWork, ZonaHoraria } from '../../../../shared';
 import { AutorizacionCatalogoCitas } from '../../catalogo/application/autorizacion';
 import { CatalogQuery } from '../../catalogo/application/ports/catalog-query';
 import {
@@ -12,11 +12,11 @@ import {
   HorarioNoDisponible,
   IdempotenciaConflicto,
   NoEncontrado,
-  ReservaInvalida,
 } from '../../catalogo/domain/errores';
 import { Cita } from '../domain/cita';
 import type { EstadoCita } from '../domain/estado-cita';
 import { CitaRepository, ClaveIdempotenciaEnUso, ConflictoConcurrente } from './ports/cita-repository';
+import { ReglasDeHorario } from './reglas-de-horario';
 
 const FORMATO_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const REINTENTOS_POR_BLOQUEO_MUTUO = 3;
@@ -68,7 +68,7 @@ export class ReservarCita {
     private readonly catalogo: CatalogQuery,
     private readonly clientes: ClientesApi,
     private readonly barberias: BarberiasApi,
-    private readonly configuracion: Configuracion,
+    private readonly reglas: ReglasDeHorario,
     private readonly reloj: Clock,
     private readonly auditoria: AuditLog,
     private readonly suscripciones: SuscripcionesApi,
@@ -130,29 +130,17 @@ export class ReservarCita {
         : await this.clientes.perfilDeBarberia(comando.clienteId as string);
     if (!cliente) throw new NoEncontrado();
 
-    // 2. Reglas de FR-030 (mensajes claros; la garantía la da la base).
-    const servicio = await this.catalogo.servicioActivo(comando.servicioId);
-    if (!servicio) throw new ReservaInvalida('SERVICIO_INACTIVO');
-    const barbero = await this.catalogo.barberoOfrece(comando.barberoId, comando.servicioId);
-    if (!barbero) throw new ReservaInvalida('BARBERO_NO_OFRECE_SERVICIO');
-
+    // 2. Reglas de FR-030 (mensajes claros; la garantía la da la base). T049 (004): las mismas que usa la
+    // reprogramación, en ReglasDeHorario.
     const agenda = await this.barberias.configuracionAgenda();
-    const zona = new ZonaHoraria(agenda.zonaHoraria);
     const ahora = this.reloj.ahora();
-    if (inicio.getTime() <= ahora.getTime()) throw new ReservaInvalida('HORA_PASADA');
-    const local = zona.aLocal(inicio);
-    if (local.fecha.diasDesde(zona.fechaDe(ahora)) > this.configuracion.horarios.horizonteDias) {
-      throw new ReservaInvalida('FUERA_DEL_HORIZONTE');
-    }
-    // Solo las horas que se ofrecen: múltiplos del paso desde la medianoche local, sin segundos (R08).
-    if (local.minutos % this.configuracion.horarios.pasoMinutos !== 0 || inicio.getTime() % 60_000 !== 0) {
-      throw new ReservaInvalida('FUERA_DE_DISPONIBILIDAD');
-    }
-    const finMin = local.minutos + servicio.duracionMin;
-    const tramos = await this.catalogo.tramosDelDia(comando.barberoId, local.fecha);
-    if (!tramos.some((tramo) => tramo.inicioMin <= local.minutos && finMin <= tramo.finMin)) {
-      throw new ReservaInvalida('FUERA_DE_DISPONIBILIDAD');
-    }
+    const { servicio, barbero } = await this.reglas.validar({
+      servicioId: comando.servicioId,
+      barberoId: comando.barberoId,
+      inicio,
+      ahora,
+      zonaHoraria: agenda.zonaHoraria,
+    });
 
     const cita = Cita.reservar({
       id: uuidv7(),
@@ -164,12 +152,6 @@ export class ReservarCita {
       creadoPor: actor.usuarioId,
       ahora,
     });
-    const bloqueos = await this.catalogo.bloqueosEnRango(
-      comando.barberoId,
-      cita.rango.inicio,
-      cita.rango.fin,
-    );
-    if (bloqueos.length > 0) throw new ReservaInvalida('EN_BLOQUEO');
 
     // 3. Inserción: aquí actúan las restricciones de exclusión (principio IV).
     await this.citas.guardar(cita, { clave, hashSolicitud });

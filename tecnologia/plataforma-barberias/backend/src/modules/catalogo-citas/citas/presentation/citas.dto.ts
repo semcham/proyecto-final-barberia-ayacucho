@@ -27,6 +27,21 @@ export class CambiarEstadoDto {
   estado!: 'CONFIRMADA' | 'COMPLETADA' | 'NO_ASISTIO';
 }
 
+/**
+ * Cuerpo de POST /citas/{id}/reprogramar (ReprogramarCitaRequest de 004, additionalProperties: false). La
+ * barbería sale del token; cualquier otro campo se rechaza con 400.
+ */
+export class ReprogramarCitaDto {
+  /** ISO 8601 con desplazamiento, p. ej. 2026-11-12T10:00:00-05:00. */
+  @IsISO8601({ strict: true })
+  inicio!: string;
+
+  /** Otro barbero que ofrezca el servicio; si falta, el mismo de la cita. */
+  @IsOptional()
+  @IsUUID()
+  barberoId?: string;
+}
+
 /** Cuerpo opcional de POST /citas/{id}/cancelar (CancelarCitaRequest): el motivo, si se quiere dejar. */
 export class CancelarCitaDto {
   @IsOptional()

@@ -37,6 +37,17 @@ export class ConflictoConcurrente extends Error {
   }
 }
 
+/** La cita tal como se leyó antes de reprogramarla: el UPDATE condicional exige que siga igual (R01). */
+export interface CitaAntesDeReprogramar {
+  barberoId: string;
+  inicio: Date;
+  estado: EstadoCita;
+  version: number;
+}
+
+/** Quién reprogramó y por dónde: por sesión hay usuario; por enlace (fase 4), no. */
+export type AutorDeReprogramacion = { via: 'SESION'; usuarioId: string } | { via: 'ENLACE'; usuarioId: null };
+
 /** Citas de la barbería del contexto (filtro explícito por tenant además de RLS). */
 export abstract class CitaRepository {
   /**
@@ -57,6 +68,21 @@ export abstract class CitaRepository {
    * fila del historial (inmutable) con su autor.
    */
   abstract actualizarEstado(cita: Cita, anterior: EstadoCita, autorId: string): Promise<void>;
+  /** La cita sin bloquear su fila, o null. La reprogramación la vuelve a comprobar al escribir (R01). */
+  abstract buscarPorId(id: string): Promise<Cita | null>;
+  /**
+   * 004 (T048; research R01 a R03) · Guarda la cita ya reprogramada en la MISMA fila, en la transacción en
+   * curso: toma los bloqueos consultivos de los dos barberos (en orden, sin bloqueo mutuo) y hace un UPDATE
+   * condicional (misma versión y aún activa). La violación de las restricciones de exclusión se traduce a
+   * `HorarioNoDisponible` o `CitaSolapadaDelCliente`; 0 filas, a `CitaCambio`; el bloqueo mutuo (40P01), a
+   * `ConflictoConcurrente` (el caso de uso reintenta la transacción entera). Agrega la fila inmutable de
+   * `appointment_reschedule` y, si la cita estaba PENDIENTE, la del historial de estados.
+   */
+  abstract reprogramar(
+    cita: Cita,
+    antes: CitaAntesDeReprogramar,
+    autor: AutorDeReprogramacion,
+  ): Promise<void>;
   /** Citas (en cualquier estado) que empiezan en [desde, hasta), opcionalmente de un barbero, por inicio. */
   abstract delRango(desde: Date, hasta: Date, barberoId?: string): Promise<Cita[]>;
   /**

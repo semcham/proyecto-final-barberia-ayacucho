@@ -6,21 +6,14 @@ import { ApiError, llamarApi } from '../../api/client';
 import type { components } from '../../api/schema-002';
 import { PantallaCarga } from '../../auth/PantallaCarga';
 import { useSesion } from '../../auth/SesionProvider';
+import { SelectorDeHora } from '../../components/app/SelectorDeHora';
 import { Icono } from '../../components/Icono';
 import { Logo } from '../../components/Logo';
 import { Alerta } from '../../components/ui/Alerta';
 import { Boton, clasesBoton } from '../../components/ui/Boton';
-import { Esqueleto } from '../../components/ui/Esqueleto';
 import { EstadoVacio } from '../../components/ui/EstadoVacio';
 import { Tarjeta } from '../../components/ui/Tarjeta';
-import {
-  ETIQUETA_HORA_BARBERIA,
-  fechaDeBarberia,
-  fechaIsoDeBarberia,
-  horaConEtiqueta,
-  horaDeBarberia,
-  sumarDiasIso,
-} from '../../hora-barberia';
+import { fechaDeBarberia, fechaIsoDeBarberia, horaConEtiqueta, sumarDiasIso } from '../../hora-barberia';
 import { HORIZONTE_RESERVA_DIAS } from '../../legal';
 import estilos from './CatalogoPublico.module.css';
 import { mensajeDeError } from './Union';
@@ -230,43 +223,15 @@ function ContenidoCatalogo({ catalogo, slug }: { catalogo: Catalogo; slug: strin
 
           {!servicio ? (
             <p className={estilos.ayuda}>Elige un servicio para ver las horas libres.</p>
-          ) : horarios.isPending ? (
-            <div aria-busy="true" className={estilos.horas}>
-              <span className="sr-only">Buscando horas libres…</span>
-              {Array.from({ length: 8 }, (_, i) => (
-                <Esqueleto key={i} alto="var(--alto-control-sm)" />
-              ))}
-            </div>
-          ) : horarios.isError ? (
-            <Alerta>{mensajeDeError(horarios.error)}</Alerta>
-          ) : horas.length === 0 ? (
-            <EstadoVacio
-              icono="calendario"
-              titulo="No hay horas libres ese día"
-              descripcion="Prueba con otra fecha u otro barbero."
-            />
           ) : (
-            <>
-              <p className={estilos.ayuda}>
-                {fechaDeBarberia(horas[0].inicio, zona)} · horas en {ETIQUETA_HORA_BARBERIA}
-              </p>
-              <div role="group" aria-label="Horas libres" className={estilos.horas}>
-                {horas.map((h) => (
-                  <button
-                    key={h.inicio}
-                    type="button"
-                    className={clasesBoton({
-                      variante: h.inicio === inicio ? 'primario' : 'secundario',
-                      tamano: 'sm',
-                    })}
-                    aria-pressed={h.inicio === inicio}
-                    onClick={() => setInicio(h.inicio)}
-                  >
-                    {horaDeBarberia(h.inicio, zona)}
-                  </button>
-                ))}
-              </div>
-            </>
+            <SelectorDeHora
+              cargando={horarios.isPending}
+              error={horarios.isError ? mensajeDeError(horarios.error) : null}
+              horas={horas}
+              zona={zona}
+              elegida={inicio}
+              onElegir={setInicio}
+            />
           )}
         </section>
       </div>

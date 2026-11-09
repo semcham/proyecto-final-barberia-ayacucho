@@ -2,10 +2,12 @@ import { Injectable } from '@nestjs/common';
 import { sql } from 'kysely';
 import { v7 as uuidv7 } from 'uuid';
 import { KyselyUnitOfWork, TenantContext } from '../../../../shared';
-import { CitaSolapadaDelCliente, HorarioNoDisponible } from '../../catalogo/domain/errores';
+import { CitaCambio, CitaSolapadaDelCliente, HorarioNoDisponible } from '../../catalogo/domain/errores';
 import { RangoHorario } from '../../catalogo/domain/rango-horario';
 import {
+  type AutorDeReprogramacion,
   ClaveIdempotenciaEnUso,
+  type CitaAntesDeReprogramar,
   type CitaConIdempotencia,
   CitaRepository,
   ConflictoConcurrente,
@@ -107,6 +109,8 @@ export class CitaRepositoryPostgres extends CitaRepository {
       .updateTable('appointment')
       .set({
         status: cita.estado,
+        // 004: cancelar, completar y no asistió suben la versión (invalida los enlaces de acción).
+        version: cita.version,
         updated_at: ahora,
         // Al cancelar: quién, cuándo, el motivo y la marca de tardía (FR-038, FR-039).
         ...(cita.estado === 'CANCELADA' &&
@@ -132,6 +136,77 @@ export class CitaRepositoryPostgres extends CitaRepository {
         changed_at: ahora,
       })
       .execute();
+  }
+
+  async buscarPorId(id: string): Promise<Cita | null> {
+    const fila = await this.consulta().where('id', '=', id).executeTakeFirst();
+    return fila ? aCita(fila) : null;
+  }
+
+  async reprogramar(cita: Cita, antes: CitaAntesDeReprogramar, autor: AutorDeReprogramacion): Promise<void> {
+    const tenantId = this.tenantContext.actual().valor;
+    const trx = this.uow.transaccionActual();
+    const ahora = new Date();
+    try {
+      // Los bloqueos consultivos de los dos barberos (el de antes y el de después), siempre en el mismo orden:
+      // dos cambios cruzados (A → B y B → A) se ordenan en lugar de bloquearse mutuamente (R03). Como en
+      // `guardar`, NO son la garantía: la garantía es la restricción de exclusión (principio IV).
+      for (const barberoId of [...new Set([antes.barberoId, cita.barberoId])].sort()) {
+        await sql`select pg_advisory_xact_lock(hashtext(${tenantId}), hashtext(${barberoId}))`.execute(trx);
+      }
+      // La misma fila (R01): si mientras tanto otra operación la cambió (versión) o dejó de estar activa, no
+      // se toca nada (0 filas → CitaCambio).
+      const resultado = await trx
+        .updateTable('appointment')
+        .set({
+          barber_id: cita.barberoId,
+          starts_at: cita.rango.inicio,
+          ends_at: cita.rango.fin,
+          status: cita.estado,
+          version: cita.version,
+          client_confirmed_at: null,
+          updated_at: ahora,
+        })
+        .where('tenant_id', '=', tenantId)
+        .where('id', '=', cita.id)
+        .where('version', '=', antes.version)
+        .where('status', 'in', ['PENDIENTE', 'CONFIRMADA'])
+        .executeTakeFirst();
+      if (Number(resultado.numUpdatedRows) === 0) throw new CitaCambio();
+    } catch (error) {
+      throw traducir(error);
+    }
+    await trx
+      .insertInto('appointment_reschedule')
+      .values({
+        id: uuidv7(),
+        tenant_id: tenantId,
+        appointment_id: cita.id,
+        from_barber_id: antes.barberoId,
+        from_starts_at: antes.inicio,
+        to_barber_id: cita.barberoId,
+        to_starts_at: cita.rango.inicio,
+        changed_by: autor.usuarioId,
+        via: autor.via,
+        changed_at: ahora,
+      })
+      .execute();
+    // Una cita PENDIENTE reprogramada queda CONFIRMADA (FR-007): el cambio de estado va al historial con su
+    // autor. Por enlace (fase 4) no hay usuario que lo firme; hoy toda cita nace CONFIRMADA (FR-035a de 002).
+    if (antes.estado !== cita.estado && autor.via === 'SESION') {
+      await trx
+        .insertInto('appointment_status_history')
+        .values({
+          id: uuidv7(),
+          tenant_id: tenantId,
+          appointment_id: cita.id,
+          from_status: antes.estado,
+          to_status: cita.estado,
+          changed_by: autor.usuarioId,
+          changed_at: ahora,
+        })
+        .execute();
+    }
   }
 
   async delRango(desde: Date, hasta: Date, barberoId?: string): Promise<Cita[]> {
@@ -182,6 +257,8 @@ export class CitaRepositoryPostgres extends CitaRepository {
         'origin',
         'late_cancellation',
         'created_by',
+        'version',
+        'client_confirmed_at',
       ])
       .where('tenant_id', '=', this.tenantContext.actual().valor);
   }
@@ -201,6 +278,8 @@ function aCita(fila: {
   origin: 'EN_LINEA' | 'PRESENCIAL';
   late_cancellation: boolean;
   created_by: string;
+  version: number;
+  client_confirmed_at: Date | null;
 }): Cita {
   return Cita.reconstruir({
     id: fila.id,
@@ -217,6 +296,8 @@ function aCita(fila: {
     origen: fila.origin,
     cancelacionTardia: fila.late_cancellation,
     creadoPor: fila.created_by,
+    version: fila.version,
+    confirmadaPorClienteEn: fila.client_confirmed_at,
   });
 }
 

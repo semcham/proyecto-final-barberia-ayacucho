@@ -184,9 +184,40 @@ describe('Las matrices de M01 y M02 coinciden con contracts/rbac.md de 002', () 
     ).toEqual(['Operación', 'PUB', 'PROPIETARIO', 'BARBERO', 'CLIENTE']);
   });
 
-  it('cada operación de M02 aparece en la tabla', () => {
-    const cubiertas = M02_POR_FILA.flatMap(([, operaciones]) => operaciones).sort();
+  // 004 (T050): operaciones de M02 que agrega la funcionalidad 004; su fila está en el rbac.md de 004.
+  const M02_DE_004: OperacionCatalogoCitas[] = ['REPROGRAMAR_CITA'];
+
+  it('cada operación de M02 aparece en la tabla (o en la de 004)', () => {
+    const cubiertas = [...M02_POR_FILA.flatMap(([, operaciones]) => operaciones), ...M02_DE_004].sort();
     expect(cubiertas).toEqual([...OPERACIONES_CATALOGO_CITAS].sort());
+  });
+
+  it('REPROGRAMAR_CITA coincide con la fila de specs/004-notificaciones-reprogramacion/contracts/rbac.md', () => {
+    const rbac004 = readFileSync(
+      RBAC_MD.replace('002-catalogo-citas-cliente', '004-notificaciones-reprogramacion'),
+      'utf8',
+    );
+    const fila = rbac004
+      .split(/\r?\n/)
+      .find((linea) => linea.startsWith('| `POST /citas/{id}/reprogramar`'))
+      ?.split('|')
+      .slice(1, -1)
+      .map((celda) => celda.trim());
+    expect(fila).toBeDefined();
+    // ✓ (cualquier cita) → TODOS; ✓ (solo sus citas) → PROPIOS; ✗ → sin permiso.
+    const alcance = (celda: string) =>
+      !celda.startsWith('✓') ? null : /solo sus/.test(celda) ? 'PROPIOS' : 'TODOS';
+    const [, propietario, barbero, cliente] = fila as string[];
+    for (const [rol, celda] of [
+      ['PROPIETARIO', propietario],
+      ['BARBERO', barbero],
+      ['CLIENTE', cliente],
+    ] as const) {
+      expect({ rol, alcance: PermisosCatalogoCitas.alcance(rol, 'REPROGRAMAR_CITA') }).toEqual({
+        rol,
+        alcance: alcance(celda),
+      });
+    }
   });
 
   it.each(M02_POR_FILA)(

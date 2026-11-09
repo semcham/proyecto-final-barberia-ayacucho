@@ -24,6 +24,8 @@ export const OPERACIONES_CATALOGO_CITAS = [
   'CAMBIAR_ESTADO_CITA',
   'VER_AGENDA',
   'VER_HISTORIAL',
+  // 004 (specs/004-notificaciones-reprogramacion/contracts/rbac.md): el barbero no reprograma.
+  'REPROGRAMAR_CITA',
 ] as const;
 export type OperacionCatalogoCitas = (typeof OPERACIONES_CATALOGO_CITAS)[number];
 
@@ -41,6 +43,7 @@ const MATRIZ: Readonly<Record<OperacionCatalogoCitas, Readonly<Partial<Record<Ro
   CAMBIAR_ESTADO_CITA: { PROPIETARIO: 'TODOS', BARBERO: 'PROPIOS' },
   VER_AGENDA: { PROPIETARIO: 'TODOS', BARBERO: 'PROPIOS' },
   VER_HISTORIAL: { CLIENTE: 'PROPIOS' },
+  REPROGRAMAR_CITA: { PROPIETARIO: 'TODOS', CLIENTE: 'PROPIOS' },
 };
 
 export const PermisosCatalogoCitas = {

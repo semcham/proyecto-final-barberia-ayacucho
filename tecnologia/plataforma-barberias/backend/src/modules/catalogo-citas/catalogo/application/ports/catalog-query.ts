@@ -11,6 +11,8 @@ export interface ServicioVigente {
 export interface BarberoDelServicio {
   barberoId: string;
   nombre: string;
+  /** 004: el usuario vinculado al barbero, si tiene (destinatario de avisos). Solo lo llena `barbero()`. */
+  usuarioId?: string | null;
 }
 
 export interface Intervalo {

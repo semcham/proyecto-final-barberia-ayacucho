@@ -5,7 +5,8 @@ import addFormats from 'ajv-formats';
 import { parse } from 'yaml';
 
 // Validación de respuestas HTTP contra los contratos OpenAPI de las funcionalidades:
-// specs/001-registro-acceso-barberia, specs/002-catalogo-citas-cliente y specs/003-suscripciones-pagos\n// (contracts/openapi.yaml de cada una).
+// specs/001-registro-acceso-barberia, specs/002-catalogo-citas-cliente, specs/003-suscripciones-pagos y
+// specs/004-notificaciones-reprogramacion (contracts/openapi.yaml de cada una).
 
 const CONTRATOS = {
   '001': join(
@@ -41,6 +42,18 @@ const CONTRATOS = {
     '..',
     'specs',
     '003-suscripciones-pagos',
+    'contracts',
+    'openapi.yaml',
+  ),
+  '004': join(
+    __dirname,
+    '..',
+    '..',
+    '..',
+    '..',
+    '..',
+    'specs',
+    '004-notificaciones-reprogramacion',
     'contracts',
     'openapi.yaml',
   ),
@@ -144,4 +157,14 @@ export function erroresDeContrato003(
   cuerpo: unknown,
 ): string[] {
   return erroresDeContrato(ruta, metodo, estado, cuerpo, '003');
+}
+
+/** Igual que `erroresDeContrato`, contra el contrato de la funcionalidad 004. */
+export function erroresDeContrato004(
+  ruta: string,
+  metodo: string,
+  estado: number,
+  cuerpo: unknown,
+): string[] {
+  return erroresDeContrato(ruta, metodo, estado, cuerpo, '004');
 }

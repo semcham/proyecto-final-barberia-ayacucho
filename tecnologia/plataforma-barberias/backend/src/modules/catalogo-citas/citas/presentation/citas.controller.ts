@@ -6,8 +6,9 @@ import { DatoInvalido } from '../../catalogo/domain/errores';
 import { OperacionM02 } from '../../catalogo/presentation/operacion.decorator';
 import { CambiarEstadoCita } from '../application/cambiar-estado-cita';
 import { CancelarCita } from '../application/cancelar-cita';
+import { ReprogramarCita, type ResultadoReprogramarCita } from '../application/reprogramar-cita';
 import { type CitaVista, ReservarCita } from '../application/reservar-cita';
-import { CambiarEstadoDto, CancelarCitaDto, ReservarCitaDto } from './citas.dto';
+import { CambiarEstadoDto, CancelarCitaDto, ReprogramarCitaDto, ReservarCitaDto } from './citas.dto';
 
 /**
  * Citas (RF12). T094: POST /citas con Idempotency-Key obligatoria (R09). El tenant sale del token; el
@@ -19,7 +20,23 @@ export class CitasController {
     private readonly reservarCita: ReservarCita,
     private readonly cambiarEstadoCita: CambiarEstadoCita,
     private readonly cancelarCita: CancelarCita,
+    private readonly reprogramarCita: ReprogramarCita,
   ) {}
+
+  /**
+   * T052 (004) · POST /citas/:id/reprogramar (RF13). El cliente sus citas, con antelación; el propietario
+   * cualquiera. 200 también sin cambio (`cambio: false`).
+   */
+  @Post(':id/reprogramar')
+  @HttpCode(200)
+  @OperacionM02('REPROGRAMAR_CITA')
+  reprogramar(
+    @ActorActual() actor: Actor,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: ReprogramarCitaDto,
+  ): Promise<ResultadoReprogramarCita> {
+    return this.reprogramarCita.ejecutar(actor, id, dto);
+  }
 
   /** T117 · POST /citas/:id/cancelar · El cliente las suyas hasta el inicio; el propietario cualquiera. */
   @Post(':id/cancelar')

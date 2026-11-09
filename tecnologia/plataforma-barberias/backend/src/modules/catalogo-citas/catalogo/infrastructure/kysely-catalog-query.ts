@@ -118,11 +118,11 @@ export class KyselyCatalogQuery extends CatalogQuery {
     const fila = await this.uow
       .transaccionActual()
       .selectFrom('barber')
-      .select(['id', 'display_name'])
+      .select(['id', 'display_name', 'user_id'])
       .where('tenant_id', '=', this.tenantId)
       .where('id', '=', barberoId)
       .executeTakeFirst();
-    return fila ? { barberoId: fila.id, nombre: fila.display_name } : null;
+    return fila ? { barberoId: fila.id, nombre: fila.display_name, usuarioId: fila.user_id } : null;
   }
 
   async barberosQueOfrecen(servicioId: string): Promise<BarberoDelServicio[]> {
