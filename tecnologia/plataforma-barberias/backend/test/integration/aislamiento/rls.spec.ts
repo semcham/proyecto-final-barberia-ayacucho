@@ -11,8 +11,10 @@ import {
   sembrarPago,
   sembrarHorarioAtencion,
   sembrarServicio,
+  sembrarFilas004,
   sembrarSesion,
   sembrarSuscripcion,
+  TABLAS_004_CON_BARBERIA,
 } from '../../helpers/fixtures';
 import { cerrarPools, poolDe } from '../../helpers/test-db';
 
@@ -134,6 +136,14 @@ describe('PR09 · RLS en la base de datos', () => {
          VALUES ($1, $2, $3, $4, now() + interval '72 hours', $3)`,
         [uuidv7(), barberia.tenantId, barberia.propietarioId, uuidv7().replace(/-/g, '').padEnd(64, '0')],
       );
+      // 004 (T009): una fila en cada tabla nueva con barbería.
+      await sembrarFilas004({
+        tenantId,
+        clienteId,
+        citaId,
+        barberoId,
+        usuarioId: barberia.propietarioId,
+      });
     }
 
     const seed = poolDe('seed');
@@ -191,6 +201,38 @@ describe('PR09 · RLS en la base de datos', () => {
     ];
     expect(nuevas.filter((tabla) => !tablasConTenant.includes(tabla))).toEqual([]);
     expect(nuevas.filter((tabla) => !tablasConRls.includes(tabla))).toEqual([]);
+  });
+
+  // T009 de 004 · Constitución 1.4.1, principio III: las tablas nuevas con barbería tienen RLS activada y
+  // forzada con la política tenant_isolation; action_link_attempt es una tabla técnica sin barbería.
+  describe('tablas de 004', () => {
+    it('las tablas nuevas con barbería tienen tenant_id y RLS activada y forzada', () => {
+      expect(TABLAS_004_CON_BARBERIA.filter((tabla) => !tablasConTenant.includes(tabla))).toEqual([]);
+      expect(TABLAS_004_CON_BARBERIA.filter((tabla) => !tablasConRls.includes(tabla))).toEqual([]);
+    });
+
+    it('cada una tiene la política tenant_isolation con el tenant de la transacción', async () => {
+      const { rows } = await poolDe('seed').query<{ tabla: string; usando: string; comprobando: string }>(
+        `SELECT tablename AS tabla, qual AS usando, with_check AS comprobando FROM pg_policies
+          WHERE schemaname = 'public' AND policyname = 'tenant_isolation' AND tablename = ANY($1)
+          ORDER BY tablename`,
+        [[...TABLAS_004_CON_BARBERIA]],
+      );
+      expect(rows.map((f) => f.tabla)).toEqual([...TABLAS_004_CON_BARBERIA].sort());
+      for (const fila of rows) {
+        expect(fila.usando).toContain("current_setting('app.tenant_id'");
+        expect(fila.comprobando).toContain("current_setting('app.tenant_id'");
+      }
+    });
+
+    it('action_link_attempt no tiene tenant_id ni RLS (tabla técnica de intentos)', async () => {
+      expect(tablasConTenant).not.toContain('action_link_attempt');
+      const { rows } = await poolDe('seed').query<{ columna: string }>(
+        `SELECT column_name AS columna FROM information_schema.columns
+          WHERE table_schema = 'public' AND table_name = 'action_link_attempt' ORDER BY ordinal_position`,
+      );
+      expect(rows.map((f) => f.columna)).toEqual(['id', 'ip_hash', 'attempted_at']);
+    });
   });
 
   describe('tenant: lectura global, edición solo de la propia barbería (R15 de 002)', () => {

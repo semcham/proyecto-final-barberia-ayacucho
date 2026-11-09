@@ -23,6 +23,14 @@ process.env.PAGOS_CUENTA_TITULAR = 'Plataforma de Barberías SAC';
 process.env.PAGOS_CUENTA_NUMERO = '191-0000000-0-00';
 process.env.PAGOS_CUENTA_CCI = '00219100000000000000';
 process.env.TAREAS_ACTIVAS = 'false';
+// 004: llave de los enlaces de acción, sal del hash de la IP y correo. Las pruebas que envían correo apuntan
+// el adaptador a su propio Mailpit (helpers/mailpit.ts); aquí basta un servidor que no responde.
+process.env.ENLACES_LLAVE = Buffer.alloc(32, 43).toString('base64');
+process.env.ENLACES_SAL_IP = 'sal_ip_pruebas_integracion_0123';
+process.env.SMTP_HOST = '127.0.0.1';
+process.env.SMTP_PUERTO = '9';
+process.env.SMTP_TLS = 'no';
+process.env.CORREO_REMITENTE = 'no-responder@barberias.local';
 process.env.JWT_PRIVATE_KEY = privateKey.export({ type: 'pkcs8', format: 'pem' }).toString();
 process.env.JWT_PUBLIC_KEYS = JSON.stringify({
   [KID_PRUEBAS]: publicKey.export({ type: 'spki', format: 'pem' }).toString(),

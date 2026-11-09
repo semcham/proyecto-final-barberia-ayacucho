@@ -28,6 +28,16 @@ export {
   type ResultadoDeCorrida,
 } from './tareas/ejecutor-tareas';
 export { AlmacenLimitesCompartido } from './limites/almacen-limites-compartido';
+// 004 (ADR-025): bus de eventos con salida transaccional. Los módulos publican por el puerto; el despachador
+// lo usa solo el host (tarea despachar-eventos). Los enlaces firmados tienen su propia entrada:
+// shared/enlaces-firmados.ts.
+export {
+  BusDeEventos,
+  type EventoDeDominio,
+  type EventoPublicado,
+  type ManejadorDeEvento,
+} from './eventos/bus-de-eventos';
+export { DespachadorDeEventos } from './eventos/despachador';
 export { SharedModule } from './shared.module';
 export {
   Publica,

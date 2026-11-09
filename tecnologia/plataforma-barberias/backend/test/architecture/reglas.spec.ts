@@ -52,6 +52,12 @@ describe('Reglas de arquitectura (PR14)', () => {
       'lectura-plataforma-confinada',
       'pasarela-solo-por-puerto',
       'simulador-fuera-del-monolito',
+      // Funcionalidad 004 (T020).
+      'matriz-m05',
+      'm05-sin-llamadas',
+      'canal-solo-por-puerto',
+      'eventos-solo-por-bus',
+      'enlaces-confinados',
     ])('%s', (regla) => {
       expect(salida).toContain(regla);
     });
@@ -79,6 +85,21 @@ describe('Reglas de arquitectura (PR14)', () => {
       expect(enLinea('pasarela-solo-por-puerto', 'usa-adaptador.ts')).toBe(true);
       expect(enLinea('pasarela-solo-por-puerto', 'usa-http.ts')).toBe(true);
       expect(enLinea('simulador-fuera-del-monolito', 'usa-simulador.ts')).toBe(true);
+    });
+
+    // T020 de 004 · M05 (revisión de ADR-013, ADR-025, ADR-026, ADR-032).
+    it('cada violación de 004 se atribuye a su archivo del fixture, y los usos permitidos no se señalan', () => {
+      const lineas = salida.split(/\r?\n/);
+      const enLinea = (regla: string, archivo: string) =>
+        lineas.some((linea) => linea.includes(regla) && linea.includes(archivo));
+      expect(enLinea('matriz-m05', 'notificaciones/application/usa-m02.ts')).toBe(true);
+      expect(enLinea('m05-sin-llamadas', 'usa-m05.ts')).toBe(true);
+      expect(enLinea('canal-solo-por-puerto', 'usa-adaptador-correo.ts')).toBe(true);
+      expect(enLinea('eventos-solo-por-bus', 'usa-salida.ts')).toBe(true);
+      expect(enLinea('enlaces-confinados', 'usa-enlaces.ts')).toBe(true);
+      // Usos permitidos: M05 emite enlaces y lista sus avisos pendientes con el rol de la plataforma.
+      expect(lineas.some((l) => l.includes('enlaces-permitidos.ts'))).toBe(false);
+      expect(lineas.some((l) => l.includes('avisos-pendientes.ts'))).toBe(false);
     });
   });
 });

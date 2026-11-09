@@ -154,6 +154,39 @@ export function parametrosArgon2(): { memoriaKib: number; iteraciones: number; p
   };
 }
 
+const MODOS_TLS = ['no', 'starttls', 'implicito'] as const;
+export type ModoTlsSmtp = (typeof MODOS_TLS)[number];
+
+function modoTls(nombre: string): ModoTlsSmtp {
+  const valor = opcional(nombre) ?? 'starttls';
+  if (!(MODOS_TLS as readonly string[]).includes(valor)) {
+    throw new Error(`La variable de entorno ${nombre} debe ser ${MODOS_TLS.join(', ')}`);
+  }
+  return valor as ModoTlsSmtp;
+}
+
+/** Correo de una sola dirección, sin nombre visible (el remitente de los avisos, ADR-026). */
+function correo(nombre: string): string {
+  const valor = requerida(nombre).trim();
+  if (!/^[A-Za-z0-9._%+-]{1,64}@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+$/.test(valor) || valor.length > 254) {
+    throw new Error(`La variable de entorno ${nombre} debe ser una dirección de correo`);
+  }
+  return valor;
+}
+
+/** Usuario y clave de SMTP: los dos o ninguno. El mensaje de error nunca incluye la clave. */
+function credencialesSmtp(): { usuario: string | undefined; clave: string | undefined } {
+  const usuario = opcional('SMTP_USUARIO');
+  const clave = opcional('SMTP_CLAVE');
+  if (usuario !== undefined && clave === undefined) {
+    throw new Error('Falta la variable de entorno SMTP_CLAVE: SMTP_USUARIO y SMTP_CLAVE van juntas');
+  }
+  if (clave !== undefined && usuario === undefined) {
+    throw new Error('Falta la variable de entorno SMTP_USUARIO: SMTP_USUARIO y SMTP_CLAVE van juntas');
+  }
+  return { usuario, clave };
+}
+
 // Los PEM pueden venir en una sola línea con "\n" literales (formato de .env).
 function pem(valor: string): string {
   return valor.replace(/\\n/g, '\n');
@@ -252,4 +285,36 @@ export class Configuracion {
     activas: booleano('TAREAS_ACTIVAS', true),
     intervaloMs: enteroEnRango('TAREAS_INTERVALO_MS', 300_000, 10_000, 86_400_000),
   };
+  /** Enlaces de acción del recordatorio (ADR-032) y sal del hash de la IP de sus rechazos (constitución 1.4.1). */
+  readonly enlaces = Configuracion.leerEnlaces(this.plataforma.llaveTotp);
+  /** Correo por SMTP detrás de NotificationChannel (ADR-026): Mailpit en desarrollo y pruebas. */
+  readonly correo = {
+    smtp: {
+      host: requerida('SMTP_HOST').trim(),
+      puerto: enteroEnRango('SMTP_PUERTO', 587, 1, 65_535),
+      tls: modoTls('SMTP_TLS'),
+      ...credencialesSmtp(),
+    },
+    remitente: correo('CORREO_REMITENTE'),
+    tiempoLimiteMs: enteroEnRango('CORREO_TIEMPO_LIMITE_MS', 5000, 100, 30_000),
+  };
+  /** URL pública de la interfaz, para los enlaces del recordatorio (`URL_PUBLICA/e#<token>`). */
+  readonly urlPublica = urlHttp('URL_PUBLICA', opcional('URL_PUBLICA') ?? this.frontendBaseUrl);
+  /** Despacho de la salida de eventos (ADR-025, R05): tarea despachar-eventos, 15 s por defecto. */
+  readonly eventos = {
+    intervaloMs: enteroEnRango('EVENTOS_INTERVALO_MS', 15_000, 1000, 3_600_000),
+  };
+
+  /** La llave de los enlaces es propia: distinta de la de TOTP, y la sal, distinta de la llave. */
+  private static leerEnlaces(llaveTotp: Buffer): { llave: Buffer; salIp: string } {
+    const llave = llave32Bytes('ENLACES_LLAVE');
+    if (llave.equals(llaveTotp)) {
+      throw new Error('La variable de entorno ENLACES_LLAVE debe ser distinta de PLATAFORMA_LLAVE_TOTP');
+    }
+    const salIp = secreto('ENLACES_SAL_IP', 16);
+    if (salIp.trim() === requerida('ENLACES_LLAVE').trim()) {
+      throw new Error('La variable de entorno ENLACES_SAL_IP debe ser distinta de ENLACES_LLAVE');
+    }
+    return { llave, salIp };
+  }
 }

@@ -1,0 +1,16 @@
+// T002 (004, caso B): escaneo de dependencias de producción de la interfaz con nivel alto.
+// Cada excepción va por su aviso y vence: al llegar la fecha, el paso vuelve a fallar y obliga a revisarla.
+// Registro de las excepciones: docs/02-arquitectura-software/tecnologias.md, "Excepciones de npm audit".
+{
+  "high": true,
+  "skip-dev": true,
+  "allowlist": [
+    {
+      "GHSA-mrhx-c7xc-m3w5": {
+        "active": true,
+        "notes": "zod 3.25.76: solo lo arregla zod 4 (versión mayor). Corre en el navegador; migración pendiente.",
+        "expiry": "2026-12-15",
+      },
+    },
+  ],
+}

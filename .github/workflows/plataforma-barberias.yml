@@ -24,6 +24,8 @@ jobs:
           cache: npm
           cache-dependency-path: tecnologia/plataforma-barberias/backend/package-lock.json
       - run: npm ci
+      # Escaneo de dependencias de producción desde nivel alto (004, T002, caso A: sin excepciones).
+      - run: npm audit --omit=dev --audit-level=high
       - run: npx prettier --check .
       - run: npm run lint
       - run: npm run build
@@ -45,6 +47,9 @@ jobs:
           cache: npm
           cache-dependency-path: tecnologia/plataforma-barberias/frontend/package-lock.json
       - run: npm ci
+      # Escaneo de dependencias de producción desde nivel alto (004, T002, caso B): audit-ci con las
+      # excepciones de audit-ci.jsonc, cada una con su aviso y su fecha de vencimiento.
+      - run: npx audit-ci --config audit-ci.jsonc
       - run: npx prettier --check .
       - run: npm run lint
       # Incluye tsc --noEmit (errores de tipos) y el build de producción de Vite.

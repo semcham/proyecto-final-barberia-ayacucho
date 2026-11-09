@@ -223,6 +223,28 @@ describe('EjecutorTareas (ADR-024)', () => {
       expect(programador.pendientes).toHaveLength(2);
     });
 
+    // T007 de 004 (research R05): despachar-eventos corre cada 15 s; las tareas de 003 siguen con
+    // TAREAS_INTERVALO_MS. El desfase aleatorio se suma igual a las dos.
+    it('una tarea con intervalo propio se programa con ese intervalo y las demás con el general', async () => {
+      const { ejecutor, programador } = crear();
+      ejecutor.registrar({
+        nombre: 'despachar-eventos',
+        intervaloMs: 15_000,
+        ejecutar: async () => ({ procesados: 0, fallidos: 0 }),
+      });
+      ejecutor.registrar({
+        nombre: 'vencer-suscripciones',
+        ejecutar: async () => ({ procesados: 0, fallidos: 0 }),
+      });
+      ejecutor.iniciar();
+      expect(programador.pendientes.map((p) => p.ms)).toEqual([30_000, 315_000]);
+      // Al volver a programarse tras correr, cada una conserva su intervalo.
+      programador.disparar();
+      await esperarMicrotareas();
+      await esperarMicrotareas();
+      expect(programador.pendientes.map((p) => p.ms).sort((x, y) => x - y)).toEqual([30_000, 315_000]);
+    });
+
     it('con TAREAS_ACTIVAS=false no se programa nada', () => {
       const { ejecutor, programador } = crear({ activas: false });
       ejecutor.registrar({

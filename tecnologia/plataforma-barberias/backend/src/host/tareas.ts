@@ -1,6 +1,6 @@
 import { Injectable, type OnApplicationBootstrap } from '@nestjs/common';
 import { ConciliarPagos, ExpirarTransferencias, VencerSuscripciones } from '../modules/suscripciones-pagos';
-import { EjecutorTareas } from '../shared';
+import { Configuracion, DespachadorDeEventos, EjecutorTareas } from '../shared';
 
 /**
  * Raíz de composición de las tareas programadas (ADR-024): registra en el ejecutor de M06 las tareas que
@@ -13,6 +13,8 @@ export class TareasProgramadas implements OnApplicationBootstrap {
     private readonly conciliarPagos: ConciliarPagos,
     private readonly vencerSuscripciones: VencerSuscripciones,
     private readonly expirarTransferencias: ExpirarTransferencias,
+    private readonly despachador: DespachadorDeEventos,
+    private readonly configuracion: Configuracion,
   ) {}
 
   onApplicationBootstrap(): void {
@@ -27,6 +29,12 @@ export class TareasProgramadas implements OnApplicationBootstrap {
     this.ejecutor.registrar({
       nombre: 'expirar-transferencias',
       ejecutar: () => this.expirarTransferencias.ejecutar(),
+    });
+    // 004 (ADR-025, R05): respaldo del despacho tras confirmar, con su propio intervalo, y purga de retención.
+    this.ejecutor.registrar({
+      nombre: 'despachar-eventos',
+      intervaloMs: this.configuracion.eventos.intervaloMs,
+      ejecutar: () => this.despachador.ejecutar(),
     });
     this.ejecutor.iniciar();
   }

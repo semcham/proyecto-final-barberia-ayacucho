@@ -16,6 +16,11 @@ import { KyselyUnitOfWork } from './persistence/kysely-unit-of-work';
 import { LecturaPlataforma } from './persistence/lectura-plataforma';
 import { CandadoPostgres, RegistroDeCorridasPostgres } from './persistence/tareas-postgres';
 import { UnitOfWork } from './persistence/unit-of-work';
+import { EnlacesFirmados } from './enlaces/enlaces-firmados';
+import { BusDeEventos } from './eventos/bus-de-eventos';
+import { DespachadorDeEventos } from './eventos/despachador';
+import { PendientesDeEventos } from './eventos/pendientes-plataforma';
+import { SalidaDeEventosPostgres } from './eventos/salida-postgres';
 import { EjecutorTareas } from './tareas/ejecutor-tareas';
 import { TenantContext } from './tenant/tenant-context';
 
@@ -77,6 +82,30 @@ import { TenantContext } from './tenant/tenant-context';
     KyselyUnitOfWork,
     { provide: UnitOfWork, useExisting: KyselyUnitOfWork },
     { provide: AuditLog, useClass: KyselyAuditLog },
+    {
+      // 004 (ADR-025): despacho de la salida de eventos; lista los pendientes con el rol de la plataforma.
+      provide: DespachadorDeEventos,
+      inject: [KyselyUnitOfWork, LecturaPlataforma, Clock],
+      useFactory: (uow: KyselyUnitOfWork, lectura: LecturaPlataforma, reloj: Clock) =>
+        new DespachadorDeEventos(uow, new PendientesDeEventos(lectura), reloj),
+    },
+    {
+      provide: BusDeEventos,
+      inject: [KyselyUnitOfWork, TenantContext, DespachadorDeEventos, Clock],
+      useFactory: (
+        uow: KyselyUnitOfWork,
+        tenant: TenantContext,
+        despachador: DespachadorDeEventos,
+        reloj: Clock,
+      ) => new SalidaDeEventosPostgres(uow, tenant, despachador, reloj),
+    },
+    {
+      // 004 (ADR-032): enlaces de acción firmados con ENLACES_LLAVE.
+      provide: EnlacesFirmados,
+      inject: [Configuracion, Clock],
+      useFactory: (configuracion: Configuracion, reloj: Clock) =>
+        new EnlacesFirmados(configuracion.enlaces.llave, reloj),
+    },
   ],
   exports: [
     Configuracion,
@@ -91,6 +120,9 @@ import { TenantContext } from './tenant/tenant-context';
     KyselyUnitOfWork,
     UnitOfWork,
     AuditLog,
+    DespachadorDeEventos,
+    BusDeEventos,
+    EnlacesFirmados,
   ],
 })
 export class SharedModule implements OnApplicationShutdown {

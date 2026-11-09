@@ -3,10 +3,12 @@ import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule, ThrottlerStorageService } from '@nestjs/throttler';
 import { AccesoBarberiasModule } from '../modules/acceso-barberias';
 import { CatalogoCitasModule } from '../modules/catalogo-citas';
+import { NotificacionesModule } from '../modules/notificaciones';
 import { SuscripcionesPagosModule } from '../modules/suscripciones-pagos';
 import { AlmacenLimitesCompartido, CacheCompartida, SharedModule } from '../shared';
 import { AuthGuard } from './auth.guard';
 import { ErrorFilter } from './error.filter';
+import { SuscripcionesDeEventos } from './eventos';
 import { RolesGuard } from './roles.guard';
 import { SaludController } from './salud.controller';
 import { TareasProgramadas } from './tareas';
@@ -22,6 +24,7 @@ import { TenantHeaderInterceptor } from './tenant-header.interceptor';
     AccesoBarberiasModule,
     CatalogoCitasModule,
     SuscripcionesPagosModule,
+    NotificacionesModule,
     // Freno general por IP, compartido entre réplicas en la caché (006 US3, ADR-029), con respaldo en
     // memoria por instancia si Redis no responde. El límite estricto del inicio de sesión vive en
     // PostgreSQL (US2 de 001, principio VIII).
@@ -41,6 +44,7 @@ import { TenantHeaderInterceptor } from './tenant-header.interceptor';
     { provide: APP_INTERCEPTOR, useClass: TenantHeaderInterceptor },
     { provide: APP_FILTER, useClass: ErrorFilter },
     TareasProgramadas,
+    SuscripcionesDeEventos,
   ],
 })
 export class AppModule {}

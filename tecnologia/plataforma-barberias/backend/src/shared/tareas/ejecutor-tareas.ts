@@ -16,6 +16,11 @@ export interface ResultadoDeTarea {
 export interface Tarea {
   /** Nombre único en minúsculas con guiones (p. ej. `vencer-suscripciones`). */
   nombre: string;
+  /**
+   * Intervalo propio (R05 de 004: `despachar-eventos`, cada EVENTOS_INTERVALO_MS). Sin valor, el general de
+   * TAREAS_INTERVALO_MS. El desfase aleatorio se suma igual.
+   */
+  intervaloMs?: number;
   ejecutar(): Promise<ResultadoDeTarea>;
 }
 
@@ -130,12 +135,13 @@ export class EjecutorTareas {
   private programar(nombre: string): void {
     if (this.detenido) return;
     const desfase = Math.floor(this.aleatorio() * DESFASE_MAXIMO_MS);
+    const intervaloMs = this.tareas.get(nombre)?.intervaloMs ?? this.opciones.intervaloMs;
     const id = this.programador.programar(() => {
       this.programadas.delete(nombre);
       void this.ejecutarAhora(nombre)
         .catch(() => undefined)
         .finally(() => this.programar(nombre));
-    }, this.opciones.intervaloMs + desfase);
+    }, intervaloMs + desfase);
     this.programadas.set(nombre, id);
   }
 

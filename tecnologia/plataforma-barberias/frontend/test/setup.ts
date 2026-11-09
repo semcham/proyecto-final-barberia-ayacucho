@@ -88,8 +88,10 @@ Element.prototype.releasePointerCapture ??= () => {};
 Element.prototype.scrollIntoView ??= () => {};
 
 // Las pantallas se cargan con React.lazy: la primera vez que una prueba abre una ruta, el módulo se
-// transforma en ese momento. Se da más margen que el segundo por defecto para esperar elementos.
-configure({ asyncUtilTimeout: 5000 });
+// transforma en ese momento. Se da más margen que el segundo por defecto para esperar elementos: 10 s, porque
+// con 5 s la suite completa fallaba en una prueba distinta en cada corrida con el equipo cargado (2026-11-09),
+// y cada una pasaba sola.
+configure({ asyncUtilTimeout: 10_000 });
 
 beforeAll(() => {
   servidor.listen({ onUnhandledRequest: 'error' });

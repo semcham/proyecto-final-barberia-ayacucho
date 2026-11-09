@@ -255,6 +255,9 @@ export interface AppointmentTable {
   request_hash: TextoNulo;
   created_at: Fecha;
   updated_at: Fecha;
+  // Funcionalidad 004 (migración 0023): invalida los enlaces de acción y marca la confirmación del cliente.
+  version: Generated<number>;
+  client_confirmed_at: FechaNula;
 }
 
 export interface AppointmentStatusHistoryTable {
@@ -423,6 +426,90 @@ export interface ScheduledJobRunTable {
   error_summary: TextoNulo;
 }
 
+// Funcionalidad 004 (migraciones 0021 a 0025, data-model.md de 004).
+
+export type EstadoEventoDb = 'PENDIENTE' | 'PROCESADO' | 'ANULADO' | 'SIN_MANEJADOR';
+
+export interface OutboxEventTable {
+  id: string;
+  tenant_id: string;
+  type: string;
+  payload: ColumnType<Record<string, unknown>, string, string>;
+  replace_key: TextoNulo;
+  available_at: Fecha;
+  status: Generated<EstadoEventoDb>;
+  attempts: Generated<number>;
+  next_attempt_at: FechaNula;
+  created_at: Generated<Date>;
+  processed_at: FechaNula;
+}
+
+export interface CustomerNotificationPreferenceTable {
+  tenant_id: string;
+  customer_id: string;
+  channel: 'CORREO' | 'WHATSAPP';
+  whatsapp_number: TextoNulo;
+  updated_at: Generated<Date>;
+}
+
+export interface WhatsappConsentTable {
+  id: string;
+  tenant_id: string;
+  customer_id: string;
+  number: string;
+  text_version: string;
+  accepted_at: Generated<Date>;
+  withdrawn_at: FechaNula;
+}
+
+export interface AppointmentRescheduleTable {
+  id: string;
+  tenant_id: string;
+  appointment_id: string;
+  from_barber_id: string;
+  from_starts_at: Fecha;
+  to_barber_id: string;
+  to_starts_at: Fecha;
+  changed_by: TextoNulo;
+  via: 'SESION' | 'ENLACE';
+  changed_at: Generated<Date>;
+}
+
+export interface AppointmentLinkUseTable {
+  id: string;
+  tenant_id: string;
+  appointment_id: string;
+  link_hash: string;
+  action: 'CONFIRMAR' | 'REPROGRAMAR' | 'CANCELAR';
+  used_at: Generated<Date>;
+}
+
+export interface NotificationTable {
+  id: string;
+  tenant_id: string;
+  event_id: string;
+  kind: string;
+  recipient_kind: 'CLIENTE' | 'PROPIETARIO' | 'BARBERO';
+  recipient_ref: string;
+  appointment_id: TextoNulo;
+  channel_planned: 'CORREO' | 'WHATSAPP';
+  channel_used: ColumnType<'CORREO' | 'WHATSAPP' | null, 'CORREO' | 'WHATSAPP' | null | undefined>;
+  status: Generated<string>;
+  attempts: Generated<number>;
+  next_attempt_at: FechaNula;
+  claimed_until: FechaNula;
+  discard_after: Fecha;
+  sent_at: FechaNula;
+  last_error: TextoNulo;
+  created_at: Generated<Date>;
+}
+
+export interface ActionLinkAttemptTable {
+  id: Generated<string>;
+  ip_hash: string;
+  attempted_at: Generated<Date>;
+}
+
 export interface Database {
   tenant: TenantTable;
   role: RoleTable;
@@ -456,4 +543,11 @@ export interface Database {
   platform_challenge: PlatformChallengeTable;
   platform_audit_log: PlatformAuditLogTable;
   scheduled_job_run: ScheduledJobRunTable;
+  outbox_event: OutboxEventTable;
+  customer_notification_preference: CustomerNotificationPreferenceTable;
+  whatsapp_consent: WhatsappConsentTable;
+  appointment_reschedule: AppointmentRescheduleTable;
+  appointment_link_use: AppointmentLinkUseTable;
+  notification: NotificationTable;
+  action_link_attempt: ActionLinkAttemptTable;
 }

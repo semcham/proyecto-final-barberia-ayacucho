@@ -68,6 +68,21 @@ x-backend-entorno: &backend-entorno
   CACHE_CATALOGO_ACTIVA: ${CACHE_CATALOGO_ACTIVA:-true}
   CACHE_HORARIOS_ACTIVA: ${CACHE_HORARIOS_ACTIVA:-false}
   PUBLICO_LIMITE_POR_MINUTO: ${PUBLICO_LIMITE_POR_MINUTO:-120}
+  # 004 (ADR-026): correo por SMTP contra Mailpit, por IP fija como Redis. Valores SOLO de desarrollo.
+  SMTP_HOST: ${IP_MAILPIT:-172.28.0.15}
+  SMTP_PUERTO: "1025"
+  SMTP_TLS: "no"
+  SMTP_USUARIO: ""
+  SMTP_CLAVE: ""
+  CORREO_REMITENTE: ${CORREO_REMITENTE:-no-responder@barberias.local}
+  CORREO_TIEMPO_LIMITE_MS: ${CORREO_TIEMPO_LIMITE_MS:-5000}
+  # 004 (ADR-032): llave de los enlaces de acción y sal del hash de la IP; toman el valor de .env y, si
+  # falta, uno SOLO de desarrollo.
+  ENLACES_LLAVE: ${ENLACES_LLAVE:-xe9JimETg9lyRkFYqT/XOYVj31b+b6pTPQD5W5/MQI8=}
+  ENLACES_SAL_IP: ${ENLACES_SAL_IP:-01i5rWo2LyTiQCf0d56djNm4LAW_BIrZ}
+  URL_PUBLICA: ${URL_PUBLICA:-http://localhost:5173}
+  # 004 (ADR-025): tarea despachar-eventos, respaldo del despacho tras confirmar.
+  EVENTOS_INTERVALO_MS: ${EVENTOS_INTERVALO_MS:-15000}
   NODE_ENV: production
   NODE_OPTIONS: --max-old-space-size=256
 
@@ -161,6 +176,23 @@ services:
       resources:
         limits:
           memory: 64M
+
+  # Buzón local de correo (004, ADR-026): SMTP en el 1025 y la interfaz y API HTTP en el 8025
+  # (http://localhost:8025). Solo desarrollo y pruebas. La imagen la descarga el responsable (research R16 de
+  # 004); MAILPIT_IMAGEN permite usar la etiqueta exacta que tenga descargada.
+  mailpit:
+    image: ${MAILPIT_IMAGEN:-axllent/mailpit:latest}
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    restart: unless-stopped
+    networks:
+      plataforma:
+        ipv4_address: ${IP_MAILPIT:-172.28.0.15}
+    deploy:
+      resources:
+        limits:
+          memory: 32M
 
   # Una sola ejecución: dependencias, build, migraciones y copia del build al volumen de las réplicas (R01,
   # R03). Si falla, las réplicas no arrancan y el error queda en `docker compose logs preparar-backend`.

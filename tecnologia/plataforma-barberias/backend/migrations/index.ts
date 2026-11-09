@@ -19,6 +19,11 @@ import * as m0017 from './0017_tareas';
 import * as m0018 from './0018_url_de_pago';
 import * as m0019 from './0019_marca_fecha_anterior';
 import * as m0020 from './0020_motivo_en_auditoria';
+import * as m0021 from './0021_salida_de_eventos';
+import * as m0022 from './0022_canal_y_consentimiento_whatsapp';
+import * as m0023 from './0023_citas_reprogramacion';
+import * as m0024 from './0024_avisos';
+import * as m0025 from './0025_intentos_enlaces';
 
 // Registro explícito de migraciones, en orden. Cada historia agrega aquí las suyas.
 // (Un proveedor estático evita depender de importaciones dinámicas de archivos .ts.)
@@ -43,6 +48,11 @@ const MIGRACIONES: Record<string, Migration> = {
   '0018_url_de_pago': m0018,
   '0019_marca_fecha_anterior': m0019,
   '0020_motivo_en_auditoria': m0020,
+  '0021_salida_de_eventos': m0021,
+  '0022_canal_y_consentimiento_whatsapp': m0022,
+  '0023_citas_reprogramacion': m0023,
+  '0024_avisos': m0024,
+  '0025_intentos_enlaces': m0025,
 };
 
 /** Nombre de la última migración que conoce el código (GET /salud/listo, 006). */

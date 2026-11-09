@@ -4,7 +4,7 @@
  * Grupos: en '(^|/)src/modules/([^/]+)/' el nombre del módulo es $2.
  */
 const FRAMEWORKS =
-  'node_modules/(@nestjs|kysely|pg|argon2|jose|express|class-validator|class-transformer|cookie-parser|ioredis)/';
+  'node_modules/(@nestjs|kysely|pg|argon2|jose|express|class-validator|class-transformer|cookie-parser|ioredis|nodemailer)/';
 
 /** @type {import('dependency-cruiser').IConfiguration} */
 module.exports = {
@@ -59,8 +59,8 @@ module.exports = {
       name: 'm06-solo-por-interfaz-publica',
       comment:
         'Los módulos importan M06 solo desde shared/index.ts o shared/nucleo.ts. Entradas aparte: ' +
-        'shared/lectura-publica.ts (ADR-021) y shared/lectura-plataforma.ts (ADR-031), cada una confinada ' +
-        'por su propia regla.',
+        'shared/lectura-publica.ts (ADR-021), shared/lectura-plataforma.ts (ADR-031) y ' +
+        'shared/enlaces-firmados.ts (ADR-032), cada una confinada por su propia regla.',
       severity: 'error',
       from: { path: '(^|/)src/modules/' },
       to: {
@@ -69,6 +69,7 @@ module.exports = {
           '(^|/)src/shared/(index|nucleo)\\.ts$',
           '(^|/)src/shared/lectura-publica\\.ts$',
           '(^|/)src/shared/lectura-plataforma\\.ts$',
+          '(^|/)src/shared/enlaces-firmados\\.ts$',
         ],
       },
     },
@@ -76,13 +77,16 @@ module.exports = {
       name: 'lectura-plataforma-confinada',
       comment:
         'El pool de barberias_plataforma (shared/lectura-plataforma.ts, ADR-031) solo lo usan las carpetas ' +
-        'infrastructure/plataforma/ de M03 y de M01 (barberias e identidad).',
+        'infrastructure/plataforma/ de M03, de M01 (barberias e identidad) y de M05, y la lista de pendientes ' +
+        'del despacho de eventos de M06 (004, ADR-025: solo columnas técnicas).',
       severity: 'error',
       from: {
         path: '(^|/)src/',
         pathNot: [
           '(^|/)src/modules/suscripciones-pagos/[^/]+/infrastructure/plataforma/',
           '(^|/)src/modules/acceso-barberias/(barberias|identidad)/infrastructure/plataforma/',
+          '(^|/)src/modules/notificaciones/infrastructure/plataforma/',
+          '(^|/)src/shared/eventos/pendientes-plataforma\\.ts$',
         ],
       },
       to: { path: '(^|/)src/shared/lectura-plataforma\\.ts$' },
@@ -175,6 +179,63 @@ module.exports = {
       to: { path: '(^|/)src/modules/(acceso-barberias|catalogo-citas)/' },
     },
     {
+      name: 'matriz-m05',
+      comment:
+        'Matriz de dependencias (revisión de ADR-013): M05 solo puede llamar a M01 por su index.ts (lectura de ' +
+        'canal, consentimiento y correos) y a M06.',
+      severity: 'error',
+      from: { path: '(^|/)src/modules/notificaciones/' },
+      to: {
+        path: '(^|/)src/modules/',
+        pathNot: ['(^|/)src/modules/notificaciones/', '(^|/)src/modules/acceso-barberias/index\\.ts$'],
+      },
+    },
+    {
+      name: 'm05-sin-llamadas',
+      comment:
+        'Nadie llama a M05: recibe los hechos por el bus de eventos de M06, suscrito desde el host (ADR-025). ' +
+        'Solo la raíz de composición importa su módulo.',
+      severity: 'error',
+      from: { path: '(^|/)src/modules/', pathNot: '(^|/)src/modules/notificaciones/' },
+      to: { path: '(^|/)src/modules/notificaciones/' },
+    },
+    {
+      name: 'canal-solo-por-puerto',
+      comment:
+        'Los adaptadores de canal (canal-*.ts) solo los usa notificaciones/infrastructure/ (su fábrica); el ' +
+        'resto envía por el puerto NotificationChannel (ADR-026).',
+      severity: 'error',
+      from: { path: '(^|/)src/', pathNot: '(^|/)src/modules/notificaciones/infrastructure/' },
+      to: { path: '(^|/)src/modules/notificaciones/infrastructure/canal-[^/]+\\.ts$' },
+    },
+    {
+      name: 'eventos-solo-por-bus',
+      comment:
+        'La salida transaccional (shared/eventos/salida-postgres.ts) solo se usa dentro de shared/eventos/ y ' +
+        'desde el registro de M06; los casos de uso publican por el puerto BusDeEventos (ADR-025).',
+      severity: 'error',
+      from: {
+        path: '(^|/)src/',
+        pathNot: ['(^|/)src/shared/eventos/', '(^|/)src/shared/shared\\.module\\.ts$'],
+      },
+      to: { path: '(^|/)src/shared/eventos/salida-postgres\\.ts$' },
+    },
+    {
+      name: 'enlaces-confinados',
+      comment:
+        'Los enlaces firmados (shared/enlaces-firmados.ts, ADR-032) solo los usa M05, que los emite en el ' +
+        'recordatorio, y las rutas de enlaces de M02, que los verifican.',
+      severity: 'error',
+      from: {
+        path: '(^|/)src/',
+        pathNot: [
+          '(^|/)src/modules/notificaciones/',
+          '(^|/)src/modules/catalogo-citas/citas/(application/accion-por-enlace|presentation/enlaces\\.controller)\\.ts$',
+        ],
+      },
+      to: { path: '(^|/)src/shared/enlaces-firmados\\.ts$' },
+    },
+    {
       name: 'kysely-solo-en-infraestructura',
       comment:
         'Solo los repositorios (infrastructure/) y la persistencia de M06 consultan la base: ningún controlador ' +
@@ -186,6 +247,8 @@ module.exports = {
           '(^|/)src/modules/.+/infrastructure/',
           '(^|/)src/shared/persistence/',
           '(^|/)src/shared/(index|shared\\.module)\\.ts$',
+          // 004 (ADR-025): la salida de eventos, su despacho y la lista de pendientes son persistencia de M06.
+          '(^|/)src/shared/eventos/(salida-postgres|despachador|pendientes-plataforma)\\.ts$',
         ],
       },
       to: { path: ['node_modules/kysely/', '(^|/)src/shared/persistence/database\\.ts$'] },

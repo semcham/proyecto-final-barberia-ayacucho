@@ -199,3 +199,23 @@ dependency-cruiser, Docker Compose, Lighthouse 12.3 y axe-core 4.10) están en l
 plataforma: no se enlaza, no se importa ni se distribuye con su código, y sus scripts de carga no forman
 parte del monolito. La AGPL obliga a publicar el código de k6 si se modifica y se ofrece como servicio, cosa
 que este proyecto no hace.
+
+### 5.6 Excepciones de `npm audit`
+
+Revisión de T001 de la funcionalidad 004 (2026-11-06), con `npm audit --omit=dev --audit-level=high`: solo
+dependencias de producción, desde nivel alto (research R10 de 004). Los hallazgos con arreglo se corrigieron
+con versión fija; los que no tienen arreglo dentro de la versión mayor en uso quedan como excepción, cada una
+con fecha de vencimiento.
+
+| Proyecto | Paquete y aviso                                                                                   | Decisión                                                                                                                                                                                              |
+| -------- | ------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| backend  | `body-parser` 2.3.0, por `express` 5.2.1 ([GHSA-27r3-jxmh-p828](https://github.com/advisories/GHSA-27r3-jxmh-p828)) | **Corregido:** 2.4.0 en `package-lock.json` (dentro del rango `^2.2.1` de `express`)                                                                                                         |
+| backend  | `multer` 2.4.0, fijado por `@nestjs/platform-express` 11.2.7 ([GHSA-q7qp-rjg7-q26m](https://github.com/advisories/GHSA-q7qp-rjg7-q26m)) | **Corregido:** `overrides` a `multer` **2.5.0** (MIT) en `package.json`, sin subir NestJS a 12. Lo usa solo la subida de comprobantes de 003, que no tiene `fileFilter` |
+| frontend | `zod` 3.25.76 ([GHSA-mrhx-c7xc-m3w5](https://github.com/advisories/GHSA-mrhx-c7xc-m3w5))           | **Excepción** (decisión del responsable, 2026-11-06). Solo la arregla zod 4, una versión mayor que cambia los esquemas de 17 pantallas. Corre en el navegador: el agotamiento de memoria afecta a la pestaña de quien lo provoca. **Vence el 2026-12-15**; la migración a zod 4 queda pendiente |
+
+**Caso de T002 que aplica:** **caso A en el backend** (paso `npm audit --omit=dev --audit-level=high`, sin
+herramientas nuevas) y **caso B en el frontend** (`audit-ci` 7.1.0, Apache-2.0, como devDependency, con la
+excepción de `zod` en `frontend/audit-ci.jsonc`, nivel alto y solo producción). En ningún caso se bajó el nivel.
+
+Fuera de este escaneo quedan los hallazgos de dependencias de desarrollo, que no se despliegan: por ejemplo
+`undici` 8.12.1, que trae `testcontainers` 12.2.1 en el backend.

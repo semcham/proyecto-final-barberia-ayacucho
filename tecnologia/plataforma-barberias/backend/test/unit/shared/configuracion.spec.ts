@@ -15,6 +15,11 @@ const MINIMAS: Record<string, string> = {
   PAGOS_URL_BASE: 'http://localhost:3100',
   PAGOS_LLAVE_SECRETA: 'sk_prueba_123',
   PAGOS_SECRETO_FIRMA: 'whsec_prueba_0123456789',
+  // 004: enlaces de acción y correo.
+  ENLACES_LLAVE: Buffer.alloc(32, 9).toString('base64'),
+  ENLACES_SAL_IP: 'sal-de-la-ip-de-pruebas-0123',
+  SMTP_HOST: 'localhost',
+  CORREO_REMITENTE: 'no-responder@barberias.local',
 };
 
 describe('Configuracion: período de gracia de la renovación', () => {
@@ -355,4 +360,156 @@ describe('Configuracion: pagos, plataforma y tareas (003)', () => {
     expect(otro).toContain('PAGOS_LLAVE_SECRETA');
     expect(otro).not.toContain('sk_1');
   });
+});
+
+// T006 de 004 · Enlaces de acción (ADR-032), correo por SMTP (ADR-026), URL pública y despacho de eventos
+// (ADR-025): valores por defecto, rangos, errores claros al iniciar y ningún secreto en los mensajes.
+describe('Configuracion: enlaces, correo y eventos (004)', () => {
+  const original = { ...process.env };
+  const LLAVE_ENLACES = Buffer.alloc(32, 9).toString('base64');
+  const OBLIGATORIAS_004: Record<string, string> = {
+    ENLACES_LLAVE: LLAVE_ENLACES,
+    ENLACES_SAL_IP: 'sal-de-la-ip-de-pruebas-0123',
+    SMTP_HOST: 'localhost',
+    CORREO_REMITENTE: 'no-responder@barberias.local',
+  };
+  const OPCIONALES_004 = [
+    'SMTP_PUERTO',
+    'SMTP_TLS',
+    'SMTP_USUARIO',
+    'SMTP_CLAVE',
+    'CORREO_TIEMPO_LIMITE_MS',
+    'URL_PUBLICA',
+    'EVENTOS_INTERVALO_MS',
+    'FRONTEND_BASE_URL',
+  ];
+
+  beforeEach(() => {
+    process.env = { ...original, ...MINIMAS, ...OBLIGATORIAS_004 };
+    for (const variable of OPCIONALES_004) delete process.env[variable];
+  });
+
+  afterAll(() => {
+    process.env = original;
+  });
+
+  function errorAlIniciar(): string {
+    try {
+      new Configuracion();
+    } catch (error) {
+      return (error as Error).message;
+    }
+    throw new Error('Se esperaba un error al iniciar');
+  }
+
+  it('valores por defecto', () => {
+    const { enlaces, correo, urlPublica, eventos } = new Configuracion();
+    expect(enlaces).toEqual({ llave: Buffer.alloc(32, 9), salIp: 'sal-de-la-ip-de-pruebas-0123' });
+    expect(correo).toEqual({
+      smtp: { host: 'localhost', puerto: 587, tls: 'starttls', usuario: undefined, clave: undefined },
+      remitente: 'no-responder@barberias.local',
+      tiempoLimiteMs: 5000,
+    });
+    expect(urlPublica).toBe('http://localhost:5173');
+    expect(eventos).toEqual({ intervaloMs: 15_000 });
+  });
+
+  it.each(Object.keys(OBLIGATORIAS_004))('exige %s', (variable) => {
+    delete process.env[variable];
+    expect(errorAlIniciar()).toContain(variable);
+  });
+
+  it.each([
+    ['vacía', ''],
+    ['de 16 bytes', Buffer.alloc(16, 1).toString('base64')],
+    ['de 33 bytes', Buffer.alloc(33, 1).toString('base64')],
+    ['que no es base64', 'llave-de-enlaces-que-no-es-base64-!!'],
+  ])('rechaza una ENLACES_LLAVE %s, sin mostrarla', (_caso, valor) => {
+    process.env.ENLACES_LLAVE = valor;
+    const mensaje = errorAlIniciar();
+    expect(mensaje).toContain('ENLACES_LLAVE');
+    if (valor) expect(mensaje).not.toContain(valor);
+  });
+
+  it('ENLACES_LLAVE debe ser distinta de la llave de TOTP', () => {
+    process.env.ENLACES_LLAVE = MINIMAS.PLATAFORMA_LLAVE_TOTP;
+    const mensaje = errorAlIniciar();
+    expect(mensaje).toContain('ENLACES_LLAVE');
+    expect(mensaje).not.toContain(MINIMAS.PLATAFORMA_LLAVE_TOTP);
+  });
+
+  it('ENLACES_SAL_IP corta se rechaza sin mostrarla', () => {
+    process.env.ENLACES_SAL_IP = 'sal-corta';
+    const mensaje = errorAlIniciar();
+    expect(mensaje).toContain('ENLACES_SAL_IP');
+    expect(mensaje).not.toContain('sal-corta');
+  });
+
+  it('ENLACES_SAL_IP debe ser distinta de ENLACES_LLAVE, sin mostrar ninguna', () => {
+    process.env.ENLACES_SAL_IP = LLAVE_ENLACES;
+    const mensaje = errorAlIniciar();
+    expect(mensaje).toContain('ENLACES_SAL_IP');
+    expect(mensaje).not.toContain(LLAVE_ENLACES);
+  });
+
+  it.each(['no', 'starttls', 'implicito'])('acepta SMTP_TLS=%s', (valor) => {
+    process.env.SMTP_TLS = valor;
+    expect(new Configuracion().correo.smtp.tls).toBe(valor);
+  });
+
+  it.each(['si', 'tls', 'STARTTLS'])('rechaza SMTP_TLS=%s', (valor) => {
+    process.env.SMTP_TLS = valor;
+    expect(errorAlIniciar()).toContain('SMTP_TLS');
+  });
+
+  it('usuario y clave de SMTP van juntos; la clave nunca aparece en el mensaje', () => {
+    process.env.SMTP_USUARIO = 'usuario-smtp';
+    process.env.SMTP_CLAVE = 'clave-smtp-secreta';
+    expect(new Configuracion().correo.smtp).toMatchObject({
+      usuario: 'usuario-smtp',
+      clave: 'clave-smtp-secreta',
+    });
+    delete process.env.SMTP_CLAVE;
+    expect(errorAlIniciar()).toContain('SMTP_CLAVE');
+    process.env.SMTP_CLAVE = 'clave-smtp-secreta';
+    delete process.env.SMTP_USUARIO;
+    const mensaje = errorAlIniciar();
+    expect(mensaje).toContain('SMTP_USUARIO');
+    expect(mensaje).not.toContain('clave-smtp-secreta');
+  });
+
+  it.each(['correo', 'a@b', '<script>@x.pe'])('rechaza CORREO_REMITENTE=%s', (valor) => {
+    process.env.CORREO_REMITENTE = valor;
+    expect(errorAlIniciar()).toContain('CORREO_REMITENTE');
+  });
+
+  it.each([
+    ['SMTP_PUERTO', ['1', '65535'], ['0', '65536', '25.5']],
+    ['CORREO_TIEMPO_LIMITE_MS', ['100', '30000'], ['99', '30001']],
+    ['EVENTOS_INTERVALO_MS', ['1000', '3600000'], ['999', '3600001', 'quince']],
+  ])('%s: rango', (variable, validos, invalidos) => {
+    for (const valor of validos) {
+      process.env[variable] = valor;
+      expect(() => new Configuracion()).not.toThrow();
+    }
+    for (const valor of invalidos) {
+      process.env[variable] = valor;
+      expect(errorAlIniciar()).toContain(variable);
+    }
+  });
+
+  it('URL_PUBLICA sigue a FRONTEND_BASE_URL por defecto, sin la barra final', () => {
+    process.env.FRONTEND_BASE_URL = 'https://barberias.pe';
+    expect(new Configuracion().urlPublica).toBe('https://barberias.pe');
+    process.env.URL_PUBLICA = 'https://citas.barberias.pe/';
+    expect(new Configuracion().urlPublica).toBe('https://citas.barberias.pe');
+  });
+
+  it.each(['javascript:alert(1)', 'ftp://barberias.pe', 'barberias.pe'])(
+    'rechaza URL_PUBLICA=%s',
+    (valor) => {
+      process.env.URL_PUBLICA = valor;
+      expect(errorAlIniciar()).toContain('URL_PUBLICA');
+    },
+  );
 });

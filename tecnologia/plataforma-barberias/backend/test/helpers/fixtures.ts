@@ -439,6 +439,80 @@ export async function sembrarCita(opciones: {
   return id;
 }
 
+/** Ids de las filas que siembra `sembrarFilas004`, una por tabla nueva con barbería. */
+export interface Filas004 {
+  eventoId: string;
+  avisoId: string;
+  consentimientoId: string;
+  reprogramacionId: string;
+  usoEnlaceId: string;
+}
+
+/** Tablas nuevas de 004 con barbería (data-model §1 a §4): todas con RLS por tenant. */
+export const TABLAS_004_CON_BARBERIA = [
+  'outbox_event',
+  'notification',
+  'customer_notification_preference',
+  'whatsapp_consent',
+  'appointment_reschedule',
+  'appointment_link_use',
+] as const;
+
+/**
+ * Una fila en cada tabla nueva de 004 (T009, T010), sembrada sin RLS para las pruebas de aislamiento. Requiere
+ * un cliente, una cita y su barbero de la misma barbería.
+ */
+export async function sembrarFilas004(opciones: {
+  tenantId: string;
+  clienteId: string;
+  citaId: string;
+  barberoId: string;
+  usuarioId: string;
+}): Promise<Filas004> {
+  const seed = poolDe('seed');
+  const { tenantId, clienteId, citaId, barberoId, usuarioId } = opciones;
+  const filas: Filas004 = {
+    eventoId: uuidv7(),
+    avisoId: uuidv7(),
+    consentimientoId: uuidv7(),
+    reprogramacionId: uuidv7(),
+    usoEnlaceId: uuidv7(),
+  };
+  await seed.query(
+    `INSERT INTO outbox_event (id, tenant_id, type, payload, available_at, status, attempts, processed_at)
+     VALUES ($1, $2, 'CitaCreada', $3, now(), 'PROCESADO', 0, now())`,
+    [filas.eventoId, tenantId, JSON.stringify({ citaId })],
+  );
+  await seed.query(
+    `INSERT INTO notification (id, tenant_id, event_id, kind, recipient_kind, recipient_ref, appointment_id,
+       channel_planned, status, discard_after)
+     VALUES ($1, $2, $3, 'CITA_CREADA', 'CLIENTE', $4, $5, 'CORREO', 'ENVIADO', now() + interval '1 day')`,
+    [filas.avisoId, tenantId, filas.eventoId, clienteId, citaId],
+  );
+  await seed.query(
+    `INSERT INTO customer_notification_preference (tenant_id, customer_id, channel, whatsapp_number)
+     VALUES ($1, $2, 'WHATSAPP', '+51 987654321')`,
+    [tenantId, clienteId],
+  );
+  await seed.query(
+    `INSERT INTO whatsapp_consent (id, tenant_id, customer_id, number, text_version)
+     VALUES ($1, $2, $3, '+51 987654321', '2026-11')`,
+    [filas.consentimientoId, tenantId, clienteId],
+  );
+  await seed.query(
+    `INSERT INTO appointment_reschedule (id, tenant_id, appointment_id, from_barber_id, from_starts_at,
+       to_barber_id, to_starts_at, changed_by, via)
+     VALUES ($1, $2, $3, $4, now() + interval '3 days', $4, now() + interval '4 days', $5, 'SESION')`,
+    [filas.reprogramacionId, tenantId, citaId, barberoId, usuarioId],
+  );
+  await seed.query(
+    `INSERT INTO appointment_link_use (id, tenant_id, appointment_id, link_hash, action)
+     VALUES ($1, $2, $3, $4, 'CONFIRMAR')`,
+    [filas.usoEnlaceId, tenantId, citaId, randomBytes(32).toString('hex')],
+  );
+  return filas;
+}
+
 /** Filas de una tabla con tenant_id, leídas sin RLS, para comparar antes y después de una operación. */
 export async function filasDe(tabla: string, tenantId: string): Promise<Record<string, unknown>[]> {
   if (!/^[a-z_]+$/.test(tabla)) throw new Error(`Nombre de tabla no válido: ${tabla}`);

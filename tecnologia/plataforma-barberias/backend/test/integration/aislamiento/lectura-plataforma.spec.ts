@@ -4,6 +4,8 @@ import type { PoolClient } from 'pg';
 import { v7 as uuidv7 } from 'uuid';
 import { COLUMNAS_PLATAFORMA, PERMISOS_APP_PLATAFORMA } from '../../../migrations/0016_plataforma';
 import { COLUMNAS_PLATAFORMA_TAREAS, UPDATE_APP_TAREAS } from '../../../migrations/0017_tareas';
+import { COLUMNAS_PLATAFORMA_EVENTOS } from '../../../migrations/0021_salida_de_eventos';
+import { COLUMNAS_PLATAFORMA_AVISOS } from '../../../migrations/0024_avisos';
 import { LecturaPlataforma } from '../../../src/shared/lectura-plataforma';
 import { sembrarBarberia, sembrarPago, sembrarSuscripcion } from '../../helpers/fixtures';
 import { cerrarPools, poolDe } from '../../helpers/test-db';
@@ -22,7 +24,20 @@ const DIA_MS = 24 * 60 * 60 * 1000;
 const PERMISOS_ESPERADOS: Record<string, readonly string[]> = {
   ...COLUMNAS_PLATAFORMA,
   ...COLUMNAS_PLATAFORMA_TAREAS,
+  // 004 (ADR-025): solo las cinco columnas técnicas de la salida de eventos y de los avisos.
+  ...COLUMNAS_PLATAFORMA_EVENTOS,
+  ...COLUMNAS_PLATAFORMA_AVISOS,
 };
+
+/** Tablas nuevas de 004 que barberias_plataforma no lee en absoluto (data-model §7). */
+const TABLAS_004_SIN_LECTURA_DE_PLATAFORMA = [
+  'customer_notification_preference',
+  'whatsapp_consent',
+  'appointment_reschedule',
+  'appointment_link_use',
+  'action_link_attempt',
+];
+const TABLAS_004 = ['outbox_event', 'notification', ...TABLAS_004_SIN_LECTURA_DE_PLATAFORMA];
 
 async function como<T>(
   rol: 'plataforma' | 'app',
@@ -263,6 +278,64 @@ describe('PR09 · Lectura de la plataforma (ADR-031, constitución 1.3.1)', () =
           tenants[0].pagoId,
         ]),
       ).rejects.toThrow(/can only be updated to DEFAULT/);
+    });
+  });
+
+  // T011 de 004 · ADR-025, ADR-031; constitución 1.4.1, principio III, tercera excepción: el despacho y el
+  // envío listan pendientes leyendo solo columnas técnicas, sin el tipo ni el contenido.
+  describe('5b. Tablas de 004', () => {
+    it('outbox_event y notification: exactamente las cinco columnas técnicas', () => {
+      expect([...COLUMNAS_PLATAFORMA_EVENTOS.outbox_event].sort()).toEqual(
+        ['available_at', 'id', 'next_attempt_at', 'status', 'tenant_id'].sort(),
+      );
+      expect([...COLUMNAS_PLATAFORMA_AVISOS.notification].sort()).toEqual(
+        ['claimed_until', 'id', 'next_attempt_at', 'status', 'tenant_id'].sort(),
+      );
+    });
+
+    it.each([
+      ['SELECT type FROM outbox_event'],
+      ['SELECT payload FROM outbox_event'],
+      ['SELECT replace_key FROM outbox_event'],
+      ['SELECT * FROM outbox_event'],
+      ['SELECT kind FROM notification'],
+      ['SELECT recipient_ref FROM notification'],
+      ['SELECT appointment_id FROM notification'],
+      ['SELECT * FROM notification'],
+      ...TABLAS_004_SIN_LECTURA_DE_PLATAFORMA.map((tabla) => [`SELECT * FROM ${tabla}`]),
+    ])('%s → permiso denegado', async (consulta) => {
+      await expect(comoPlataforma((c) => c.query(consulta))).rejects.toThrow(/permission denied/);
+    });
+
+    it('lee las columnas técnicas de los pendientes de todas las barberías (política plataforma_lectura)', async () => {
+      const [a, b] = tenants;
+      const ids = [uuidv7(), uuidv7()];
+      for (const [i, t] of [a, b].entries()) {
+        await poolDe('seed').query(
+          `INSERT INTO outbox_event (id, tenant_id, type, payload, available_at, status, attempts)
+           VALUES ($1, $2, 'CitaCreada', '{}', now(), 'PENDIENTE', 0)`,
+          [ids[i], t.tenantId],
+        );
+      }
+      const { rows } = await comoPlataforma((c) =>
+        c.query('SELECT id, tenant_id, status FROM outbox_event WHERE id = ANY($1) ORDER BY id', [ids]),
+      );
+      expect(rows).toEqual([
+        { id: ids[0], tenant_id: a.tenantId, status: 'PENDIENTE' },
+        { id: ids[1], tenant_id: b.tenantId, status: 'PENDIENTE' },
+      ]);
+    });
+
+    it('barberias_auth no tiene ningún permiso sobre ninguna tabla nueva', async () => {
+      const { rows } = await poolDe('seed').query(
+        `SELECT table_name, privilege_type FROM information_schema.table_privileges
+          WHERE grantee = 'barberias_auth' AND table_name = ANY($1)
+         UNION ALL
+         SELECT table_name, privilege_type FROM information_schema.column_privileges
+          WHERE grantee = 'barberias_auth' AND table_name = ANY($1)`,
+        [TABLAS_004],
+      );
+      expect(rows).toEqual([]);
     });
   });
 

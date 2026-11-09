@@ -33,6 +33,7 @@
     "ioredis": "5.4.2",
     "jose": "5.10.0",
     "kysely": "0.28.17",
+    "nodemailer": "10.2.1",
     "pg": "8.23.1",
     "reflect-metadata": "0.2.2",
     "rxjs": "7.8.2",
@@ -63,5 +64,8 @@
     "typescript": "5.9.3",
     "typescript-eslint": "8.71.2",
     "yaml": "2.9.1"
+  },
+  "overrides": {
+    "multer": "2.5.0"
   }
 }

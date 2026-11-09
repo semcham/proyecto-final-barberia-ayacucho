@@ -1,6 +1,6 @@
 # Data Model: Notificaciones y reprogramación de citas (004)
 
-Migraciones **previstas** `0021` a `0025`. **No se modifica ninguna migración existente.** Cada tabla de barbería tiene `tenant_id`, `UNIQUE (tenant_id, id)` y la política `tenant_isolation` con `FORCE ROW LEVEL SECURITY` (`rlsPorTenant` de `migrations/sql-comun.ts`). El rol `barberias_app` no tiene `BYPASSRLS` ni permiso de `DELETE` sobre estas tablas, salvo donde se indica.
+Migraciones **previstas** `0021` a `0025`. **No se modifica ninguna migración existente.** Cada tabla de barbería tiene `tenant_id`, `UNIQUE (tenant_id, id)` y la política `tenant_isolation` con `FORCE ROW LEVEL SECURITY` (`rlsPorTenant` de `migrations/sql-comun.ts`). El rol `barberias_app` no tiene `BYPASSRLS` ni permiso de `DELETE` sobre estas tablas, salvo donde se indica (`outbox_event`, para la purga de retención con RLS, y `action_link_attempt`).
 
 Convenciones: identificadores `uuid` v7 generados en la aplicación; fechas `timestamptz`; nombres de tablas y columnas en inglés, como en 001 a 003.
 
@@ -120,7 +120,7 @@ Consentimiento expreso para WhatsApp, separado de `consent_record` (FR-017, FR-0
 
 **Permisos:**
 
-- `barberias_app`: `SELECT, INSERT` y `UPDATE (status, attempts, next_attempt_at, processed_at)`.
+- `barberias_app`: `SELECT, INSERT`, `UPDATE (status, attempts, next_attempt_at, processed_at)` y `DELETE`, solo para la purga de retención (decisión del responsable, 2026-11-06): la tarea de despacho borra barbería por barbería, en una transacción con su tenant y RLS, y solo eventos en estado final de más de 30 días.
 - `barberias_plataforma`: `SELECT (id, tenant_id, status, available_at, next_attempt_at)` y política `plataforma_lectura FOR SELECT TO barberias_plataforma USING (true)`. Solo esas columnas: ni `type` ni `payload`.
 
 **Estados:** `PENDIENTE → PROCESADO` (el manejador terminó en la misma transacción) · `PENDIENTE → ANULADO` (reemplazado o anulado por su clave) · `PENDIENTE → SIN_MANEJADOR` (su tipo no tiene suscriptor: se escribe una advertencia y no se reintenta; decisión del responsable, 2026-11-04). Los tres son finales.
@@ -205,7 +205,7 @@ Los rechazos de enlaces sin tenant confiable no van a `audit_log` (que exige bar
 | `appointment_link_use`             | `SELECT, INSERT`                                | —                                              | —                   |
 | `customer_notification_preference` | `SELECT, INSERT, UPDATE` por columna            | —                                              | —                   |
 | `whatsapp_consent`                 | `SELECT, INSERT, UPDATE (withdrawn_at)`         | —                                              | —                   |
-| `outbox_event`                     | `SELECT, INSERT, UPDATE` por columna            | `SELECT` de 5 columnas, sin `type` ni `payload` | —                   |
+| `outbox_event`                     | `SELECT, INSERT, UPDATE` por columna, `DELETE` (purga) | `SELECT` de 5 columnas, sin `type` ni `payload` | —                   |
 | `notification`                     | `SELECT, INSERT, UPDATE` por columna            | `SELECT` de 5 columnas                          | —                   |
 | `action_link_attempt`              | `SELECT, INSERT, DELETE`                        | —                                              | —                   |
 
