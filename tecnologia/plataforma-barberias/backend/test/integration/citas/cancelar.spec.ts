@@ -164,6 +164,65 @@ describe('Cancelar una cita', () => {
     expect(auditoria).toHaveLength(1);
   });
 
+  // T065 (004, FR-010; contracts/eventos.md §3): la cancelación publica CitaCancelada en su misma transacción,
+  // con quién canceló y si fue tardía, sin datos de contacto. Una cancelación rechazada no publica nada.
+  describe('evento CitaCancelada (004)', () => {
+    const eventoDe = async (citaId: string) =>
+      (
+        await poolDe('seed').query<{ payload: Record<string, unknown> }>(
+          `SELECT payload FROM outbox_event
+            WHERE tenant_id = $1 AND type = 'CitaCancelada' AND payload->>'citaId' = $2`,
+          [e.barberia.tenantId, citaId],
+        )
+      ).rows.map((fila) => fila.payload);
+
+    it('el cliente cancela con antelación: canceladaPor CLIENTE, no tardía, sin datos de contacto', async () => {
+      const id = await citaEnMinutos(1000);
+      await cancelar(id, cliente.token).expect(200);
+      const eventos = await eventoDe(id);
+      expect(eventos).toHaveLength(1);
+      const [payload] = eventos;
+      expect(payload).toEqual({
+        citaId: id,
+        clienteId: cliente.cliente.clienteId,
+        servicio: 'Servicio sembrado',
+        barbero: 'Ana',
+        inicio: expect.stringMatching(/-05:00$/),
+        zonaHoraria: 'America/Lima',
+        canceladaPor: 'CLIENTE',
+        tardia: false,
+      });
+      const fila = await poolDe('seed').query('SELECT starts_at FROM appointment WHERE id = $1', [id]);
+      expect(Math.abs(Date.parse(payload.inicio as string) - fila.rows[0].starts_at.getTime())).toBeLessThan(
+        1000,
+      );
+      const texto = JSON.stringify(payload);
+      expect(texto).not.toContain('@');
+      expect(texto).not.toContain(cliente.cliente.telefono);
+    });
+
+    it('el cliente cancela tarde: tardia true; el propietario: canceladaPor PROPIETARIO', async () => {
+      const tarde = await citaEnMinutos(92);
+      await cancelar(tarde, cliente.token).expect(200);
+      expect(await eventoDe(tarde)).toEqual([
+        expect.objectContaining({ canceladaPor: 'CLIENTE', tardia: true }),
+      ]);
+
+      const delPropietario = await citaEnMinutos(1100);
+      await cancelar(delPropietario, tokenPropietario).expect(200);
+      expect(await eventoDe(delPropietario)).toEqual([
+        expect.objectContaining({ canceladaPor: 'PROPIETARIO', tardia: false }),
+      ]);
+    });
+
+    it('una cancelación rechazada (cita ya cancelada) no publica otro evento', async () => {
+      const id = await citaEnMinutos(1200);
+      await cancelar(id, cliente.token).expect(200);
+      await cancelar(id, cliente.token).expect(422);
+      expect(await eventoDe(id)).toHaveLength(1);
+    });
+  });
+
   it('un motivo de más de 200 caracteres o campos desconocidos → 400', async () => {
     const id = await citaEnMinutos(700);
     await cancelar(id, cliente.token, { motivo: 'x'.repeat(201) }).expect(400);

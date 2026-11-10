@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { TenantContext, TenantId, UnitOfWork } from '../../../../shared';
 import { BarberiasApi, type ConfiguracionAgenda, type DatosPublicosBarberia } from '../../api-publica';
+import { UsuarioRepository } from '../../identidad/application/ports/usuario-repository';
 import { BarberiaNoDisponible } from '../domain/errores';
 import { TenantRepository } from './ports/tenant-repository';
 
@@ -15,8 +16,19 @@ export class BarberiasApiImpl extends BarberiasApi {
     private readonly uow: UnitOfWork,
     private readonly tenantContext: TenantContext,
     private readonly tenants: TenantRepository,
+    private readonly usuarios: UsuarioRepository,
   ) {
     super();
+  }
+
+  /** 004 (M05, T068): dentro de la transacción del envío, con el tenant del aviso. */
+  async nombre(): Promise<string> {
+    return (await this.configuracionAgenda()).nombre;
+  }
+
+  /** 004 (M05, T068): el correo del propietario activo de la barbería del contexto. */
+  correoDelPropietario(): Promise<string | null> {
+    return this.usuarios.correoDelPropietario();
   }
 
   async configuracionAgenda(): Promise<ConfiguracionAgenda> {

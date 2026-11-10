@@ -2,8 +2,9 @@ import { cerrarPools, poolDe } from '../../helpers/test-db';
 
 // T012 de 004 · Los permisos de barberias_app sobre las tablas y columnas nuevas son exactamente los de
 // data-model.md §7 (constitución 1.4.1, principio III). Sin DELETE, salvo en action_link_attempt (tabla
-// técnica, purga a las 24 h) y en outbox_event (purga de retención con RLS, decisión del responsable del
-// 2026-11-06). La lista se escribe aquí a mano, desde el modelo de datos, y no se importa de las migraciones.
+// técnica, purga a las 24 h), en outbox_event (purga de retención con RLS, decisión del responsable del
+// 2026-11-06) y en notification (purga a los 90 días con RLS, migración 0026, decisión del responsable del
+// 2026-11-09). La lista se escribe aquí a mano, desde el modelo de datos, y no se importa de las migraciones.
 
 interface PermisosEsperados {
   tabla: readonly string[];
@@ -23,7 +24,7 @@ const ESPERADOS: Record<string, PermisosEsperados> = {
     update: ['status', 'attempts', 'next_attempt_at', 'processed_at'],
   },
   notification: {
-    tabla: ['SELECT', 'INSERT'],
+    tabla: ['SELECT', 'INSERT', 'DELETE'],
     update: [
       'channel_used',
       'status',

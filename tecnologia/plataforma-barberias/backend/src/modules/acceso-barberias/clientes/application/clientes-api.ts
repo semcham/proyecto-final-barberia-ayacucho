@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { ClientesApi, type PerfilClienteResumen } from '../../api-publica';
+import { ClientesApi, type ContactoParaAvisos, type PerfilClienteResumen } from '../../api-publica';
 import { PerfilClienteRepository } from './ports/perfil-cliente-repository';
 
 /**
@@ -23,5 +23,11 @@ export class ClientesApiImpl extends ClientesApi {
 
   perfilDeBarberia(clienteId: string): Promise<PerfilClienteResumen | null> {
     return this.perfiles.porId(clienteId);
+  }
+
+  /** 004 (M05, T068): fase 3, siempre el correo; el canal elegido y WhatsApp llegan en la fase 5. */
+  async contactoParaAvisos(clienteId: string): Promise<ContactoParaAvisos | null> {
+    const perfil = await this.perfiles.correoDe(clienteId);
+    return perfil ? { correo: perfil.correo, canal: 'CORREO' } : null;
   }
 }

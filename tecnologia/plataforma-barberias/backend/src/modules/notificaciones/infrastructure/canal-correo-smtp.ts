@@ -73,8 +73,10 @@ export class CanalCorreoSmtp extends NotificationChannel {
     if (!CLAVE.test(mensaje.claveIdempotencia)) throw new Error('La clave de idempotencia no es válida');
 
     let motivo: Motivo | null = null;
+    let llamado = false;
     const resultado = await this.interruptor.ejecutar<Resultado>(
       async () => {
+        llamado = true;
         try {
           return await this.enviarPorSmtp(mensaje);
         } catch (error) {
@@ -83,7 +85,9 @@ export class CanalCorreoSmtp extends NotificationChannel {
         }
       },
       () => {
-        throw new CanalNoDisponible(motivo ?? 'SIN_RESPUESTA');
+        // Sin llamar al servidor (circuito abierto, o una prueba en curso en semiabierto): CIRCUITO_ABIERTO, que
+        // la política de reintentos no cuenta como intento (004, fase 3).
+        throw new CanalNoDisponible(llamado ? (motivo ?? 'SIN_RESPUESTA') : 'CIRCUITO_ABIERTO');
       },
     );
     if (resultado.tipo === 'destinatario-invalido') throw new DestinatarioInvalido();

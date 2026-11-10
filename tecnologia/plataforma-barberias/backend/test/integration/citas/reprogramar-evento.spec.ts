@@ -12,7 +12,7 @@ import { cerrarPools, poolDe } from '../../helpers/test-db';
 
 // T043 · Evento CitaReprogramada (FR-010; contracts/eventos.md §3). Una reprogramación con cambio inserta el
 // evento en outbox_event en la MISMA transacción, con el payload del contrato y sin datos de contacto. Una
-// reprogramación rechazada o sin cambio no publica nada. Hasta la fase 3 no hay manejador (SIN_MANEJADOR).
+// reprogramación rechazada o sin cambio no publica nada. Desde la fase 3 lo maneja M05 (avisos): queda PROCESADO.
 
 const CAMPOS_PAYLOAD = [
   'barbero',
@@ -122,7 +122,7 @@ describe('Evento CitaReprogramada (T043, FR-010)', () => {
     });
   });
 
-  it('el evento se confirma con la reprogramación: queda en outbox_event aunque nadie lo maneje todavía', async () => {
+  it('el evento se confirma con la reprogramación: queda en outbox_event y M05 lo procesa (fase 3)', async () => {
     const c = await clienteConCita('14:00');
     await reprogramar(c.token, c.citaId, { inicio: horaLima(dia, '14:30') }).expect(200);
     const { rows } = await poolDe('seed').query(
@@ -130,7 +130,7 @@ describe('Evento CitaReprogramada (T043, FR-010)', () => {
       [e.barberia.tenantId],
     );
     expect(rows).toHaveLength(1);
-    expect(['PENDIENTE', 'SIN_MANEJADOR']).toContain(rows[0].status);
+    expect(rows[0].status).toBe('PROCESADO');
   });
 
   it('ni la reprogramación rechazada (409, 422, 403) ni la que no cambia nada publican', async () => {

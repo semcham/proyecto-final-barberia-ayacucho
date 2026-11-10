@@ -12,6 +12,11 @@ export abstract class PerfilClienteRepository {
   abstract porUsuario(usuarioId: string): Promise<PerfilClienteResumen | null>;
   /** Perfil por su id (con cuenta o presencial) en la barbería del contexto, o null. */
   abstract porId(clienteId: string): Promise<PerfilClienteResumen | null>;
+  /**
+   * 004: el correo del perfil (o, si no lo tiene, el de su cuenta) en la barbería del contexto; `{ correo: null }`
+   * para un cliente presencial sin correo; null si el perfil no existe en esta barbería.
+   */
+  abstract correoDe(clienteId: string): Promise<{ correo: string | null } | null>;
   /** Varios perfiles de la barbería del contexto en una consulta; ignora ids de otras barberías. */
   abstract varios(clienteIds: readonly string[]): Promise<PerfilClienteResumen[]>;
   /**

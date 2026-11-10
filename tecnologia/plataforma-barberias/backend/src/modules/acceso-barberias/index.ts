@@ -16,6 +16,7 @@ export {
   ClientesApi,
   BarberiasApi,
   type PerfilClienteResumen,
+  type ContactoParaAvisos,
   type ConfiguracionAgenda,
   type DatosPublicosBarberia,
 } from './api-publica';

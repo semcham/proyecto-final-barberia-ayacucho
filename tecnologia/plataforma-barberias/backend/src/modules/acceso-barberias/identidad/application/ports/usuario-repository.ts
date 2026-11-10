@@ -74,6 +74,10 @@ export abstract class UsuarioRepository {
    * RLS. La usan el ingreso con enlace y el cambio de barbería (ADR-020).
    */
   abstract membresiaEnContexto(usuarioId: string): Promise<Membresia | null>;
+  /** 004: correo del usuario con membresía PROPIETARIO o BARBERO ACTIVA en el tenant del contexto, o null. */
+  abstract correoDelPersonal(usuarioId: string): Promise<string | null>;
+  /** 004: correo del propietario con membresía ACTIVA en el tenant del contexto, o null. */
+  abstract correoDelPropietario(): Promise<string | null>;
   /** Personal que ocupa cupo del plan: membresías PENDIENTE y ACTIVA, incluido el propietario (FR-020). */
   abstract contarPersonalVigente(): Promise<number>;
   abstract actualizarEstado(membresia: Membresia): Promise<void>;

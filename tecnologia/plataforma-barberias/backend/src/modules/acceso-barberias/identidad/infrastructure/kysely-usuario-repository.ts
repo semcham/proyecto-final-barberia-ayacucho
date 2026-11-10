@@ -259,6 +259,32 @@ export class KyselyUsuarioRepository extends UsuarioRepository {
       .execute();
   }
 
+  async correoDelPersonal(usuarioId: string): Promise<string | null> {
+    const fila = await this.correoDeMembresia(['PROPIETARIO', 'BARBERO'])
+      .where('membership.user_id', '=', usuarioId)
+      .executeTakeFirst();
+    return fila?.email ?? null;
+  }
+
+  async correoDelPropietario(): Promise<string | null> {
+    const fila = await this.correoDeMembresia(['PROPIETARIO'])
+      .orderBy('membership.created_at')
+      .executeTakeFirst();
+    return fila?.email ?? null;
+  }
+
+  /** Correo de las cuentas con membresía ACTIVA de esos roles en el tenant del contexto (RLS de user_account). */
+  private correoDeMembresia(roles: CodigoRol[]) {
+    return this.uow
+      .transaccionActual()
+      .selectFrom('membership')
+      .innerJoin('user_account', 'user_account.id', 'membership.user_id')
+      .select('user_account.email')
+      .where('membership.tenant_id', '=', this.tenantContext.actual().valor)
+      .where('membership.status', '=', 'ACTIVA')
+      .where('membership.role_code', 'in', roles);
+  }
+
   async fijarContrasena(usuarioId: string, hashContrasena: string): Promise<void> {
     // RLS de user_account: solo se actualiza si la cuenta tiene membresía en el tenant del contexto.
     // Sin RETURNING ni lectura de password_hash (barberias_app no puede leer esa columna).

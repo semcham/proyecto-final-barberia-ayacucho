@@ -19,7 +19,8 @@
     "simulador": "tsx simulador-pagos/servidor.ts",
     "simulador:modo": "tsx scripts/simulador-modo.ts",
     "plataforma:crear-admin": "tsx scripts/crear-admin-plataforma.ts",
-    "demo:vencimiento": "tsx scripts/demo-vencimiento.ts"
+    "demo:vencimiento": "tsx scripts/demo-vencimiento.ts",
+    "demo:avisos": "tsx scripts/demo-avisos.ts"
   },
   "dependencies": {
     "@nestjs/common": "11.2.7",

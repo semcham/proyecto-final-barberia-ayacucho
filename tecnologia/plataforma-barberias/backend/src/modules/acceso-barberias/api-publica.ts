@@ -2,11 +2,29 @@ import type { TenantId } from '../../shared';
 
 // T021 · Interfaces públicas de M01 para M02 (ADR-020, research R05 de 002). Cada clase abstracta es
 // también el token de inyección. M02 las importa solo desde acceso-barberias/index.ts; M01 no llama a M02.
+//
+// 004 (T068; revisión de ADR-013, research R12): M05 las usa AL ENVIAR un aviso, en una transacción con el tenant
+// del aviso, para leer el correo del destinatario. Los avisos no guardan datos de contacto.
 
 /** Usuarios del personal de la barbería del contexto (para vincular un barbero del catálogo). */
 export abstract class PersonalApi {
   /** Verdadero si el usuario tiene membresía PROPIETARIO o BARBERO ACTIVA en la barbería del contexto. */
   abstract esPersonalActivo(usuarioId: string): Promise<boolean>;
+  /**
+   * 004: correo del usuario si tiene membresía PROPIETARIO o BARBERO ACTIVA en la barbería del contexto, o null
+   * (un usuario de otra barbería, desactivado o que ya no existe no recibe avisos).
+   */
+  abstract correoDe(usuarioId: string): Promise<string | null>;
+}
+
+/**
+ * 004 (RF33): cómo avisar a un cliente. En la fase 3, el correo y el canal CORREO; el canal elegido, el número de
+ * WhatsApp y el consentimiento vigente se agregan en la fase 5.
+ */
+export interface ContactoParaAvisos {
+  /** Null si el cliente (presencial) no dio un correo. */
+  correo: string | null;
+  canal: 'CORREO';
 }
 
 export interface PerfilClienteResumen {
@@ -23,6 +41,8 @@ export abstract class ClientesApi {
   abstract datosDeContacto(clienteIds: readonly string[]): Promise<PerfilClienteResumen[]>;
   /** Perfil de un cliente (con cuenta o presencial) de la barbería del contexto, o null. */
   abstract perfilDeBarberia(clienteId: string): Promise<PerfilClienteResumen | null>;
+  /** 004 (M05): contacto para avisar al cliente de la barbería del contexto, o null si no existe en ella. */
+  abstract contactoParaAvisos(clienteId: string): Promise<ContactoParaAvisos | null>;
 }
 
 export interface ConfiguracionAgenda {
@@ -62,4 +82,8 @@ export abstract class BarberiasApi {
   abstract barberiaPublicaPorEnlace(
     slug: string,
   ): Promise<{ tenantId: TenantId; barberia: DatosPublicosBarberia }>;
+  /** 004 (M05): nombre comercial de la barbería del contexto (lo lleva cada aviso). */
+  abstract nombre(): Promise<string>;
+  /** 004 (M05): correo del propietario ACTIVO de la barbería del contexto, o null si no tiene uno. */
+  abstract correoDelPropietario(): Promise<string | null>;
 }

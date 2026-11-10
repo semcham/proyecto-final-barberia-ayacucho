@@ -21,4 +21,9 @@ export class PersonalApiImpl extends PersonalApi {
       (membresia.rol.codigo === 'PROPIETARIO' || membresia.rol.codigo === 'BARBERO')
     );
   }
+
+  /** 004 (M05, T068): el correo para avisar a un barbero con usuario o al propietario. */
+  correoDe(usuarioId: string): Promise<string | null> {
+    return this.usuarios.correoDelPersonal(usuarioId);
+  }
 }

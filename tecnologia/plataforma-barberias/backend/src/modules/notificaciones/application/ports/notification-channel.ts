@@ -28,7 +28,11 @@ export interface EnvioAceptado {
 export class CanalNoDisponible extends ErrorDeAplicacion {
   readonly codigo = 'CANAL_NO_DISPONIBLE';
 
-  constructor(motivo: 'TIEMPO_AGOTADO' | 'SIN_RESPUESTA' | 'RECHAZO_TEMPORAL' | 'CIRCUITO_ABIERTO') {
+  /**
+   * 004 (fase 3): el motivo, para la política de reintentos. Con `CIRCUITO_ABIERTO` no se llamó al canal y el
+   * intento no cuenta (research R13).
+   */
+  constructor(readonly motivo: 'TIEMPO_AGOTADO' | 'SIN_RESPUESTA' | 'RECHAZO_TEMPORAL' | 'CIRCUITO_ABIERTO') {
     super(`El canal de aviso no está disponible (${motivo})`);
   }
 }

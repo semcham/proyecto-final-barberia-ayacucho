@@ -181,4 +181,55 @@ describe('POST /citas (cliente)', () => {
   it('campos de tenant o desconocidos en el cuerpo → 400', async () => {
     await reservar(cuerpo('12:00', { tenantId: e.barberia.tenantId })).expect(400);
   });
+
+  // T065 (004, FR-010; contracts/eventos.md §3): la reserva publica CitaCreada en su misma transacción, sin datos
+  // de contacto. Un reintento idempotente o una reserva rechazada no publican nada.
+  describe('evento CitaCreada (004)', () => {
+    const dia = fechaEnDias(5);
+    const eventos = async () =>
+      (
+        await poolDe('seed').query<{ payload: Record<string, unknown> }>(
+          `SELECT payload FROM outbox_event WHERE tenant_id = $1 AND type = 'CitaCreada' ORDER BY created_at`,
+          [e.barberia.tenantId],
+        )
+      ).rows.map((fila) => fila.payload);
+
+    it('una reserva → un CitaCreada con el payload del contrato y sin datos de contacto', async () => {
+      const antes = (await eventos()).length;
+      const clave = nuevaClave();
+      const solicitud = { ...cuerpo('10:00'), inicio: horaLima(dia, '10:00') };
+      const { body } = await reservar(solicitud, clave).expect(201);
+      // El reintento con la misma clave devuelve la misma cita y no publica otro evento.
+      await reservar(solicitud, clave).expect(200);
+
+      const nuevos = (await eventos()).slice(antes);
+      expect(nuevos).toEqual([
+        {
+          citaId: body.id,
+          version: 1,
+          clienteId,
+          servicio: 'Corte',
+          barbero: 'Luis',
+          inicio: horaLima(dia, '10:00'),
+          fin: horaLima(dia, '10:30'),
+          zonaHoraria: 'America/Lima',
+          origen: 'EN_LINEA',
+        },
+      ]);
+      const texto = JSON.stringify(nuevos);
+      expect(texto).not.toContain('@');
+      expect(texto).not.toContain(usuarioId);
+    });
+
+    it('una reserva rechazada (409 o 422) no publica CitaCreada', async () => {
+      const otro = await sesionCliente(e.barberia.tenantId);
+      await reservar({ ...cuerpo('11:00'), inicio: horaLima(dia, '11:00') }).expect(201);
+      const antes = (await eventos()).length;
+      await reservar({ ...cuerpo('11:00'), inicio: horaLima(dia, '11:00') }, nuevaClave(), otro.token).expect(
+        409,
+      );
+      await reservar({ ...cuerpo('11:00'), inicio: horaLima(fechaEnDias(-1), '11:00') }).expect(422);
+      expect(await eventos()).toHaveLength(antes);
+    });
+  });
 });

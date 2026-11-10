@@ -1,4 +1,5 @@
 import { Injectable, type OnApplicationBootstrap } from '@nestjs/common';
+import { EnviarAvisos } from '../modules/notificaciones';
 import { ConciliarPagos, ExpirarTransferencias, VencerSuscripciones } from '../modules/suscripciones-pagos';
 import { Configuracion, DespachadorDeEventos, EjecutorTareas } from '../shared';
 
@@ -14,6 +15,7 @@ export class TareasProgramadas implements OnApplicationBootstrap {
     private readonly vencerSuscripciones: VencerSuscripciones,
     private readonly expirarTransferencias: ExpirarTransferencias,
     private readonly despachador: DespachadorDeEventos,
+    private readonly enviarAvisos: EnviarAvisos,
     private readonly configuracion: Configuracion,
   ) {}
 
@@ -35,6 +37,13 @@ export class TareasProgramadas implements OnApplicationBootstrap {
       nombre: 'despachar-eventos',
       intervaloMs: this.configuracion.eventos.intervaloMs,
       ejecutar: () => this.despachador.ejecutar(),
+    });
+    // 004 (fase 3, ADR-025 pasos 4 a 6): envío de los avisos pendientes, con el mismo intervalo, y su purga a
+    // los 90 días (R17).
+    this.ejecutor.registrar({
+      nombre: 'enviar-avisos',
+      intervaloMs: this.configuracion.eventos.intervaloMs,
+      ejecutar: () => this.enviarAvisos.ejecutar(),
     });
     this.ejecutor.iniciar();
   }

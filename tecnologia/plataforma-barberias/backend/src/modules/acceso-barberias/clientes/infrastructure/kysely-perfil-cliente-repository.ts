@@ -63,6 +63,18 @@ export class KyselyPerfilClienteRepository extends PerfilClienteRepository {
     return fila ? aResumen(fila) : null;
   }
 
+  async correoDe(clienteId: string): Promise<{ correo: string | null } | null> {
+    const fila = await this.uow
+      .transaccionActual()
+      .selectFrom('customer_profile')
+      .leftJoin('user_account', 'user_account.id', 'customer_profile.user_id')
+      .select(['customer_profile.email as perfil', 'user_account.email as cuenta'])
+      .where('customer_profile.tenant_id', '=', this.tenantContext.actual().valor)
+      .where('customer_profile.id', '=', clienteId)
+      .executeTakeFirst();
+    return fila ? { correo: fila.perfil ?? fila.cuenta ?? null } : null;
+  }
+
   async buscar(texto: string, limite: number): Promise<ClienteEncontrado[]> {
     // Los comodines de LIKE que escriba la persona se buscan literalmente.
     const literal = (valor: string) => valor.replace(/[\\%_]/g, (c) => `\\${c}`);

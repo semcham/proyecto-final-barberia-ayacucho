@@ -24,6 +24,7 @@ import * as m0022 from './0022_canal_y_consentimiento_whatsapp';
 import * as m0023 from './0023_citas_reprogramacion';
 import * as m0024 from './0024_avisos';
 import * as m0025 from './0025_intentos_enlaces';
+import * as m0026 from './0026_purga_avisos';
 
 // Registro explícito de migraciones, en orden. Cada historia agrega aquí las suyas.
 // (Un proveedor estático evita depender de importaciones dinámicas de archivos .ts.)
@@ -53,6 +54,7 @@ const MIGRACIONES: Record<string, Migration> = {
   '0023_citas_reprogramacion': m0023,
   '0024_avisos': m0024,
   '0025_intentos_enlaces': m0025,
+  '0026_purga_avisos': m0026,
 };
 
 /** Nombre de la última migración que conoce el código (GET /salud/listo, 006). */

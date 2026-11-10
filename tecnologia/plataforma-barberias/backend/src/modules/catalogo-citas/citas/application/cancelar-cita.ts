@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { type Actor, BarberiasApi, ClientesApi } from '../../../acceso-barberias';
 import { SuscripcionesApi } from '../../../suscripciones-pagos';
-import { AuditLog, Clock, TenantId, UnitOfWork } from '../../../../shared';
+import { AuditLog, BusDeEventos, Clock, TenantId, UnitOfWork, ZonaHoraria } from '../../../../shared';
 import { AutorizacionCatalogoCitas } from '../../catalogo/application/autorizacion';
 import { CatalogQuery } from '../../catalogo/application/ports/catalog-query';
 import { NoEncontrado } from '../../catalogo/domain/errores';
@@ -27,6 +27,7 @@ export class CancelarCita {
     private readonly reloj: Clock,
     private readonly auditoria: AuditLog,
     private readonly suscripciones: SuscripcionesApi,
+    private readonly eventos: BusDeEventos,
   ) {}
 
   async ejecutar(actor: Actor, citaId: string, motivo?: string | null): Promise<CitaVista> {
@@ -58,6 +59,22 @@ export class CancelarCita {
       });
 
       const barbero = await this.catalogo.barbero(cita.barberoId);
+      // 004 (T067, FR-010; contracts/eventos.md §3): en la misma transacción; solo lo que el aviso necesita.
+      const zona = new ZonaHoraria(agenda.zonaHoraria);
+      await this.eventos.publicar({
+        tipo: 'CitaCancelada',
+        payload: {
+          citaId: cita.id,
+          clienteId: cita.clienteId,
+          servicio: cita.servicio.nombre,
+          barbero: barbero?.nombre ?? '',
+          ...(barbero?.usuarioId && { barberoUsuarioId: barbero.usuarioId }),
+          inicio: zona.formatoIso(cita.rango.inicio),
+          zonaHoraria: agenda.zonaHoraria,
+          canceladaPor: actor.rol === 'CLIENTE' ? 'CLIENTE' : 'PROPIETARIO',
+          tardia: cita.cancelacionTardia,
+        },
+      });
       return aVista(cita, agenda, barbero?.nombre ?? '');
     });
   }

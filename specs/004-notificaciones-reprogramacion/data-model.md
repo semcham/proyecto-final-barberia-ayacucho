@@ -1,6 +1,6 @@
 # Data Model: Notificaciones y reprogramación de citas (004)
 
-Migraciones **previstas** `0021` a `0025`. **No se modifica ninguna migración existente.** Cada tabla de barbería tiene `tenant_id`, `UNIQUE (tenant_id, id)` y la política `tenant_isolation` con `FORCE ROW LEVEL SECURITY` (`rlsPorTenant` de `migrations/sql-comun.ts`). El rol `barberias_app` no tiene `BYPASSRLS` ni permiso de `DELETE` sobre estas tablas, salvo donde se indica (`outbox_event`, para la purga de retención con RLS, y `action_link_attempt`).
+Migraciones **previstas** `0021` a `0025`. **No se modifica ninguna migración existente.** Cada tabla de barbería tiene `tenant_id`, `UNIQUE (tenant_id, id)` y la política `tenant_isolation` con `FORCE ROW LEVEL SECURITY` (`rlsPorTenant` de `migrations/sql-comun.ts`). El rol `barberias_app` no tiene `BYPASSRLS` ni permiso de `DELETE` sobre estas tablas, salvo donde se indica (`outbox_event` y `notification`, para la purga de retención con RLS, y `action_link_attempt`). El `DELETE` de `notification` lo agrega la migración `0026_purga_avisos` (fase 3, decisión del responsable del 2026-11-09): `0024` no lo daba.
 
 Convenciones: identificadores `uuid` v7 generados en la aplicación; fechas `timestamptz`; nombres de tablas y columnas en inglés, como en 001 a 003.
 
@@ -168,7 +168,7 @@ ENVIANDO con claimed_until vencido ──▶ se vuelve a reclamar (posible dupli
 
 **Permisos:**
 
-- `barberias_app`: `SELECT, INSERT` y `UPDATE (channel_used, status, attempts, next_attempt_at, claimed_until, sent_at, last_error)`.
+- `barberias_app`: `SELECT, INSERT`, `UPDATE (channel_used, status, attempts, next_attempt_at, claimed_until, sent_at, last_error)` y `DELETE`, solo para la purga de retención (migración `0026_purga_avisos`, decisión del responsable del 2026-11-09): la tarea `enviar-avisos` borra barbería por barbería, en una transacción con su tenant y RLS, y solo avisos en estado final de más de 90 días.
 - `barberias_plataforma`: `SELECT (id, tenant_id, status, next_attempt_at, claimed_until)` con política `plataforma_lectura`.
 
 **Retención:** 90 días (decisión del responsable, 2026-11-04; la afinación por tipo, en 007). La purga la hace la tarea `enviar-avisos` de M05; la de `outbox_event`, la tarea `despachar-eventos` de M06.
@@ -206,7 +206,7 @@ Los rechazos de enlaces sin tenant confiable no van a `audit_log` (que exige bar
 | `customer_notification_preference` | `SELECT, INSERT, UPDATE` por columna            | —                                              | —                   |
 | `whatsapp_consent`                 | `SELECT, INSERT, UPDATE (withdrawn_at)`         | —                                              | —                   |
 | `outbox_event`                     | `SELECT, INSERT, UPDATE` por columna, `DELETE` (purga) | `SELECT` de 5 columnas, sin `type` ni `payload` | —                   |
-| `notification`                     | `SELECT, INSERT, UPDATE` por columna            | `SELECT` de 5 columnas                          | —                   |
+| `notification`                     | `SELECT, INSERT, UPDATE` por columna, `DELETE` (purga, `0026`) | `SELECT` de 5 columnas                          | —                   |
 | `action_link_attempt`              | `SELECT, INSERT, DELETE`                        | —                                              | —                   |
 
 `barberias_auth` (con `BYPASSRLS`) **no recibe ningún permiso** sobre estas tablas. La prueba `lectura-plataforma` de PR09 se amplía para comparar los permisos de `barberias_plataforma` con esta lista cerrada.

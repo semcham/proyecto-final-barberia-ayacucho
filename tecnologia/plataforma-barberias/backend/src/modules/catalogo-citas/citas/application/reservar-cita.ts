@@ -3,7 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { v7 as uuidv7 } from 'uuid';
 import { type Actor, BarberiasApi, ClientesApi, type ConfiguracionAgenda } from '../../../acceso-barberias';
 import { SuscripcionesApi } from '../../../suscripciones-pagos';
-import { AuditLog, Clock, TenantId, UnitOfWork, ZonaHoraria } from '../../../../shared';
+import { AuditLog, BusDeEventos, Clock, TenantId, UnitOfWork, ZonaHoraria } from '../../../../shared';
 import { AutorizacionCatalogoCitas } from '../../catalogo/application/autorizacion';
 import { CatalogQuery } from '../../catalogo/application/ports/catalog-query';
 import {
@@ -72,6 +72,7 @@ export class ReservarCita {
     private readonly reloj: Clock,
     private readonly auditoria: AuditLog,
     private readonly suscripciones: SuscripcionesApi,
+    private readonly eventos: BusDeEventos,
   ) {}
 
   async ejecutar(actor: Actor, comando: ComandoReservarCita, clave: string): Promise<ResultadoReserva> {
@@ -160,6 +161,25 @@ export class ReservarCita {
       actorId: actor.usuarioId,
       recurso: `cita:${cita.id}`,
       resultado: 'PERMITIDO',
+    });
+    // 004 (T067, FR-010; contracts/eventos.md §3): en la misma transacción que la cita, sin datos de contacto.
+    // Un reintento idempotente devuelve la cita previa antes de llegar aquí: no publica otro evento.
+    const usuarioDelBarbero = (await this.catalogo.barbero(cita.barberoId))?.usuarioId;
+    const zona = new ZonaHoraria(agenda.zonaHoraria);
+    await this.eventos.publicar({
+      tipo: 'CitaCreada',
+      payload: {
+        citaId: cita.id,
+        version: cita.version,
+        clienteId: cita.clienteId,
+        servicio: cita.servicio.nombre,
+        barbero: barbero.nombre,
+        ...(usuarioDelBarbero && { barberoUsuarioId: usuarioDelBarbero }),
+        inicio: zona.formatoIso(cita.rango.inicio),
+        fin: zona.formatoIso(cita.rango.fin),
+        zonaHoraria: agenda.zonaHoraria,
+        origen: cita.origen,
+      },
     });
     return { cita: aVista(cita, agenda, barbero.nombre), creada: true };
   }
