@@ -61,11 +61,22 @@ const cuando = (instante: string, zona: string) =>
 
 const PIE = 'Este es un mensaje automático de la plataforma de reservas. No respondas a este correo.';
 
-/** Asunto y texto de un aviso de cita para su destinatario. Solo los tipos de cita (fase 3). */
+/** Las tres direcciones del recordatorio (URL_PUBLICA/e#<token>), una por acción (fase 4, RF34). */
+export interface EnlacesDelRecordatorio {
+  confirmar: string;
+  reprogramar: string;
+  cancelar: string;
+}
+
+/**
+ * Asunto y texto de un aviso de cita para su destinatario. El RECORDATORIO (fase 4) lleva además los tres enlaces
+ * de un solo uso: sin ellos no se compone.
+ */
 export function componerAviso(
   tipo: TipoAviso,
   para: TipoDestinatario,
   datos: DatosDelAviso,
+  enlaces?: EnlacesDelRecordatorio,
 ): MensajeCompuesto {
   const { barberia, servicio, barbero, inicio, inicioAnterior, zonaHoraria: zona } = datos;
   const detalle = [`Servicio: ${servicio}`, `Barbero: ${barbero}`, `Barbería: ${barberia}`];
@@ -97,6 +108,23 @@ export function componerAviso(
         ...(inicioAnterior ? [`Antes: ${cuando(inicioAnterior, zona)}`] : []),
         `Ahora: ${cuando(inicio, zona)}`,
         ...detalle,
+      ];
+      break;
+    case 'RECORDATORIO':
+      if (!enlaces) throw new Error('El recordatorio necesita sus tres enlaces');
+      asunto = `Recordatorio: tu cita de hoy en ${barberia}`;
+      cuerpo = [
+        'Te recordamos tu cita de hoy.',
+        '',
+        `Fecha: ${cuando(inicio, zona)}`,
+        ...detalle,
+        '',
+        'Cada enlace sirve una sola vez y solo para esta cita, hasta su hora de inicio:',
+        `Confirmo mi asistencia: ${enlaces.confirmar}`,
+        `Reprogramar: ${enlaces.reprogramar}`,
+        `Cancelar: ${enlaces.cancelar}`,
+        '',
+        'Si no respondes, tu cita sigue en pie.',
       ];
       break;
     default:

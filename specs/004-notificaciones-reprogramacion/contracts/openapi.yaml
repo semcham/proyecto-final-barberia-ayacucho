@@ -139,6 +139,9 @@ paths:
           description: Cita reprogramada
           content:
             application/json: { schema: { $ref: "#/components/schemas/ResultadoAccion" } }
+        # Agregado en la fase 4 (decisión del responsable, 2026-11-09): enlaces-de-accion.md §4 y T079. Con la
+        # barbería suspendida o una suscripción que no acepta reservas; el enlace no se consume.
+        "403": { $ref: "#/components/responses/SuscripcionNoPermite" }
         "409": { $ref: "#/components/responses/ConflictoDeHorario" }
         "410": { $ref: "#/components/responses/EnlaceNoValido" }
         "422": { $ref: "#/components/responses/ReprogramacionInvalida" }

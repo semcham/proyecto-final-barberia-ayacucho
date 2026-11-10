@@ -132,6 +132,29 @@ export class CitaCambio extends ErrorDeAplicacion {
   }
 }
 
+/**
+ * 004 (T091; FR-024, FR-025; contracts/enlaces-de-accion.md): el MISMO código y mensaje para todo enlace que no
+ * sirve: firma inválida, vencido, ya usado, de otra acción o de una cita cancelada, reprogramada, completada o de
+ * otra barbería. No revela el motivo ni si la cita existe; ofrece iniciar sesión. El motivo interno no sale.
+ */
+export class EnlaceNoValido extends ErrorDeAplicacion {
+  readonly codigo = 'ENLACE_NO_VALIDO';
+  constructor() {
+    super('Este enlace ya no es válido. Inicia sesión para gestionar tus citas.');
+  }
+}
+
+/**
+ * 004 (T091, FR-031): demasiados enlaces rechazados desde la misma IP (los valores de login_attempt). Mismo código,
+ * mensaje y detalle que el bloqueo del ingreso de M01.
+ */
+export class DemasiadosIntentos extends ErrorDeAplicacion {
+  readonly codigo = 'DEMASIADOS_INTENTOS';
+  constructor(readonly reintentarEnSegundos: number) {
+    super('Demasiados intentos. Espera un momento antes de volver a intentar.', [{ reintentarEnSegundos }]);
+  }
+}
+
 export class TransicionInvalida extends ErrorDeAplicacion {
   readonly codigo = 'TRANSICION_INVALIDA';
   constructor(desde: string, hacia: string) {

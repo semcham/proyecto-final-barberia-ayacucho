@@ -63,6 +63,8 @@ describe('POST /citas (cliente)', () => {
       // Antelación por defecto de 120 min: desde las 07:00 una cancelación del cliente sería tardía.
       cancelacionTardiaDesde: horaLima(fecha, '07:00'),
       origen: 'EN_LINEA',
+      // 004 (T088, FR-028): la marca de asistencia del cliente; una cita nueva, sin confirmar.
+      confirmadaPorClienteEn: null,
     });
     const { rows } = await poolDe('seed').query(
       'SELECT customer_id, created_by, service_name, duration_min FROM appointment WHERE id = $1',

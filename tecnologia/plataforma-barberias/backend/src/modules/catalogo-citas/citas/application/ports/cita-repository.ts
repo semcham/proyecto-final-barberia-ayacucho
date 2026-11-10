@@ -45,6 +45,8 @@ export interface CitaAntesDeReprogramar {
   version: number;
 }
 
+export type AccionDeEnlaceCita = 'CONFIRMAR' | 'REPROGRAMAR' | 'CANCELAR';
+
 /** Quién reprogramó y por dónde: por sesión hay usuario; por enlace (fase 4), no. */
 export type AutorDeReprogramacion = { via: 'SESION'; usuarioId: string } | { via: 'ENLACE'; usuarioId: null };
 
@@ -67,7 +69,17 @@ export abstract class CitaRepository {
    * Guarda el estado nuevo (y, si se canceló, quién, cuándo, el motivo y la marca de tardía) y agrega la
    * fila del historial (inmutable) con su autor.
    */
-  abstract actualizarEstado(cita: Cita, anterior: EstadoCita, autorId: string): Promise<void>;
+  /** `autorId` null: el cambio lo hizo el cliente por un enlace de acción, sin sesión (004, migración 0027). */
+  abstract actualizarEstado(cita: Cita, anterior: EstadoCita, autorId: string | null): Promise<void>;
+  /** 004 (FR-028): guarda la confirmación de asistencia del cliente (`client_confirmed_at`). */
+  abstract confirmarAsistencia(cita: Cita): Promise<void>;
+  /**
+   * 004 (contracts/enlaces-de-accion.md §3): anota el USO de un enlace en la transacción en curso, con el SHA-256
+   * del token. Un segundo uso (también simultáneo, en otra réplica) choca con UNIQUE (link_hash) y se traduce a
+   * `EnlaceNoValido`. `usado` dice si ese hash ya tiene uso (para el GET, que no consume).
+   */
+  abstract registrarUsoDeEnlace(citaId: string, linkHash: string, accion: AccionDeEnlaceCita): Promise<void>;
+  abstract enlaceUsado(linkHash: string): Promise<boolean>;
   /** La cita sin bloquear su fila, o null. La reprogramación la vuelve a comprobar al escribir (R01). */
   abstract buscarPorId(id: string): Promise<Cita | null>;
   /**

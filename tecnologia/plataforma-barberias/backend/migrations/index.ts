@@ -25,6 +25,7 @@ import * as m0023 from './0023_citas_reprogramacion';
 import * as m0024 from './0024_avisos';
 import * as m0025 from './0025_intentos_enlaces';
 import * as m0026 from './0026_purga_avisos';
+import * as m0027 from './0027_historial_por_enlace';
 
 // Registro explícito de migraciones, en orden. Cada historia agrega aquí las suyas.
 // (Un proveedor estático evita depender de importaciones dinámicas de archivos .ts.)
@@ -55,6 +56,7 @@ const MIGRACIONES: Record<string, Migration> = {
   '0024_avisos': m0024,
   '0025_intentos_enlaces': m0025,
   '0026_purga_avisos': m0026,
+  '0027_historial_por_enlace': m0027,
 };
 
 /** Nombre de la última migración que conoce el código (GET /salud/listo, 006). */

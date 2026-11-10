@@ -1,0 +1,51 @@
+/* Página del enlace de acción del recordatorio (/e, 004): una columna, cómoda a 360 px. */
+
+.pagina {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-5);
+  width: min(36rem, 100%);
+  margin: 0 auto;
+  padding: var(--espacio-5) var(--espacio-4) var(--espacio-8);
+}
+
+.cabecera {
+  display: flex;
+  align-items: center;
+}
+
+.bloque {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-4);
+}
+
+.bloque h1 {
+  margin: 0;
+}
+
+.ayuda {
+  margin: 0;
+  color: var(--color-texto-suave);
+}
+
+.datos {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--espacio-2) var(--espacio-4);
+  margin: 0;
+}
+
+.datos dt {
+  color: var(--color-texto-suave);
+}
+
+.datos dd {
+  margin: 0;
+}
+
+.acciones {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-3);
+}

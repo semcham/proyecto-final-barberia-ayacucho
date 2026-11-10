@@ -3,6 +3,7 @@ import { AccesoBarberiasModule } from '../acceso-barberias';
 import { Clock, Configuracion } from '../../shared';
 import { EnviarAvisos } from './application/enviar-avisos';
 import { ManejadoresDeCita } from './application/manejadores-de-cita';
+import { ManejadorRecordatorio } from './application/manejador-recordatorio';
 import { AvisoRepository, PendientesDeAvisos } from './application/ports/aviso-repository';
 import { NotificationChannel } from './application/ports/notification-channel';
 import { crearCanalDeCorreo } from './infrastructure/fabrica-canales';
@@ -28,8 +29,10 @@ import { AvisosPendientesPlataforma } from './infrastructure/plataforma/avisos-p
     { provide: AvisoRepository, useClass: KyselyAvisoRepository },
     { provide: PendientesDeAvisos, useClass: AvisosPendientesPlataforma },
     ManejadoresDeCita,
+    // Fase 4: el recordatorio del día con sus enlaces.
+    ManejadorRecordatorio,
     EnviarAvisos,
   ],
-  exports: [ManejadoresDeCita, EnviarAvisos],
+  exports: [ManejadoresDeCita, ManejadorRecordatorio, EnviarAvisos],
 })
 export class NotificacionesModule {}

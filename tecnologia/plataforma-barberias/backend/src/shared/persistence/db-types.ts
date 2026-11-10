@@ -266,7 +266,8 @@ export interface AppointmentStatusHistoryTable {
   appointment_id: string;
   from_status: EstadoCitaDb | null;
   to_status: EstadoCitaDb;
-  changed_by: string;
+  /** 004 (0027): nulo si el cambio se hizo por un enlace de acción, sin sesión. */
+  changed_by: string | null;
   changed_at: Fecha;
 }
 

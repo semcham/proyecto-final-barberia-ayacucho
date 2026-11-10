@@ -6,6 +6,7 @@ import {
   esperarCorreos,
   iniciarProxySmtp,
   type ProxySmtp,
+  descartarAvisosDeOtrasPruebas,
 } from '../../helpers/avisos';
 import { iniciarMailpit, type Mailpit } from '../../helpers/mailpit';
 import {
@@ -70,6 +71,9 @@ describe('Correo caído (T062, US2-5)', () => {
       clientes: [a, b],
     };
   }
+
+  // Avisos pendientes que dejaron otros archivos: la tarea no debe intentarlos aquí (helpers/avisos.ts).
+  beforeEach(() => descartarAvisosDeOtrasPruebas());
 
   beforeAll(async () => {
     mailpit = await iniciarMailpit();

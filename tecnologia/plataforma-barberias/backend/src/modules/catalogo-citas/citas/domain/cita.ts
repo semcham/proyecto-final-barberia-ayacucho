@@ -42,7 +42,8 @@ export interface DatosCita {
 /** Quién reprograma: el cliente (sus citas, con antelación) o el propietario (cualquiera, sin antelación). */
 export interface QuienReprograma {
   rol: 'CLIENTE' | 'PROPIETARIO';
-  usuarioId: string;
+  /** Null si reprogramó el cliente por un enlace de acción (004). */
+  usuarioId: string | null;
 }
 
 /** Barbero e inicio de la cita antes de reprogramarla. */
@@ -58,15 +59,25 @@ export interface ResultadoReprogramacion {
 }
 
 export interface Cancelacion {
-  por: string;
+  /** Null si canceló el cliente por un enlace de acción, sin sesión (004). */
+  por: string | null;
   en: Date;
   motivo: string | null;
 }
 
-/** Quién cancela: el cliente (sus citas, hasta el inicio) o el propietario (cualquiera, nunca tardía). */
+/**
+ * Quién cancela: el cliente (sus citas, hasta el inicio) o el propietario (cualquiera, nunca tardía). Por un enlace
+ * de acción (004) es el cliente sin usuario (`usuarioId` null).
+ */
 export interface QuienCancela {
   rol: 'CLIENTE' | 'PROPIETARIO';
-  usuarioId: string;
+  usuarioId: string | null;
+}
+
+/** Lo que trae un enlace de acción verificado sobre la cita (contracts/enlaces-de-accion.md §3). */
+export interface EnlaceSobreCita {
+  accion: 'CONFIRMAR' | 'REPROGRAMAR' | 'CANCELAR';
+  version: number;
 }
 
 const MINUTO_MS = 60 * 1000;
@@ -218,6 +229,30 @@ export class Cita {
         esCliente && ahora.getTime() > this.cancelacionTardiaDesde(antelacionMinutos).getTime(),
       cancelacion: { por: quien.usuarioId, en: ahora, motivo: limpio || null },
     };
+  }
+
+  /**
+   * 004 (T076; contracts/enlaces-de-accion.md §3): el enlace vale para esta cita si es de la acción de la ruta, de
+   * la versión actual (cualquier cambio de la cita lo invalida), y la cita sigue activa y no empezó.
+   */
+  aceptaEnlace(enlace: EnlaceSobreCita, accionDeLaRuta: EnlaceSobreCita['accion'], ahora: Date): boolean {
+    return (
+      enlace.accion === accionDeLaRuta &&
+      enlace.version === this.version &&
+      this.ocupaHorario() &&
+      !this.empezo(ahora)
+    );
+  }
+
+  /**
+   * 004 (T088, FR-028): el cliente confirma su asistencia por el enlace. NO cambia la versión: el enlace de cancelar
+   * del mismo recordatorio sigue valiendo.
+   */
+  confirmarAsistencia(ahora: Date): void {
+    if (!this.ocupaHorario() || this.empezo(ahora)) {
+      throw new TransicionInvalida(this.datos.estado, 'CONFIRMADA_POR_EL_CLIENTE');
+    }
+    this.datos = { ...this.datos, confirmadaPorClienteEn: ahora };
   }
 
   /** PENDIENTE → CONFIRMADA. */

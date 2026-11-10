@@ -247,7 +247,7 @@ por barbero.
 | `appointment_id` | uuid             | FK compuesta → `appointment` |
 | `from_status`    | varchar(12) NULL | `NULL` en la creación        |
 | `to_status`      | varchar(12)      |                              |
-| `changed_by`     | uuid             |                              |
+| `changed_by`     | uuid             | Nulo si el cambio se hizo por un enlace de acción, sin sesión (004, migración `0027`) |
 | `changed_at`     | timestamptz      |                              |
 
 Solo `INSERT, SELECT`. Índice `(tenant_id, appointment_id, changed_at)`.

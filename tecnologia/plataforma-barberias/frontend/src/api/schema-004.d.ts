@@ -308,6 +308,7 @@ export interface paths {
             'application/json': components['schemas']['ResultadoAccion'];
           };
         };
+        403: components['responses']['SuscripcionNoPermite'];
         409: components['responses']['ConflictoDeHorario'];
         410: components['responses']['EnlaceNoValido'];
         422: components['responses']['ReprogramacionInvalida'];

@@ -1,10 +1,19 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { BarberiasApi, ClientesApi, PersonalApi } from '../../acceso-barberias';
-import { Clock, procesarCadaUno, type ResultadoDeTarea, TenantId, UnitOfWork } from '../../../shared';
+import {
+  Clock,
+  Configuracion,
+  procesarCadaUno,
+  type ResultadoDeTarea,
+  TenantContext,
+  TenantId,
+  UnitOfWork,
+} from '../../../shared';
+import { EnlacesFirmados } from '../../../shared/enlaces-firmados';
 import type { CodigoErrorAviso, Destinatario } from '../domain/aviso';
 import { type ContactoDelDestinatario, elegirCanal } from '../domain/eleccion-canal';
-import { componerAviso, datosDelEvento } from '../domain/plantillas';
-import { type Fallo, trasFallo } from '../domain/politica-reintentos';
+import { componerAviso, datosDelEvento, type EnlacesDelRecordatorio } from '../domain/plantillas';
+import { type Fallo, INTENTOS_MAXIMOS, trasFallo } from '../domain/politica-reintentos';
 import { type AvisoReclamado, AvisoRepository, PendientesDeAvisos } from './ports/aviso-repository';
 import {
   CanalNoDisponible,
@@ -54,7 +63,14 @@ export class EnviarAvisos {
     private readonly personal: PersonalApi,
     private readonly barberias: BarberiasApi,
     private readonly reloj: Clock,
-  ) {}
+    private readonly enlaces: EnlacesFirmados,
+    private readonly tenantContext: TenantContext,
+    configuracion: Configuracion,
+  ) {
+    this.urlPublica = configuracion.urlPublica.replace(/\/+$/, '');
+  }
+
+  private readonly urlPublica: string;
 
   async ejecutar(): Promise<ResultadoDeTarea> {
     const lista = await this.pendientes.listar(this.reloj.ahora(), LOTE);
@@ -111,9 +127,13 @@ export class EnviarAvisos {
       });
       if (decision.estado === 'PENDIENTE') {
         await this.avisos.reintentar(aviso.id, decision.intentos, decision.proximoIntento, fallo.error);
-      } else {
-        await this.avisos.finalizar(aviso.id, 'FALLIDO', decision.intentos, fallo.error);
+        return;
       }
+      // FR-033: un recordatorio que ya no llegará antes de la hora de inicio se DESCARTA (no es un fallo del
+      // canal: la cita empezó). Sin intentos o con un error permanente, sí es FALLIDO.
+      const porPlazo = fallo.fallo !== 'PERMANENTE' && decision.intentos < INTENTOS_MAXIMOS;
+      const estado = aviso.tipo === 'RECORDATORIO' && porPlazo ? 'DESCARTADO' : 'FALLIDO';
+      await this.avisos.finalizar(aviso.id, estado, decision.intentos, fallo.error);
     });
     return true;
   }
@@ -123,9 +143,14 @@ export class EnviarAvisos {
     const ahora = this.reloj.ahora();
     const aviso = await this.avisos.reclamar(id, ahora, PLAZO_RECLAMO_MS);
     if (!aviso) return { tipo: 'nada' };
-    // FR-033: un aviso de cita sin enviar a las 24 h queda FALLIDO (conserva el último error).
+    // FR-033: un aviso de cita sin enviar a las 24 h queda FALLIDO (conserva el último error); un recordatorio sin
+    // enviar a la hora de inicio de la cita se DESCARTA.
     if (ahora.getTime() >= aviso.descartarDespues.getTime()) {
-      await this.avisos.finalizar(aviso.id, 'FALLIDO', aviso.intentos);
+      await this.avisos.finalizar(
+        aviso.id,
+        aviso.tipo === 'RECORDATORIO' ? 'DESCARTADO' : 'FALLIDO',
+        aviso.intentos,
+      );
       return { tipo: 'cerrado' };
     }
     // Sin el evento de origen no hay contenido que enviar.
@@ -141,12 +166,31 @@ export class EnviarAvisos {
       return { tipo: 'cerrado' };
     }
     const datos = datosDelEvento(aviso.evento.payload, await this.barberias.nombre());
-    const { asunto, texto } = componerAviso(aviso.tipo, aviso.destinatario.tipo, datos);
+    const enlaces = aviso.tipo === 'RECORDATORIO' ? this.enlacesDelRecordatorio(aviso) : undefined;
+    const { asunto, texto } = componerAviso(aviso.tipo, aviso.destinatario.tipo, datos, enlaces);
     return {
       tipo: 'enviar',
       aviso,
       mensaje: { destino: elegido.destino, asunto, texto, claveIdempotencia: aviso.id },
     };
+  }
+
+  /**
+   * T096 (fase 4; ADR-032, contracts/enlaces-de-accion.md §2): los tres enlaces de un solo uso del recordatorio, con
+   * la barbería del aviso, la cita y la versión del evento, y que vencen a la hora de inicio. No se guarda nada: van
+   * en el FRAGMENTO de la dirección (URL_PUBLICA/e#<token>), que el navegador no envía al servidor.
+   */
+  private enlacesDelRecordatorio(aviso: AvisoReclamado): EnlacesDelRecordatorio {
+    const payload = aviso.evento?.payload ?? {};
+    const datos = {
+      tenantId: this.tenantContext.actual().valor,
+      recursoId: aviso.citaId as string,
+      version: Number(payload.version),
+      venceEn: new Date(String(payload.inicio)),
+    };
+    const url = (accion: 'CONFIRMAR' | 'REPROGRAMAR' | 'CANCELAR') =>
+      `${this.urlPublica}/e#${this.enlaces.emitir({ ...datos, accion })}`;
+    return { confirmar: url('CONFIRMAR'), reprogramar: url('REPROGRAMAR'), cancelar: url('CANCELAR') };
   }
 
   /** El contacto se lee de M01 AL ENVIAR (R12): un cambio de correo intermedio se respeta. */

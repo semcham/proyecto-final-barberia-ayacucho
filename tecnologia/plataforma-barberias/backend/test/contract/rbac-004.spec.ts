@@ -1,7 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import type { AccionDeEnlace } from '../../src/shared/enlaces-firmados';
 import { type AppDePrueba, crearApp } from '../helpers/app';
+import { emitirEnlace, ipUnica } from '../helpers/enlaces';
 import { filasDe, sembrarCita, sembrarUsuario } from '../helpers/fixtures';
 import { barberiaParaReservar, fechaEnDias, horaLima } from '../helpers/reservas';
 import { sesionCliente, tokenPara, tokenPlataformaPara } from '../helpers/sesiones';
@@ -108,17 +110,58 @@ const reprogramar = (prueba: AppDePrueba, token: string | null, citaId: string) 
   return solicitud.send({ inicio: horaLima(fechaEnDias(3), '15:00') });
 };
 
-/** Filas de rbac.md ya implementadas (fase 2: reprogramar). */
+/**
+ * Fase 4 (T085): una ruta de enlaces con un enlace VÁLIDO de la cita del cliente y, si la columna lo trae, el token
+ * de sesión, que la ruta debe ignorar ("—" en rbac.md). Cada caso usa su propia IP (contador de rechazos por IP).
+ */
+const conEnlace =
+  (accion: AccionDeEnlace, metodo: 'get' | 'post', ruta: string, cuerpo?: object) =>
+  (prueba: AppDePrueba, token: string | null, s: Escenario) => {
+    const enlace = emitirEnlace(prueba, {
+      tenantId: s.tenantId,
+      citaId: s.citaDelCliente,
+      accion,
+      venceEn: new Date(horaLima(fechaEnDias(3), '10:00')),
+    });
+    const solicitud = prueba.agente[metodo](`/api/v1${ruta}`).set({
+      'X-Enlace-Accion': enlace,
+      'X-Forwarded-For': ipUnica(),
+    });
+    if (token) solicitud.set({ Authorization: `Bearer ${token}` });
+    return metodo === 'post' ? solicitud.send(cuerpo ?? {}) : solicitud;
+  };
+
+/** Filas de rbac.md ya implementadas (fase 2: reprogramar; fase 4: acciones por enlace). */
 const IMPLEMENTADAS: Caso[] = [
   {
     fila: 'POST /citas/{id}/reprogramar',
     exito: 200,
     ejecutar: (prueba, token, s) => reprogramar(prueba, token, s.citaDelCliente),
   },
+  { fila: 'GET /enlaces/accion', exito: 200, ejecutar: conEnlace('CONFIRMAR', 'get', '/enlaces/accion') },
+  {
+    fila: 'POST /enlaces/accion/confirmar',
+    exito: 200,
+    ejecutar: conEnlace('CONFIRMAR', 'post', '/enlaces/accion/confirmar'),
+  },
+  {
+    fila: 'POST /enlaces/accion/cancelar',
+    exito: 200,
+    ejecutar: conEnlace('CANCELAR', 'post', '/enlaces/accion/cancelar'),
+  },
+  {
+    fila: 'POST /enlaces/accion/reprogramar',
+    exito: 200,
+    ejecutar: conEnlace('REPROGRAMAR', 'post', '/enlaces/accion/reprogramar', {
+      inicio: horaLima(fechaEnDias(3), '16:00'),
+    }),
+  },
 ];
 
 function esperado(columna: Columna, simbolo: string, exito: number): number {
   if (simbolo === '✓') return exito;
+  // "—": la ruta no usa el token de sesión (lo ignora aunque llegue): manda el enlace, que es válido.
+  if (simbolo === '—') return exito;
   if (simbolo !== '✗') throw new Error(`Símbolo desconocido en rbac.md: "${simbolo}"`);
   // Sin sesión y con el token de plataforma no hay barbería: 401 (AuthGuard de 003).
   return columna === 'ANONIMO' || columna === 'PLATAFORMA' ? 401 : 403;

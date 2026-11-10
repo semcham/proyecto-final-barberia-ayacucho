@@ -1,5 +1,11 @@
 import type { AppDePrueba } from '../../helpers/app';
-import { appConCorreo, avisosDe, destinoDe, enviarSinCandado } from '../../helpers/avisos';
+import {
+  appConCorreo,
+  avisosDe,
+  descartarAvisosDeOtrasPruebas,
+  destinoDe,
+  enviarSinCandado,
+} from '../../helpers/avisos';
 import { iniciarMailpit, type Mailpit } from '../../helpers/mailpit';
 import { barberiaParaReservar, fechaEnDias, horaLima, nuevaClave } from '../../helpers/reservas';
 import { sesionCliente } from '../../helpers/sesiones';
@@ -25,6 +31,9 @@ const franja = (i: number) => {
 describe('Avisos con dos instancias (T063, SC-005)', () => {
   let mailpit: Mailpit;
   let instancias: [AppDePrueba, AppDePrueba];
+
+  // Avisos pendientes que dejaron otros archivos: la tarea no debe intentarlos aquí (helpers/avisos.ts).
+  beforeEach(() => descartarAvisosDeOtrasPruebas());
 
   beforeAll(async () => {
     mailpit = await iniciarMailpit();
@@ -63,6 +72,18 @@ describe('Avisos con dos instancias (T063, SC-005)', () => {
     // Las dos instancias envían a la vez, dos veces cada una, sin el candado.
     await Promise.all([enviarSinCandado(instancias[0]), enviarSinCandado(instancias[1])]);
     await Promise.all([enviarSinCandado(instancias[0]), enviarSinCandado(instancias[1])]);
+    // Un fallo pasajero del buzón (con el equipo cargado) deja algún aviso PENDIENTE con su reintento a 30 s: se
+    // adelanta ese reintento, como si hubiera pasado el tiempo, y las dos instancias vuelven a enviar. La prueba
+    // sigue exigiendo 0 perdidos y 0 duplicados.
+    for (let vuelta = 0; vuelta < 3; vuelta += 1) {
+      const { rowCount } = await poolDe('seed').query(
+        `UPDATE notification SET next_attempt_at = now() - interval '1 second'
+          WHERE tenant_id = $1 AND status = 'PENDIENTE'`,
+        [e.barberia.tenantId],
+      );
+      if (!rowCount) break;
+      await Promise.all([enviarSinCandado(instancias[0]), enviarSinCandado(instancias[1])]);
+    }
 
     const avisos = await avisosDe(e.barberia.tenantId);
     expect(avisos).toHaveLength(CITAS);

@@ -3,7 +3,7 @@ import { erroresDeContrato002 } from '../helpers/contrato';
 import { sembrarCita, sembrarCliente, sembrarUsuario } from '../helpers/fixtures';
 import { type BarberiaParaReservar, barberiaParaReservar, fechaEnDias, horaLima } from '../helpers/reservas';
 import { tokenPara } from '../helpers/sesiones';
-import { cerrarPools } from '../helpers/test-db';
+import { cerrarPools, poolDe } from '../helpers/test-db';
 
 // T101 · Contrato (specs/002-catalogo-citas-cliente/contracts/openapi.yaml) de GET /agenda,
 // POST /citas/{id}/estado, GET /clientes y POST /clientes.
@@ -59,6 +59,28 @@ describe('Contrato 002: agenda, estados y clientes (US4)', () => {
       'get',
       403,
     );
+  });
+
+  // T085 (004, FR-028): cada cita de la agenda trae confirmadaPorClienteEn (esquema CitaConConfirmacion de 004):
+  // nula = "sin confirmar"; con fecha y hora en la zona de la barbería cuando el cliente confirmó por el enlace.
+  it('GET /agenda (004): confirmadaPorClienteEn nula o con la hora de la confirmación', async () => {
+    const fecha = fechaEnDias(3);
+    const sinConfirmar = await citaEn(fecha, '10:00');
+    const confirmada = await citaEn(fecha, '11:00');
+    await poolDe('seed').query(
+      `UPDATE appointment SET client_confirmed_at = '2026-11-09T14:30:00Z' WHERE id = $1`,
+      [confirmada],
+    );
+    const { body } = await prueba.agente
+      .get(`/api/v1/agenda?fecha=${fecha}`)
+      .set(con(propietario))
+      .expect(200);
+    sin(body, '/agenda', 'get', 200);
+    const porId = new Map(
+      (body.citas as { id: string; confirmadaPorClienteEn: string | null }[]).map((c) => [c.id, c]),
+    );
+    expect(porId.get(sinConfirmar)?.confirmadaPorClienteEn).toBeNull();
+    expect(porId.get(confirmada)?.confirmadaPorClienteEn).toBe('2026-11-09T09:30:00-05:00');
   });
 
   it('POST /citas/{id}/estado: 200 con Cita, 400, 404 y 422', async () => {

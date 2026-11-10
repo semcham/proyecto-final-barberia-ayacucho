@@ -5,7 +5,9 @@ import { AuditLog, BusDeEventos, Clock, TenantId, UnitOfWork, ZonaHoraria } from
 import { AutorizacionCatalogoCitas } from '../../catalogo/application/autorizacion';
 import { CatalogQuery } from '../../catalogo/application/ports/catalog-query';
 import { NoEncontrado } from '../../catalogo/domain/errores';
+import type { Cita, QuienCancela } from '../domain/cita';
 import { CitaRepository } from './ports/cita-repository';
+import { anularRecordatorio } from './recordatorio-de-cita';
 import { aVista, type CitaVista } from './reservar-cita';
 
 /**
@@ -42,40 +44,57 @@ export class CancelarCita {
         if (!perfil || perfil.clienteId !== cita.clienteId) throw new NoEncontrado();
       }
 
-      const agenda = await this.barberias.configuracionAgenda();
-      const anterior = cita.estado;
-      cita.cancelar(
+      return this.cancelarEnTransaccion(
+        cita,
         { rol: actor.rol === 'CLIENTE' ? 'CLIENTE' : 'PROPIETARIO', usuarioId: actor.usuarioId },
-        this.reloj.ahora(),
-        agenda.antelacionCancelacionMinutos,
+        'SESION',
         motivo,
       );
-      await this.citas.actualizarEstado(cita, anterior, actor.usuarioId);
-      await this.auditoria.registrar({
-        accion: 'CITA_CANCELADA',
-        actorId: actor.usuarioId,
-        recurso: `cita:${cita.id}`,
-        resultado: 'PERMITIDO',
-      });
-
-      const barbero = await this.catalogo.barbero(cita.barberoId);
-      // 004 (T067, FR-010; contracts/eventos.md §3): en la misma transacción; solo lo que el aviso necesita.
-      const zona = new ZonaHoraria(agenda.zonaHoraria);
-      await this.eventos.publicar({
-        tipo: 'CitaCancelada',
-        payload: {
-          citaId: cita.id,
-          clienteId: cita.clienteId,
-          servicio: cita.servicio.nombre,
-          barbero: barbero?.nombre ?? '',
-          ...(barbero?.usuarioId && { barberoUsuarioId: barbero.usuarioId }),
-          inicio: zona.formatoIso(cita.rango.inicio),
-          zonaHoraria: agenda.zonaHoraria,
-          canceladaPor: actor.rol === 'CLIENTE' ? 'CLIENTE' : 'PROPIETARIO',
-          tardia: cita.cancelacionTardia,
-        },
-      });
-      return aVista(cita, agenda, barbero?.nombre ?? '');
     });
+  }
+
+  /**
+   * La cancelación en sí, dentro de una transacción ya abierta con el tenant de la cita y con la cita bloqueada
+   * (`buscarParaActualizar`). La usan la vía con sesión (arriba) y la del enlace de acción (004, AccionPorEnlace),
+   * que cancela "como cliente" y sin usuario: mismas reglas (tardía incluida), mismo historial, evento y anulación
+   * del recordatorio. Por enlace audita CITA_CANCELADA_ENLACE.
+   */
+  async cancelarEnTransaccion(
+    cita: Cita,
+    quien: QuienCancela,
+    via: 'SESION' | 'ENLACE',
+    motivo?: string | null,
+  ): Promise<CitaVista> {
+    const agenda = await this.barberias.configuracionAgenda();
+    const anterior = cita.estado;
+    cita.cancelar(quien, this.reloj.ahora(), agenda.antelacionCancelacionMinutos, motivo);
+    await this.citas.actualizarEstado(cita, anterior, quien.usuarioId);
+    await this.auditoria.registrar({
+      accion: via === 'ENLACE' ? 'CITA_CANCELADA_ENLACE' : 'CITA_CANCELADA',
+      actorId: quien.usuarioId,
+      recurso: `cita:${cita.id}`,
+      resultado: 'PERMITIDO',
+    });
+    // T089 (004, R09): una cita cancelada no se recuerda.
+    await anularRecordatorio(this.eventos, cita.id);
+
+    const barbero = await this.catalogo.barbero(cita.barberoId);
+    // 004 (T067, FR-010; contracts/eventos.md §3): en la misma transacción; solo lo que el aviso necesita.
+    const zona = new ZonaHoraria(agenda.zonaHoraria);
+    await this.eventos.publicar({
+      tipo: 'CitaCancelada',
+      payload: {
+        citaId: cita.id,
+        clienteId: cita.clienteId,
+        servicio: cita.servicio.nombre,
+        barbero: barbero?.nombre ?? '',
+        ...(barbero?.usuarioId && { barberoUsuarioId: barbero.usuarioId }),
+        inicio: zona.formatoIso(cita.rango.inicio),
+        zonaHoraria: agenda.zonaHoraria,
+        canceladaPor: quien.rol,
+        tardia: cita.cancelacionTardia,
+      },
+    });
+    return aVista(cita, agenda, barbero?.nombre ?? '');
   }
 }

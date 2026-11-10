@@ -5,3 +5,4 @@ export { NotificacionesModule } from './notificaciones.module';
 // (host/tareas.ts).
 export { ManejadoresDeCita } from './application/manejadores-de-cita';
 export { EnviarAvisos } from './application/enviar-avisos';
+export { ManejadorRecordatorio } from './application/manejador-recordatorio';

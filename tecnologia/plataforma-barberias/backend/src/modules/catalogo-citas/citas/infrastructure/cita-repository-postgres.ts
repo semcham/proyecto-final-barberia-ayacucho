@@ -2,9 +2,15 @@ import { Injectable } from '@nestjs/common';
 import { sql } from 'kysely';
 import { v7 as uuidv7 } from 'uuid';
 import { KyselyUnitOfWork, TenantContext } from '../../../../shared';
-import { CitaCambio, CitaSolapadaDelCliente, HorarioNoDisponible } from '../../catalogo/domain/errores';
+import {
+  CitaCambio,
+  CitaSolapadaDelCliente,
+  EnlaceNoValido,
+  HorarioNoDisponible,
+} from '../../catalogo/domain/errores';
 import { RangoHorario } from '../../catalogo/domain/rango-horario';
 import {
+  type AccionDeEnlaceCita,
   type AutorDeReprogramacion,
   ClaveIdempotenciaEnUso,
   type CitaAntesDeReprogramar,
@@ -100,7 +106,52 @@ export class CitaRepositoryPostgres extends CitaRepository {
     return fila ? aCita(fila) : null;
   }
 
-  async actualizarEstado(cita: Cita, anterior: EstadoCita, autorId: string): Promise<void> {
+  async confirmarAsistencia(cita: Cita): Promise<void> {
+    await this.uow
+      .transaccionActual()
+      .updateTable('appointment')
+      .set({ client_confirmed_at: cita.confirmadaPorClienteEn, updated_at: new Date() })
+      .where('tenant_id', '=', this.tenantContext.actual().valor)
+      .where('id', '=', cita.id)
+      .execute();
+  }
+
+  async registrarUsoDeEnlace(citaId: string, linkHash: string, accion: AccionDeEnlaceCita): Promise<void> {
+    try {
+      await this.uow
+        .transaccionActual()
+        .insertInto('appointment_link_use')
+        .values({
+          id: uuidv7(),
+          tenant_id: this.tenantContext.actual().valor,
+          appointment_id: citaId,
+          link_hash: linkHash,
+          action: accion,
+        })
+        .execute();
+    } catch (error) {
+      const pg = error as { code?: string; constraint?: string };
+      if (pg.code === VIOLACION_DE_UNICIDAD && pg.constraint === 'appointment_link_use_un_uso') {
+        throw new EnlaceNoValido();
+      }
+      throw error;
+    }
+  }
+
+  async enlaceUsado(linkHash: string): Promise<boolean> {
+    // UNIQUE (link_hash) es global, pero la lectura va con RLS: un hash de otra barbería no se ve (y su enlace,
+    // firmado para otra barbería, ya no llega hasta aquí).
+    const fila = await this.uow
+      .transaccionActual()
+      .selectFrom('appointment_link_use')
+      .select('id')
+      .where('tenant_id', '=', this.tenantContext.actual().valor)
+      .where('link_hash', '=', linkHash)
+      .executeTakeFirst();
+    return fila !== undefined;
+  }
+
+  async actualizarEstado(cita: Cita, anterior: EstadoCita, autorId: string | null): Promise<void> {
     const tenantId = this.tenantContext.actual().valor;
     const trx = this.uow.transaccionActual();
     const ahora = new Date();
@@ -192,8 +243,8 @@ export class CitaRepositoryPostgres extends CitaRepository {
       })
       .execute();
     // Una cita PENDIENTE reprogramada queda CONFIRMADA (FR-007): el cambio de estado va al historial con su
-    // autor. Por enlace (fase 4) no hay usuario que lo firme; hoy toda cita nace CONFIRMADA (FR-035a de 002).
-    if (antes.estado !== cita.estado && autor.via === 'SESION') {
+    // autor; por enlace, sin usuario (changed_by nulo, migración 0027).
+    if (antes.estado !== cita.estado) {
       await trx
         .insertInto('appointment_status_history')
         .values({

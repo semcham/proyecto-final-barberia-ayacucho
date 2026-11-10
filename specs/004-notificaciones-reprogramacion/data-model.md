@@ -1,6 +1,6 @@
 # Data Model: Notificaciones y reprogramación de citas (004)
 
-Migraciones **previstas** `0021` a `0025`. **No se modifica ninguna migración existente.** Cada tabla de barbería tiene `tenant_id`, `UNIQUE (tenant_id, id)` y la política `tenant_isolation` con `FORCE ROW LEVEL SECURITY` (`rlsPorTenant` de `migrations/sql-comun.ts`). El rol `barberias_app` no tiene `BYPASSRLS` ni permiso de `DELETE` sobre estas tablas, salvo donde se indica (`outbox_event` y `notification`, para la purga de retención con RLS, y `action_link_attempt`). El `DELETE` de `notification` lo agrega la migración `0026_purga_avisos` (fase 3, decisión del responsable del 2026-11-09): `0024` no lo daba.
+Migraciones **previstas** `0021` a `0025`. **No se modifica ninguna migración existente.** Cada tabla de barbería tiene `tenant_id`, `UNIQUE (tenant_id, id)` y la política `tenant_isolation` con `FORCE ROW LEVEL SECURITY` (`rlsPorTenant` de `migrations/sql-comun.ts`). El rol `barberias_app` no tiene `BYPASSRLS` ni permiso de `DELETE` sobre estas tablas, salvo donde se indica (`outbox_event` y `notification`, para la purga de retención con RLS, y `action_link_attempt`). El `DELETE` de `notification` lo agrega la migración `0026_purga_avisos` (fase 3, decisión del responsable del 2026-11-09): `0024` no lo daba. Durante la implementación se agregaron además `0026_purga_avisos` (fase 3) y `0027_historial_por_enlace` (fase 4, §1.1b).
 
 Convenciones: identificadores `uuid` v7 generados en la aplicación; fechas `timestamptz`; nombres de tablas y columnas en inglés, como en 001 a 003.
 
@@ -30,6 +30,10 @@ UPDATE appointment
 - La duración es la copiada al reservar (FR-005), no la actual del servicio.
 
 **Cancelar, completar y no asistió** (002) suben también `version`, para invalidar los enlaces (FR-025).
+
+### 1.1b `appointment_status_history` (de 002, migración `0027_historial_por_enlace`)
+
+`changed_by` admite `NULL` desde la fase 4 (decisión del responsable del 2026-11-09): un cambio de estado hecho por un enlace de acción (cancelar sin sesión) no tiene un usuario que lo firme, y el cliente puede ser presencial y no tener cuenta. Mismo significado que en `appointment_reschedule`: **nulo = por enlace**. Las filas anteriores no cambian. Sin cambios de permisos ni de RLS.
 
 ### 1.2 `appointment_reschedule` (nueva)
 

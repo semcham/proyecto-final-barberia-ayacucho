@@ -34,6 +34,8 @@ type Barbero = components['schemas']['Barbero'];
 type Servicio = components['schemas']['Servicio'];
 type HorariosLibres = components['schemas']['HorariosLibres'];
 type EstadoCita = components['schemas']['EstadoCita'];
+/** 004: la cita de la agenda trae además la marca de asistencia del cliente (CitaConConfirmacion). */
+type CitaConConfirmacion = CitaAgenda & { confirmadaPorClienteEn?: string | null };
 
 const ESTADO: Record<EstadoCita, { texto: string; tono: TonoEtiqueta }> = {
   PENDIENTE: { texto: 'Pendiente', tono: 'aviso' },
@@ -234,6 +236,12 @@ export default function Agenda() {
                       <EtiquetaEstado tono={ESTADO[cita.estado].tono}>
                         {ESTADO[cita.estado].texto}
                       </EtiquetaEstado>
+                      {(cita.estado === 'CONFIRMADA' || cita.estado === 'PENDIENTE') && (
+                        <MarcaDeConfirmacion
+                          confirmadaEn={(cita as CitaConConfirmacion).confirmadaPorClienteEn ?? null}
+                          zona={zona}
+                        />
+                      )}
                       {cita.enConflicto && <EtiquetaEstado tono="error">En conflicto</EtiquetaEstado>}
                       {cita.cancelacionTardia && (
                         <EtiquetaEstado tono="aviso">Cancelación tardía</EtiquetaEstado>
@@ -288,6 +296,20 @@ export default function Agenda() {
         </section>
       </div>
     </>
+  );
+}
+
+/**
+ * 004 (T098, FR-028): si el cliente confirmó su asistencia por el enlace del recordatorio, y cuándo; si no,
+ * "Sin confirmar". Solo en las citas activas.
+ */
+function MarcaDeConfirmacion({ confirmadaEn, zona }: { confirmadaEn: string | null; zona: string }) {
+  return confirmadaEn ? (
+    <EtiquetaEstado tono="exito">
+      Confirmada por el cliente · {horaDeBarberia(confirmadaEn, zona)}
+    </EtiquetaEstado>
+  ) : (
+    <EtiquetaEstado tono="neutro">Sin confirmar</EtiquetaEstado>
   );
 }
 

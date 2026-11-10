@@ -1,11 +1,21 @@
 import { Injectable } from '@nestjs/common';
 import { type Actor, BarberiasApi, ClientesApi } from '../../../acceso-barberias';
 import { SuscripcionesApi } from '../../../suscripciones-pagos';
-import { AuditLog, BusDeEventos, Clock, TenantId, UnitOfWork, ZonaHoraria } from '../../../../shared';
+import {
+  AuditLog,
+  BusDeEventos,
+  Clock,
+  TenantContext,
+  TenantId,
+  UnitOfWork,
+  ZonaHoraria,
+} from '../../../../shared';
 import { AutorizacionCatalogoCitas } from '../../catalogo/application/autorizacion';
 import { CatalogQuery } from '../../catalogo/application/ports/catalog-query';
 import { DatoInvalido, NoEncontrado } from '../../catalogo/domain/errores';
+import type { Cita, QuienReprograma } from '../domain/cita';
 import { CitaRepository, ConflictoConcurrente } from './ports/cita-repository';
+import { programarRecordatorio } from './recordatorio-de-cita';
 import { ReglasDeHorario } from './reglas-de-horario';
 import { aVista, type CitaVista } from './reservar-cita';
 
@@ -54,6 +64,7 @@ export class ReprogramarCita {
     private readonly auditoria: AuditLog,
     private readonly eventos: BusDeEventos,
     private readonly suscripciones: SuscripcionesApi,
+    private readonly tenantContext: TenantContext,
   ) {}
 
   async ejecutar(
@@ -70,7 +81,7 @@ export class ReprogramarCita {
     for (let intento = 1; ; intento += 1) {
       try {
         return await this.uow.ejecutar(tenant, () =>
-          this.reprogramar(actor, alcance === 'PROPIOS', citaId, comando, inicio),
+          this.reprogramar(actor, alcance === 'PROPIOS', citaId, comando),
         );
       } catch (error) {
         if (!(error instanceof ConflictoConcurrente) || intento >= REINTENTOS_POR_BLOQUEO_MUTUO) throw error;
@@ -83,8 +94,8 @@ export class ReprogramarCita {
     soloPropias: boolean,
     citaId: string,
     comando: ComandoReprogramarCita,
-    inicio: Date,
   ): Promise<ResultadoReprogramarCita> {
+    // La política antes que la cita: una barbería que no acepta reservas responde 403 sin revelar nada.
     await this.suscripciones.exigirOperacion(TenantId.de(actor.tenantId), 'RESERVAR');
 
     const cita = await this.citas.buscarPorId(citaId);
@@ -94,6 +105,32 @@ export class ReprogramarCita {
       const perfil = await this.clientes.perfilDeSesion(actor.usuarioId);
       if (!perfil || perfil.clienteId !== cita.clienteId) throw new NoEncontrado();
     }
+
+    return this.reprogramarEnTransaccion(
+      cita,
+      { rol: actor.rol === 'CLIENTE' ? 'CLIENTE' : 'PROPIETARIO', usuarioId: actor.usuarioId },
+      comando,
+      'SESION',
+    );
+  }
+
+  /**
+   * La reprogramación en sí, dentro de una transacción ya abierta con el tenant de la cita. La usan la vía con
+   * sesión (arriba) y la del enlace de acción (004, AccionPorEnlace), que reprograma "como cliente" y sin usuario:
+   * mismas reglas (antelación del cliente incluida), política de la suscripción, historial con la vía, auditoría,
+   * evento y recordatorio. Si algo falla, la transacción se revierte entera.
+   */
+  async reprogramarEnTransaccion(
+    cita: Cita,
+    quien: QuienReprograma,
+    comando: ComandoReprogramarCita,
+    via: 'SESION' | 'ENLACE',
+  ): Promise<ResultadoReprogramarCita> {
+    const inicio = new Date(comando.inicio);
+    if (Number.isNaN(inicio.getTime())) throw new DatoInvalido('inicio', 'formato');
+    const tenantId = this.tenantContext.actual();
+    // Reprogramar toma una hora nueva, como una reserva (003, US1-7); por enlace también (contracts §4).
+    await this.suscripciones.exigirOperacion(tenantId, 'RESERVAR');
 
     const agenda = await this.barberias.configuracionAgenda();
     const ahora = this.reloj.ahora();
@@ -105,7 +142,7 @@ export class ReprogramarCita {
     };
     const { cambio, anterior } = cita.reprogramar(
       { barberoId: comando.barberoId ?? cita.barberoId, inicio },
-      { rol: actor.rol === 'CLIENTE' ? 'CLIENTE' : 'PROPIETARIO', usuarioId: actor.usuarioId },
+      quien,
       ahora,
       agenda.antelacionCancelacionMinutos,
     );
@@ -123,11 +160,17 @@ export class ReprogramarCita {
       duracionMin: servicio.duracionMin,
     });
 
-    await this.citas.reprogramar(cita, antes, { via: 'SESION', usuarioId: actor.usuarioId });
+    await this.citas.reprogramar(
+      cita,
+      antes,
+      via === 'SESION' && quien.usuarioId
+        ? { via: 'SESION', usuarioId: quien.usuarioId }
+        : { via: 'ENLACE', usuarioId: null },
+    );
     await this.auditoria.registrar({
       accion: 'CITA_REPROGRAMADA',
-      actorId: actor.usuarioId,
-      recurso: `cita:${cita.id};SESION;${horaCompacta(anterior.inicio)}>${horaCompacta(cita.rango.inicio)}`,
+      actorId: quien.usuarioId,
+      recurso: `cita:${cita.id};${via};${horaCompacta(anterior.inicio)}>${horaCompacta(cita.rango.inicio)}`,
       resultado: 'PERMITIDO',
     });
 
@@ -146,8 +189,14 @@ export class ReprogramarCita {
         inicio: zona.formatoIso(cita.rango.inicio),
         fin: zona.formatoIso(cita.rango.fin),
         zonaHoraria: agenda.zonaHoraria,
-        reprogramadaPor: actor.rol === 'CLIENTE' ? 'CLIENTE' : 'PROPIETARIO',
+        reprogramadaPor: quien.rol,
       },
+    });
+    // T089 (R09): el recordatorio se reemplaza por el de la hora nueva (o se anula si faltan menos de 2 h).
+    await programarRecordatorio(this.eventos, cita, {
+      barbero: barberoNuevo?.nombre ?? '',
+      zonaHoraria: agenda.zonaHoraria,
+      ahora,
     });
 
     return {
@@ -158,18 +207,12 @@ export class ReprogramarCita {
   }
 }
 
-function vista(
+/** La vista de 002 ya lleva confirmadaPorClienteEn (fase 4): es el esquema CitaConConfirmacion de 004. */
+const vista = (
   cita: Parameters<typeof aVista>[0],
   agenda: Parameters<typeof aVista>[1],
   barbero: string,
-): CitaConConfirmacionVista {
-  const zona = new ZonaHoraria(agenda.zonaHoraria);
-  const confirmada = cita.confirmadaPorClienteEn;
-  return {
-    ...aVista(cita, agenda, barbero),
-    confirmadaPorClienteEn: confirmada ? zona.formatoIso(confirmada) : null,
-  };
-}
+): CitaConConfirmacionVista => aVista(cita, agenda, barbero);
 
 /**
  * Hora en UTC para el recurso de la auditoría: 2026-11-12T15:00:00Z → 20261112T1500Z. Así la cita, la vía y las

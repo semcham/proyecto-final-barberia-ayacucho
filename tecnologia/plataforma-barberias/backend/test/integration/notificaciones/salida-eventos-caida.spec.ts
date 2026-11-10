@@ -7,6 +7,7 @@ import {
   destinoDe,
   enviarSinCandado,
   esperarCorreos,
+  descartarAvisosDeOtrasPruebas,
 } from '../../helpers/avisos';
 import { iniciarMailpit, type Mailpit } from '../../helpers/mailpit';
 import {
@@ -66,6 +67,9 @@ describe('Caídas de una réplica en la salida de eventos y el envío (T064)', (
 
   const avisosDelEvento = async (eventoId: string) =>
     (await avisosDe(e.barberia.tenantId)).filter((aviso) => aviso.event_id === eventoId);
+
+  // Avisos pendientes que dejaron otros archivos: la tarea no debe intentarlos aquí (helpers/avisos.ts).
+  beforeEach(() => descartarAvisosDeOtrasPruebas());
 
   beforeAll(async () => {
     mailpit = await iniciarMailpit();

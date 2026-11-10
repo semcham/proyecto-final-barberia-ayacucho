@@ -1,12 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { type Actor, BarberiasApi } from '../../../acceso-barberias';
 import { SuscripcionesApi } from '../../../suscripciones-pagos';
-import { AuditLog, Clock, TenantId, UnitOfWork } from '../../../../shared';
+import { AuditLog, BusDeEventos, Clock, TenantId, UnitOfWork } from '../../../../shared';
 import { AutorizacionCatalogoCitas } from '../../catalogo/application/autorizacion';
 import { BarberoRepository } from '../../catalogo/application/ports/catalogo-repositorios';
 import { CatalogQuery } from '../../catalogo/application/ports/catalog-query';
 import { NoEncontrado } from '../../catalogo/domain/errores';
 import { CitaRepository } from './ports/cita-repository';
+import { anularRecordatorio } from './recordatorio-de-cita';
 import { aVista, type CitaVista } from './reservar-cita';
 
 export type EstadoDestino = 'CONFIRMADA' | 'COMPLETADA' | 'NO_ASISTIO';
@@ -30,6 +31,7 @@ export class CambiarEstadoCita {
     private readonly reloj: Clock,
     private readonly auditoria: AuditLog,
     private readonly suscripciones: SuscripcionesApi,
+    private readonly eventos: BusDeEventos,
   ) {}
 
   async ejecutar(actor: Actor, citaId: string, destino: EstadoDestino): Promise<CitaVista> {
@@ -53,6 +55,8 @@ export class CambiarEstadoCita {
         recurso: `cita:${cita.id}`,
         resultado: 'PERMITIDO',
       });
+      // T089 (004, R09): completada o no asistió, ya no hace falta recordarla (y sus enlaces dejan de valer).
+      if (destino !== 'CONFIRMADA') await anularRecordatorio(this.eventos, cita.id);
 
       const agenda = await this.barberias.configuracionAgenda();
       const barbero = await this.catalogo.barbero(cita.barberoId);

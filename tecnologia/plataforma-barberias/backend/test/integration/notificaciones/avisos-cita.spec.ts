@@ -5,6 +5,7 @@ import {
   correrTareasDeAvisos,
   destinoDe,
   esperarCorreos,
+  descartarAvisosDeOtrasPruebas,
 } from '../../helpers/avisos';
 import {
   sembrarBarbero,
@@ -72,6 +73,9 @@ describe('Avisos de cita por correo (T061, US2)', () => {
       .post('/api/v1/citas')
       .set({ ...como(token), 'Idempotency-Key': nuevaClave() })
       .send({ servicioId: s.e.servicioId, barberoId, inicio: horaLima(dia, hora), ...extra });
+
+  // Avisos pendientes que dejaron otros archivos: la tarea no debe intentarlos aquí (helpers/avisos.ts).
+  beforeEach(() => descartarAvisosDeOtrasPruebas());
 
   beforeAll(async () => {
     mailpit = await iniciarMailpit();

@@ -45,6 +45,50 @@ export const manejadoresBase = [
   ),
 ];
 
+/**
+ * 004 (T086): respuestas de las rutas de enlaces (GET /enlaces/accion y POST /enlaces/accion/*): 200, 410 y 429.
+ * Cada una guarda el encabezado X-Enlace-Accion (y el cuerpo) que recibe, para que la prueba compruebe que el
+ * token viaja en el encabezado y nunca en la URL.
+ */
+export const enlaces = {
+  consulta: (datos: Record<string, unknown>, recibidos: string[] = []) =>
+    http.get('/api/v1/enlaces/accion', ({ request }) => {
+      recibidos.push(`${request.headers.get('x-enlace-accion')}|${request.url}`);
+      return HttpResponse.json(datos);
+    }),
+  accion: (
+    accion: 'confirmar' | 'cancelar' | 'reprogramar',
+    resultado: Record<string, unknown>,
+    recibidos: unknown[] = [],
+  ) =>
+    http.post(`/api/v1/enlaces/accion/${accion}`, async ({ request }) => {
+      recibidos.push({ token: request.headers.get('x-enlace-accion'), cuerpo: await request.json() });
+      return HttpResponse.json(resultado);
+    }),
+  noValido: (metodo: 'get' | 'post' = 'get', ruta = '/api/v1/enlaces/accion') =>
+    http[metodo](ruta, () =>
+      HttpResponse.json(
+        {
+          codigo: 'ENLACE_NO_VALIDO',
+          mensaje: 'Este enlace ya no es válido. Inicia sesión para gestionar tus citas.',
+          detalles: [],
+        },
+        { status: 410 },
+      ),
+    ),
+  demasiados: (segundos: number) =>
+    http.get('/api/v1/enlaces/accion', () =>
+      HttpResponse.json(
+        {
+          codigo: 'DEMASIADOS_INTENTOS',
+          mensaje: 'Demasiados intentos. Espera un momento antes de volver a intentar.',
+          detalles: [{ reintentarEnSegundos: segundos }],
+        },
+        { status: 429, headers: { 'Retry-After': String(segundos) } },
+      ),
+    ),
+};
+
 /** Cita mínima que devuelve POST /citas/{id}/reprogramar (CitaConConfirmacion de 004). */
 interface CitaReprogramable {
   id: string;

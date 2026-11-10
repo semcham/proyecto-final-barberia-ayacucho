@@ -1,4 +1,5 @@
 import { Injectable, type OnApplicationBootstrap } from '@nestjs/common';
+import { PurgarIntentosEnlace } from '../modules/catalogo-citas';
 import { EnviarAvisos } from '../modules/notificaciones';
 import { ConciliarPagos, ExpirarTransferencias, VencerSuscripciones } from '../modules/suscripciones-pagos';
 import { Configuracion, DespachadorDeEventos, EjecutorTareas } from '../shared';
@@ -16,6 +17,7 @@ export class TareasProgramadas implements OnApplicationBootstrap {
     private readonly expirarTransferencias: ExpirarTransferencias,
     private readonly despachador: DespachadorDeEventos,
     private readonly enviarAvisos: EnviarAvisos,
+    private readonly purgarIntentosEnlace: PurgarIntentosEnlace,
     private readonly configuracion: Configuracion,
   ) {}
 
@@ -44,6 +46,12 @@ export class TareasProgramadas implements OnApplicationBootstrap {
       nombre: 'enviar-avisos',
       intervaloMs: this.configuracion.eventos.intervaloMs,
       ejecutar: () => this.enviarAvisos.ejecutar(),
+    });
+    // 004 (fase 4, T093): los rechazos de enlaces de más de 24 h, cada hora (constitución 1.4.1, principio III).
+    this.ejecutor.registrar({
+      nombre: 'purgar-intentos-enlaces',
+      intervaloMs: 60 * 60 * 1000,
+      ejecutar: () => this.purgarIntentosEnlace.ejecutar(),
     });
     this.ejecutor.iniciar();
   }

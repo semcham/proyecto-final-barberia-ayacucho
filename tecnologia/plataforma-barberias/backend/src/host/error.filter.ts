@@ -53,6 +53,8 @@ export const ESTADO_POR_CODIGO: Record<string, number> = {
   // Funcionalidad 004 (specs/004-notificaciones-reprogramacion/contracts/openapi.yaml, T047).
   CITA_CAMBIO: 409,
   SIN_ANTELACION_PARA_REPROGRAMAR: 422,
+  // Fase 4 (T091): un solo cuerpo para todo enlace que no sirve (DEMASIADOS_INTENTOS ya es 429, arriba).
+  ENLACE_NO_VALIDO: 410,
 };
 
 function desdeHttp(estado: number): CuerpoError {

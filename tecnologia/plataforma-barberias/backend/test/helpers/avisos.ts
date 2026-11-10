@@ -54,6 +54,19 @@ export interface FilaAviso {
   sent_at: Date | null;
 }
 
+/**
+ * La tarea enviar-avisos toma los pendientes de TODAS las barberías (lote de 100). Las pruebas de otros archivos
+ * dejan avisos pendientes que nunca se envían (su SMTP es un puerto muerto): si quedan en la base compartida, la
+ * tarea los intentaría antes que los de la prueba (y, con el correo caído, abrirían el circuito por ellos). Las
+ * pruebas que corren la tarea los descartan al empezar. Seguro porque los archivos corren de a uno (--runInBand).
+ */
+export async function descartarAvisosDeOtrasPruebas(): Promise<void> {
+  await poolDe('seed').query(
+    `UPDATE notification SET status = 'DESCARTADO', next_attempt_at = NULL, claimed_until = NULL
+      WHERE status IN ('PENDIENTE', 'ENVIANDO')`,
+  );
+}
+
 export async function avisosDe(tenantId: string): Promise<FilaAviso[]> {
   const { rows } = await poolDe('seed').query<FilaAviso>(
     `SELECT id, event_id, kind, recipient_kind, recipient_ref, appointment_id, channel_planned, channel_used,

@@ -7,3 +7,5 @@ export {
   type OperacionCatalogoCitas,
   type Alcance,
 } from './catalogo/domain/permisos';
+// 004 (T093): la tarea purgar-intentos-enlaces, que registra el host (host/tareas.ts).
+export { PurgarIntentosEnlace } from './citas/application/purgar-intentos-enlace';

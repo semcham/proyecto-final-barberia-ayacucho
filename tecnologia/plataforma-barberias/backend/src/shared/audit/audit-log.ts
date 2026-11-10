@@ -29,6 +29,9 @@ export type AccionAuditada =
   | 'CITA_ESTADO_CAMBIADO'
   // 004 (FR-035): recurso `cita:<id>;<vía>;<antes>><después>` (horas en UTC, AAAAMMDDTHHMMZ).
   | 'CITA_REPROGRAMADA'
+  // 004 fase 4 (FR-035, data-model §6): acciones por enlace, sin actor (no hay sesión) y sin el token.
+  | 'ASISTENCIA_CONFIRMADA_ENLACE'
+  | 'CITA_CANCELADA_ENLACE'
   // Funcionalidad 003 (FR-031, FR-037).
   | 'PAGO_INICIADO'
   | 'PAGO_APROBADO'

@@ -55,7 +55,13 @@ import { CancelarCita } from './citas/application/cancelar-cita';
 import { ConsultarHistorial } from './citas/application/consultar-historial';
 import { ConsultarAgenda } from './citas/application/consultar-agenda';
 import { CitaRepository } from './citas/application/ports/cita-repository';
+import { AccionPorEnlace } from './citas/application/accion-por-enlace';
+import { LimiteRechazosEnlace } from './citas/application/limite-rechazos-enlace';
+import { IntentosEnlaceRepository } from './citas/application/ports/intentos-enlace-repository';
+import { PurgarIntentosEnlace } from './citas/application/purgar-intentos-enlace';
 import { ReglasDeHorario } from './citas/application/reglas-de-horario';
+import { KyselyIntentosEnlaceRepository } from './citas/infrastructure/kysely-intentos-enlace-repository';
+import { EnlacesController } from './citas/presentation/enlaces.controller';
 import { ReprogramarCita } from './citas/application/reprogramar-cita';
 import { ReservarCita } from './citas/application/reservar-cita';
 import { CitaRepositoryPostgres } from './citas/infrastructure/cita-repository-postgres';
@@ -79,6 +85,8 @@ import { HistorialController } from './citas/presentation/historial.controller';
     HorarioAtencionController,
     AgendaController,
     HistorialController,
+    // Acciones por enlace del recordatorio (004, US3).
+    EnlacesController,
   ],
   providers: [
     AutorizacionCatalogoCitas,
@@ -119,6 +127,11 @@ import { HistorialController } from './citas/presentation/historial.controller';
     ReservarCita,
     // Reprogramación (004, US1).
     ReprogramarCita,
+    // Acciones por enlace (004, US3): verificación, contador de rechazos por IP y su purga.
+    { provide: IntentosEnlaceRepository, useClass: KyselyIntentosEnlaceRepository },
+    LimiteRechazosEnlace,
+    AccionPorEnlace,
+    PurgarIntentosEnlace,
     // Agenda y estados (US4).
     CambiarEstadoCita,
     ConsultarAgenda,
@@ -127,6 +140,7 @@ import { HistorialController } from './citas/presentation/historial.controller';
     // Historial del cliente (US6).
     ConsultarHistorial,
   ],
-  exports: [CatalogQuery],
+  // PurgarIntentosEnlace: la tarea purgar-intentos-enlaces, que registra el host (host/tareas.ts).
+  exports: [CatalogQuery, PurgarIntentosEnlace],
 })
 export class CatalogoCitasModule {}

@@ -233,6 +233,46 @@ describe('Agenda (/app/agenda)', () => {
   });
 });
 
+// T087 (004, FR-028): la agenda muestra si el cliente confirmó su asistencia por el enlace del recordatorio.
+describe('Agenda: confirmación del cliente (004)', () => {
+  it('muestra "Confirmada por el cliente" (con la hora) o "Sin confirmar" en las citas activas', async () => {
+    lecturas();
+    const confirmadaEn = new Date(Date.now() - HORA_MS);
+    servidor.use(
+      http.get('/api/v1/agenda', ({ request }) =>
+        HttpResponse.json({
+          fecha: new URL(request.url).searchParams.get('fecha'),
+          zonaHoraria: ZONA,
+          citas: [
+            cita({ id: 'c1', confirmadaPorClienteEn: iso(confirmadaEn) }),
+            cita({
+              id: 'c2',
+              inicio: iso(futura),
+              fin: iso(new Date(futura.getTime() + HORA_MS / 2)),
+              confirmadaPorClienteEn: null,
+              cliente: { nombre: 'Rocío Huamaní', telefono: '977123456' },
+            }),
+            cita({
+              id: 'c3',
+              estado: 'CANCELADA',
+              confirmadaPorClienteEn: null,
+              cliente: { nombre: 'Pedro Presencial', telefono: '922222222' },
+            }),
+          ],
+        }),
+      ),
+    );
+    renderizar('/app/agenda');
+    const confirmada = await filaDe('Luis Huamán');
+    expect(confirmada).toHaveTextContent(/confirmada por el cliente/i);
+    expect(confirmada).toHaveTextContent(horaDeBarberia(iso(confirmadaEn), ZONA));
+    expect(await filaDe('Rocío Huamaní')).toHaveTextContent(/sin confirmar/i);
+    // Una cita cancelada no lleva la marca.
+    const cancelada = await filaDe('Pedro Presencial');
+    expect(cancelada).not.toHaveTextContent(/sin confirmar|confirmada por el cliente/i);
+  });
+});
+
 describe('Clientes (/app/clientes)', () => {
   it('busca por nombre o teléfono', async () => {
     lecturas();

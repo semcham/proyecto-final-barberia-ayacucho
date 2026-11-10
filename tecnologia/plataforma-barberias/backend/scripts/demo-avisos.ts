@@ -50,7 +50,7 @@ const SALIDA =
 const CONTRASENA = `demo-${randomUUID()}`;
 const TELEFONO = '966000123';
 
-const esperar = (ms: number) => new Promise((resolver) => setTimeout(resolver, ms));
+const esperar = (ms: number) => new Promise<void>((resolver) => setTimeout(resolver, ms));
 
 function fechaLima(dias: number): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Lima' }).format(

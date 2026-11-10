@@ -16,6 +16,7 @@ import {
 import { Cita } from '../domain/cita';
 import type { EstadoCita } from '../domain/estado-cita';
 import { CitaRepository, ClaveIdempotenciaEnUso, ConflictoConcurrente } from './ports/cita-repository';
+import { programarRecordatorio } from './recordatorio-de-cita';
 import { ReglasDeHorario } from './reglas-de-horario';
 
 const FORMATO_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -44,6 +45,8 @@ export interface CitaVista {
   /** Desde este instante, una cancelación del cliente es tardía (FR-038). */
   cancelacionTardiaDesde: string;
   origen: 'EN_LINEA' | 'PRESENCIAL';
+  /** 004: cuándo confirmó el cliente su asistencia por el enlace; null = "sin confirmar" (FR-028). */
+  confirmadaPorClienteEn: string | null;
 }
 
 export interface ResultadoReserva {
@@ -181,6 +184,12 @@ export class ReservarCita {
         origen: cita.origen,
       },
     });
+    // T089 (004): el recordatorio de 2 h antes, en la misma transacción (R09).
+    await programarRecordatorio(this.eventos, cita, {
+      barbero: barbero.nombre,
+      zonaHoraria: agenda.zonaHoraria,
+      ahora,
+    });
     return { cita: aVista(cita, agenda, barbero.nombre), creada: true };
   }
 
@@ -247,5 +256,7 @@ export function aVista(cita: Cita, agenda: ConfiguracionAgenda, barbero: string)
     cancelacionTardia: cita.cancelacionTardia,
     cancelacionTardiaDesde: zona.formatoIso(cita.cancelacionTardiaDesde(agenda.antelacionCancelacionMinutos)),
     origen: cita.origen,
+    // 004 (T088, FR-028): la marca de asistencia del cliente (CitaConConfirmacion); nula = "sin confirmar".
+    confirmadaPorClienteEn: cita.confirmadaPorClienteEn ? zona.formatoIso(cita.confirmadaPorClienteEn) : null,
   };
 }

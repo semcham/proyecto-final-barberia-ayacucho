@@ -28,6 +28,8 @@ const MisCitas = lazy(() => import('./pages/cliente/MisCitas'));
 const Clientes = lazy(() => import('./pages/panel/Clientes'));
 const RegistroCliente = lazy(() => import('./pages/publico/RegistroCliente'));
 const IngresarBarberia = lazy(() => import('./pages/publico/IngresarBarberia'));
+// Funcionalidad 004 (T097): la página pública del enlace de acción del recordatorio (/e#<token>).
+const Enlace = lazy(() => import('./pages/publico/Enlace'));
 // Funcionalidad 003 (T051).
 const Suscripcion = lazy(() => import('./pages/panel/Suscripcion'));
 const ReservarProtegida = lazy(() =>
@@ -124,6 +126,7 @@ export function RutasApp() {
           <Route path="/b/:slug/registro" element={<RegistroCliente />} />
           <Route path="/b/:slug/ingresar" element={<IngresarBarberia />} />
           <Route path="/b/:slug/reservar" element={<ReservarProtegida />} />
+          <Route path="/e" element={<Enlace />} />
           <Route
             path="/mis-citas"
             element={
