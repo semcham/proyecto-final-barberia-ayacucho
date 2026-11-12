@@ -37,6 +37,10 @@ export class SalidaDeEventosPostgres extends BusDeEventos {
     return this.insertar(clave, evento, opciones.disponibleDesde);
   }
 
+  publicarUnaVez(clave: string, evento: EventoDeDominio): Promise<string | null> {
+    return this.insertar(clave, evento, undefined, { siYaExiste: 'nada' });
+  }
+
   async anular(clave: string): Promise<boolean> {
     const trx = this.uow.transaccionActual();
     this.tenantContext.actual();
@@ -58,7 +62,19 @@ export class SalidaDeEventosPostgres extends BusDeEventos {
     clave: string | null,
     evento: EventoDeDominio,
     disponibleDesde?: Date,
-  ): Promise<string> {
+  ): Promise<string>;
+  private async insertar(
+    clave: string,
+    evento: EventoDeDominio,
+    disponibleDesde: Date | undefined,
+    opciones: { siYaExiste: 'nada' },
+  ): Promise<string | null>;
+  private async insertar(
+    clave: string | null,
+    evento: EventoDeDominio,
+    disponibleDesde?: Date,
+    opciones?: { siYaExiste: 'nada' },
+  ): Promise<string | null> {
     // Primero la transacción: publicar fuera de una es un error de programación (FR-010).
     const trx = this.uow.transaccionActual();
     const tenantId = this.tenantContext.actual();
@@ -66,17 +82,20 @@ export class SalidaDeEventosPostgres extends BusDeEventos {
     const ahora = this.reloj.ahora();
     const disponible = disponibleDesde ?? ahora;
     const id = uuidv7();
-    await trx
-      .insertInto('outbox_event')
-      .values({
-        id,
-        tenant_id: tenantId.valor,
-        type: evento.tipo,
-        payload: JSON.stringify(evento.payload),
-        replace_key: clave,
-        available_at: disponible,
-      })
-      .execute();
+    let insercion = trx.insertInto('outbox_event').values({
+      id,
+      tenant_id: tenantId.valor,
+      type: evento.tipo,
+      payload: JSON.stringify(evento.payload),
+      replace_key: clave,
+      available_at: disponible,
+    });
+    // Con la clave de un solo uso ya tomada, ON CONFLICT DO NOTHING: no inserta y la transacción sigue sana.
+    if (opciones?.siYaExiste === 'nada') insercion = insercion.onConflict((oc) => oc.doNothing());
+    const resultado = await insercion.executeTakeFirst();
+    if (opciones?.siYaExiste === 'nada' && Number(resultado.numInsertedOrUpdatedRows ?? 0n) === 0) {
+      return null;
+    }
     if (disponible.getTime() <= ahora.getTime()) {
       this.uow.alConfirmar(() => this.despachador.despacharEventos(tenantId, [id]));
     }

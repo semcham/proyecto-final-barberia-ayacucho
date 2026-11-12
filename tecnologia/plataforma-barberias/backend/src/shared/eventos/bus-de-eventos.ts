@@ -39,6 +39,13 @@ export abstract class BusDeEventos {
     opciones: { disponibleDesde: Date },
   ): Promise<string>;
 
+  /**
+   * Publica el evento con una clave que solo puede usarse UNA vez en el tenant (índice único de la migración 0021,
+   * hoy `prueba-por-terminar:<id>`). Si ya existe un evento con esa clave, en cualquier estado, no publica nada y
+   * devuelve null; nunca aborta la transacción. Dos réplicas a la vez publican uno solo.
+   */
+  abstract publicarUnaVez(clave: string, evento: EventoDeDominio): Promise<string | null>;
+
   /** Anula el pendiente con esa clave en el tenant, si existe. Devuelve si había uno. */
   abstract anular(clave: string): Promise<boolean>;
 

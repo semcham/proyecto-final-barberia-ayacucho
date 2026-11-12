@@ -52,4 +52,25 @@ export class SuscripcionesPorVencerPlataforma extends SuscripcionesPorVencer {
       return filas.map((f) => ({ tenantId: f.tenant_id, suscripcionId: f.id }));
     });
   }
+
+  pruebasPorTerminar(
+    ahora: Date,
+    hasta: Date,
+    despuesDe: string | null,
+    limite: number,
+  ): Promise<SuscripcionPorVencer[]> {
+    return this.lectura.ejecutarLectura(async (trx) => {
+      let consulta = trx
+        .selectFrom('subscription as s')
+        .select(['s.tenant_id', 's.id'])
+        .where('s.status', '=', 'TRIAL')
+        .where('s.trial_ends_at', '>', ahora)
+        .where('s.trial_ends_at', '<=', hasta)
+        .orderBy('s.id')
+        .limit(limite);
+      if (despuesDe) consulta = consulta.where('s.id', '>', despuesDe);
+      const filas = await consulta.execute();
+      return filas.map((f) => ({ tenantId: f.tenant_id, suscripcionId: f.id }));
+    });
+  }
 }

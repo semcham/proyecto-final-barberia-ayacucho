@@ -12,4 +12,15 @@ export interface SuscripcionPorVencer {
  */
 export abstract class SuscripcionesPorVencer {
   abstract pendientes(ahora: Date, despuesDe: string | null, limite: number): Promise<SuscripcionPorVencer[]>;
+  /**
+   * 004 (T128; FR-037, research R14): las suscripciones EN PRUEBA cuya prueba termina en (`ahora`, `hasta`], para la
+   * tarea avisar-fin-de-prueba. Es una preselección por la misma vía y en las mismas páginas: la decisión (el
+   * criterio del panel) se toma después en la barbería, con su tenant y RLS.
+   */
+  abstract pruebasPorTerminar(
+    ahora: Date,
+    hasta: Date,
+    despuesDe: string | null,
+    limite: number,
+  ): Promise<SuscripcionPorVencer[]>;
 }

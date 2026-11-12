@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { type AccionAuditada, AuditLog } from '../../../../shared';
+import { type AccionAuditada, AuditLog, BusDeEventos } from '../../../../shared';
 import { type PasoDeSuscripcion, siguientePaso } from '../domain/estado-suscripcion';
 import type { Suscripcion } from '../domain/suscripcion';
 import { SuscripcionRepository } from './ports/suscripcion-repository';
@@ -24,6 +24,7 @@ export class AvanzarSuscripcion {
   constructor(
     private readonly suscripciones: SuscripcionRepository,
     private readonly auditoria: AuditLog,
+    private readonly bus: BusDeEventos,
   ) {}
 
   async ejecutar(suscripcion: Suscripcion, ahora: Date): Promise<PasoDeSuscripcion[]> {
@@ -47,6 +48,29 @@ export class AvanzarSuscripcion {
       estado = paso.hacia;
       planId = paso.planId ?? planId;
     }
+    await this.publicarAviso(suscripcion.id, aplicados);
     return aplicados;
+  }
+
+  /**
+   * 004 (T126; FR-036, FR-038; contracts/eventos.md §3): el aviso al propietario sale del estado en que QUEDA la
+   * suscripción, en esta misma transacción (si se revierte, no hay evento). Con la tarea detenida, varios pasos
+   * seguidos (ACTIVE → PAST_DUE → EXPIRED) avisan solo del último; un pago que la deja ACTIVE no avisa de gracia
+   * ni de vencimiento (lo avisa PagoAprobado).
+   */
+  private async publicarAviso(suscripcionId: string, aplicados: PasoDeSuscripcion[]): Promise<void> {
+    const ultimo = aplicados[aplicados.length - 1];
+    if (!ultimo) return;
+    if (ultimo.hacia === 'PAST_DUE' && ultimo.graciaHasta) {
+      await this.bus.publicar({
+        tipo: 'SuscripcionEnGracia',
+        payload: { suscripcionId, finGracia: ultimo.graciaHasta.toISOString() },
+      });
+    } else if (ultimo.hacia === 'EXPIRED') {
+      await this.bus.publicar({
+        tipo: 'SuscripcionVencida',
+        payload: { suscripcionId, vencidaEn: ultimo.fecha.toISOString() },
+      });
+    }
   }
 }

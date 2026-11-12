@@ -10,7 +10,7 @@ import {
   UnitOfWork,
 } from '../../../shared';
 import { EnlacesFirmados } from '../../../shared/enlaces-firmados';
-import type { CodigoErrorAviso, Destinatario } from '../domain/aviso';
+import { type CodigoErrorAviso, type Destinatario, TIPOS_DE_AVISO_DE_SUSCRIPCION } from '../domain/aviso';
 import {
   type CanalElegido,
   type ContactoDelDestinatario,
@@ -18,7 +18,14 @@ import {
   elegirCanal,
   INTENTOS_WHATSAPP,
 } from '../domain/eleccion-canal';
-import { componerAviso, datosDelEvento, type EnlacesDelRecordatorio } from '../domain/plantillas';
+import {
+  componerAviso,
+  componerAvisoDeSuscripcion,
+  datosDelEvento,
+  datosDeSuscripcion,
+  type EnlacesDelRecordatorio,
+  type MensajeCompuesto,
+} from '../domain/plantillas';
 import { type Fallo, INTENTOS_MAXIMOS, trasFallo } from '../domain/politica-reintentos';
 import { type AvisoReclamado, AvisoRepository, PendientesDeAvisos } from './ports/aviso-repository';
 import {
@@ -216,9 +223,7 @@ export class EnviarAvisos {
       await this.avisos.finalizar(aviso.id, 'DESCARTADO', aviso.intentos, elegido.descartar);
       return { tipo: 'cerrado' };
     }
-    const datos = datosDelEvento(aviso.evento.payload, await this.barberias.nombre());
-    const enlaces = aviso.tipo === 'RECORDATORIO' ? this.enlacesDelRecordatorio(aviso) : undefined;
-    const { asunto, texto } = componerAviso(aviso.tipo, aviso.destinatario.tipo, datos, enlaces);
+    const { asunto, texto } = await this.componer(aviso, aviso.evento.payload);
     return {
       tipo: 'enviar',
       aviso,
@@ -226,6 +231,20 @@ export class EnviarAvisos {
       contacto,
       mensaje: { asunto, texto, claveIdempotencia: aviso.id },
     };
+  }
+
+  /**
+   * El texto del aviso, con datos de una lista cerrada. Los de suscripción (fase 6, US5) llevan las fechas en la zona
+   * de la barbería, leída de M01 al enviar, como el nombre.
+   */
+  private async componer(aviso: AvisoReclamado, payload: Record<string, unknown>): Promise<MensajeCompuesto> {
+    if (TIPOS_DE_AVISO_DE_SUSCRIPCION.includes(aviso.tipo)) {
+      const { nombre, zonaHoraria } = await this.barberias.configuracionAgenda();
+      return componerAvisoDeSuscripcion(aviso.tipo, datosDeSuscripcion(payload, nombre, zonaHoraria));
+    }
+    const datos = datosDelEvento(payload, await this.barberias.nombre());
+    const enlaces = aviso.tipo === 'RECORDATORIO' ? this.enlacesDelRecordatorio(aviso) : undefined;
+    return componerAviso(aviso.tipo, aviso.destinatario.tipo, datos, enlaces);
   }
 
   /**

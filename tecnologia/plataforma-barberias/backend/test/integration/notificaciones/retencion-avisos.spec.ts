@@ -56,6 +56,15 @@ describe('Retención de los avisos (T066)', () => {
 
   it('purga los finales de más de 90 días, de cada barbería; deja los pendientes, los recientes y outbox_event', async () => {
     const barberias = [await sembrarBarberia(), await sembrarBarberia()];
+    // Cada corrida purga hasta 100 barberías elegidas al azar (avisos-pendientes.ts). En la base compartida, los
+    // archivos anteriores dejan avisos finales en muchas barberías (desde la fase 6, también los de suscripción de
+    // cada vencimiento), así que con una sola corrida estas dos podrían quedar fuera. Se borran los finales de las
+    // demás para que la prueba sea determinista; los archivos corren de a uno (--runInBand).
+    await poolDe('seed').query(
+      `DELETE FROM notification
+        WHERE status IN ('ENVIADO', 'ENVIADO_RESPALDO', 'FALLIDO', 'DESCARTADO') AND NOT (tenant_id = ANY($1))`,
+      [barberias.map((b) => b.tenantId)],
+    );
     const purgables: string[] = [];
     const conservados: string[] = [];
     for (const { tenantId } of barberias) {

@@ -6,6 +6,7 @@
 | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
 | `publicar(evento, { disponibleDesde? })`    | `INSERT` en `outbox_event` **en la transacción en curso** (falla si no hay una); pide despacho tras el COMMIT | Casos de uso de M02 y M03                    |
 | `reemplazar(clave, evento, { disponibleDesde })` | Anula el pendiente con esa clave en el tenant y publica el nuevo, en la misma transacción                 | Reservar y reprogramar (recordatorio)        |
+| `publicarUnaVez(clave, evento)`             | Publica solo si la clave nunca se usó en el tenant (índice único de 0021); si ya existe, no hace nada y no aborta la transacción | Tarea `avisar-fin-de-prueba` (US5, clave `prueba-por-terminar:<id>`) |
 | `anular(clave)`                             | Anula el pendiente con esa clave en el tenant, si existe                                                      | Cancelar, completar y no asistió             |
 | `suscribir(tipo, manejador)`                | Registra el manejador de un tipo; solo desde `host/eventos.ts` (raíz de composición)                          | Host, para M05                               |
 

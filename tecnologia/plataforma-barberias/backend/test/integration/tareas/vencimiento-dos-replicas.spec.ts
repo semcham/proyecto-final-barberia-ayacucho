@@ -1,10 +1,12 @@
 import { AvanzarSuscripcion } from '../../../src/modules/suscripciones-pagos/suscripciones/application/avanzar-suscripcion';
+import { sumarUnMes } from '../../../src/modules/suscripciones-pagos/suscripciones/domain/periodo';
 import { SuscripcionRepository } from '../../../src/modules/suscripciones-pagos/suscripciones/application/ports/suscripcion-repository';
 import type { Suscripcion } from '../../../src/modules/suscripciones-pagos/suscripciones/domain/suscripcion';
-import { AuditLog, EjecutorTareas } from '../../../src/shared';
+import { v7 as uuidv7 } from 'uuid';
+import { AuditLog, BusDeEventos, EjecutorTareas } from '../../../src/shared';
 import { type AppDePrueba, crearApp } from '../../helpers/app';
 import { sembrarBarberia, sembrarPago } from '../../helpers/fixtures';
-import { filaDePago, notificar } from '../../helpers/pagos';
+import { filaDePago, notificar, PLAN_BASICO } from '../../helpers/pagos';
 import { cerrarPools, poolDe } from '../../helpers/test-db';
 
 // T053 · Vencimiento con dos réplicas (FR-032, FR-033; ADR-024; R14): dos instancias de la aplicación sobre
@@ -44,6 +46,51 @@ async function resumen(tenants: string[]) {
   };
 }
 
+/**
+ * T125 de 004 (SC-013): eventos de un tipo por barbería en outbox_event. Cada transición publica UNO, en su misma
+ * transacción, aunque las dos réplicas corran la tarea a la vez.
+ */
+async function eventos(tenants: string[], tipo: string) {
+  const { rows } = await seed().query(
+    `SELECT tenant_id, count(*)::int AS n FROM outbox_event
+      WHERE tenant_id = ANY($1) AND type = $2 GROUP BY tenant_id`,
+    [tenants, tipo],
+  );
+  return { barberias: rows.length, maximoPorBarberia: Math.max(0, ...rows.map((f) => f.n)) };
+}
+
+/** `n` barberías activas cuyo período pagado terminó hace una hora, sin el siguiente. */
+async function periodosTerminados(n: number): Promise<string[]> {
+  const tenants: string[] = [];
+  for (let i = 0; i < n; i += 1) {
+    const { tenantId } = await sembrarBarberia();
+    const { rows } = await seed().query('SELECT id FROM subscription WHERE tenant_id = $1', [tenantId]);
+    const suscripcionId = rows[0].id as string;
+    // Un período de un mes (CHECK de la base) que terminó hace 1 a 3 días: dentro de los 7 de gracia.
+    const inicio = new Date(Date.now() - 33 * 24 * 60 * 60 * 1000);
+    const fin = sumarUnMes(inicio);
+    const { pagoId } = await sembrarPago({
+      tenantId,
+      suscripcionId,
+      metodo: 'TRANSFERENCIA',
+      estado: 'APROBADO',
+      cubreDesde: inicio,
+    });
+    await seed().query(
+      `INSERT INTO subscription_period (id, tenant_id, subscription_id, payment_id, plan_id, starts_at, ends_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [uuidv7(), tenantId, suscripcionId, pagoId, PLAN_BASICO, inicio, fin],
+    );
+    await seed().query(
+      `UPDATE subscription SET status = 'ACTIVE', plan_id = $2, trial_ends_at = $3, current_period_end = $4
+        WHERE id = $1`,
+      [suscripcionId, PLAN_BASICO, inicio, fin],
+    );
+    tenants.push(tenantId);
+  }
+  return tenants;
+}
+
 describe('Vencimiento con dos réplicas (T053)', () => {
   let a: AppDePrueba;
   let b: AppDePrueba;
@@ -66,6 +113,21 @@ describe('Vencimiento con dos réplicas (T053)', () => {
     // Otra corrida de cualquiera de las dos no repite nada.
     await Promise.all([vencer(a), vencer(b)]);
     expect(await resumen(tenants)).toEqual({ estados: { EXPIRED: 50 }, auditadas: 50, maximoPorBarberia: 1 });
+    // T125 de 004: un evento SuscripcionVencida por suscripción, sin duplicados.
+    expect(await eventos(tenants, 'SuscripcionVencida')).toEqual({ barberias: 50, maximoPorBarberia: 1 });
+  });
+
+  it('T125 de 004: el paso a gracia con las dos a la vez publica un SuscripcionEnGracia por suscripción', async () => {
+    const tenants = await periodosTerminados(20);
+    await Promise.all([vencer(a), vencer(b)]);
+    await Promise.all([vencer(a), vencer(b)]);
+    const { rows } = await seed().query(
+      `SELECT status, count(*)::int AS n FROM subscription WHERE tenant_id = ANY($1) GROUP BY status`,
+      [tenants],
+    );
+    expect(Object.fromEntries(rows.map((f) => [f.status, f.n]))).toEqual({ PAST_DUE: 20 });
+    expect(await eventos(tenants, 'SuscripcionEnGracia')).toEqual({ barberias: 20, maximoPorBarberia: 1 });
+    expect(await eventos(tenants, 'SuscripcionVencida')).toEqual({ barberias: 0, maximoPorBarberia: 0 });
   });
 
   it('una instancia que falla a mitad deja que la siguiente corrida termine el resto sin repetir', async () => {
@@ -74,9 +136,9 @@ describe('Vencimiento con dos réplicas (T053)', () => {
       entorno: { INSTANCIA_ID: 'replica-falla' },
       ajustar: (constructor) =>
         constructor.overrideProvider(AvanzarSuscripcion).useFactory({
-          inject: [SuscripcionRepository, AuditLog],
-          factory: (repositorio: SuscripcionRepository, auditoria: AuditLog) => {
-            const real = new AvanzarSuscripcion(repositorio, auditoria);
+          inject: [SuscripcionRepository, AuditLog, BusDeEventos],
+          factory: (repositorio: SuscripcionRepository, auditoria: AuditLog, bus: BusDeEventos) => {
+            const real = new AvanzarSuscripcion(repositorio, auditoria, bus);
             return {
               ejecutar: (suscripcion: Suscripcion, ahora: Date) => {
                 avanzadas += 1;

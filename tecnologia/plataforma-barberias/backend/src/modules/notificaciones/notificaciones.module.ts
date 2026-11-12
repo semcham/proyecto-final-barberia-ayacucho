@@ -4,6 +4,7 @@ import { Clock, Configuracion } from '../../shared';
 import { EnviarAvisos } from './application/enviar-avisos';
 import { ManejadoresDeCita } from './application/manejadores-de-cita';
 import { ManejadorRecordatorio } from './application/manejador-recordatorio';
+import { ManejadoresDeSuscripcion } from './application/manejadores-de-suscripcion';
 import { AvisoRepository, PendientesDeAvisos } from './application/ports/aviso-repository';
 import { CanalesDeAviso } from './application/ports/notification-channel';
 import { crearCanalesDeAviso } from './infrastructure/fabrica-canales';
@@ -33,8 +34,10 @@ import { AvisosPendientesPlataforma } from './infrastructure/plataforma/avisos-p
     ManejadoresDeCita,
     // Fase 4: el recordatorio del día con sus enlaces.
     ManejadorRecordatorio,
+    // Fase 6: los avisos de suscripción al propietario (US5).
+    ManejadoresDeSuscripcion,
     EnviarAvisos,
   ],
-  exports: [ManejadoresDeCita, ManejadorRecordatorio, EnviarAvisos],
+  exports: [ManejadoresDeCita, ManejadorRecordatorio, ManejadoresDeSuscripcion, EnviarAvisos],
 })
 export class NotificacionesModule {}

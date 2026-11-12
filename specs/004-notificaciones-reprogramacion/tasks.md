@@ -247,17 +247,17 @@
 
 ### Pruebas de US5 (escribir primero, deben fallar) ⚠️
 
-- [ ] T123 [P] [US5] Crear `backend/test/unit/suscripciones/aviso-fin-de-prueba.spec.ts`: el mismo criterio de "prueba por terminar" del panel (en prueba, sin período siguiente y con 3 días o menos) (FR-037)
-- [ ] T124 [P] [US5] Crear `backend/test/integration/notificaciones/avisos-suscripcion.spec.ts`: cada uno de los cuatro hechos produce un correo al propietario, una sola vez, con dos instancias; con un período siguiente pagado no hay aviso de prueba por terminar; con el correo caído, la transición de 003 se completa igual; los mensajes no traen datos de pago sensibles (US5-1 a US5-5, FR-036 a FR-039, SC-013)
-- [ ] T125 [P] [US5] Ampliar `backend/test/integration/tareas/vencimiento-dos-replicas.spec.ts`: la gracia y el vencimiento publican un evento por suscripción, sin duplicados (SC-013)
+- [x] T123 [P] [US5] Crear `backend/test/unit/suscripciones/aviso-fin-de-prueba.spec.ts`: el mismo criterio de "prueba por terminar" del panel (en prueba, sin período siguiente y con 3 días o menos) (FR-037)
+- [x] T124 [P] [US5] Crear `backend/test/integration/notificaciones/avisos-suscripcion.spec.ts`: cada uno de los cuatro hechos produce un correo al propietario, una sola vez, con dos instancias; con un período siguiente pagado no hay aviso de prueba por terminar; con el correo caído, la transición de 003 se completa igual; los mensajes no traen datos de pago sensibles (US5-1 a US5-5, FR-036 a FR-039, SC-013)
+- [x] T125 [P] [US5] Ampliar `backend/test/integration/tareas/vencimiento-dos-replicas.spec.ts`: la gracia y el vencimiento publican un evento por suscripción, sin duplicados (SC-013)
 
 ### Implementación de US5
 
-- [ ] T126 [US5] Publicar `SuscripcionEnGracia` y `SuscripcionVencida` en `backend/src/modules/suscripciones-pagos/suscripciones/application/avanzar-suscripcion.ts`, en la misma transacción de la transición (contracts/eventos.md §3; FR-036, FR-038)
-- [ ] T127 [US5] Publicar `PagoAprobado` y `PagoRechazado` en `backend/src/modules/suscripciones-pagos/pagos/application/aplicar-resultado.ts` y en `backend/src/modules/suscripciones-pagos/plataforma/application/comprobantes-plataforma.ts` (contracts/eventos.md §3; FR-036, FR-038)
-- [ ] T128 [US5] Crear `backend/src/modules/suscripciones-pagos/suscripciones/application/avisar-fin-de-prueba.ts` (reutiliza el criterio de `consultas.ts`; clave `prueba-por-terminar:<id>`) y registrarla cada 6 h en `backend/src/host/tareas.ts` (research R14; FR-037)
-- [ ] T129 [US5] Agregar las plantillas de suscripción a `backend/src/modules/notificaciones/domain/plantillas.ts` y el manejador `backend/src/modules/notificaciones/application/manejadores-de-suscripcion.ts` (destinatario: `BarberiasApi.correoDelPropietario`); suscribirlo en `backend/src/host/eventos.ts` (FR-036, FR-039)
-- [ ] T130 [US5] Verificar que la fase no agrega pantallas ni opciones (`frontend/src/` sin cambios en esta fase) (FR-040) y que las pruebas de 003 siguen en verde (`backend/test/integration/pagos/`, `backend/test/integration/suscripciones/`, `backend/test/integration/tareas/`)
+- [x] T126 [US5] Publicar `SuscripcionEnGracia` y `SuscripcionVencida` en `backend/src/modules/suscripciones-pagos/suscripciones/application/avanzar-suscripcion.ts`, en la misma transacción de la transición (contracts/eventos.md §3; FR-036, FR-038)
+- [x] T127 [US5] Publicar `PagoAprobado` y `PagoRechazado` en `backend/src/modules/suscripciones-pagos/pagos/application/aplicar-resultado.ts` y en `backend/src/modules/suscripciones-pagos/plataforma/application/comprobantes-plataforma.ts` (contracts/eventos.md §3; FR-036, FR-038)
+- [x] T128 [US5] Crear `backend/src/modules/suscripciones-pagos/suscripciones/application/avisar-fin-de-prueba.ts` (reutiliza el criterio de `consultas.ts`; clave `prueba-por-terminar:<id>`) y registrarla cada 6 h en `backend/src/host/tareas.ts` (research R14; FR-037)
+- [x] T129 [US5] Agregar las plantillas de suscripción a `backend/src/modules/notificaciones/domain/plantillas.ts` y el manejador `backend/src/modules/notificaciones/application/manejadores-de-suscripcion.ts` (destinatario: `BarberiasApi.correoDelPropietario`); suscribirlo en `backend/src/host/eventos.ts` (FR-036, FR-039)
+- [x] T130 [US5] Verificar que la fase no agrega pantallas ni opciones (`frontend/src/` sin cambios en esta fase) (FR-040) y que las pruebas de 003 siguen en verde (`backend/test/integration/pagos/`, `backend/test/integration/suscripciones/`, `backend/test/integration/tareas/`)
 - [ ] T131 [US5] Cierre de fase 6: suite completa y CI en verde (`.github/workflows/plataforma-barberias.yml`). Un commit: `feat(004): avisos de suscripción al propietario (fase 6, US5)` (principio X)
 
 ---

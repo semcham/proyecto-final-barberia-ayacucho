@@ -132,3 +132,110 @@ export function componerAviso(
   }
   return { asunto: asunto.slice(0, 120), texto: [...cuerpo, '', PIE].join('\n') };
 }
+
+// ---------------------------------------------------------------------------------------------------------------
+// Fase 6 (T129; US5; FR-036, FR-039) · Avisos de suscripción al propietario, en texto simple. Solo lo necesario: el
+// nombre de la barbería, el hecho, la fecha que corresponde y, en un rechazo, el motivo. `datosDeSuscripcion` arma
+// una lista CERRADA de campos: nunca llegan a la plantilla el importe, el número de operación, las referencias del
+// pago ni datos del comprobante, aunque el evento los trajera.
+
+export interface DatosDeSuscripcion {
+  barberia: string;
+  zonaHoraria: string;
+  /** Instantes ISO 8601, según el hecho. */
+  finPrueba?: string;
+  finGracia?: string;
+  vencidaEn?: string;
+  periodoDesde?: string;
+  periodoHasta?: string;
+  plan?: string;
+  /** Solo en un rechazo, si lo hay (el que escribió el administrador al revisar la transferencia). */
+  motivo?: string;
+}
+
+const CAMPOS_DE_SUSCRIPCION = [
+  'finPrueba',
+  'finGracia',
+  'vencidaEn',
+  'periodoDesde',
+  'periodoHasta',
+  'plan',
+  'motivo',
+] as const;
+
+export function datosDeSuscripcion(
+  payload: Record<string, unknown>,
+  barberia: string,
+  zonaHoraria: string,
+): DatosDeSuscripcion {
+  const datos: DatosDeSuscripcion = { barberia, zonaHoraria: zonaHoraria || 'America/Lima' };
+  for (const campo of CAMPOS_DE_SUSCRIPCION) {
+    const valor = texto(payload[campo]).trim();
+    if (valor) datos[campo] = valor;
+  }
+  return datos;
+}
+
+const IR_AL_PANEL = 'Puedes hacerlo desde el panel de tu barbería, en la sección Suscripción.';
+
+/** Asunto y texto de un aviso de suscripción, siempre para el propietario. */
+export function componerAvisoDeSuscripcion(tipo: TipoAviso, datos: DatosDeSuscripcion): MensajeCompuesto {
+  const { barberia, zonaHoraria: zona } = datos;
+  const dia = (instante: string | undefined) =>
+    instante ? fecha(instante, zona) : 'la fecha indicada en tu panel';
+  const momento = (instante: string | undefined) =>
+    instante ? cuando(instante, zona) : 'la fecha indicada en tu panel';
+
+  let asunto: string;
+  let cuerpo: string[];
+  switch (tipo) {
+    case 'PRUEBA_POR_TERMINAR':
+      asunto = `Tu prueba gratuita termina pronto en ${barberia}`;
+      cuerpo = [
+        `La prueba gratuita de ${barberia} termina el ${momento(datos.finPrueba)}.`,
+        '',
+        'Para seguir recibiendo reservas sin interrupción, puedes elegir un plan antes de esa fecha.',
+        IR_AL_PANEL,
+      ];
+      break;
+    case 'SUSCRIPCION_EN_GRACIA':
+      asunto = `Tu suscripción está en período de gracia (${barberia})`;
+      cuerpo = [
+        `El período pagado de ${barberia} terminó sin un pago para el siguiente.`,
+        '',
+        `Puedes pagar hasta el ${momento(datos.finGracia)} sin dejar de recibir reservas.`,
+        IR_AL_PANEL,
+      ];
+      break;
+    case 'SUSCRIPCION_VENCIDA':
+      asunto = `Tu suscripción venció (${barberia})`;
+      cuerpo = [
+        `La suscripción de ${barberia} venció el ${momento(datos.vencidaEn)}.`,
+        '',
+        'Desde ahora la barbería ya no acepta reservas nuevas. Las citas ya reservadas siguen en pie.',
+        `Al pagar un plan, vuelve a aceptarlas de inmediato. ${IR_AL_PANEL}`,
+      ];
+      break;
+    case 'PAGO_APROBADO':
+      asunto = `Pago aprobado (${barberia})`;
+      cuerpo = [
+        `Recibimos tu pago de la suscripción de ${barberia} y quedó aprobado.`,
+        '',
+        `Plan: ${datos.plan ?? 'el plan elegido'}`,
+        `Período: del ${dia(datos.periodoDesde)} al ${dia(datos.periodoHasta)}`,
+      ];
+      break;
+    case 'PAGO_RECHAZADO':
+      asunto = `Pago rechazado (${barberia})`;
+      cuerpo = [
+        `Tu pago de la suscripción de ${barberia}${datos.plan ? ` (plan ${datos.plan})` : ''} no se pudo completar.`,
+        ...(datos.motivo ? ['', `Motivo: ${datos.motivo}`] : []),
+        '',
+        `Puedes intentarlo de nuevo. ${IR_AL_PANEL}`,
+      ];
+      break;
+    default:
+      throw new Error(`No hay plantilla de suscripción para el aviso ${tipo}`);
+  }
+  return { asunto: asunto.slice(0, 120), texto: [...cuerpo, '', PIE].join('\n') };
+}

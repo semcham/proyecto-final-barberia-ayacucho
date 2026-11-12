@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { v7 as uuidv7 } from 'uuid';
-import { AuditLog, Clock } from '../../../../shared';
+import { AuditLog, BusDeEventos, Clock } from '../../../../shared';
 import { AvanzarSuscripcion } from '../../suscripciones/application/avanzar-suscripcion';
 import { SuscripcionRepository } from '../../suscripciones/application/ports/suscripcion-repository';
 import { PeriodoYaCubierto } from '../../suscripciones/domain/errores';
@@ -42,6 +42,7 @@ export class AplicarResultadoDelProveedor {
     private readonly avanzar: AvanzarSuscripcion,
     private readonly auditoria: AuditLog,
     private readonly reloj: Clock,
+    private readonly bus: BusDeEventos,
   ) {}
 
   /**
@@ -93,7 +94,54 @@ export class AplicarResultadoDelProveedor {
       });
     }
     if (periodoCreado) await this.avanzar.ejecutar(suscripcion, ahora);
-    return { efecto, pago: (await this.pagos.porId(pago.id)) as Pago };
+    const final = (await this.pagos.porId(pago.id)) as Pago;
+    await this.publicarAviso(pago, transicion.estado, periodoCreado, final);
+    return { efecto, pago: final };
+  }
+
+  /**
+   * 004 (T127; FR-036, FR-038, FR-039; contracts/eventos.md §3): el aviso al propietario, en esta misma transacción.
+   * Lo usan el resultado del proveedor (en línea) y la revisión de la transferencia (comprobantes-plataforma.ts, que
+   * llega aquí), así cada pago publica a lo sumo un evento por transición:
+   * - PagoAprobado solo si el pago quedó aprobado CON su período (un aprobado sin período, DUPLICADO o con otro
+   *   importe, lo resuelve el administrador y no se anuncia como aprobado);
+   * - PagoRechazado al pasar a RECHAZADO, con el motivo de la revisión si lo hay.
+   * Sin importe, número de operación, referencias ni datos del comprobante (FR-039).
+   */
+  private async publicarAviso(
+    antes: Pago,
+    hacia: EstadoPago,
+    periodoCreado: boolean,
+    final: Pago,
+  ): Promise<void> {
+    if (antes.estado === hacia) return;
+    if (hacia === 'APROBADO' && periodoCreado) {
+      const periodo = await this.pagos.periodoDe(final.id);
+      if (!periodo) return;
+      await this.bus.publicar({
+        tipo: 'PagoAprobado',
+        payload: {
+          pagoId: final.id,
+          plan: await this.nombreDelPlan(final.planId),
+          periodoDesde: periodo.inicio.toISOString(),
+          periodoHasta: periodo.fin.toISOString(),
+        },
+      });
+    } else if (hacia === 'RECHAZADO') {
+      await this.bus.publicar({
+        tipo: 'PagoRechazado',
+        payload: {
+          pagoId: final.id,
+          plan: await this.nombreDelPlan(final.planId),
+          ...(final.motivoRechazo ? { motivo: final.motivoRechazo } : {}),
+        },
+      });
+    }
+  }
+
+  private async nombreDelPlan(planId: string): Promise<string> {
+    const plan = await this.suscripciones.planPorId(planId);
+    return plan?.nombre ?? plan?.codigo ?? 'Plan';
   }
 
   /**

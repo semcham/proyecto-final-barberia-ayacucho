@@ -14,3 +14,4 @@ export {
 export { ConciliarPagos } from './pagos/application/conciliar-pagos';
 export { ExpirarTransferencias } from './pagos/application/expirar-transferencias';
 export { VencerSuscripciones } from './suscripciones/application/vencer-suscripciones';
+export { AvisarFinDePrueba } from './suscripciones/application/avisar-fin-de-prueba';

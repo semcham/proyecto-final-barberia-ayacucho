@@ -52,3 +52,21 @@ export const AVISO_POR_EVENTO_DE_CITA: Readonly<Record<string, TipoAviso>> = {
 
 /** Plazo de un aviso de cita: sin enviar a las 24 h desde su creación, queda FALLIDO (FR-033, R13). */
 export const PLAZO_AVISO_DE_CITA_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Fase 6 (US5) · Tipo de aviso de cada evento de suscripción (contracts/eventos.md §3). Van solo al propietario, por
+ * correo (§4). Su plazo es el de los demás avisos que no son recordatorio: creación + 24 h (data-model §4).
+ */
+export const AVISO_POR_EVENTO_DE_SUSCRIPCION: Readonly<Record<string, TipoAviso>> = {
+  PruebaPorTerminar: 'PRUEBA_POR_TERMINAR',
+  SuscripcionEnGracia: 'SUSCRIPCION_EN_GRACIA',
+  SuscripcionVencida: 'SUSCRIPCION_VENCIDA',
+  PagoAprobado: 'PAGO_APROBADO',
+  PagoRechazado: 'PAGO_RECHAZADO',
+};
+
+export const TIPOS_DE_AVISO_DE_SUSCRIPCION: readonly TipoAviso[] = Object.values(
+  AVISO_POR_EVENTO_DE_SUSCRIPCION,
+);
+
+export const PLAZO_AVISO_DE_SUSCRIPCION_MS = 24 * 60 * 60 * 1000;

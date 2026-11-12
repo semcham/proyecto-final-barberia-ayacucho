@@ -19,6 +19,7 @@ import { UbicacionDePagosPlataforma } from './pagos/infrastructure/plataforma/ub
 import { SuscripcionesApi } from './suscripciones-api';
 import { AutorizacionSuscripciones } from './suscripciones/application/autorizacion';
 import { AvanzarSuscripcion } from './suscripciones/application/avanzar-suscripcion';
+import { AvisarFinDePrueba } from './suscripciones/application/avisar-fin-de-prueba';
 import { ConsultasDeSuscripcion } from './suscripciones/application/consultas';
 import { ExigirOperacion } from './suscripciones/application/exigir-operacion';
 import { IniciarPruebaGratuita } from './suscripciones/application/iniciar-prueba-gratuita';
@@ -97,6 +98,8 @@ import { SuscripcionesPlataformaController } from './plataforma/presentation/sus
     RecibirNotificacion,
     ConciliarPagos,
     VencerSuscripciones,
+    // 004 (US5, FR-037): aviso de prueba por terminar al propietario.
+    AvisarFinDePrueba,
     SuscripcionesApi,
     // US3: transferencia con comprobante (R05, ADR-023).
     { provide: AlmacenComprobantes, useClass: AlmacenComprobantesPostgres },
@@ -121,6 +124,6 @@ import { SuscripcionesPlataformaController } from './plataforma/presentation/sus
     ActivacionManual,
     PlanesParaPlataforma,
   ],
-  exports: [SuscripcionesApi, ConciliarPagos, VencerSuscripciones, ExpirarTransferencias],
+  exports: [SuscripcionesApi, ConciliarPagos, VencerSuscripciones, ExpirarTransferencias, AvisarFinDePrueba],
 })
 export class SuscripcionesPagosModule {}

@@ -1,7 +1,12 @@
 import { Injectable, type OnApplicationBootstrap } from '@nestjs/common';
 import { PurgarIntentosEnlace } from '../modules/catalogo-citas';
 import { EnviarAvisos } from '../modules/notificaciones';
-import { ConciliarPagos, ExpirarTransferencias, VencerSuscripciones } from '../modules/suscripciones-pagos';
+import {
+  AvisarFinDePrueba,
+  ConciliarPagos,
+  ExpirarTransferencias,
+  VencerSuscripciones,
+} from '../modules/suscripciones-pagos';
 import { Configuracion, DespachadorDeEventos, EjecutorTareas } from '../shared';
 
 /**
@@ -18,6 +23,7 @@ export class TareasProgramadas implements OnApplicationBootstrap {
     private readonly despachador: DespachadorDeEventos,
     private readonly enviarAvisos: EnviarAvisos,
     private readonly purgarIntentosEnlace: PurgarIntentosEnlace,
+    private readonly avisarFinDePrueba: AvisarFinDePrueba,
     private readonly configuracion: Configuracion,
   ) {}
 
@@ -52,6 +58,12 @@ export class TareasProgramadas implements OnApplicationBootstrap {
       nombre: 'purgar-intentos-enlaces',
       intervaloMs: 60 * 60 * 1000,
       ejecutar: () => this.purgarIntentosEnlace.ejecutar(),
+    });
+    // 004 (fase 6, T128; research R14): aviso de prueba por terminar al propietario, cada 6 h, una vez por prueba.
+    this.ejecutor.registrar({
+      nombre: 'avisar-fin-de-prueba',
+      intervaloMs: 6 * 60 * 60 * 1000,
+      ejecutar: () => this.avisarFinDePrueba.ejecutar(),
     });
     this.ejecutor.iniciar();
   }

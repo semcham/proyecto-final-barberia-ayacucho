@@ -9,6 +9,7 @@ import {
   type PagoVista,
   type PlanVista,
 } from '../../pagos/application/vistas';
+import { diasRestantes as diasHasta, pruebaPorTerminar } from '../domain/aviso-fin-de-prueba';
 import { NoEncontrado } from '../domain/errores';
 import { finDeGracia, periodoVigente, ultimoPeriodoEmpezado } from '../domain/periodo';
 import type { Plan } from '../domain/plan';
@@ -16,10 +17,6 @@ import type { EstadoSuscripcion } from '../domain/suscripcion';
 import { type ActorDeBarberia, AutorizacionSuscripciones } from './autorizacion';
 import { type EstadoOperativo, ExigirOperacion } from './exigir-operacion';
 import { SuscripcionRepository } from './ports/suscripcion-repository';
-
-const DIA_MS = 24 * 60 * 60 * 1000;
-/** Días antes del fin de la prueba en que el panel avisa que está por terminar. */
-const AVISO_FIN_DE_PRUEBA_DIAS = 3;
 
 export type AvisoSuscripcion = 'EN_GRACIA' | 'PRUEBA_POR_TERMINAR' | 'VENCIDA' | 'SUSPENDIDA';
 
@@ -85,14 +82,21 @@ export class ConsultasDeSuscripcion {
           : null;
       const hasta =
         suscripcion.estado === 'PAST_DUE' ? finGracia : (vigente?.fin ?? suscripcion.vencePruebaEn);
-      const diasRestantes = hasta ? Math.max(0, Math.ceil((hasta.getTime() - ahora.getTime()) / DIA_MS)) : 0;
+      const diasRestantes = diasHasta(hasta, ahora);
       const abierto = await this.pagos.abiertoDe(suscripcion.id);
 
       const avisos: AvisoSuscripcion[] = [];
       if (suscripcion.estado === 'PAST_DUE') avisos.push('EN_GRACIA');
       if (suscripcion.estado === 'EXPIRED') avisos.push('VENCIDA');
       if (suscripcion.estado === 'SUSPENDED') avisos.push('SUSPENDIDA');
-      if (suscripcion.estado === 'TRIAL' && !proximo && diasRestantes <= AVISO_FIN_DE_PRUEBA_DIAS) {
+      // 004 (FR-037): el mismo criterio que usa la tarea avisar-fin-de-prueba para el correo al propietario.
+      if (
+        pruebaPorTerminar({
+          estado: suscripcion.estado,
+          diasRestantes,
+          hayPeriodoSiguiente: proximo !== null,
+        })
+      ) {
         avisos.push('PRUEBA_POR_TERMINAR');
       }
 

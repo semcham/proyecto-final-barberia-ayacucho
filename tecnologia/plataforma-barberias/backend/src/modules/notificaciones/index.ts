@@ -6,3 +6,5 @@ export { NotificacionesModule } from './notificaciones.module';
 export { ManejadoresDeCita } from './application/manejadores-de-cita';
 export { EnviarAvisos } from './application/enviar-avisos';
 export { ManejadorRecordatorio } from './application/manejador-recordatorio';
+// Fase 6 de 004: los avisos de suscripción al propietario (US5).
+export { ManejadoresDeSuscripcion } from './application/manejadores-de-suscripcion';
