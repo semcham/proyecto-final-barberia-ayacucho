@@ -62,7 +62,7 @@ stateDiagram-v2
 
 Leyenda: gris discontinuo = estado definido en la base y en el dominio, pero que ningún flujo crea todavía.
 
-Toda cita nueva nace `CONFIRMADA` (FR-035a de 002); `PENDIENTE` y la transición `aprobar` quedan para una futura "reserva con aprobación". El cliente cancela hasta la hora de inicio; el propietario, siempre. `COMPLETADA` y `NO_ASISTIO` se marcan desde la hora de inicio. La reprogramación (RF13, planificada en 004) no será una transición: se cancela y se reserva de nuevo. `COMPLETADA`, `NO_ASISTIO` y `CANCELADA` son finales; cualquier otra transición lanza `TransicionInvalida` (422 `TRANSICION_INVALIDA`). Cada cambio, incluida la creación, deja una fila en `appointment_status_history` en la misma transacción, con la fila de la cita bloqueada (`FOR UPDATE`).
+Toda cita nueva nace `CONFIRMADA` (FR-035a de 002); `PENDIENTE` y la transición `aprobar` quedan para una futura "reserva con aprobación". El cliente cancela hasta la hora de inicio; el propietario, siempre. `COMPLETADA` y `NO_ASISTIO` se marcan desde la hora de inicio. La reprogramación (RF13, implementada en 004) no es una transición de estado: la cita activa conserva su estado y cambia de hora (y, si se pide, de barbero) en una sola transacción, con la misma restricción de exclusión que una reserva; sube su `version` y deja una fila en `appointment_reschedule`. `COMPLETADA`, `NO_ASISTIO` y `CANCELADA` son finales; cualquier otra transición lanza `TransicionInvalida` (422 `TRANSICION_INVALIDA`). Cada cambio, incluida la creación, deja una fila en `appointment_status_history` en la misma transacción, con la fila de la cita bloqueada (`FOR UPDATE`).
 
 Solo `PENDIENTE` y `CONFIRMADA` ocupan el horario. Dos restricciones de exclusión de PostgreSQL sobre `period tstzrange [)` usan esos estados (principio IV):
 
@@ -113,7 +113,7 @@ sequenceDiagram
 
 </details>
 
-El controlador (`CitasController`) y el repositorio (`CitaRepositoryPostgres`) se omiten para que se lea de un vistazo. No se publica ningún evento: el aviso al cliente está planificado en 004.
+El controlador (`CitasController`) y el repositorio (`CitaRepositoryPostgres`) se omiten para que se lea de un vistazo. Desde 004, la reserva publica además `CitaCreada` (y `RecordatorioDeCita`, si faltan 2 h o más) en la misma transacción, para el aviso al cliente; el diagrama no lo muestra.
 
 Evidencia: `backend/src/modules/catalogo-citas/citas/presentation/citas.controller.ts`, `citas/application/reservar-cita.ts`, `citas/infrastructure/`; pruebas `backend/test/integration/citas/reservar.spec.ts` y `concurrencia-reservas.spec.ts` (PR16: 200 solicitudes simultáneas, una sola cita).
 
@@ -399,21 +399,22 @@ Evidencia: `backend/src/modules/suscripciones-pagos/suscripciones/domain/suscrip
 
 ## 7. M05 Notificaciones
 
-**Planificado (004). No hay código de este módulo.** El cliente recibirá la **fecha y hora de su cita** por correo o por WhatsApp, según el canal que elija (RF30, RF33, HU25). Decisión: [ADR-013](../../01-analisis-de-sistema/07-decisiones-arquitectonicas.md#adr-013-notificaciones-multicanal-al-cliente-correo-y-whatsapp) (Propuesto). Los nombres de abajo son el diseño propuesto.
+**Implementado (004)**, en `backend/src/modules/notificaciones/`. El cliente recibe la **fecha y hora de su cita** por correo o por WhatsApp (simulado), según el canal que elija (RF30, RF33, HU25), y el propietario recibe los avisos de su suscripción (US5 de 004). Decisiones: [ADR-013](../../01-analisis-de-sistema/07-decisiones-arquitectonicas.md#adr-013-notificaciones-multicanal-al-cliente-correo-y-whatsapp) (revisada), ADR-025 y ADR-026 (Aceptadas el 2026-11-04).
 
-| Elemento propuesto                       | Capa                          | Responsabilidad                                                                                      |
-| ---------------------------------------- | ----------------------------- | ---------------------------------------------------------------------------------------------------- |
-| Manejador de eventos de cita             | Aplicación                    | Escucha `CitaCreada` y `CitaCancelada`; crea los envíos inmediatos y programa el recordatorio        |
-| `EnviarNotificacion`                     | Aplicación                    | Elige el canal, aplica la plantilla, envía por el puerto y registra el resultado                     |
-| Tarea de recordatorios                   | Aplicación                    | Reutiliza el `EjecutorTareas` de M06 y su candado (ADR-024) para que dos réplicas no envíen el mismo |
-| `NotificationChannel`                    | Aplicación (puerto)           | `enviar(destinatario, mensaje)`                                                                      |
-| Adaptadores de correo y `WhatsAppSender` | Infraestructura (adaptadores) | Implementan el puerto; protegidos por el `Interruptor` de M06                                        |
+| Elemento                                                   | Capa                          | Responsabilidad                                                                                                     |
+| ---------------------------------------------------------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `ManejadoresDeCita`, `ManejadorRecordatorio`, `ManejadoresDeSuscripcion` | Aplicación          | Reciben los eventos del bus (`CitaCreada`, `CitaCancelada`, `CitaReprogramada`, `RecordatorioDeCita` y los cinco de suscripción) y crean un aviso `PENDIENTE` por destinatario, idempotente por evento y destinatario |
+| `EnviarAvisos` (tarea `enviar-avisos`)                     | Aplicación                    | Reclama los avisos pendientes, lee el contacto en M01 al enviar, elige el canal, compone el texto y envía por el puerto; reintenta y usa el correo de respaldo |
+| `elegirCanal`, `plantillas`, `politica-reintentos`         | Dominio                       | Reglas puras: canal según preferencia y consentimiento vigente, textos con datos mínimos y esperas entre intentos |
+| `NotificationChannel`                                      | Aplicación (puerto)           | `enviar(mensaje)`                                                                                                   |
+| `CanalCorreoSmtp`, `CanalWhatsappSimulado`                 | Infraestructura (adaptadores) | Implementan el puerto, con tiempo límite y el `Interruptor` de M06                                                  |
+| `KyselyAvisoRepository`, `AvisosPendientesPlataforma`      | Infraestructura               | La tabla `notification` con RLS, y la lista de pendientes de todas las barberías con el rol de la plataforma        |
 
-**Dependencias (revisión de ADR-013, Aceptada el 2026-11-04).** M05 dependerá de M06 (eventos y tareas) y de M01, **solo para leer**, al enviar: el canal, el consentimiento vigente y el correo del destinatario. El evento de M02 lleva los datos mínimos de la cita, **sin datos de contacto**.
+**Dependencias (revisión de ADR-013).** M05 depende de M06 (bus de eventos y tareas) y de M01, **solo para leer**, al enviar: el canal, el consentimiento vigente y el correo del destinatario. El evento de M02 lleva los datos mínimos de la cita, **sin datos de contacto**.
 
-![Notificación de una cita (planificada)](../../../img/secuencia-notificacion-cita.png)
+![Notificación de una cita](../../../img/secuencia-notificacion-cita.png)
 
-_Figura 8. Notificación de una cita al cliente (planificado, 004)._
+_Figura 8. Notificación de una cita al cliente (004)._
 
 <details>
 <summary>Código fuente del diagrama (Mermaid)</summary>
@@ -444,26 +445,26 @@ sequenceDiagram
 
 </details>
 
-Leyenda: todo este diagrama está **planificado**. Reglas propuestas: el envío es asíncrono y nunca revierte la reserva; WhatsApp solo con número y consentimiento expreso; los mensajes solo llevan barbería, servicio, fecha y hora; las condiciones de WhatsApp (plantillas, costos) están por verificar con el proveedor.
+Leyenda: diagrama simplificado de lo **implementado** (004): el evento pasa por la salida transaccional de M06 y el envío lo hace la tarea `enviar-avisos`, que el diagrama no muestra. Reglas: el envío es asíncrono y nunca revierte la reserva; WhatsApp solo con número y consentimiento vigente para ese número; tras 3 fallos de WhatsApp, con su circuito abierto o con el número rechazado, el mismo aviso sale una vez por correo; los mensajes solo llevan barbería, servicio, barbero, fecha y hora. El servicio de WhatsApp es un **simulador**: las condiciones del proveedor real (plantillas, costos) siguen por verificar.
 
-Evidencia: solo diseño, sin código. Requisitos RF30 y RF33; ADR-012 y ADR-013 (Propuestos).
+Evidencia: `backend/src/modules/notificaciones/` (`application/enviar-avisos.ts`, `domain/eleccion-canal.ts`, `domain/plantillas.ts`, `infrastructure/canal-correo-smtp.ts`, `infrastructure/canal-whatsapp-simulado.ts`); pruebas `notificaciones/avisos-cita`, `correo-caido`, `respaldo-whatsapp`, `whatsapp-sin-consentimiento` y `salida-eventos-dos-instancias`. Requisitos RF30 y RF33; ADR-013, ADR-025 y ADR-026.
 
 ### 7.1 Recordatorio del día de la cita y respuesta del cliente
 
-**Planificado (004).** El mismo día de la cita (propuesta: 2 horas antes, configurable por barbería) el sistema avisará al cliente y le preguntará si podrá asistir (RF34, HU28).
+**Implementado (004).** El mismo día de la cita, **2 horas antes (fijo)**, el sistema avisa al cliente y le pregunta si podrá asistir (RF34, HU28). El recordatorio configurable por barbería quedó como evolución futura (revisión de ADR-013).
 
-| Acción del enlace       | Qué ocurrirá                                                  | Reglas propuestas                                                        |
+| Acción del enlace       | Qué ocurre                                                    | Reglas                                                                   |
 | ----------------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| **Confirmo asistencia** | Se registra la confirmación; la agenda del barbero la muestra | No cambia el estado de la cita                                           |
-| **Cancelar**            | `CancelarCita` pasa la cita a CANCELADA y libera el horario   | Mismas reglas que hoy, incluida la cancelación tardía                    |
+| **Confirmo asistencia** | Se registra la confirmación; la agenda la muestra             | No cambia el estado de la cita                                           |
+| **Cancelar**            | `CancelarCita` pasa la cita a CANCELADA y libera el horario   | Mismas reglas que la cancelación del cliente, incluida la tardía         |
 | **Reprogramar**         | Abre los horarios libres con la cita precargada               | Misma validación y restricción de exclusión que una reserva nueva (RF13) |
 | Sin respuesta           | La cita **no se cancela automáticamente**                     | Una cancelación automática sería evolución futura                        |
 
-Los enlaces serán de un solo uso, firmados, con vencimiento al inicio de la cita y limitados a esa cita y a su tenant. Las tablas y columnas que necesiten (por ejemplo, el registro de enlaces usados) se definirán en la especificación de 004; hoy no existen.
+Los enlaces son de un solo uso, firmados (HMAC), con vencimiento a la hora de inicio de la cita y limitados a esa cita y a su tenant (ADR-032). El uso queda en `appointment_link_use` y los rechazos, con el hash de la IP, en `action_link_attempt`.
 
-![Recordatorio del día de la cita (planificado)](../../../img/secuencia-recordatorio-del-dia.png)
+![Recordatorio del día de la cita](../../../img/secuencia-recordatorio-del-dia.png)
 
-_Figura 9. Recordatorio del día y respuesta del cliente (planificado, 004)._
+_Figura 9. Recordatorio del día y respuesta del cliente (004)._
 
 <details>
 <summary>Código fuente del diagrama (Mermaid)</summary>
@@ -490,6 +491,6 @@ sequenceDiagram
 
 </details>
 
-Leyenda: todo este diagrama está **planificado**.
+Leyenda: diagrama simplificado de lo **implementado** (004): la "tarea de recordatorios" son el evento `RecordatorioDeCita`, publicado al reservar o reprogramar para `inicio − 2 h`, y las tareas `despachar-eventos` y `enviar-avisos`, todas con el candado de ADR-024.
 
-Evidencia: solo diseño, sin código. Requisito RF34 e historia HU28.
+Evidencia: `backend/src/shared/enlaces/enlaces-firmados.ts`, `backend/src/modules/notificaciones/application/manejador-recordatorio.ts` y las acciones por enlace de `catalogo-citas/citas/`; pruebas `enlaces/recordatorio`, `enlaces-acciones`, `enlaces-rechazos` y `aislamiento/aislamiento-avisos`. Requisito RF34 e historia HU28.

@@ -60,11 +60,11 @@ Evidencia: carpetas `backend/src/host/`, `backend/src/modules/{acceso-barberias,
 | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------- | ---------------------- | ---------------------- | ----------------------------------------------------------- |
 | Host                                   | Ensamblar módulos, `AuthGuard` y `RolesGuard`, filtro de errores, salud, CORS, límite general, tareas programadas    | RF04, RC03             | ADR-001, 010, 024      | Implementado                                                |
 | M01 Acceso y barberías                 | Cuentas, tokens, roles, administrador con segundo factor; alta, configuración y estado de la barbería; clientes y consentimiento | RF01–RF06     | ADR-003, 010, 015, 020, 031 | Implementado (001–003); RF32 y RF33 planificados       |
-| M02 Catálogo y citas                   | Catálogo, horario y disponibilidad; horarios libres, reservas sin duplicados, estados, agenda e historial          | RF07–RF12, RF14–RF17   | ADR-005, 009, 021, 029 | Implementado (002, 006); RF13 y RF34 planificados (004)     |
+| M02 Catálogo y citas                   | Catálogo, horario y disponibilidad; horarios libres, reservas sin duplicados, estados, agenda e historial          | RF07–RF17, RF34        | ADR-005, 009, 021, 029, 032 | Implementado (002, 004 y 006)                          |
 | M03 Suscripciones y pagos              | Planes, prueba gratuita, estados y restricciones; pagos, notificación firmada, conciliación; operaciones de la plataforma | RF18–RF26        | ADR-007, 022, 023, 024, 031 | Implementado (001, 003), con pasarela simulada         |
 | M04 Asistente IA y reportes            | Asistente con herramientas cerradas; reportes de solo lectura                                                       | RF27–RF29              | ADR-008, 012           | Planificado (005)                                           |
-| M05 Notificaciones                     | Correos y WhatsApp al cliente                                                                                       | RF30, RF33, RF34       | ADR-012, 013           | Planificado (004)                                           |
-| M06 Núcleo compartido                  | Tenant, transacción con RLS, auditoría, caché, límites, reloj, tareas programadas, resiliencia                      | RF31 (auditoría)       | ADR-005, 024, 029      | Parcial: eventos y enlaces firmados (004) planificados      |
+| M05 Notificaciones                     | Correos y WhatsApp al cliente                                                                                       | RF30, RF33, RF34       | ADR-012, 013, 025, 026 | Implementado (004), con WhatsApp simulado                   |
+| M06 Núcleo compartido                  | Tenant, transacción con RLS, auditoría, caché, límites, reloj, tareas programadas, resiliencia, eventos y enlaces firmados | RF31 (auditoría) | ADR-005, 024, 025, 029, 032 | Parcial: indicadores (007) planificados          |
 
 ## Asignación a carpetas reales del código
 
@@ -77,7 +77,7 @@ Las rutas son relativas a `tecnologia/plataforma-barberias/`. Cada submódulo ti
 | M02 Catálogo y citas      | `backend/src/modules/catalogo-citas/` (`catalogo/`, `citas/`)                                        | `PermisosCatalogoCitas` (el resto solo por sus controladores)                                                   |
 | M03 Suscripciones y pagos | `backend/src/modules/suscripciones-pagos/` (`suscripciones/`, `pagos/`, `plataforma/`)               | `SuscripcionesApi`, `VencerSuscripciones`, `ConciliarPagos`, `ExpirarTransferencias`                           |
 | M04 Asistente IA y reportes | _(planificado; sin carpeta)_                                                                       | —                                                                                                              |
-| M05 Notificaciones        | _(planificado; sin carpeta)_                                                                         | —                                                                                                              |
+| M05 Notificaciones        | `modules/notificaciones/` (004)                                                                      | `NotificationChannel` → `CanalCorreoSmtp`, `CanalWhatsappSimulado`                                             |
 | M06 Núcleo compartido     | `backend/src/shared/` (`audit`, `cache`, `clock`, `config`, `http`, `limites`, `persistence`, `resiliencia`, `tareas`, `tenant`, `tiempo`) | `TenantContext`, `UnitOfWork`, `AuditLog`, `CacheCompartida`, `EjecutorTareas`, `Clock`        |
 ## Cómo leer las relaciones
 

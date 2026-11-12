@@ -164,7 +164,7 @@ Un escenario de atributo de calidad es una descripción **concreta y medible** d
 | **Respuesta esperada**  | Se reintenta con espera; el circuito se abre y se muestra una alternativa (flujo manual de reserva; "pago pendiente de confirmación"; la notificación por WhatsApp se reenvía por correo)                                                                               |
 | **Medida**              | Circuito abierto tras 5 fallos en 60 s; mensaje alternativo en ≤ 3 s; el resto de la plataforma sigue operando; la reserva no se deshace por un fallo de envío; ≥ 95 % de las citas con una notificación entregada por algún canal en ≤ 5 min _(propuesta por validar)_ |
 | **Verificación**        | PR06: simulador de proveedor con errores y latencias                                                                                                                                                                                                                    |
-| **Estado**              | Parcial: medido para pagos contra el simulador (PR06, 003); IA y mensajería planificadas (004 y 005)                                                                                                                                                                    |
+| **Estado**              | Parcial: medido para pagos (PR06, 003) y para correo y WhatsApp (PR06, 004) contra Mailpit y los simuladores; IA planificada (005)                                                                                                                                      |
 
 **Ficha de medición**
 
@@ -175,9 +175,9 @@ Un escenario de atributo de calidad es una descripción **concreta y medible** d
 | **Preparación**           | Simulador de pagos en modo caído, lento o colgado                                                                                                                                                                        |
 | **Configuración**         | Tiempo límite de 2 s (`PAGOS_TIEMPO_LIMITE_MS`); el interruptor abre tras 5 fallos en 60 s, durante 30 s                                                                                                                 |
 | **Métrica y umbral**      | Circuito abierto tras 5 fallos en 60 s; mensaje alternativo en ≤ 3 s; el resto sigue operando; la reserva no se deshace por un fallo de envío; ≥ 95 % de las citas con notificación entregada por algún canal en ≤ 5 min |
-| **Comando**               | Usado: `npm run test:int -- proveedor-caido` (`backend/test/integration/pagos/proveedor-caido.spec.ts`). Mensajería: las pruebas de la fase 3 de 004 (planificadas). IA: por definir (005)                               |
+| **Comando**               | Usado: `npm run test:int -- proveedor-caido` (`backend/test/integration/pagos/proveedor-caido.spec.ts`). Mensajería (004): `npm run test:int -- correo-caido respaldo-whatsapp simulador-whatsapp salida-eventos-dos-instancias`, y `npm run demo:avisos` con Docker Compose. IA: por definir (005) |
 | **Evidencia**             | Salida de la CI; totales en [04-pruebas](../05-gestion/04-pruebas.md) §2.4                                                                                                                                               |
-| **Estado**                | **Parcial.** Pagos: Usada (503 en ≤ 3 s con la transferencia como alternativa, y las reservas siguen). Mensajería (004) e IA (005): Planificadas                                                                         |
+| **Estado**                | **Parcial.** Pagos: Usada (503 en ≤ 3 s con la transferencia como alternativa, y las reservas siguen). Mensajería: Usada (004, 2026-11-12) contra Mailpit y el simulador de WhatsApp: con el correo detenido, las operaciones de la cita responden igual y sin conexiones SMTP; 5 fallos abren el circuito; WhatsApp caído o con 3 fallos → el aviso sale una vez por correo; de la reserva a la aceptación del canal, p95 de 14,5 s en 100 citas (meta ≤ 5 min); con Compose, una reprogramación con Mailpit detenido respondió 200 en 1 310 ms. No medido contra proveedores reales. IA (005): Planificada |
 
 ## EQ-07. Seguridad: Autenticación
 
@@ -488,7 +488,7 @@ Un escenario de atributo de calidad es una descripción **concreta y medible** d
 | **Respuesta esperada**  | Se guarda el consentimiento (fecha, versión del texto), incluido el de recibir mensajes por WhatsApp, y la solicitud se atiende con seguimiento                                                                            |
 | **Medida**              | 100 % de registros con consentimiento; 0 mensajes de WhatsApp enviados sin consentimiento registrado; solicitudes atendidas en el plazo interno propuesto de 10 días hábiles _(por validar contra el plazo legal vigente)_ |
 | **Verificación**        | PR18: prueba funcional y revisión de procedimiento                                                                                                                                                                         |
-| **Estado**              | Parcial: consentimiento implementado (002); WhatsApp y solicitudes sobre los datos planificados (004 y 007)                                                                                                                |
+| **Estado**              | Parcial: consentimiento implementado (002) y consentimiento de WhatsApp implementado y medido contra el simulador (004); solicitudes sobre los datos planificadas (007)                                                    |
 
 **Ficha de medición**
 
@@ -499,9 +499,9 @@ Un escenario de atributo de calidad es una descripción **concreta y medible** d
 | **Preparación**           | Clientes registrados con cuenta y clientes presenciales                                                                                                                       |
 | **Configuración**         | Registro con y sin aceptar el consentimiento; consulta del registro guardado                                                                                                  |
 | **Métrica y umbral**      | 100 % de registros con consentimiento; 0 mensajes de WhatsApp sin consentimiento; solicitudes atendidas en 10 días hábiles (plazo interno propuesto)                          |
-| **Comando**               | `npm run test:int -- cuenta-cliente presencial`. WhatsApp: pruebas de la fase 5 de 004 (planificadas). Plazo de las solicitudes: revisión de procedimiento, por definir (007) |
-| **Evidencia**             | `backend/test/integration/clientes/cuenta-cliente.spec.ts` y `presencial.spec.ts`; salida de la CI                                                                            |
-| **Estado**                | **Parcial.** Consentimiento: Usada (002). WhatsApp (004) y solicitudes sobre los datos (007): Planificadas                                                                    |
+| **Comando**               | `npm run test:int -- cuenta-cliente presencial`. WhatsApp (004): `npm run test:int -- canal-aviso whatsapp-sin-consentimiento`. Plazo de las solicitudes: revisión de procedimiento, por definir (007) |
+| **Evidencia**             | `backend/test/integration/clientes/cuenta-cliente.spec.ts`, `presencial.spec.ts`, `canal-aviso.spec.ts`, `canal-aviso-auditoria.spec.ts` y `notificaciones/whatsapp-sin-consentimiento.spec.ts`; salida de la CI |
+| **Estado**                | **Parcial.** Consentimiento: Usada (002). WhatsApp: Usada (004, 2026-11-12) contra el simulador: elegirlo exige aceptar el texto vigente; **0 mensajes** en el simulador para clientes sin consentimiento vigente, también si se retiró entre la cita y el recordatorio. Solicitudes sobre los datos (007): Planificadas |
 
 ## EQ-19. Privacidad: Privacidad en el asistente de IA
 
@@ -537,12 +537,12 @@ Un escenario de atributo de calidad es una descripción **concreta y medible** d
 | **Atributo de calidad** | Mantenibilidad e interoperabilidad: interoperabilidad (AC04)                                                            |
 | **Fuente**              | Equipo de desarrollo                                                                                                    |
 | **Estímulo**            | Se sustituye un adaptador por una implementación simulada o por otro proveedor                                          |
-| **Artefacto**           | Puerto `PaymentGateway` (implementado); `AIProvider` y `NotificationChannel` (planificados)                             |
+| **Artefacto**           | Puertos `PaymentGateway` y `NotificationChannel` (implementados); `AIProvider` (planificado)                            |
 | **Entorno / condición** | Pruebas                                                                                                                 |
 | **Respuesta esperada**  | Los casos de uso funcionan igual con cualquier implementación que cumpla el contrato                                    |
 | **Medida**              | Misma suite de contrato en verde con el adaptador real (entorno de pruebas) y con el simulado _(propuesta por validar)_ |
 | **Verificación**        | PR20: pruebas de contrato                                                                                               |
-| **Estado**              | Parcial: PR20 en verde contra el simulador; contra el sandbox, omitida por falta de credenciales                        |
+| **Estado**              | Parcial: PR20 en verde contra el simulador de pagos y, en 004, la suite del canal con Mailpit y el simulador de WhatsApp; contra proveedores reales, omitidas por falta de credenciales |
 
 **Ficha de medición**
 
@@ -555,7 +555,7 @@ Un escenario de atributo de calidad es una descripción **concreta y medible** d
 | **Métrica y umbral**      | Misma suite en verde con el adaptador real (ambiente de pruebas) y con el simulado                                                                     |
 | **Comando**               | `npm run test:int -- gateway-simulado gateway-sandbox`                                                                                                 |
 | **Evidencia**             | `backend/test/integration/pagos/gateway-simulado.spec.ts` y `gateway-sandbox.spec.ts`; salida de la CI                                                 |
-| **Estado**                | **Parcial.** En verde contra el simulador; contra el ambiente del proveedor, omitida sin credenciales (R15). IA y mensajería: Planificadas (005 y 004) |
+| **Estado**                | **Parcial.** En verde contra el simulador; contra el ambiente del proveedor, omitida sin credenciales (R15). Mensajería (004): la suite `notification-channel.contract.ts` en verde con `canal-correo` (Mailpit) y `canal-whatsapp` (simulador); `canal-sandbox`, omitida sin las variables `SMTP_SANDBOX_*`. IA: Planificada (005) |
 
 ## EQ-21. Observabilidad: Diagnóstico de una solicitud fallida
 

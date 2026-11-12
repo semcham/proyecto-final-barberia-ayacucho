@@ -46,13 +46,14 @@ Evidencia: `.specify/memory/constitution.md` (versión 1.3.1), `specs/001-regist
 ## 2. Estructura de carpetas
 
 ```text
-.specify/memory/constitution.md       constitución del proyecto (1.3.1)
+.specify/memory/constitution.md       constitución del proyecto (1.4.1)
 specs/
   001-registro-acceso-barberia/       implementada
   002-catalogo-citas-cliente/         implementada
   003-suscripciones-pagos/            implementada (pasarela simulada)
+  004-notificaciones-reprogramacion/  implementada (correo con Mailpit, WhatsApp simulado)
   006-escalado-cache-balanceo/        implementada
-  (004, 005 y 007: planificadas, sin carpeta todavía)
+  (005 y 007: planificadas, sin carpeta todavía)
 docs/                                 análisis, arquitectura, diseño, C4, gestión (ADR en 07-decisiones)
 tecnologia/plataforma-barberias/      backend/ y frontend/: la aplicación
 ```

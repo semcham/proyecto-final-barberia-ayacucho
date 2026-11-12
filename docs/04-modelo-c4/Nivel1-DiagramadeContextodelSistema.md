@@ -43,7 +43,7 @@ flowchart LR
 
 Leyenda: blanco = persona; azul grisáceo = sistema propio; naranja = sistema externo; azul claro = datos. Flecha discontinua = relación planificada. Correo y WhatsApp se agrupan en una caja para que el diagrama se lea de un vistazo; son dos servicios distintos (EXT-03 y EXT-04).
 
-Evidencia: actores en [01-actores](../01-analisis-de-sistema/01-actores.md); rutas en `backend/src/modules/*/*/presentation/*.controller.ts`; pasarela simulada en `backend/simulador-pagos/` y `docker-compose.yml` (servicio `pasarela-simulada`). No hay código de IA, correo ni WhatsApp.
+Evidencia: actores en [01-actores](../01-analisis-de-sistema/01-actores.md); rutas en `backend/src/modules/*/*/presentation/*.controller.ts`; pasarela simulada en `backend/simulador-pagos/` y `docker-compose.yml` (servicio `pasarela-simulada`); correo por SMTP contra Mailpit y WhatsApp simulado en `backend/src/modules/notificaciones/`, `backend/simulador-whatsapp/` y los servicios `mailpit` y `whatsapp-simulado` (004). No hay código de IA ni proveedores reales de correo o WhatsApp.
 
 ## Leyenda común de todos los diagramas
 
@@ -83,8 +83,8 @@ En algunos diagramas se usa además rojo para una solicitud rechazada. Los diagr
 | Plataforma SaaS                 | Sistema         | Todos los RF                                                    | Implementado en local: 25 RF, 1 parcial y 8 planificados |
 | Proveedor de pagos              | Sistema externo | RF23–RF26, RC05, ADR-007, ADR-022                               | **Simulado** (pasarela simulada); proveedor real planificado (candidato: Culqi, sin contratar) |
 | Proveedor de IA                 | Sistema externo | RF27, RF28, RC11, ADR-008                                       | Planificado (sin elegir)                              |
-| Servicio de correo              | Sistema externo | RF30, HU25                                                      | Planificado (sin elegir)                              |
-| Servicio de mensajería WhatsApp | Sistema externo | RF30, RF33, HU25, ADR-013                                       | Planificado (proveedor sin elegir; solo si es viable) |
+| Servicio de correo              | Sistema externo | RF30, HU25                                                      | Integrado por SMTP (004), probado con Mailpit; proveedor de producción sin elegir |
+| Servicio de mensajería WhatsApp | Sistema externo | RF30, RF33, HU25, ADR-013                                       | Integrado con un simulador (004); proveedor real sin elegir (solo si es viable) |
 
 ## Notas
 

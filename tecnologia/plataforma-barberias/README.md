@@ -7,30 +7,34 @@ funcionalidades:
 - [002 · Catálogo, citas y cuenta de cliente](../../specs/002-catalogo-citas-cliente/spec.md);
 - [003 · Suscripciones y pagos](../../specs/003-suscripciones-pagos/spec.md) (con una pasarela simulada:
   ningún cobro real);
+- [004 · Notificaciones y reprogramación](../../specs/004-notificaciones-reprogramacion/spec.md) (correo
+  contra Mailpit y WhatsApp simulado: ningún proveedor real);
 - [006 · Escalabilidad: balanceador Nginx, dos réplicas y Redis](../../specs/006-escalado-cache-balanceo/spec.md).
 
 Las guías completas (requisitos, escenarios manuales, criterios de cierre y registro de ejecuciones) están en
 [quickstart de 001](../../specs/001-registro-acceso-barberia/quickstart.md),
 [quickstart de 002](../../specs/002-catalogo-citas-cliente/quickstart.md),
-[quickstart de 003](../../specs/003-suscripciones-pagos/quickstart.md) y
+[quickstart de 003](../../specs/003-suscripciones-pagos/quickstart.md),
+[quickstart de 004](../../specs/004-notificaciones-reprogramacion/quickstart.md) y
 [quickstart de 006](../../specs/006-escalado-cache-balanceo/quickstart.md). Este archivo es el resumen.
 
 ## Contenido
 
 | Carpeta o archivo          | Qué es                                                                                                                                 |
 | -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| `backend/`                 | API REST en NestJS 11: módulos M01, M02, M03 y M06, 4 capas, PostgreSQL 16 con RLS (Kysely)                                            |
+| `backend/`                 | API REST en NestJS 11: módulos M01, M02, M03, M05 y M06, 4 capas, PostgreSQL 16 con RLS (Kysely)                                       |
 | `backend/simulador-pagos/` | Simulador de la pasarela de pagos (servicio `pasarela-simulada`, ADR-022); fuera del monolito                                          |
+| `backend/simulador-whatsapp/` | Simulador de WhatsApp (servicio `whatsapp-simulado`, ADR-026); fuera del monolito                                                   |
 | `frontend/`                | Aplicación web en React 19 + Vite 6 con sistema de diseño propio y Radix UI (ADR-014, ADR-016)                                         |
 | `db/init/`                 | Roles de PostgreSQL que crea el contenedor de la base al iniciar por primera vez                                                       |
-| `docker-compose.yml`       | Entorno de desarrollo escalado: `db`, `redis`, `preparar-backend`, `backend-1`, `backend-2`, `nginx`, `pasarela-simulada` y `frontend` |
+| `docker-compose.yml`       | Entorno de desarrollo escalado: `db`, `redis`, `preparar-backend`, `backend-1`, `backend-2`, `nginx`, `pasarela-simulada`, `mailpit`, `whatsapp-simulado` y `frontend` |
 | `nginx/`                   | Configuración del balanceador local (`nginx.conf` y la plantilla del upstream, ADR-030)                                                |
 | `.env.example`             | Variables de entorno de desarrollo (copiar a `.env`)                                                                                   |
 
 ## Ejecutar con Docker Compose
 
 Requisitos: Docker Desktop con Compose v2, **3 GB de memoria asignados a Docker** y los puertos 5433, 6380,
-3000, 3100 y 5173 libres.
+3000, 3100, 3200, 1025, 8025 y 5173 libres.
 
 ```powershell
 cd tecnologia/plataforma-barberias
@@ -46,6 +50,8 @@ docker compose up -d             # preparar-backend compila y migra una vez; lue
 | `redis`             | 6380 (para depurar) | 64 MB   | Caché del catálogo público y contadores del límite por IP; sin persistencia                                                       |
 | `db`                | 5433                | 512 MB  | PostgreSQL 16                                                                                                                     |
 | `pasarela-simulada` | **3100**            | 64 MB   | Pasarela de pagos simulada (003): página de pago con "Aprobar" y "Rechazar", notificaciones firmadas a Nginx y rutas `/control/*` |
+| `mailpit`           | 1025 y **8025**     | 32 MB   | Buzón de desarrollo (004): recibe los correos por SMTP (1025); interfaz y API en <http://localhost:8025>                         |
+| `whatsapp-simulado` | 3200                | 64 MB   | WhatsApp simulado (004): guarda los mensajes en memoria (`GET /mensajes?para=`) y tiene modos de falla en `/control/*`           |
 | `frontend`          | 5173                | 512 MB  | Vite; reenvía `/api` a Nginx                                                                                                      |
 
 - Aplicación web: <http://localhost:5173> · API (por Nginx): <http://localhost:3000/api/v1/salud> y
@@ -224,21 +230,66 @@ Son los mismos pasos que ejecuta el CI ([`.github/workflows/plataforma-barberias
   - Jest avisa a veces, al terminar `npm test`, que un proceso no cerró a tiempo ("A worker process has
     failed to exit gracefully"); todas las pruebas pasan y el aviso no cambia el resultado.
 
+## Funcionalidad 004: notificaciones y reprogramación
+
+- **Decisiones:** ADR-013 (notificaciones multicanal, revisada), ADR-025 (salida transaccional de eventos),
+  ADR-026 (correo y WhatsApp detrás de `NotificationChannel`) y ADR-032 (acciones por enlace firmado, con la
+  enmienda 1.4.0 de la constitución). Contratos:
+  [openapi de 004](../../specs/004-notificaciones-reprogramacion/contracts/openapi.yaml),
+  [rbac de 004](../../specs/004-notificaciones-reprogramacion/contracts/rbac.md),
+  [eventos](../../specs/004-notificaciones-reprogramacion/contracts/eventos.md),
+  [puerto de envío](../../specs/004-notificaciones-reprogramacion/contracts/notification-channel.md) y
+  [enlaces de acción](../../specs/004-notificaciones-reprogramacion/contracts/enlaces-de-accion.md).
+- **Migraciones `0021`–`0027`:** salida de eventos (`outbox_event`), canal y consentimiento de WhatsApp
+  (`customer_notification_preference`, `whatsapp_consent`), reprogramación de citas y usos de enlaces
+  (`appointment_reschedule`, `appointment_link_use`), avisos (`notification`), intentos de enlaces
+  (`action_link_attempt`), permiso de purga de los avisos y cambios de estado por enlace sin usuario
+  (`appointment_status_history.changed_by` admite nulo).
+- **Cómo llegan los avisos:** cada operación de la cita publica un evento en su misma transacción; la tarea
+  `despachar-eventos` crea los avisos y `enviar-avisos` los envía (las dos cada `EVENTOS_INTERVALO_MS`, 15 s,
+  con el candado de las tareas). Un fallo del correo o de WhatsApp nunca bloquea la cita: el aviso se
+  reintenta y, si WhatsApp falla, sale por correo.
+- **Ver los avisos:** los correos en <http://localhost:8025> (Mailpit); los mensajes de WhatsApp con
+  `GET http://localhost:3200/mensajes?para=<número>` y el encabezado `X-Control` (`WHATSAPP_TOKEN_CONTROL`).
+- **Variables nuevas** (`.env.example`): `SMTP_HOST`, `SMTP_PUERTO`, `SMTP_TLS`, `SMTP_USUARIO`, `SMTP_CLAVE`,
+  `CORREO_REMITENTE`, `CORREO_TIEMPO_LIMITE_MS` (5000), `WHATSAPP_PROVEEDOR` (`simulado`, o `ninguno` si
+  falta: los avisos van por correo), `WHATSAPP_URL_BASE`, `WHATSAPP_TOKEN`, `WHATSAPP_TOKEN_CONTROL`,
+  `WHATSAPP_TIEMPO_LIMITE_MS` (3000), `ENLACES_LLAVE` (llave de los enlaces del recordatorio, 32 bytes en
+  base64), `ENLACES_SAL_IP` (sal del hash de la IP de los intentos de enlaces), `URL_PUBLICA` (base de los
+  enlaces del recordatorio), `EVENTOS_INTERVALO_MS` (15000) y la red de Compose (`IP_MAILPIT`,
+  `IP_WHATSAPP`). `MAILPIT_IMAGEN` permite usar la etiqueta de Mailpit que ya esté descargada. Con Compose,
+  `docker-compose.yml` da valores **solo de desarrollo** a las que falten en `.env`.
+- **Scripts de demostración** (en `backend/`, fuera de CI, con `docker compose up -d` en marcha):
+  - `npm run demo:avisos`: siembra una barbería y un cliente, registra una cita (un correo de confirmación
+    en Mailpit), detiene `mailpit`, reprograma (la cita responde igual) y lo vuelve a iniciar (llega un solo
+    correo de reprogramación). Con `--caida`, detiene `backend-1` justo después de registrar la cita y la
+    confirmación llega igual, enviada por `backend-2`. Opciones `--url`, `--mailpit`, `--espera`, `--salida`
+    y `--manual`; usa el superusuario de desarrollo (`MEDIR_DB_SUPERUSUARIO`).
+  - `npm run whatsapp:modo -- <modo> [parámetro]`: cambia el comportamiento del WhatsApp simulado (`normal`,
+    `lento <ms>`, `caido [ms]`, `colgado`, `rechazar`, `limite`, `fallar_n <veces>` o `reiniciar`). Necesita
+    `WHATSAPP_TOKEN_CONTROL`; `WHATSAPP_SIMULADO_URL` es `http://localhost:3200` por defecto.
+- **Pantallas nuevas:** reprogramar desde Mis citas y desde la Agenda, la página del enlace del recordatorio
+  (`/e`) y "Cómo recibo mis avisos" (`/mis-avisos`, solo cliente).
+
 ## Referencias
 
 - Plan técnico: [plan de 001](../../specs/001-registro-acceso-barberia/plan.md),
-  [plan de 002](../../specs/002-catalogo-citas-cliente/plan.md) y
-  [plan de 003](../../specs/003-suscripciones-pagos/plan.md) · contratos:
+  [plan de 002](../../specs/002-catalogo-citas-cliente/plan.md),
+  [plan de 003](../../specs/003-suscripciones-pagos/plan.md) y
+  [plan de 004](../../specs/004-notificaciones-reprogramacion/plan.md) · contratos:
   [openapi de 001](../../specs/001-registro-acceso-barberia/contracts/openapi.yaml),
-  [openapi de 002](../../specs/002-catalogo-citas-cliente/contracts/openapi.yaml) y
-  [openapi de 003](../../specs/003-suscripciones-pagos/contracts/openapi.yaml) · permisos:
+  [openapi de 002](../../specs/002-catalogo-citas-cliente/contracts/openapi.yaml),
+  [openapi de 003](../../specs/003-suscripciones-pagos/contracts/openapi.yaml) y
+  [openapi de 004](../../specs/004-notificaciones-reprogramacion/contracts/openapi.yaml) · permisos:
   [rbac de 001](../../specs/001-registro-acceso-barberia/contracts/rbac.md),
-  [rbac de 002](../../specs/002-catalogo-citas-cliente/contracts/rbac.md) y
-  [rbac de 003](../../specs/003-suscripciones-pagos/contracts/rbac.md).
+  [rbac de 002](../../specs/002-catalogo-citas-cliente/contracts/rbac.md),
+  [rbac de 003](../../specs/003-suscripciones-pagos/contracts/rbac.md) y
+  [rbac de 004](../../specs/004-notificaciones-reprogramacion/contracts/rbac.md).
 - Decisiones: [ADR-014 a ADR-021](../../docs/01-analisis-de-sistema/07-decisiones-arquitectonicas.md)
   (frontend, autenticación sin tenant, sistema de diseño, indicador de sesión, carga diferida, período de
   gracia en la renovación, cuenta de cliente en varias barberías y lecturas públicas por enlace), y
-  ADR-029 y ADR-030 (caché compartida y balanceo local, funcionalidad 006), y ADR-022 a ADR-024 y ADR-031
-  (pagos, comprobantes, tareas programadas y administrador de la plataforma, funcionalidad 003).
+  ADR-029 y ADR-030 (caché compartida y balanceo local, funcionalidad 006), ADR-022 a ADR-024 y ADR-031
+  (pagos, comprobantes, tareas programadas y administrador de la plataforma, funcionalidad 003), y ADR-013,
+  ADR-025, ADR-026 y ADR-032 (notificaciones, eventos, canales y enlaces de acción, funcionalidad 004).
 - Librerías, versiones, licencias y mediciones: [tecnologias.md](../../docs/02-arquitectura-software/tecnologias.md).
 - Imágenes de marca (formato, peso máximo, licencia y autoría): [frontend/public/img/README.md](frontend/public/img/README.md).

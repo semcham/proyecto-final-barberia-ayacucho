@@ -65,11 +65,11 @@ Complexity Tracking and record an ADR):
       `scheduled_job_run`, `platform_session`, `platform_challenge`, `platform_admin`,
       `platform_audit_log`) may lack `tenant_id`, hold no business data, and the app role may only
       insert into `provider_event` and never read `platform_admin` (ADR-031); the technical attempt
-      tables `login_attempt` and `action_link_attempt` (the latter planned in 004, not yet implemented)
+      tables `login_attempt` and `action_link_attempt` (the latter implemented in 004)
       may also lack `tenant_id` and never store emails in clear or business data; `login_attempt`
       keeps the IP in clear with opportunistic deletion after 24 h (moving it to an IP hash is planned
       for 007); `action_link_attempt` stores the origin only as a salted hash, purged after 24 h; (4) appointment
-      action links (accepted, planned in 004, not yet implemented): a reminder link lets the client
+      action links (accepted, implemented in 004): a reminder link lets the client
       confirm, reschedule or cancel ONE appointment without a session; tenant and appointment come
       only from the signed link, verified before reading anything; app role without `BYPASSRLS`,
       tenant fixed and RLS; one appointment, one action, one use, expires at the start time, invalid

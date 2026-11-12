@@ -377,7 +377,7 @@ Con 2 fases L y 3 fases M, el plan completo no cabe en 4 días sin recortes. Se 
 **Quedan para el cierre** (no estaban en la lista aprobada de la fase 0):
 
 - `docs/05-gestion/02-backlog-y-sprints.md` §3.3: ADR-032 no figura (ADR-025 y ADR-026 ya figuran como Aceptados el 2026-11-04 y aún no implementados; corregido el 2026-11-06);
-- las imágenes `img/aislamiento-excepciones.png` y `img/modulos-dependencias-permitidas.png`, que se regeneran desde su código Mermaid ya actualizado;
+- la imagen `img/aislamiento-excepciones.png`, que se regenera desde su código Mermaid ya actualizado (`img/modulos-dependencias-permitidas.png` ya no se regenera: su figura se quitó de `docs/02-arquitectura-software/estilo-arquitectonico.md` §3 en el cierre, decisión del responsable);
 - `docs/05-gestion/07-guion-exposicion-y-defensa.md`, que todavía menciona "las tres excepciones".
 
 **Al cerrar (fase 7):**

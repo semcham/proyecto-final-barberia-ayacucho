@@ -1,6 +1,6 @@
 # Diseño de la API REST
 
-Contrato entre la aplicación web y el backend (cuarto punto del enfoque SDD). Las rutas de M01, M02, M03 y de salud están **implementadas** (funcionalidades 001, 002, 003 y 006). Las filas marcadas _(planificado)_ no existen en el código: son el diseño de 004, 005 y 007 y se confirmarán al especificarlas. Complemento de la documentación núcleo.
+Contrato entre la aplicación web y el backend (cuarto punto del enfoque SDD). Las rutas de M01, M02, M03 y de salud están **implementadas** (funcionalidades 001, 002, 003, 004 y 006). Las filas marcadas _(planificado)_ no existen en el código: son el diseño de 005 y 007 y se confirmarán al especificarlas. Complemento de la documentación núcleo.
 
 ## 1. Convenciones
 
@@ -18,7 +18,7 @@ Contrato entre la aplicación web y el backend (cuarto punto del enfoque SDD). L
 | Límites                 | 300 solicitudes por minuto por IP (HTTP 429); más estricto en el inicio de sesión, la activación y las notificaciones del proveedor                                             |
 | CORS                    | Solo el origen de la aplicación web                                                                                                                                              |
 | Notificación del proveedor | Sin token de usuario; se valida la **firma** HMAC del proveedor y se rechaza lo no firmado (`POST /pagos/notificaciones`)                                                     |
-| Enlaces de recordatorio _(planificado, 004)_ | Públicos pero con **token firmado de un solo uso** y vencimiento                                                                                    |
+| Enlaces de recordatorio (004, ADR-032) | Sin sesión: el **token firmado de un solo uso** viaja en el encabezado `X-Enlace-Accion` (nunca en la URL ni en el registro); vence a la hora de inicio de la cita; inválido, vencido o usado → `410` `ENLACE_NO_VALIDO`; con demasiados rechazos por IP → `429` |
 
 ## 2. Endpoints por módulo
 
@@ -41,7 +41,8 @@ Roles: **ADM** administrador de la plataforma · **PRO** propietario · **BAR** 
 | `POST /usuarios/{id}/activacion`                   | Generar de nuevo el enlace de activación                                                           | RF06       | PRO               |
 | `GET/PATCH /barberia`                              | Ver y editar datos comerciales, enlace y antelación de cancelación                                 | RF03       | PRO (BAR lectura) |
 | `PUT/DELETE /plataforma/barberias/{id}/suspension` | Suspender (con motivo) o reactivar la barbería (003, US5)                                          | RF02       | ADM               |
-| `PATCH /clientes/yo/notificaciones` _(planificado, 004)_ | Cambiar canal (correo o WhatsApp)                                                          | RF33       | CLI               |
+| `GET/PUT /clientes/yo/aviso`                       | Ver y elegir el canal de aviso (correo o WhatsApp con consentimiento) en la barbería del token (004) | RF33       | CLI               |
+| `DELETE /clientes/yo/aviso/consentimiento-whatsapp` | Retirar el consentimiento de WhatsApp; el canal vuelve a correo (004)                             | RF33       | CLI               |
 | `POST /clientes/yo/solicitudes-datos` _(planificado, 007)_ | Pedir acceso, rectificación o eliminación                                                | RF32       | CLI               |
 
 ### M02 Catálogo y citas
@@ -61,7 +62,9 @@ Roles: **ADM** administrador de la plataforma · **PRO** propietario · **BAR** 
 | `POST /citas/{id}/estado`                                  | Transición válida: aprobar, completar o no asistió                          | RF15 | BAR (las suyas), PRO  |
 | `GET /agenda?fecha=&barbero=`                              | Agenda del día con marcas de conflicto y cancelación tardía                 | RF16 | BAR (la suya), PRO    |
 | `GET /clientes/yo/citas?pagina=&tamano=`                   | Historial del cliente en la barbería de su sesión                           | RF17 | CLI                   |
-| `POST /recordatorios/{token}/responder` _(planificado, 004)_ | Confirmar, reprogramar o cancelar con enlace firmado de un solo uso       | RF34 | PUB (token)           |
+| `POST /citas/{id}/reprogramar`                             | Reprogramar con las reglas de una reserva nueva; el cliente, con la antelación mínima (004) | RF13 | CLI (las suyas), PRO  |
+| `GET /enlaces/accion`                                      | Datos mínimos de la cita del enlace, sin consumirlo (004, ADR-032)          | RF34 | PUB (enlace)          |
+| `POST /enlaces/accion/confirmar`, `…/cancelar`, `…/reprogramar` | Confirmar asistencia, cancelar o reprogramar con el enlace del recordatorio (004) | RF34, RF13, RF14 | PUB (enlace) |
 
 ### M03 Suscripciones y pagos
 
@@ -101,7 +104,7 @@ el período siguiente con otro plan: no hay una ruta aparte.
 | `GET /salud`                        | Vida: la instancia responde y PostgreSQL acepta consultas                     | RC         | PUB      |
 | `GET /salud/listo`                  | Listo para recibir tráfico: base accesible y al día con las migraciones (006) | RC         | PUB      |
 
-Las notificaciones (M05, planificadas en 004) no expondrán endpoints propios: se dispararán por eventos y por el recordatorio programado del día de la cita.
+Las notificaciones (M05, implementadas en 004) no exponen endpoints propios: se disparan por eventos (ADR-025) y por el recordatorio programado 2 h antes de la cita, y las envía la tarea `enviar-avisos`.
 
 ## 3. Reglas de contrato
 
@@ -118,7 +121,9 @@ Las notificaciones (M05, planificadas en 004) no expondrán endpoints propios: s
 - **Pagos (003):** el importe se guarda en céntimos enteros. Un pago abierto se reutiliza si es el mismo intento (`200`) y se anula si no (`201` con el nuevo); con un comprobante en revisión, `409` `COMPROBANTE_YA_EN_REVISION`; con un período ya pagado por adelantado, `409` `PAGO_ADELANTADO_NO_PERMITIDO`. Con la pasarela caída o lenta, `503` `PAGO_EN_LINEA_NO_DISPONIBLE` en 3 s o menos, con la transferencia como alternativa.
 - **Notificaciones del proveedor (003, PR17):** sin firma, con firma inválida o fuera de la ventana de tiempo, `401` sin efecto y una línea `PAGO_NOTIFICACION_RECHAZADA` en el registro, sin el cuerpo. Una notificación repetida (mismo `evento_id`) responde `200` sin volver a aplicarse.
 - **Comprobantes (003, ADR-023):** solo se sirven con una sesión con permiso, como adjunto con `Cache-Control: no-store` y `X-Content-Type-Options: nosniff`. El tipo se verifica por los bytes, no por el nombre. Nginx admite 6 MB solo en la ruta de subida (16 KB en el resto).
+- **Reprogramar y enlaces (004):** la reprogramación usa la misma restricción de exclusión que la reserva (`409` `HORARIO_NO_DISPONIBLE`); el cliente con menos antelación que la mínima de cancelación recibe `422` `SIN_ANTELACION_PARA_REPROGRAMAR` (el propietario sí puede). Una acción por enlace se aplica una sola vez, aunque llegue a las dos réplicas a la vez; un intento fallido de reprogramar no consume el enlace.
+- **Canal de aviso (004):** elegir WhatsApp sin aceptar el texto vigente responde `422` `CONSENTIMIENTO_REQUERIDO`; un número inválido, `422` `VALIDACION`. Cualquier campo de barbería en el cuerpo responde `400`.
 - El contrato completo de cada funcionalidad está en `specs/<funcionalidad>/contracts/openapi.yaml`; esta tabla es el resumen.
 
-Evidencia: controladores en `backend/src/modules/*/*/presentation/*.controller.ts` y `backend/src/host/salud.controller.ts`; pruebas de contrato en `backend/test/contract/` (`auth`, `usuarios`, `registro-barberia`, `clientes`, `catalogo`, `citas`, `agenda`, `publico`, `suscripcion`) y matrices `rbac.spec.ts`, `rbac-002.spec.ts` y `rbac-003.spec.ts`.
+Evidencia: controladores en `backend/src/modules/*/*/presentation/*.controller.ts` y `backend/src/host/salud.controller.ts`; pruebas de contrato en `backend/test/contract/` (`auth`, `usuarios`, `registro-barberia`, `clientes`, `catalogo`, `citas`, `agenda`, `publico`, `suscripcion`, `enlaces`, `canal-correo`, `canal-whatsapp`) y matrices `rbac.spec.ts`, `rbac-002.spec.ts`, `rbac-003.spec.ts` y `rbac-004.spec.ts`.
 - _(Planificado, 005)_ El asistente nunca devolverá datos de otro tenant; sus herramientas serán las mismas operaciones de arriba con el rol del usuario.
