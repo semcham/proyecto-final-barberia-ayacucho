@@ -1,6 +1,30 @@
 <!--
 Sync Impact Report
 ==================
+Version change: 1.5.0 → 1.6.0
+Bump rationale: MINOR. Se amplía la lista de datos mínimos que pueden llevar los mensajes del principio
+VII: los avisos del adelanto de reserva (principio V 1.5.0, ADR-033) pueden llevar el monto del
+adelanto, el código de la reserva, la hora límite para pagar y, en un rechazo, el motivo. Sin ellos el
+cliente no puede pagar ni el propietario reconocer el pago. Aprobada por el responsable el 2026-11-12,
+tras el análisis de consistencia de la funcionalidad 008 (hallazgo C1). La prohibición de teléfonos,
+correos y datos de pago (tarjeta, cuentas, números de operación completos y comprobantes) no cambia.
+
+Modified principles:
+  - VII. Notificaciones con consentimiento y sin bloqueo: datos mínimos de los avisos del adelanto.
+Added principles: ninguno
+Added sections: ninguna
+Removed sections: ninguna
+
+Templates requiring updates:
+  ✅ .specify/templates/plan-template.md — puerta VII (versión 1.6.0)
+  ✅ .specify/templates/spec-template.md y tasks-template.md — revisados; sin cambios necesarios
+  ✅ specs/008-adelanto-reserva-qr/ — plan (Constitution Check y Complexity Tracking), spec y contratos
+  ✅ docs/05-gestion/03-sdd-spec-kit.md — versión de la constitución
+  ✅ specs/001 a 006 — sin cambios: no envían avisos del adelanto
+
+Follow-up TODOs: ninguno.
+
+--- Historial: informe de la versión 1.5.0 ---
 Version change: 1.4.1 → 1.5.0
 Bump rationale: MINOR. Se amplía materialmente la guía del principio V: además de los pagos de la
 suscripción que procesa la plataforma, se permite registrar y verificar el adelanto de una cita que
@@ -434,12 +458,14 @@ uso autorizados.
 - Los mensajes MUST contener solo los datos mínimos. Sobre una cita: nombre de la barbería,
   servicio, nombre visible del barbero, fecha y hora, la hora anterior si se reprogramó y los
   enlaces de acción del recordatorio. En los avisos al propietario sobre su suscripción: además, el
-  plan, el período y el motivo (de un rechazo o de una activación manual). El cuerpo de un mensaje
+  plan, el período y el motivo (de un rechazo o de una activación manual). En los avisos del
+  adelanto de reserva (principio V, ADR-033): además, el monto del adelanto, el código de la
+  reserva, la hora límite para pagar y, en un rechazo, el motivo. El cuerpo de un mensaje
   MUST NOT incluir teléfonos, correos ni datos de pago (de tarjeta, de cuentas, números de
   operación completos ni datos de comprobantes).
 - Los recordatorios MUST ejecutarse sin duplicados entre instancias.
 
-**Razón:** ADR-012, ADR-013, RC08 y RC16.
+**Razón:** ADR-012, ADR-013, ADR-033, RC08 y RC16.
 
 ### VIII. Redis solo como caché
 
@@ -560,4 +586,4 @@ implementación. La excepción existe solo porque la plataforma de CI impone la 
   alternativa más simple descartada, y registrarse como ADR.
 - La guía de ejecución del proyecto está en `README.md` y en `docs/`.
 
-**Version**: 1.5.0 | **Ratified**: 2026-10-15 | **Last Amended**: 2026-11-12
+**Version**: 1.6.0 | **Ratified**: 2026-10-15 | **Last Amended**: 2026-11-12

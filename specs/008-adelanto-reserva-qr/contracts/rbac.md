@@ -28,6 +28,7 @@ responde 401 en todas estas rutas (ADR-031). La prueba `rbac-008.spec.ts` lee es
 | `POST /citas/{id}/reprogramar`        | Con la cita PENDIENTE: el CLIENTE recibe 409 `ADELANTO_PENDIENTE`; el PROPIETARIO sí puede (R11)     |
 | `POST /citas/{id}/cancelar`           | Sin cambio de permisos; deja el adelanto ANULADO, POR_DEVOLVER o RETENIDO (R10)                      |
 | `POST /citas/{id}/estado` (no asistió) | Sin cambio de permisos; deja el adelanto RETENIDO                                                    |
+| `POST /citas/{id}/estado` (aprobar, destino CONFIRMADA) | En una cita con adelanto, **409 `ADELANTO_PENDIENTE`** para el PROPIETARIO y el BARBERO: se confirma solo con `POST /citas/{id}/adelanto/confirmacion`, que exige un pago registrado (decisión del responsable del 2026-11-12, análisis de 008, hallazgo P1). Sin adelanto, igual que en 002 |
 | Agenda y historial del cliente        | Sin cambio de permisos; muestran el estado del adelanto y el saldo (el barbero ve el estado, no el número) |
 
 **Operaciones nuevas de la matriz de autorización** (`Permisos` de M03 y de M02): `CONFIGURAR_ADELANTO`,

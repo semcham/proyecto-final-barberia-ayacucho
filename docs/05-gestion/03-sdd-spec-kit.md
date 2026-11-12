@@ -46,7 +46,7 @@ Evidencia: `.specify/memory/constitution.md` (versión 1.3.1), `specs/001-regist
 ## 2. Estructura de carpetas
 
 ```text
-.specify/memory/constitution.md       constitución del proyecto (1.5.0)
+.specify/memory/constitution.md       constitución del proyecto (1.6.0)
 specs/
   001-registro-acceso-barberia/       implementada
   002-catalogo-citas-cliente/         implementada

@@ -193,7 +193,7 @@ El día de la cita el propietario y el cliente ven el **saldo a pagar** (precio 
 ### Key Entities _(include if feature involves data)_
 
 - **Configuración del adelanto** (una por barbería): si está activo, tipo (monto fijo o porcentaje), valor, plazo para pagar, imagen del QR de la barbería y fecha del último cambio.
-- **Adelanto de la cita** (uno por cita pendiente o confirmada con adelanto): monto, código de la reserva, hora límite, QR usado, estado (por pagar, pago por revisar, confirmado, vencido, por devolver, devuelto, retenido) y fechas de cada cambio.
+- **Adelanto de la cita** (uno por cita pendiente o confirmada con adelanto): monto, código de la reserva, hora límite, QR usado, estado (por pagar, pago por revisar, confirmado, vencido, anulado (cita cancelada antes de registrar el pago), por devolver, devuelto, retenido) y fechas de cada cambio.
 - **Registro de pago del adelanto**: número de operación (único dentro de la barbería), captura opcional y privada, fecha del registro, resultado de la revisión (pendiente, confirmado o rechazado) y motivo del rechazo.
 - **Cita** (de 002): suma la relación con su adelanto; usa sus estados existentes, pendiente y confirmada.
 

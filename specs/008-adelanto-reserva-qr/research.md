@@ -84,7 +84,11 @@ responsable.
   `UNIQUE (tenant_id, operation_number)` en `booking_deposit_payment`, también para registros rechazados. Un solo
   registro vigente por adelanto: índice único parcial `(tenant_id, deposit_id) WHERE review_result IS DISTINCT
   FROM 'RECHAZADO'`. El código de la reserva: 6 caracteres de un alfabeto sin ambigüedades (sin 0/O ni 1/I/L),
-  `UNIQUE (tenant_id, code)`, generado con `node:crypto` en infraestructura y reintentado ante choque.
+  `UNIQUE (tenant_id, code)`, generado con `node:crypto` en infraestructura. El alta del adelanto usa
+  `INSERT ... ON CONFLICT (tenant_id, code) DO NOTHING RETURNING id` y, si no inserta, prueba otro código (hasta
+  5 veces): un choque no aborta la transacción de la reserva, como `publicarUnaVez` de 004. Una violación del
+  número de operación (`23505`) sí aborta la transacción del registro y se traduce en 409
+  `NUMERO_OPERACION_REPETIDO`: no hay nada más que guardar en ella.
 - **Justificación:** la unicidad la garantiza la base aunque lleguen dos registros a la vez; comparar solo
   dentro de la barbería evita revelar datos de otra (principio III).
 - **Alternativa descartada:** unicidad entre barberías, como el número de operación aprobado de 003: allí los
@@ -136,6 +140,18 @@ responsable.
   nueva hora deja la hora límite después de `inicio − 30 min`, se mantiene la hora límite (el propietario decide
   conscientemente).
 - **Justificación:** reprogramar una cita sin pagar abriría una forma de retener horarios sin adelanto.
+
+## R15 · La aprobación de 002 no confirma un adelanto
+
+- **Decisión (del responsable, 2026-11-12; análisis de consistencia, hallazgo P1):** `CambiarEstadoCita` con
+  destino CONFIRMADA (`POST /citas/{id}/estado`, que en 002 pueden usar el propietario y el barbero en sus citas)
+  responde **409 `ADELANTO_PENDIENTE`** si la cita tiene adelanto, para los dos roles. La única forma de confirmar
+  una cita con adelanto es `ConfirmarAdelanto` (solo propietario, con un pago registrado). Las citas sin adelanto
+  siguen igual que en 002.
+- **Justificación:** sin esta regla se confirmaría una cita sin revisar el pago, el adelanto quedaría POR_PAGAR y la
+  tarea de vencimiento chocaría con una cita ya confirmada.
+- **Alternativas descartadas:** tratar la aprobación del propietario como confirmación del adelanto (dos caminos
+  para lo mismo) y dejar que el barbero confirme pagos (amplía quién verifica dinero).
 
 ## R12 · Restricciones por estado de la suscripción
 

@@ -71,7 +71,7 @@ paths:
         "403": { $ref: "#/components/responses/AccesoDenegadoOSuscripcion" }
         "413": { description: Archivo de más de 1 MB }
         "422":
-          description: ARCHIVO_INVALIDO (no es JPEG ni PNG por sus bytes)
+          description: VALIDACION con el campo "archivo" (no es JPEG ni PNG por sus bytes; mismo error que los comprobantes de 003)
           content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
     get:
       tags: [Configuración del adelanto (propietario)]
@@ -105,6 +105,11 @@ paths:
           description: RESERVA_INVALIDA (002) o SIN_TIEMPO_PARA_ADELANTO
           content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
 
+  # Cambio sobre 004 (POST /citas/{id}/reprogramar, contrato de 004): con la cita PENDIENTE por su adelanto, el
+  # CLIENTE recibe 409 ADELANTO_PENDIENTE ("paga y espera la confirmación, o cancela"); el PROPIETARIO puede
+  # reprogramarla (research R11). No se agrega una ruta nueva.
+  # Cambio sobre 002 (POST /citas/{id}/estado, destino CONFIRMADA): en una cita con adelanto, 409 ADELANTO_PENDIENTE
+  # para el propietario y el barbero; se confirma solo con POST /citas/{id}/adelanto/confirmacion (research R15).
   /citas/{id}/adelanto:
     get:
       tags: [Adelanto de la cita (cliente y propietario)]
@@ -163,7 +168,7 @@ paths:
           content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
         "413": { description: Captura de más de 5 MB }
         "422":
-          description: VALIDACION (formato del número), ARCHIVO_INVALIDO o ADELANTO_VENCIDO (pasó la hora límite)
+          description: VALIDACION (formato del número o archivo inválido por sus bytes, como en 003) o ADELANTO_VENCIDO (pasó la hora límite)
           content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
 
   /citas/{id}/adelanto/captura:
@@ -356,18 +361,15 @@ components:
         devueltoEn: { type: [string, "null"], format: date-time }
 
     CitaConAdelanto:
-      type: object
-      description: La Cita de 002 (estado PENDIENTE o CONFIRMADA), con su adelanto si lo tiene
-      required: [id, estado, inicio, fin, servicio, barbero]
-      properties:
-        id: { type: string, format: uuid }
-        estado: { type: string, enum: [PENDIENTE, CONFIRMADA, COMPLETADA, NO_ASISTIO, CANCELADA] }
-        inicio: { type: string, format: date-time }
-        fin: { type: string, format: date-time }
-        servicio: { type: string }
-        barbero: { type: string }
-        precio: { type: string, description: Como en 002 }
-        adelanto: { oneOf: [{ $ref: "#/components/schemas/Adelanto" }, { type: "null" }] }
+      description: >
+        El esquema Cita de 002 sin cambios (specs/002-catalogo-citas-cliente/contracts/openapi.yaml, que no cierra
+        sus propiedades, así que el campo nuevo no rompe su prueba de contrato), más el campo adelanto. Con adelanto,
+        estado es PENDIENTE hasta la confirmación.
+      allOf:
+        - $ref: "../../002-catalogo-citas-cliente/contracts/openapi.yaml#/components/schemas/Cita"
+        - type: object
+          properties:
+            adelanto: { oneOf: [{ $ref: "#/components/schemas/Adelanto" }, { type: "null" }] }
 
     AdelantoEnBandeja:
       type: object

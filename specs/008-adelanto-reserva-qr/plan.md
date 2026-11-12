@@ -65,7 +65,7 @@ barbería al día; tres pantallas nuevas y cambios menores en Reservar, Mis cita
 
 _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
-Gates from `.specify/memory/constitution.md` (v1.5.0):
+Gates from `.specify/memory/constitution.md` (v1.6.0; la 1.6.0, aprobada el 2026-11-12 tras el análisis de consistencia, amplía VII con los datos de los avisos del adelanto):
 
 - [x] **I. Seis módulos**: no hay módulo nuevo. `adelantos` es un submódulo de M03. Llamadas solo por `index`:
       M02 → M03 (`AdelantosApi`), M02 → M01 (ya existe), M05 → M01 (ya existe, solo lectura). M03 no llama a M02:
@@ -86,8 +86,8 @@ Gates from `.specify/memory/constitution.md` (v1.5.0):
 - [x] **VII. Notificaciones**: los avisos del adelanto son eventos del bus que M05 envía por
       `NotificationChannel`, asíncronos, con respaldo por correo y sin bloquear. **Contenido mínimo**: barbería,
       servicio, fecha y hora, monto, código de la reserva, hora límite y, en un rechazo, el motivo; nunca el número
-      de operación, la captura, teléfonos ni correos (FR-024). Los "datos de pago" que prohíbe VII son los de
-      tarjeta o cuenta; el monto y el código del adelanto son necesarios para pagar (ver Complexity Tracking).
+      de operación, la captura, teléfonos ni correos (FR-024). El monto, el código y la hora límite están en la
+      lista de datos mínimos de VII desde la 1.6.0.
 - [x] **VIII. Redis**: no interviene.
 - [x] **IX. Solo web**: pantallas web responsive.
 - [x] **X. Pruebas**: por historia, con PR09 (aislamiento de las cuatro tablas y de los archivos), PR16 (reservas
@@ -110,7 +110,7 @@ operación.
 specs/008-adelanto-reserva-qr/
 ├── spec.md
 ├── plan.md              # este archivo
-├── research.md          # fase 0: decisiones R01–R14
+├── research.md          # fase 0: decisiones R01–R15
 ├── data-model.md        # fase 1: tablas, estados y migraciones
 ├── quickstart.md        # fase 1: guía de validación
 ├── contracts/
@@ -140,7 +140,7 @@ tecnologia/plataforma-barberias/
 │   │   │   │   ├── adelantos/                 # submódulo nuevo
 │   │   │   │   │   ├── domain/                # politica-adelanto.ts, adelanto.ts, numero-operacion.ts, codigo-reserva.ts
 │   │   │   │   │   ├── application/           # configurar-adelanto.ts, registrar-pago.ts, rechazar-pago.ts,
-│   │   │   │   │   │                          # marcar-devuelto.ts, consultar-adelanto.ts, adelantos-api.ts, ports/
+│   │   │   │   │   │                          # marcar-devuelto.ts, consultar-adelanto.ts, adelantos-api-impl.ts, ports/
 │   │   │   │   │   ├── infrastructure/        # kysely-*.ts, archivos-adelanto-postgres.ts, plataforma/adelantos-por-vencer.ts
 │   │   │   │   │   └── presentation/          # adelanto-configuracion.controller.ts, adelanto-cita.controller.ts
 │   │   │   │   ├── pagos/domain/tipo-de-archivo.ts      # se reutiliza (QR: solo imágenes)
@@ -280,5 +280,4 @@ ADR-026) → M03 `adelantos`, M02 `citas`, M05 → PR31, PR32, PR09, PR16, PR08,
 
 | Tensión | Por qué se necesita | Alternativa más simple descartada |
 | ------- | ------------------- | --------------------------------- |
-| Los avisos del adelanto llevan el **monto** y el **código** (principio VII pide datos mínimos y prohíbe "datos de pago") | Sin el monto y el código el cliente no puede pagar ni el propietario reconocer el pago; no son datos de tarjeta ni de cuenta, que es lo que VII protege | Mandar solo "tienes un adelanto pendiente": obliga a entrar a la aplicación y no cumple US2-2. El número de operación y la captura **no** viajan en ningún aviso |
 | M03 guarda una **copia** del servicio, la hora y la zona de la cita | Los eventos que publica M03 (registro y rechazo del pago) necesitan esos datos para el aviso, y M03 no puede leer a M02 | Que M03 llame a M02: lo prohíbe la matriz. Mover el registro del pago a M02: contradice que M03 sea el dueño del adelanto. La copia se actualiza desde M02 al reprogramar (R11) |

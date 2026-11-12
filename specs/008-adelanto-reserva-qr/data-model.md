@@ -122,8 +122,10 @@ RETENIDO. Una cita `COMPLETADA` deja el adelanto CONFIRMADO, descontado del prec
 
 - `barberias_app`: `SELECT, INSERT` en las cuatro tablas; `UPDATE` solo de las columnas que cambian
   (`booking_deposit_settings` completa; en `booking_deposit`: `status`, `resolved_at`, `refunded_at`,
-  `refunded_by`, `service_name`, `starts_at`, `time_zone`; en `booking_deposit_payment`: las de revisión). Sin
-  `DELETE` (evidencia), salvo el reemplazo del QR anterior, que se conserva mientras una cita lo use.
+  `refunded_by`, `service_name`, `starts_at`, `time_zone`; en `booking_deposit_payment`: `review_result`,
+  `reviewed_at`, `reviewed_by` y `rejection_reason`). **Sin `DELETE` ni `UPDATE`** en `booking_deposit_file`:
+  reemplazar el QR inserta un archivo nuevo y cambia `booking_deposit_settings.qr_file_id`; el anterior se conserva
+  porque las citas reservadas con él lo siguen mostrando (FR-004). No hay purga de archivos en 008.
 - `barberias_plataforma`: `SELECT (id, tenant_id, status, due_at, review_limit_at)` sobre `booking_deposit`, con
   política `FOR SELECT ... USING (true)` (lista cerrada ampliada; PR09 `lectura-plataforma` la verifica). Nada
   sobre las otras tres tablas.

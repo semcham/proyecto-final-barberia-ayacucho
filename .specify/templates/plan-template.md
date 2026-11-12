@@ -40,7 +40,7 @@
 
 _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
-Gates from `.specify/memory/constitution.md` (v1.5.0). Mark each ✅ / ❌ (justify ❌ in
+Gates from `.specify/memory/constitution.md` (v1.6.0). Mark each ✅ / ❌ (justify ❌ in
 Complexity Tracking and record an ADR):
 
 - [ ] **I. Six modules**: work fits in M01–M06 (no new module); cross-module calls only via
@@ -87,7 +87,9 @@ Complexity Tracking and record an ADR):
 - [ ] **VII. Notifications**: `NotificationChannel` port driven by events; WhatsApp consent
       recorded; async; failure never blocks the operation; email fallback; messages carry only
       barbershop, service, barber's visible name, date and time, previous time and action links (owner
-      subscription notices: also plan, period and reason); never phones, emails or payment data
+      subscription notices: also plan, period and reason; booking deposit notices: also deposit amount,
+      booking code, payment deadline and rejection reason); never phones, emails or payment data
+      (card, account, full operation numbers, receipts)
 - [ ] **VIII. Redis**: cache (TTL + invalidation) and non-critical counters only (general
       rate limit, loss-tolerant); security or cost counters (login attempts, AI quota) and security
       state stay in PostgreSQL; never source of truth; system works if Redis is down
