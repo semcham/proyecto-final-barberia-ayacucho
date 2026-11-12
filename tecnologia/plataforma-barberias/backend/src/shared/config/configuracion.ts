@@ -298,12 +298,35 @@ export class Configuracion {
     remitente: correo('CORREO_REMITENTE'),
     tiempoLimiteMs: enteroEnRango('CORREO_TIEMPO_LIMITE_MS', 5000, 100, 30_000),
   };
+  /**
+   * 004 (fase 5, ADR-026): WhatsApp detrás de NotificationChannel. `simulado` usa el simulador de desarrollo y
+   * pruebas (backend/simulador-whatsapp/, nunca en producción); `ninguno` (por defecto, sin proveedor contratado,
+   * R17) deja WhatsApp sin canal: los avisos salen por correo, el respaldo. Un proveedor real será otro valor y otro
+   * adaptador que pase la misma suite de contrato.
+   */
+  readonly whatsapp = Configuracion.leerWhatsapp();
   /** URL pública de la interfaz, para los enlaces del recordatorio (`URL_PUBLICA/e#<token>`). */
   readonly urlPublica = urlHttp('URL_PUBLICA', opcional('URL_PUBLICA') ?? this.frontendBaseUrl);
   /** Despacho de la salida de eventos (ADR-025, R05): tarea despachar-eventos, 15 s por defecto. */
   readonly eventos = {
     intervaloMs: enteroEnRango('EVENTOS_INTERVALO_MS', 15_000, 1000, 3_600_000),
   };
+
+  private static leerWhatsapp():
+    | { proveedor: 'ninguno' }
+    | { proveedor: 'simulado'; urlBase: string; token: string; tiempoLimiteMs: number } {
+    const proveedor = (opcional('WHATSAPP_PROVEEDOR') ?? 'ninguno').trim();
+    if (proveedor === 'ninguno') return { proveedor };
+    if (proveedor !== 'simulado') {
+      throw new Error('La variable de entorno WHATSAPP_PROVEEDOR debe ser "simulado" o "ninguno"');
+    }
+    return {
+      proveedor,
+      urlBase: urlHttp('WHATSAPP_URL_BASE', requerida('WHATSAPP_URL_BASE')),
+      token: secreto('WHATSAPP_TOKEN', 8),
+      tiempoLimiteMs: enteroEnRango('WHATSAPP_TIEMPO_LIMITE_MS', 3000, 100, 30_000),
+    };
+  }
 
   /** La llave de los enlaces es propia: distinta de la de TOTP, y la sal, distinta de la llave. */
   private static leerEnlaces(llaveTotp: Buffer): { llave: Buffer; salIp: string } {

@@ -5,8 +5,8 @@ import { EnviarAvisos } from './application/enviar-avisos';
 import { ManejadoresDeCita } from './application/manejadores-de-cita';
 import { ManejadorRecordatorio } from './application/manejador-recordatorio';
 import { AvisoRepository, PendientesDeAvisos } from './application/ports/aviso-repository';
-import { NotificationChannel } from './application/ports/notification-channel';
-import { crearCanalDeCorreo } from './infrastructure/fabrica-canales';
+import { CanalesDeAviso } from './application/ports/notification-channel';
+import { crearCanalesDeAviso } from './infrastructure/fabrica-canales';
 import { KyselyAvisoRepository } from './infrastructure/kysely-aviso-repository';
 import { AvisosPendientesPlataforma } from './infrastructure/plataforma/avisos-pendientes';
 
@@ -17,14 +17,16 @@ import { AvisosPendientesPlataforma } from './infrastructure/plataforma/avisos-p
  * revisado).
  *
  * Fase 3: avisos de cita por correo (manejadores, envío con reintentos y purga a los 90 días).
+ * Fase 5: WhatsApp (simulado) con consentimiento, y el correo como respaldo.
  */
 @Module({
   imports: [AccesoBarberiasModule],
   providers: [
     {
-      provide: NotificationChannel,
+      // Fase 5: el correo y WhatsApp (simulado, o no disponible sin proveedor), cada uno con su interruptor.
+      provide: CanalesDeAviso,
       inject: [Configuracion, Clock],
-      useFactory: (configuracion: Configuracion, reloj: Clock) => crearCanalDeCorreo(configuracion, reloj),
+      useFactory: (configuracion: Configuracion, reloj: Clock) => crearCanalesDeAviso(configuracion, reloj),
     },
     { provide: AvisoRepository, useClass: KyselyAvisoRepository },
     { provide: PendientesDeAvisos, useClass: AvisosPendientesPlataforma },

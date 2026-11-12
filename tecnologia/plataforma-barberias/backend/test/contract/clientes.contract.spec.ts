@@ -1,7 +1,7 @@
 import { type AppDePrueba, crearApp } from '../helpers/app';
-import { erroresDeContrato002 } from '../helpers/contrato';
+import { erroresDeContrato002, erroresDeContrato004 } from '../helpers/contrato';
 import { type BarberiaSembrada, sembrarBarberia, sembrarCliente } from '../helpers/fixtures';
-import { tokenPara } from '../helpers/sesiones';
+import { sesionCliente, tokenPara } from '../helpers/sesiones';
 import { cerrarPools } from '../helpers/test-db';
 
 // T081 · Contrato (specs/002-catalogo-citas-cliente/contracts/openapi.yaml) de POST /clientes/registro,
@@ -114,5 +114,43 @@ describe('Contrato 002: cuenta de cliente', () => {
       .send({ barberia: b.slug })
       .expect(403);
     expect(erroresDeContrato002('/auth/barberia', 'post', 403, prohibido.body)).toEqual([]);
+  });
+
+  // T110 (004, RF33): GET y PUT /clientes/yo/aviso según specs/004-notificaciones-reprogramacion/contracts/openapi.yaml
+  // (PreferenciaAviso; 422 VALIDACION o CONSENTIMIENTO_REQUERIDO). DELETE responde 204 sin cuerpo.
+  it('GET y PUT /clientes/yo/aviso (004): 200 con PreferenciaAviso, 422; DELETE 204', async () => {
+    const { token } = await sesionCliente(a.tenantId);
+    const como = { Authorization: `Bearer ${token}` };
+    const ruta = '/api/v1/clientes/yo/aviso';
+    const leida = await prueba.agente.get(ruta).set(como).expect(200);
+    expect(erroresDeContrato004('/clientes/yo/aviso', 'get', 200, leida.body)).toEqual([]);
+
+    const guardada = await prueba.agente
+      .put(ruta)
+      .set(como)
+      .send({
+        canal: 'WHATSAPP',
+        numeroWhatsapp: '+51 987 654 321',
+        aceptaWhatsapp: true,
+        versionTexto: '2026-11',
+      })
+      .expect(200);
+    expect(erroresDeContrato004('/clientes/yo/aviso', 'put', 200, guardada.body)).toEqual([]);
+
+    const sinAceptar = await prueba.agente
+      .put(ruta)
+      .set(como)
+      .send({ canal: 'WHATSAPP', numeroWhatsapp: '+51 900 111 222' })
+      .expect(422);
+    expect(erroresDeContrato004('/clientes/yo/aviso', 'put', 422, sinAceptar.body)).toEqual([]);
+    const invalido = await prueba.agente
+      .put(ruta)
+      .set(como)
+      .send({ canal: 'WHATSAPP', numeroWhatsapp: 'abc', aceptaWhatsapp: true, versionTexto: '2026-11' })
+      .expect(422);
+    expect(erroresDeContrato004('/clientes/yo/aviso', 'put', 422, invalido.body)).toEqual([]);
+
+    const retiro = await prueba.agente.delete(`${ruta}/consentimiento-whatsapp`).set(como).expect(204);
+    expect(retiro.text).toBe('');
   });
 });

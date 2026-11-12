@@ -82,9 +82,10 @@ describe('Rol', () => {
 });
 
 describe('Permisos', () => {
-  it('el propietario puede todas las operaciones protegidas salvo cambiar de barbería', () => {
+  it('el propietario puede todas las operaciones protegidas salvo las solo de cliente', () => {
     const negadas = OPERACIONES.filter((operacion) => !Permisos.permite('PROPIETARIO', operacion));
-    expect(negadas).toEqual(['CAMBIAR_BARBERIA']);
+    // 004 (US4): el canal de aviso es del propio cliente.
+    expect(negadas).toEqual(['CAMBIAR_BARBERIA', 'GESTIONAR_CANAL_AVISO']);
   });
 
   it('el barbero solo ve su usuario y su barbería y cierra su sesión', () => {
@@ -92,8 +93,13 @@ describe('Permisos', () => {
     expect(permitidas).toEqual(['VER_USUARIO_ACTUAL', 'CERRAR_SESION', 'VER_BARBERIA']);
   });
 
-  it('el cliente solo ve su usuario, cierra su sesión y cambia de barbería', () => {
+  it('el cliente solo ve su usuario, cierra su sesión, cambia de barbería y elige su canal de aviso', () => {
     const permitidas = OPERACIONES.filter((operacion) => Permisos.permite('CLIENTE', operacion));
-    expect(permitidas).toEqual(['VER_USUARIO_ACTUAL', 'CERRAR_SESION', 'CAMBIAR_BARBERIA']);
+    expect(permitidas).toEqual([
+      'VER_USUARIO_ACTUAL',
+      'CERRAR_SESION',
+      'CAMBIAR_BARBERIA',
+      'GESTIONAR_CANAL_AVISO',
+    ]);
   });
 });

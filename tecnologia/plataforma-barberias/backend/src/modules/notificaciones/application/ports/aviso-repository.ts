@@ -41,7 +41,16 @@ export abstract class AvisoRepository {
    * lo tiene o ya no hay nada que enviar.
    */
   abstract reclamar(id: string, ahora: Date, plazoMs: number): Promise<AvisoReclamado | null>;
-  abstract marcarEnviado(id: string, canal: CanalDeAviso, ahora: Date): Promise<void>;
+  /**
+   * Aceptado por el canal. `respaldo`: lo aceptó el correo tras fallar WhatsApp (ENVIADO_RESPALDO, fase 5).
+   * `intentos`: los intentos fallidos hasta este envío (si no se indica, no cambian).
+   */
+  abstract marcarEnviado(
+    id: string,
+    canal: CanalDeAviso,
+    ahora: Date,
+    opciones?: { respaldo?: boolean; intentos?: number },
+  ): Promise<void>;
   /** Vuelve a PENDIENTE para otro intento. */
   abstract reintentar(
     id: string,

@@ -55,6 +55,8 @@ export const ESTADO_POR_CODIGO: Record<string, number> = {
   SIN_ANTELACION_PARA_REPROGRAMAR: 422,
   // Fase 4 (T091): un solo cuerpo para todo enlace que no sirve (DEMASIADOS_INTENTOS ya es 429, arriba).
   ENLACE_NO_VALIDO: 410,
+  // Fase 5 (T118): elegir WhatsApp sin aceptar el texto vigente.
+  CONSENTIMIENTO_REQUERIDO: 422,
 };
 
 function desdeHttp(estado: number): CuerpoError {
@@ -117,7 +119,10 @@ export class ErrorFilter implements ExceptionFilter {
     let cuerpo: CuerpoError;
 
     if (error instanceof ErrorDeAplicacion) {
-      estado = ESTADO_POR_CODIGO[error.codigo] ?? 500;
+      // 004 (fase 5): un error puede fijar su propio estado cuando el contrato de su ruta lo pide (p. ej. el número
+      // de WhatsApp inválido: VALIDACION con 422 en PUT /clientes/yo/aviso).
+      const propio = (error as { estadoHttp?: unknown }).estadoHttp;
+      estado = typeof propio === 'number' ? propio : (ESTADO_POR_CODIGO[error.codigo] ?? 500);
       cuerpo = { codigo: error.codigo, mensaje: error.message, detalles: error.detalles };
       const espera = error.detalles.find((detalle) => typeof detalle.reintentarEnSegundos === 'number');
       if (espera) respuesta.setHeader('Retry-After', String(espera.reintentarEnSegundos));

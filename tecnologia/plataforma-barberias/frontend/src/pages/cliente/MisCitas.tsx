@@ -112,6 +112,9 @@ export default function MisCitas() {
           <Link to={`/b/${barberia.slug}`} className={clasesBoton()}>
             Reservar una cita
           </Link>
+          <Link to="/mis-avisos" className={clasesBoton({ variante: 'secundario' })}>
+            Cómo recibo mis avisos
+          </Link>
         </div>
       )}
 

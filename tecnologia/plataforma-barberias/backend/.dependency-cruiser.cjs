@@ -121,6 +121,15 @@ module.exports = {
       to: { path: '(^|/)simulador-pagos/' },
     },
     {
+      name: 'simulador-whatsapp-fuera-del-monolito',
+      comment:
+        'El simulador de WhatsApp (simulador-whatsapp/) es un servicio aparte de desarrollo y pruebas: ningún ' +
+        'archivo de src/ lo importa; el monolito solo le habla por HTTP tras NotificationChannel (ADR-026, 004 T115).',
+      severity: 'error',
+      from: { path: '(^|/)src/' },
+      to: { path: '(^|/)simulador-whatsapp/' },
+    },
+    {
       name: 'lectura-publica-confinada',
       comment:
         'El pool de barberias_publico (shared/lectura-publica.ts) solo lo usa la vía pública de M02 ' +

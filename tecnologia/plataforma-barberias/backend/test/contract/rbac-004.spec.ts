@@ -131,8 +131,28 @@ const conEnlace =
     return metodo === 'post' ? solicitud.send(cuerpo ?? {}) : solicitud;
   };
 
-/** Filas de rbac.md ya implementadas (fase 2: reprogramar; fase 4: acciones por enlace). */
+/** Fase 5 (T110): las rutas del canal de aviso, con el token de la columna (o sin él). */
+const conSesion =
+  (metodo: 'get' | 'put' | 'delete', ruta: string, cuerpo?: object) =>
+  (prueba: AppDePrueba, token: string | null) => {
+    const solicitud = prueba.agente[metodo](`/api/v1${ruta}`);
+    if (token) solicitud.set({ Authorization: `Bearer ${token}` });
+    return metodo === 'put' ? solicitud.send(cuerpo ?? {}) : solicitud;
+  };
+
+/** Filas de rbac.md ya implementadas (fase 2: reprogramar; fase 4: acciones por enlace; fase 5: canal). */
 const IMPLEMENTADAS: Caso[] = [
+  { fila: 'GET /clientes/yo/aviso', exito: 200, ejecutar: conSesion('get', '/clientes/yo/aviso') },
+  {
+    fila: 'PUT /clientes/yo/aviso',
+    exito: 200,
+    ejecutar: conSesion('put', '/clientes/yo/aviso', { canal: 'CORREO' }),
+  },
+  {
+    fila: 'DELETE /clientes/yo/aviso/consentimiento-whatsapp',
+    exito: 204,
+    ejecutar: conSesion('delete', '/clientes/yo/aviso/consentimiento-whatsapp'),
+  },
   {
     fila: 'POST /citas/{id}/reprogramar',
     exito: 200,

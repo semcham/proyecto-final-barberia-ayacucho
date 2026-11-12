@@ -3,7 +3,8 @@ import type { CodigoRol } from './rol';
 /**
  * Operaciones protegidas de M01. Las operaciones públicas no necesitan permiso.
  * Fuentes: specs/001-registro-acceso-barberia/contracts/rbac.md (usuarios y sesión) y
- * specs/002-catalogo-citas-cliente/contracts/rbac.md (barbería, clientes y cambio de barbería).
+ * specs/002-catalogo-citas-cliente/contracts/rbac.md (barbería, clientes y cambio de barbería) y, desde 004,
+ * specs/004-notificaciones-reprogramacion/contracts/rbac.md (canal de aviso).
  */
 export const OPERACIONES = [
   'VER_USUARIO_ACTUAL',
@@ -19,6 +20,9 @@ export const OPERACIONES = [
   'ACTUALIZAR_BARBERIA',
   'BUSCAR_CLIENTES',
   'REGISTRAR_CLIENTE_PRESENCIAL',
+  // Funcionalidad 004 (specs/004-notificaciones-reprogramacion/contracts/rbac.md): canal de aviso y consentimiento
+  // de WhatsApp del propio cliente.
+  'GESTIONAR_CANAL_AVISO',
 ] as const;
 export type Operacion = (typeof OPERACIONES)[number];
 
@@ -37,6 +41,7 @@ const MATRIZ: Readonly<Record<Operacion, readonly CodigoRol[]>> = {
   ACTUALIZAR_BARBERIA: ['PROPIETARIO'],
   BUSCAR_CLIENTES: ['PROPIETARIO'],
   REGISTRAR_CLIENTE_PRESENCIAL: ['PROPIETARIO'],
+  GESTIONAR_CANAL_AVISO: ['CLIENTE'],
 };
 
 /** Regla de dominio pura de autorización por rol (R22). La aplican el caso de uso y el guard HTTP. */

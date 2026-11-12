@@ -106,9 +106,21 @@ export class KyselyAvisoRepository extends AvisoRepository {
     };
   }
 
-  async marcarEnviado(id: string, canal: CanalDeAviso, ahora: Date): Promise<void> {
+  async marcarEnviado(
+    id: string,
+    canal: CanalDeAviso,
+    ahora: Date,
+    opciones: { respaldo?: boolean; intentos?: number } = {},
+  ): Promise<void> {
     await this.reclamado(id)
-      .set({ status: 'ENVIADO', channel_used: canal, sent_at: ahora, claimed_until: null, last_error: null })
+      .set({
+        status: opciones.respaldo ? 'ENVIADO_RESPALDO' : 'ENVIADO',
+        channel_used: canal,
+        sent_at: ahora,
+        claimed_until: null,
+        last_error: null,
+        ...(opciones.intentos !== undefined && { attempts: opciones.intentos }),
+      })
       .execute();
   }
 

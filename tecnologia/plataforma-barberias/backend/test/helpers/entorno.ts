@@ -31,6 +31,11 @@ process.env.SMTP_HOST = '127.0.0.1';
 process.env.SMTP_PUERTO = '9';
 process.env.SMTP_TLS = 'no';
 process.env.CORREO_REMITENTE = 'no-responder@barberias.local';
+// 004 (fase 5): WhatsApp simulado. Las pruebas que lo usan apuntan el adaptador a su propio simulador
+// (helpers/whatsapp.ts); aquí, un puerto que no responde. Token SOLO de pruebas.
+process.env.WHATSAPP_PROVEEDOR = 'simulado';
+process.env.WHATSAPP_URL_BASE = 'http://127.0.0.1:9';
+process.env.WHATSAPP_TOKEN = 'whatsapp_token_pruebas';
 process.env.JWT_PRIVATE_KEY = privateKey.export({ type: 'pkcs8', format: 'pem' }).toString();
 process.env.JWT_PUBLIC_KEYS = JSON.stringify({
   [KID_PRUEBAS]: publicKey.export({ type: 'spki', format: 'pem' }).toString(),

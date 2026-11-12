@@ -28,7 +28,8 @@ type CodigoError003 =
   | 'MEDIO_NO_DISPONIBLE_PARA_EL_PLAN'
   | 'PLAN_NO_CONTRATABLE';
 /** Códigos de la funcionalidad 004 (specs/004-notificaciones-reprogramacion/contracts/openapi.yaml). */
-type CodigoError004 = 'CITA_CAMBIO' | 'SIN_ANTELACION_PARA_REPROGRAMAR' | 'ENLACE_NO_VALIDO';
+type CodigoError004 =
+  'CITA_CAMBIO' | 'SIN_ANTELACION_PARA_REPROGRAMAR' | 'ENLACE_NO_VALIDO' | 'CONSENTIMIENTO_REQUERIDO';
 export type CodigoError =
   CuerpoError['codigo'] | CodigoError002 | CodigoError006 | CodigoError003 | CodigoError004;
 

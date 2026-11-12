@@ -1,8 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { v7 as uuidv7 } from 'uuid';
+import { ClientesApi } from '../../acceso-barberias';
 import type { EventoPublicado } from '../../../shared';
-import { AVISO_POR_EVENTO_DE_CITA, PLAZO_AVISO_DE_CITA_MS } from '../domain/aviso';
+import { AVISO_POR_EVENTO_DE_CITA, type Destinatario, PLAZO_AVISO_DE_CITA_MS } from '../domain/aviso';
 import { destinatariosDe } from '../domain/destinatarios';
+import { elegirCanal } from '../domain/eleccion-canal';
 import { AvisoRepository } from './ports/aviso-repository';
 
 /**
@@ -18,7 +20,10 @@ export class ManejadoresDeCita {
   static readonly TIPOS = Object.keys(AVISO_POR_EVENTO_DE_CITA);
   private readonly logger = new Logger('ManejadoresDeCita');
 
-  constructor(private readonly avisos: AvisoRepository) {}
+  constructor(
+    private readonly avisos: AvisoRepository,
+    private readonly clientes: ClientesApi,
+  ) {}
 
   async manejar(evento: EventoPublicado): Promise<void> {
     const tipo = AVISO_POR_EVENTO_DE_CITA[evento.tipo];
@@ -33,17 +38,32 @@ export class ManejadoresDeCita {
 
     if (citaId && evento.tipo !== 'CitaCreada') await this.avisos.descartarRecordatoriosDe(citaId);
     const descartarDespues = new Date(evento.creadoEn.getTime() + PLAZO_AVISO_DE_CITA_MS);
-    await this.avisos.crear(
-      destinatarios.map((destinatario) => ({
+    const avisos = [];
+    for (const destinatario of destinatarios) {
+      avisos.push({
         id: uuidv7(),
         eventoId: evento.id,
         tipo,
         destinatario,
         citaId,
-        // Fase 3: siempre correo. La elección real (canal del cliente y consentimiento) se hace al enviar.
-        canalPrevisto: 'CORREO' as const,
+        canalPrevisto: await canalPrevistoPara(this.clientes, destinatario),
         descartarDespues,
-      })),
-    );
+      });
+    }
+    await this.avisos.crear(avisos);
   }
+}
+
+/**
+ * Fase 5 · El canal PREVISTO al crear el aviso (constancia, data-model §4): WhatsApp si el cliente lo eligió y tiene
+ * consentimiento vigente; si no, correo. El personal recibe siempre por correo. El canal REAL se vuelve a elegir al
+ * enviar, con el contacto de ese momento (R12).
+ */
+export async function canalPrevistoPara(
+  clientes: ClientesApi,
+  destinatario: Destinatario,
+): Promise<'CORREO' | 'WHATSAPP'> {
+  if (destinatario.tipo !== 'CLIENTE') return 'CORREO';
+  const elegido = elegirCanal(await clientes.contactoParaAvisos(destinatario.ref));
+  return 'canal' in elegido ? elegido.canal : 'CORREO';
 }

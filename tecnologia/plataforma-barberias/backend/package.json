@@ -20,7 +20,9 @@
     "simulador:modo": "tsx scripts/simulador-modo.ts",
     "plataforma:crear-admin": "tsx scripts/crear-admin-plataforma.ts",
     "demo:vencimiento": "tsx scripts/demo-vencimiento.ts",
-    "demo:avisos": "tsx scripts/demo-avisos.ts"
+    "demo:avisos": "tsx scripts/demo-avisos.ts",
+    "whatsapp-simulado": "tsx simulador-whatsapp/servidor.ts",
+    "whatsapp:modo": "tsx scripts/whatsapp-modo.ts"
   },
   "dependencies": {
     "@nestjs/common": "11.2.7",

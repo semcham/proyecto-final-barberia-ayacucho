@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { v7 as uuidv7 } from 'uuid';
 import type { EventoPublicado } from '../../../shared';
+import { ClientesApi } from '../../acceso-barberias';
+import { canalPrevistoPara } from './manejadores-de-cita';
 import { AvisoRepository } from './ports/aviso-repository';
 
 /**
@@ -14,7 +16,10 @@ export class ManejadorRecordatorio {
   static readonly TIPO = 'RecordatorioDeCita';
   private readonly logger = new Logger('ManejadorRecordatorio');
 
-  constructor(private readonly avisos: AvisoRepository) {}
+  constructor(
+    private readonly avisos: AvisoRepository,
+    private readonly clientes: ClientesApi,
+  ) {}
 
   async manejar(evento: EventoPublicado): Promise<void> {
     const { citaId, clienteId, inicio } = evento.payload;
@@ -36,7 +41,7 @@ export class ManejadorRecordatorio {
         tipo: 'RECORDATORIO',
         destinatario: { tipo: 'CLIENTE', ref: clienteId },
         citaId,
-        canalPrevisto: 'CORREO',
+        canalPrevisto: await canalPrevistoPara(this.clientes, { tipo: 'CLIENTE', ref: clienteId }),
         // FR-033: un recordatorio que no salió antes de la hora de inicio se descarta.
         descartarDespues: momento,
       },

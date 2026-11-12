@@ -89,6 +89,79 @@ export const enlaces = {
     ),
 };
 
+/** 004 (T111): la preferencia de aviso del cliente (esquema PreferenciaAviso). */
+export interface PreferenciaAvisoDePrueba {
+  canal: 'CORREO' | 'WHATSAPP';
+  numeroWhatsapp: string | null;
+  numeroPropuesto: string;
+  consentimientoVigente: boolean;
+  aceptadoEn: string | null;
+  textoConsentimiento: { version: string; texto: string };
+}
+
+export const TEXTO_CONSENTIMIENTO_DE_PRUEBA =
+  'Acepto que Barbería Huamanga me envíe por WhatsApp, al número {número}, los avisos de mis citas. ' +
+  'Puedo retirar este permiso cuando quiera desde mi cuenta.';
+
+export const preferenciaDePrueba = (
+  cambios: Partial<PreferenciaAvisoDePrueba> = {},
+): PreferenciaAvisoDePrueba => ({
+  canal: 'CORREO',
+  numeroWhatsapp: null,
+  numeroPropuesto: '987654321',
+  consentimientoVigente: false,
+  aceptadoEn: null,
+  textoConsentimiento: { version: '2026-11', texto: TEXTO_CONSENTIMIENTO_DE_PRUEBA },
+  ...cambios,
+});
+
+/**
+ * 004 (T111): GET, PUT y DELETE de /clientes/yo/aviso con un estado en memoria. `recibidos` guarda los cuerpos
+ * de cada PUT y una marca por cada DELETE. El PUT responde 422 CONSENTIMIENTO_REQUERIDO si se elige WhatsApp sin
+ * aceptar (como el backend) y, si no, devuelve la preferencia guardada.
+ */
+export function canalDeAviso(
+  inicial: PreferenciaAvisoDePrueba = preferenciaDePrueba(),
+  recibidos: unknown[] = [],
+) {
+  let actual = inicial;
+  return [
+    http.get('/api/v1/clientes/yo/aviso', () => HttpResponse.json(actual)),
+    http.put('/api/v1/clientes/yo/aviso', async ({ request }) => {
+      const cuerpo = (await request.json()) as {
+        canal: 'CORREO' | 'WHATSAPP';
+        numeroWhatsapp?: string;
+        aceptaWhatsapp?: boolean;
+      };
+      recibidos.push(cuerpo);
+      const mismoVigente = actual.consentimientoVigente && cuerpo.numeroWhatsapp === actual.numeroWhatsapp;
+      if (cuerpo.canal === 'WHATSAPP' && !cuerpo.aceptaWhatsapp && !mismoVigente) {
+        return HttpResponse.json(
+          {
+            codigo: 'CONSENTIMIENTO_REQUERIDO',
+            mensaje: 'Para recibir avisos por WhatsApp tienes que aceptar el texto vigente.',
+            detalles: [],
+          },
+          { status: 422 },
+        );
+      }
+      actual = {
+        ...actual,
+        canal: cuerpo.canal,
+        numeroWhatsapp: cuerpo.numeroWhatsapp ?? actual.numeroWhatsapp,
+        consentimientoVigente: cuerpo.canal === 'WHATSAPP' ? true : actual.consentimientoVigente,
+        aceptadoEn: cuerpo.aceptaWhatsapp ? '2026-11-09T10:00:00-05:00' : actual.aceptadoEn,
+      };
+      return HttpResponse.json(actual);
+    }),
+    http.delete('/api/v1/clientes/yo/aviso/consentimiento-whatsapp', () => {
+      recibidos.push('DELETE');
+      actual = { ...actual, canal: 'CORREO', consentimientoVigente: false, aceptadoEn: null };
+      return new HttpResponse(null, { status: 204 });
+    }),
+  ];
+}
+
 /** Cita mínima que devuelve POST /citas/{id}/reprogramar (CitaConConfirmacion de 004). */
 interface CitaReprogramable {
   id: string;

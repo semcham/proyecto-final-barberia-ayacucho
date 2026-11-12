@@ -26,6 +26,7 @@
     "test",
     "scripts",
     "simulador-pagos",
+    "simulador-whatsapp",
     "jest.config.ts",
     "jest.int.config.ts",
     "jest.arch.config.ts"

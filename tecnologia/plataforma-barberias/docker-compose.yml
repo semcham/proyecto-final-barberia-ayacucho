@@ -76,6 +76,12 @@ x-backend-entorno: &backend-entorno
   SMTP_CLAVE: ""
   CORREO_REMITENTE: ${CORREO_REMITENTE:-no-responder@barberias.local}
   CORREO_TIEMPO_LIMITE_MS: ${CORREO_TIEMPO_LIMITE_MS:-5000}
+  # 004 (ADR-026, US4): WhatsApp SIMULADO por IP fija, sin proveedor ni credenciales reales. El token toma el
+  # valor de .env y, si falta, uno SOLO de desarrollo (el mismo que usa el servicio whatsapp-simulado).
+  WHATSAPP_PROVEEDOR: simulado
+  WHATSAPP_URL_BASE: http://${IP_WHATSAPP:-172.28.0.16}:3200
+  WHATSAPP_TOKEN: ${WHATSAPP_TOKEN:-whatsapp_simulado_dev}
+  WHATSAPP_TIEMPO_LIMITE_MS: ${WHATSAPP_TIEMPO_LIMITE_MS:-3000}
   # 004 (ADR-032): llave de los enlaces de acción y sal del hash de la IP; toman el valor de .env y, si
   # falta, uno SOLO de desarrollo.
   ENLACES_LLAVE: ${ENLACES_LLAVE:-xe9JimETg9lyRkFYqT/XOYVj31b+b6pTPQD5W5/MQI8=}
@@ -193,6 +199,35 @@ services:
       resources:
         limits:
           memory: 32M
+
+  # WhatsApp simulado (004, ADR-026, US4; T112–T113). Servicio aparte de desarrollo y pruebas: NUNCA se despliega
+  # en producción ni usa un proveedor real. Guarda los mensajes solo en memoria. Modos de falla con
+  # `npm run whatsapp:modo -- <modo>` (normal, lento, caido, colgado, rechazar, limite, fallar_n).
+  whatsapp-simulado:
+    image: node:22
+    working_dir: /srv
+    command: node --import tsx simulador-whatsapp/servidor.ts
+    environment:
+      PUERTO: "3200"
+      WHATSAPP_TOKEN: ${WHATSAPP_TOKEN:-whatsapp_simulado_dev}
+      WHATSAPP_TOKEN_CONTROL: ${WHATSAPP_TOKEN_CONTROL:-control_whatsapp_dev}
+      NODE_OPTIONS: --max-old-space-size=32
+    volumes:
+      - ./backend/simulador-whatsapp:/srv/simulador-whatsapp:ro
+      - backend-node-modules:/srv/node_modules:ro
+    ports:
+      - "3200:3200"
+    depends_on:
+      preparar-backend:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    networks:
+      plataforma:
+        ipv4_address: ${IP_WHATSAPP:-172.28.0.16}
+    deploy:
+      resources:
+        limits:
+          memory: 64M
 
   # Una sola ejecución: dependencias, build, migraciones y copia del build al volumen de las réplicas (R01,
   # R03). Si falla, las réplicas no arrancan y el error queda en `docker compose logs preparar-backend`.

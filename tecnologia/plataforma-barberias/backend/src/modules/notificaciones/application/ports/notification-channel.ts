@@ -46,6 +46,15 @@ export class DestinatarioInvalido extends ErrorDeAplicacion {
   }
 }
 
+/**
+ * 004 (fase 5) · Los canales que usa la tarea de envío: el correo (siempre, también como respaldo) y WhatsApp
+ * (simulado, o "no disponible" sin proveedor). Los arma la fábrica de infraestructura según la configuración.
+ */
+export abstract class CanalesDeAviso {
+  abstract readonly correo: NotificationChannel;
+  abstract readonly whatsapp: NotificationChannel;
+}
+
 export abstract class NotificationChannel {
   abstract readonly canal: CanalDeAviso;
 

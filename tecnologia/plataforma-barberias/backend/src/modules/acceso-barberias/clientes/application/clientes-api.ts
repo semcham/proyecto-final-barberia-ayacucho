@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { ClientesApi, type ContactoParaAvisos, type PerfilClienteResumen } from '../../api-publica';
+import { PREFERENCIA_POR_DEFECTO } from '../domain/preferencia-aviso';
+import { ConsentimientoWhatsappRepository } from './ports/consentimiento-whatsapp-repository';
 import { PerfilClienteRepository } from './ports/perfil-cliente-repository';
+import { PreferenciaAvisoRepository } from './ports/preferencia-aviso-repository';
 
 /**
  * T090 · Implementación de `ClientesApi` (interfaz pública de M01 para M02, ADR-020). Participa en la
@@ -8,7 +11,11 @@ import { PerfilClienteRepository } from './ports/perfil-cliente-repository';
  */
 @Injectable()
 export class ClientesApiImpl extends ClientesApi {
-  constructor(private readonly perfiles: PerfilClienteRepository) {
+  constructor(
+    private readonly perfiles: PerfilClienteRepository,
+    private readonly preferencias: PreferenciaAvisoRepository,
+    private readonly consentimientos: ConsentimientoWhatsappRepository,
+  ) {
     super();
   }
 
@@ -25,9 +32,21 @@ export class ClientesApiImpl extends ClientesApi {
     return this.perfiles.porId(clienteId);
   }
 
-  /** 004 (M05, T068): fase 3, siempre el correo; el canal elegido y WhatsApp llegan en la fase 5. */
+  /**
+   * 004 (M05; T068, T119; research R12): el correo, el canal elegido, el número de WhatsApp y si hay un
+   * consentimiento VIGENTE para ese número (FR-019). Se lee al enviar cada aviso: un retiro intermedio se respeta.
+   */
   async contactoParaAvisos(clienteId: string): Promise<ContactoParaAvisos | null> {
     const perfil = await this.perfiles.correoDe(clienteId);
-    return perfil ? { correo: perfil.correo, canal: 'CORREO' } : null;
+    if (!perfil) return null;
+    const preferencia = (await this.preferencias.obtener(clienteId)) ?? PREFERENCIA_POR_DEFECTO;
+    const vigente = await this.consentimientos.vigente(clienteId);
+    return {
+      correo: perfil.correo,
+      canal: preferencia.canal,
+      numeroWhatsapp: preferencia.numero,
+      consentimientoVigente:
+        vigente !== null && preferencia.numero !== null && vigente.numero === preferencia.numero,
+    };
   }
 }

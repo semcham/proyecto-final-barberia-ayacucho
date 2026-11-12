@@ -18,13 +18,15 @@ export abstract class PersonalApi {
 }
 
 /**
- * 004 (RF33): cómo avisar a un cliente. En la fase 3, el correo y el canal CORREO; el canal elegido, el número de
- * WhatsApp y el consentimiento vigente se agregan en la fase 5.
+ * 004 (RF33): cómo avisar a un cliente, leído AL ENVIAR (research R12): el correo, el canal elegido, el número de
+ * WhatsApp y si hay un consentimiento vigente PARA ESE número en la barbería del contexto (FR-019).
  */
 export interface ContactoParaAvisos {
   /** Null si el cliente (presencial) no dio un correo. */
   correo: string | null;
-  canal: 'CORREO';
+  canal: 'CORREO' | 'WHATSAPP';
+  numeroWhatsapp: string | null;
+  consentimientoVigente: boolean;
 }
 
 export interface PerfilClienteResumen {

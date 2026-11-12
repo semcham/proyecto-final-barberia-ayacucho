@@ -11,15 +11,21 @@ import {
 } from '../../../shared';
 import { EnlacesFirmados } from '../../../shared/enlaces-firmados';
 import type { CodigoErrorAviso, Destinatario } from '../domain/aviso';
-import { type ContactoDelDestinatario, elegirCanal } from '../domain/eleccion-canal';
+import {
+  type CanalElegido,
+  type ContactoDelDestinatario,
+  debeRespaldar,
+  elegirCanal,
+  INTENTOS_WHATSAPP,
+} from '../domain/eleccion-canal';
 import { componerAviso, datosDelEvento, type EnlacesDelRecordatorio } from '../domain/plantillas';
 import { type Fallo, INTENTOS_MAXIMOS, trasFallo } from '../domain/politica-reintentos';
 import { type AvisoReclamado, AvisoRepository, PendientesDeAvisos } from './ports/aviso-repository';
 import {
+  CanalesDeAviso,
   CanalNoDisponible,
   DestinatarioInvalido,
   type MensajeSaliente,
-  NotificationChannel,
 } from './ports/notification-channel';
 
 /** Avisos que toma cada corrida. */
@@ -35,7 +41,14 @@ const DIA_MS = 24 * 60 * 60 * 1000;
 type Preparado =
   | { tipo: 'nada' }
   | { tipo: 'cerrado' }
-  | { tipo: 'enviar'; aviso: AvisoReclamado; mensaje: MensajeSaliente };
+  | {
+      tipo: 'enviar';
+      aviso: AvisoReclamado;
+      elegido: Exclude<CanalElegido, { descartar: 'SIN_CANAL' }>;
+      contacto: ContactoDelDestinatario | null;
+      /** El mensaje sin el destino: el destino depende del canal (WhatsApp o el correo de respaldo). */
+      mensaje: Omit<MensajeSaliente, 'destino'>;
+    };
 
 /**
  * T073 de 004 · Tarea `enviar-avisos` (ADR-025 pasos 4 a 6; FR-011, FR-012, FR-032, FR-033; research R13, R17).
@@ -58,7 +71,7 @@ export class EnviarAvisos {
     private readonly uow: UnitOfWork,
     private readonly avisos: AvisoRepository,
     private readonly pendientes: PendientesDeAvisos,
-    private readonly canal: NotificationChannel,
+    private readonly canales: CanalesDeAviso,
     private readonly clientes: ClientesApi,
     private readonly personal: PersonalApi,
     private readonly barberias: BarberiasApi,
@@ -99,28 +112,43 @@ export class EnviarAvisos {
     if (preparado.tipo === 'nada') return false;
     if (preparado.tipo === 'cerrado') return true;
 
-    const { aviso, mensaje } = preparado;
-    let fallo: { fallo: Fallo; error: CodigoErrorAviso } | null = null;
-    try {
-      await this.canal.enviar(mensaje);
-    } catch (error) {
-      fallo = clasificar(error);
-      if (!(error instanceof CanalNoDisponible) && !(error instanceof DestinatarioInvalido)) {
-        // Un error inesperado del adaptador: solo el tipo, nunca el destino ni el texto.
-        this.logger.error(
-          `AVISO_ERROR_INESPERADO id=${aviso.id} tipo=${error instanceof Error ? error.name : 'Error'}`,
-        );
+    const { aviso, elegido, contacto } = preparado;
+    let intentos = aviso.intentos;
+    let respaldo = 'respaldo' in elegido && elegido.respaldo === true;
+    let canal: 'CORREO' | 'WHATSAPP' = elegido.canal;
+    let fallo = await this.enviarPor(canal, { ...preparado.mensaje, destino: elegido.destino }, aviso.id);
+
+    // FR-020 (R12, R13): si WhatsApp falla tras sus intentos, con su circuito abierto o con el número rechazado, el
+    // MISMO aviso sale por correo, una sola vez, ahora.
+    if (fallo && canal === 'WHATSAPP') {
+      if (fallo.fallo !== 'CIRCUITO_ABIERTO') intentos += 1;
+      if (debeRespaldar(intentos, fallo.fallo)) {
+        const alCorreo = elegirCanal(contacto, { respaldo: true });
+        if ('descartar' in alCorreo) {
+          await this.uow.ejecutar(tenant, () =>
+            this.avisos.finalizar(aviso.id, 'FALLIDO', intentos, fallo?.error ?? null),
+          );
+          return true;
+        }
+        // Desde ahora, los reintentos del aviso van por el correo (INTENTOS_WHATSAPP ya cumplidos).
+        intentos = Math.max(intentos, INTENTOS_WHATSAPP);
+        respaldo = true;
+        canal = 'CORREO';
+        fallo = await this.enviarPor('CORREO', { ...preparado.mensaje, destino: alCorreo.destino }, aviso.id);
+      } else {
+        // Un fallo temporal de WhatsApp: se reintenta por WhatsApp más tarde (el intento ya se contó).
+        intentos -= 1;
       }
     }
 
     await this.uow.ejecutar(tenant, async () => {
       const ahora = this.reloj.ahora();
       if (!fallo) {
-        await this.avisos.marcarEnviado(aviso.id, this.canal.canal, ahora);
+        await this.avisos.marcarEnviado(aviso.id, canal, ahora, { respaldo, intentos });
         return;
       }
       const decision = trasFallo({
-        intentos: aviso.intentos,
+        intentos,
         fallo: fallo.fallo,
         ahora,
         descartarDespues: aviso.descartarDespues,
@@ -136,6 +164,26 @@ export class EnviarAvisos {
       await this.avisos.finalizar(aviso.id, estado, decision.intentos, fallo.error);
     });
     return true;
+  }
+
+  /** Envía por el canal y devuelve el fallo clasificado, o null si el canal lo aceptó. */
+  private async enviarPor(
+    canal: 'CORREO' | 'WHATSAPP',
+    mensaje: MensajeSaliente,
+    avisoId: string,
+  ): Promise<{ fallo: Fallo; error: CodigoErrorAviso } | null> {
+    try {
+      await (canal === 'WHATSAPP' ? this.canales.whatsapp : this.canales.correo).enviar(mensaje);
+      return null;
+    } catch (error) {
+      if (!(error instanceof CanalNoDisponible) && !(error instanceof DestinatarioInvalido)) {
+        // Un error inesperado del adaptador: solo el tipo, nunca el destino ni el texto.
+        this.logger.error(
+          `AVISO_ERROR_INESPERADO id=${avisoId} tipo=${error instanceof Error ? error.name : 'Error'}`,
+        );
+      }
+      return clasificar(error);
+    }
   }
 
   /** Reclama, resuelve el destino y compone, en la transacción con el tenant del aviso. */
@@ -159,7 +207,10 @@ export class EnviarAvisos {
       return { tipo: 'cerrado' };
     }
 
-    const elegido = elegirCanal(await this.contactoDe(aviso.destinatario));
+    // El canal, el número y el consentimiento se leen AHORA (R12): un retiro intermedio se respeta (FR-019). Tras 3
+    // intentos de WhatsApp, el aviso sigue por el correo de respaldo.
+    const contacto = await this.contactoDe(aviso.destinatario);
+    const elegido = elegirCanal(contacto, { respaldo: aviso.intentos >= INTENTOS_WHATSAPP });
     if ('descartar' in elegido) {
       // FR-015: el cliente presencial sin correo no recibe nada.
       await this.avisos.finalizar(aviso.id, 'DESCARTADO', aviso.intentos, elegido.descartar);
@@ -171,7 +222,9 @@ export class EnviarAvisos {
     return {
       tipo: 'enviar',
       aviso,
-      mensaje: { destino: elegido.destino, asunto, texto, claveIdempotencia: aviso.id },
+      elegido,
+      contacto,
+      mensaje: { asunto, texto, claveIdempotencia: aviso.id },
     };
   }
 

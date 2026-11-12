@@ -14,10 +14,20 @@ export interface DestinoSmtp {
   puerto: number;
 }
 
-/** La aplicación completa con el correo apuntado a `smtp` (Mailpit o el proxy de abajo). */
-export function appConCorreo(smtp: DestinoSmtp, opciones: { escuchar?: boolean } = {}): Promise<AppDePrueba> {
+/**
+ * La aplicación completa con el correo apuntado a `smtp` (Mailpit o el proxy de abajo) y, en la fase 5, el
+ * WhatsApp simulado apuntado a `whatsappUrl` (helpers/whatsapp.ts; sin él, a un puerto que no responde).
+ */
+export function appConCorreo(
+  smtp: DestinoSmtp,
+  opciones: { escuchar?: boolean; whatsappUrl?: string } = {},
+): Promise<AppDePrueba> {
   return crearApp({
-    entorno: { SMTP_HOST: smtp.host, SMTP_PUERTO: String(smtp.puerto) },
+    entorno: {
+      SMTP_HOST: smtp.host,
+      SMTP_PUERTO: String(smtp.puerto),
+      ...(opciones.whatsappUrl && { WHATSAPP_URL_BASE: opciones.whatsappUrl }),
+    },
     escuchar: opciones.escuchar,
   });
 }

@@ -32,6 +32,10 @@ export type AccionAuditada =
   // 004 fase 4 (FR-035, data-model §6): acciones por enlace, sin actor (no hay sesión) y sin el token.
   | 'ASISTENCIA_CONFIRMADA_ENLACE'
   | 'CITA_CANCELADA_ENLACE'
+  // 004 fase 5 (FR-035, data-model §6): canal de aviso y consentimiento de WhatsApp, sin el número completo.
+  | 'CANAL_AVISO_CAMBIADO'
+  | 'CONSENTIMIENTO_WHATSAPP_ACEPTADO'
+  | 'CONSENTIMIENTO_WHATSAPP_RETIRADO'
   // Funcionalidad 003 (FR-031, FR-037).
   | 'PAGO_INICIADO'
   | 'PAGO_APROBADO'

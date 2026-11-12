@@ -16,6 +16,12 @@ import { UnirseABarberia } from './clientes/application/unirse-a-barberia';
 import { KyselyConsentimientoRepository } from './clientes/infrastructure/kysely-consentimiento-repository';
 import { KyselyPerfilClienteRepository } from './clientes/infrastructure/kysely-perfil-cliente-repository';
 import { ClientesController } from './clientes/presentation/clientes.controller';
+import { CanalDeAvisoDelCliente } from './clientes/application/canal-de-aviso';
+import { ConsentimientoWhatsappRepository } from './clientes/application/ports/consentimiento-whatsapp-repository';
+import { PreferenciaAvisoRepository } from './clientes/application/ports/preferencia-aviso-repository';
+import { KyselyConsentimientoWhatsappRepository } from './clientes/infrastructure/kysely-consentimiento-whatsapp-repository';
+import { KyselyPreferenciaAvisoRepository } from './clientes/infrastructure/kysely-preferencia-aviso-repository';
+import { AvisoController } from './clientes/presentation/aviso.controller';
 import { CambiarBarberia } from './identidad/application/cambiar-barberia';
 import { TenantRepository } from './barberias/application/ports/tenant-repository';
 import { TermsAcceptanceRepository } from './barberias/application/ports/terms-acceptance-repository';
@@ -93,6 +99,8 @@ import { BarberiasPlataformaController } from './barberias/presentation/barberia
     AuthController,
     UsuariosController,
     ClientesController,
+    // Canal de aviso del cliente (004, US4).
+    AvisoController,
     // Ingreso del administrador de la plataforma (003, R07).
     PlataformaAuthController,
     // Administración de barberías por la plataforma (003, US5).
@@ -137,6 +145,10 @@ import { BarberiasPlataformaController } from './barberias/presentation/barberia
     // Clientes presenciales (US4 de 002).
     BuscarClientes,
     RegistrarClientePresencial,
+    // Canal de aviso y consentimiento de WhatsApp (004, US4; FR-016 a FR-018).
+    { provide: PreferenciaAvisoRepository, useClass: KyselyPreferenciaAvisoRepository },
+    { provide: ConsentimientoWhatsappRepository, useClass: KyselyConsentimientoWhatsappRepository },
+    CanalDeAvisoDelCliente,
     // Interfaces públicas para M02 (ADR-020).
     { provide: BarberiasApi, useClass: BarberiasApiImpl },
     { provide: ClientesApi, useClass: ClientesApiImpl },

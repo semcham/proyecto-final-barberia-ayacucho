@@ -58,6 +58,8 @@ describe('Reglas de arquitectura (PR14)', () => {
       'canal-solo-por-puerto',
       'eventos-solo-por-bus',
       'enlaces-confinados',
+      // Funcionalidad 004, fase 5 (T109).
+      'simulador-whatsapp-fuera-del-monolito',
     ])('%s', (regla) => {
       expect(salida).toContain(regla);
     });
@@ -97,6 +99,8 @@ describe('Reglas de arquitectura (PR14)', () => {
       expect(enLinea('canal-solo-por-puerto', 'usa-adaptador-correo.ts')).toBe(true);
       expect(enLinea('eventos-solo-por-bus', 'usa-salida.ts')).toBe(true);
       expect(enLinea('enlaces-confinados', 'usa-enlaces.ts')).toBe(true);
+      // Fase 5 (T109): el simulador de WhatsApp nunca entra al monolito.
+      expect(enLinea('simulador-whatsapp-fuera-del-monolito', 'usa-simulador-whatsapp.ts')).toBe(true);
       // Usos permitidos: M05 emite enlaces y lista sus avisos pendientes con el rol de la plataforma.
       expect(lineas.some((l) => l.includes('enlaces-permitidos.ts'))).toBe(false);
       expect(lineas.some((l) => l.includes('avisos-pendientes.ts'))).toBe(false);
