@@ -47,7 +47,7 @@ Formato: _El sistema debe permitir…_, derivado de las historias de usuario ([0
 | Must (MVP núcleo)  | RF01–RF12, RF14–RF16, RF18–RF22, RF27 |
 | Should             | RF13, RF17, RF23–RF26, RF28–RF35 |
 | Could              | — |
-| Won't (esta etapa) | Ningún RF. Fuera del sistema: el cobro de citas por la plataforma (el adelanto de RF35 lo paga el cliente por QR directo a la barbería; pendiente de la enmienda 1.5.0 del principio V, ver [ADR-033](07-decisiones-arquitectonicas.md#adr-033-adelanto-de-reserva-por-qr-de-la-barbería-con-verificación-manual)); aplicación móvil nativa (ver [fuera del alcance](../00-contexto-negocio-y-evidencias.md#5-alcance-y-limitaciones)) |
+| Won't (esta etapa) | Ningún RF. Fuera del sistema: el cobro de citas por la plataforma (el adelanto de RF35 lo paga el cliente por QR directo a la barbería, permitido por la enmienda 1.5.0 del principio V; ver [ADR-033](07-decisiones-arquitectonicas.md#adr-033-adelanto-de-reserva-por-qr-de-la-barbería-con-verificación-manual)); aplicación móvil nativa (ver [fuera del alcance](../00-contexto-negocio-y-evidencias.md#5-alcance-y-limitaciones)) |
 
 > **Nota de pagos.** Los pagos (RF23–RF26) están en _Should_ porque dependen de que el proveedor confirme Yape y de tener credenciales de prueba. Por eso se implementaron con una **pasarela simulada** detrás del puerto `PaymentGateway` (ADR-022): pasar al proveedor real es solo configuración. Si un pago no puede procesarse, el administrador puede activar el plan a mano (implementado en 003; ver [MVP](../05-gestion/06-mvp-y-evolucion.md)).
 

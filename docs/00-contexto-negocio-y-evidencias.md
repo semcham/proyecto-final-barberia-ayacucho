@@ -75,7 +75,7 @@ La gestión manual de citas, horarios, servicios y clientes provoca (hipótesis)
 | Elemento                                               | Motivo                                                                   | Estado |
 | ------------------------------------------------------ | ------------------------------------------------------------------------ | ------ |
 | Aplicación móvil nativa (Play Store / App Store)       | La plataforma es solo web; se documenta únicamente como evolución futura | Futuro |
-| Pago de citas por parte de clientes                    | Fuera del MVP; los pagos cubren solo la suscripción de barberías. El adelanto de reserva (RF35, 008) se paga por QR directo a la barbería, sin pasar por la plataforma (ADR-033, pendiente de la enmienda 1.5.0 del principio V) | Futuro |
+| Pago de citas por parte de clientes                    | Fuera del MVP; los pagos cubren solo la suscripción de barberías. El adelanto de reserva (RF35, 008) se paga por QR directo a la barbería, sin pasar por la plataforma (ADR-033, con la enmienda 1.5.0 del principio V) | Futuro |
 | Dominios propios por tenant y base dedicada por tenant | Complejidad y costo; se prevén como evolución                            | Futuro |
 | Otros canales de notificación (por ejemplo, SMS)       | Los canales incluidos son correo y WhatsApp                              | Futuro |
 | Microservicios                                         | Solo si hay necesidad demostrada                                         | Futuro |

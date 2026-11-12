@@ -1,6 +1,42 @@
 <!--
 Sync Impact Report
 ==================
+Version change: 1.4.1 → 1.5.0
+Bump rationale: MINOR. Se amplía materialmente la guía del principio V: además de los pagos de la
+suscripción que procesa la plataforma, se permite registrar y verificar el adelanto de una cita que
+el cliente paga directamente a la barbería (QR de Yape o Plin de la barbería). Aprobada por el
+responsable el 2026-11-12, con ADR-033 (Aceptado el mismo día). No cambia ningún otro principio.
+
+Modified principles:
+  - V. Pagos solo de suscripciones, desacoplados y seguros:
+    - Los pagos que procesa la plataforma siguen limitados a la suscripción de las barberías, y
+      cobrar citas a través de la plataforma sigue fuera del alcance.
+    - Nuevo: el adelanto de una cita MAY registrarse y verificarse cuando el cliente lo paga
+      directamente a la barbería; la plataforma MUST NOT recibir, retener ni transferir ese
+      dinero, MUST NOT cobrar comisión ni manejar datos de tarjeta, y la confirmación la hace el
+      propietario.
+    - Se aclara que el puerto del proveedor, el webhook firmado e idempotente y la conciliación se
+      aplican a los pagos que procesa la plataforma, no al adelanto pagado a la barbería.
+Added principles: ninguno
+Added sections: ninguna
+Removed sections: ninguna
+
+Templates requiring updates:
+  ✅ .specify/templates/plan-template.md — puerta V (versión 1.5.0)
+  ✅ .specify/templates/spec-template.md y tasks-template.md — revisados; sin cambios necesarios
+  ✅ docs/01-analisis-de-sistema/07-decisiones-arquitectonicas.md — ADR-033 Aceptado; nota de
+     ADR-007 sin "pendiente de la enmienda"
+  ✅ README.md, docs/00-contexto-negocio-y-evidencias.md, docs/01-analisis-de-sistema/
+     03-requisitos-funcionales.md, docs/05-gestion/02-backlog-y-sprints.md,
+     docs/05-gestion/07-guion-exposicion-y-defensa.md y docs/trazabilidad.md — sin la nota
+     "pendiente de la enmienda 1.5.0"
+  ✅ specs/001 a 006 — sin cambios: ninguna funcionalidad construida maneja el adelanto
+
+Follow-up TODOs: especificar e implementar la funcionalidad 008 (RF35), que sigue planificada; su
+especificación decide qué pasa si el cliente registró el pago y el propietario no lo confirma a
+tiempo (ADR-033).
+
+--- Historial: informe de la versión 1.4.1 ---
 Version change: 1.4.0 → 1.4.1
 Bump rationale: PATCH. Tres aclaraciones que corrigen el texto de la 1.4.0 para que coincida con
 el sistema y con la especificación de 004, sin ampliar lo que se permite. Aprobada por el
@@ -355,19 +391,24 @@ instancias.
 
 ### V. Pagos solo de suscripciones, desacoplados y seguros
 
-- Los pagos MUST limitarse a la suscripción de las barberías. El pago de citas por clientes
-  queda fuera del alcance.
+- Los pagos que procesa la plataforma MUST limitarse a la suscripción de las barberías. Cobrar
+  citas a través de la plataforma queda fuera del alcance.
+- **Adelanto de reserva pagado a la barbería.** El adelanto de una cita MAY registrarse y
+  verificarse cuando el cliente lo paga directamente a la barbería (QR de Yape o Plin de la
+  barbería): la plataforma MUST NOT recibir, retener ni transferir ese dinero, MUST NOT cobrar
+  comisión y MUST NOT manejar datos de tarjeta; la confirmación la hace el propietario (ADR-033).
 - M03 MUST acceder al proveedor solo mediante el puerto `PaymentGateway` y un adaptador de
   infraestructura.
 - La plataforma MUST NOT almacenar, registrar ni transportar datos de tarjeta (PAN, CVV); MUST
   usarse el flujo alojado del proveedor.
-- La confirmación MUST llegar por un webhook cuya firma se verifica (lo no firmado se rechaza) y
-  que es idempotente por identificador de evento. La suscripción MUST actualizarse de forma
-  atómica y los pagos pendientes MUST conciliarse periódicamente.
+- En los pagos que procesa la plataforma, la confirmación MUST llegar por un webhook cuya firma se
+  verifica (lo no firmado se rechaza) y que es idempotente por identificador de evento. La
+  suscripción MUST actualizarse de forma atómica y los pagos pendientes MUST conciliarse
+  periódicamente.
 - La confirmación MUST NOT depender del navegador del usuario.
 
-**Razón:** ADR-007, RC05 y RC12; cambiar de proveedor no toca la suscripción y no se asume
-PCI DSS.
+**Razón:** ADR-007, ADR-033, RC05 y RC12; cambiar de proveedor no toca la suscripción, no se
+asume PCI DSS y el dinero del adelanto nunca pasa por la plataforma.
 
 ### VI. IA con herramientas cerradas por rol
 
@@ -519,4 +560,4 @@ implementación. La excepción existe solo porque la plataforma de CI impone la 
   alternativa más simple descartada, y registrarse como ADR.
 - La guía de ejecución del proyecto está en `README.md` y en `docs/`.
 
-**Version**: 1.4.1 | **Ratified**: 2026-10-15 | **Last Amended**: 2026-11-04
+**Version**: 1.5.0 | **Ratified**: 2026-10-15 | **Last Amended**: 2026-11-12

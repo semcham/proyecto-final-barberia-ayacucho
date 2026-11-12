@@ -40,7 +40,7 @@
 
 _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
-Gates from `.specify/memory/constitution.md` (v1.4.1). Mark each ✅ / ❌ (justify ❌ in
+Gates from `.specify/memory/constitution.md` (v1.5.0). Mark each ✅ / ❌ (justify ❌ in
 Complexity Tracking and record an ADR):
 
 - [ ] **I. Six modules**: work fits in M01–M06 (no new module); cross-module calls only via
@@ -77,8 +77,11 @@ Complexity Tracking and record an ADR):
       attempts limited per origin with a PostgreSQL counter (ADR-032)
 - [ ] **IV. No duplicate appointments**: PostgreSQL exclusion constraint + transaction;
       conflict mapped to "horario no disponible"
-- [ ] **V. Payments**: subscriptions only; `PaymentGateway` port; no card data stored;
-      signed + idempotent webhook; reconciliation
+- [ ] **V. Payments**: the platform processes subscription payments only; `PaymentGateway` port;
+      no card data stored; signed + idempotent webhook; reconciliation. A booking deposit MAY be
+      recorded and verified only when the client pays the barbershop directly (its Yape or Plin
+      QR): the platform never receives, holds or transfers that money, charges no commission and
+      handles no card data; the owner confirms it (ADR-033)
 - [ ] **VI. AI**: `AIProvider` port; closed role-based tools calling use cases; no free SQL,
       no direct DB/repository access
 - [ ] **VII. Notifications**: `NotificationChannel` port driven by events; WhatsApp consent
