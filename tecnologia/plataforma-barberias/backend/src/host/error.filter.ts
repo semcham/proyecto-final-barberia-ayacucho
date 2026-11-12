@@ -57,6 +57,17 @@ export const ESTADO_POR_CODIGO: Record<string, number> = {
   ENLACE_NO_VALIDO: 410,
   // Fase 5 (T118): elegir WhatsApp sin aceptar el texto vigente.
   CONSENTIMIENTO_REQUERIDO: 422,
+  // Funcionalidad 008 (specs/008-adelanto-reserva-qr/contracts/openapi.yaml, T008). El archivo inválido usa
+  // VALIDACION, como los comprobantes de 003.
+  NUMERO_OPERACION_REPETIDO: 409,
+  PAGO_YA_REGISTRADO: 409,
+  ADELANTO_RESUELTO: 409,
+  SIN_PAGO_REGISTRADO: 409,
+  ADELANTO_NO_POR_DEVOLVER: 409,
+  ADELANTO_PENDIENTE: 409,
+  SIN_TIEMPO_PARA_ADELANTO: 422,
+  ADELANTO_VENCIDO: 422,
+  QR_REQUERIDO: 422,
 };
 
 function desdeHttp(estado: number): CuerpoError {

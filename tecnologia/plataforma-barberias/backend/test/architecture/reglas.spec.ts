@@ -60,6 +60,9 @@ describe('Reglas de arquitectura (PR14)', () => {
       'enlaces-confinados',
       // Funcionalidad 004, fase 5 (T109).
       'simulador-whatsapp-fuera-del-monolito',
+      // Funcionalidad 008 (T006).
+      'adelantos-solo-por-api',
+      'adelantos-sin-pasarela',
     ])('%s', (regla) => {
       expect(salida).toContain(regla);
     });
@@ -104,6 +107,17 @@ describe('Reglas de arquitectura (PR14)', () => {
       // Usos permitidos: M05 emite enlaces y lista sus avisos pendientes con el rol de la plataforma.
       expect(lineas.some((l) => l.includes('enlaces-permitidos.ts'))).toBe(false);
       expect(lineas.some((l) => l.includes('avisos-pendientes.ts'))).toBe(false);
+    });
+
+    // T006 de 008 · El adelanto: M02 lo usa solo por AdelantosApi (research R01) y el adelanto nunca pasa por
+    // la pasarela de la suscripción (principio V, ADR-033, FR-027).
+    it('cada violación de 008 se atribuye a su archivo del fixture, y el uso por AdelantosApi no se señala', () => {
+      const lineas = salida.split(/\r?\n/);
+      const enLinea = (regla: string, archivo: string) =>
+        lineas.some((linea) => linea.includes(regla) && linea.includes(archivo));
+      expect(enLinea('adelantos-solo-por-api', 'usa-adelantos-interno.ts')).toBe(true);
+      expect(enLinea('adelantos-sin-pasarela', 'adelantos/application/usa-pasarela.ts')).toBe(true);
+      expect(lineas.some((l) => l.includes('usa-adelantos-api.ts'))).toBe(false);
     });
   });
 });

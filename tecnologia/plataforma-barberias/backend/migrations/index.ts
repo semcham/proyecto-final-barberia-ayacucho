@@ -26,6 +26,9 @@ import * as m0024 from './0024_avisos';
 import * as m0025 from './0025_intentos_enlaces';
 import * as m0026 from './0026_purga_avisos';
 import * as m0027 from './0027_historial_por_enlace';
+import * as m0028 from './0028_adelanto_configuracion';
+import * as m0029 from './0029_adelantos';
+import * as m0030 from './0030_avisos_adelanto';
 
 // Registro explícito de migraciones, en orden. Cada historia agrega aquí las suyas.
 // (Un proveedor estático evita depender de importaciones dinámicas de archivos .ts.)
@@ -57,6 +60,9 @@ const MIGRACIONES: Record<string, Migration> = {
   '0025_intentos_enlaces': m0025,
   '0026_purga_avisos': m0026,
   '0027_historial_por_enlace': m0027,
+  '0028_adelanto_configuracion': m0028,
+  '0029_adelantos': m0029,
+  '0030_avisos_adelanto': m0030,
 };
 
 /** Nombre de la última migración que conoce el código (GET /salud/listo, 006). */

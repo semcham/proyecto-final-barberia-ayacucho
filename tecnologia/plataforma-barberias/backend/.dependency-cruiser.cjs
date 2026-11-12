@@ -130,6 +130,29 @@ module.exports = {
       to: { path: '(^|/)simulador-whatsapp/' },
     },
     {
+      name: 'adelantos-solo-por-api',
+      comment:
+        'El submódulo de adelantos de M03 (suscripciones-pagos/adelantos/) solo se usa dentro de M03: M02 y el ' +
+        'resto llaman al adelanto por AdelantosApi, desde el index.ts de M03 (008, research R01).',
+      severity: 'error',
+      from: { path: '(^|/)src/', pathNot: '(^|/)src/modules/suscripciones-pagos/' },
+      to: { path: '(^|/)src/modules/suscripciones-pagos/adelantos/' },
+    },
+    {
+      name: 'adelantos-sin-pasarela',
+      comment:
+        'El adelanto lo paga el cliente directamente a la barbería: el submódulo de adelantos no usa ' +
+        'PaymentGateway ni sus adaptadores (principio V, ADR-033, FR-027 de 008).',
+      severity: 'error',
+      from: { path: '(^|/)src/modules/suscripciones-pagos/adelantos/' },
+      to: {
+        path: [
+          '(^|/)src/modules/suscripciones-pagos/pagos/application/ports/payment-gateway\\.ts$',
+          '(^|/)src/modules/suscripciones-pagos/pagos/infrastructure/',
+        ],
+      },
+    },
+    {
       name: 'lectura-publica-confinada',
       comment:
         'El pool de barberias_publico (shared/lectura-publica.ts) solo lo usa la vía pública de M02 ' +

@@ -513,6 +513,88 @@ export async function sembrarFilas004(opciones: {
   return filas;
 }
 
+/** Tablas nuevas de 008 con barbería (data-model §1 a §4 de 008): todas con RLS por tenant. */
+export const TABLAS_008_CON_BARBERIA = [
+  'booking_deposit_settings',
+  'booking_deposit_file',
+  'booking_deposit',
+  'booking_deposit_payment',
+] as const;
+
+/** Ids de las filas que siembra `sembrarFilas008`. */
+export interface Filas008 {
+  qrId: string;
+  capturaId: string;
+  adelantoId: string;
+  pagoAdelantoId: string;
+  codigo: string;
+  numeroOperacion: string;
+}
+
+const ALFABETO_CODIGO_PRUEBA = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+
+/**
+ * Una fila en cada tabla nueva de 008 (T004), sembrada sin RLS: la configuración activa con su QR, una captura,
+ * el adelanto de la cita (POR_REVISAR) y su registro de pago vigente. Requiere una cita y su cliente de la misma
+ * barbería; `usuarioClienteId` es la cuenta del cliente y `usuarioId`, el propietario que configuró.
+ */
+export async function sembrarFilas008(opciones: {
+  tenantId: string;
+  citaId: string;
+  clienteId: string;
+  usuarioClienteId: string;
+  usuarioId: string;
+}): Promise<Filas008> {
+  const seed = poolDe('seed');
+  const { tenantId, citaId, clienteId, usuarioClienteId, usuarioId } = opciones;
+  const filas: Filas008 = {
+    qrId: uuidv7(),
+    capturaId: uuidv7(),
+    adelantoId: uuidv7(),
+    pagoAdelantoId: uuidv7(),
+    codigo: Array.from(randomBytes(6), (b) => ALFABETO_CODIGO_PRUEBA[b % 31]).join(''),
+    numeroOperacion: `OP${randomBytes(6).toString('hex').toUpperCase()}`,
+  };
+  const png = Buffer.from([0x89, 0x50, 0x4e, 0x47]);
+  for (const [id, tipo] of [
+    [filas.qrId, 'QR'],
+    [filas.capturaId, 'CAPTURA'],
+  ] as const) {
+    await seed.query(
+      `INSERT INTO booking_deposit_file (id, tenant_id, kind, content_type, size_bytes, sha256, content, created_by)
+       VALUES ($1, $2, $3, 'image/png', 4, $4, $5, $6)`,
+      [id, tenantId, tipo, createHash('sha256').update(png).digest('hex'), png, usuarioId],
+    );
+  }
+  await seed.query(
+    `INSERT INTO booking_deposit_settings (tenant_id, enabled, kind, amount_cents, payment_window_minutes,
+       qr_file_id, updated_by)
+     VALUES ($1, true, 'FIJO', 1000, 30, $2, $3)`,
+    [tenantId, filas.qrId, usuarioId],
+  );
+  await seed.query(
+    `INSERT INTO booking_deposit (id, tenant_id, appointment_id, customer_id, customer_user_id, code, amount_cents,
+       service_price_cents, service_name, starts_at, time_zone, qr_file_id, due_at, review_limit_at, status)
+     SELECT $1, $2, a.id, $3, $4, $5, 1000, 2000, a.service_name, a.starts_at, 'America/Lima', $6,
+            now() + interval '30 minutes', now() + interval '1 day', 'POR_REVISAR'
+       FROM appointment a WHERE a.id = $7`,
+    [filas.adelantoId, tenantId, clienteId, usuarioClienteId, filas.codigo, filas.qrId, citaId],
+  );
+  await seed.query(
+    `INSERT INTO booking_deposit_payment (id, tenant_id, deposit_id, operation_number, file_id, registered_by)
+     VALUES ($1, $2, $3, $4, $5, $6)`,
+    [
+      filas.pagoAdelantoId,
+      tenantId,
+      filas.adelantoId,
+      filas.numeroOperacion,
+      filas.capturaId,
+      usuarioClienteId,
+    ],
+  );
+  return filas;
+}
+
 /** Filas de una tabla con tenant_id, leídas sin RLS, para comparar antes y después de una operación. */
 export async function filasDe(tabla: string, tenantId: string): Promise<Record<string, unknown>[]> {
   if (!/^[a-z_]+$/.test(tabla)) throw new Error(`Nombre de tabla no válido: ${tabla}`);

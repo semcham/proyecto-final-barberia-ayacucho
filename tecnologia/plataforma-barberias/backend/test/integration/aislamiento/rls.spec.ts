@@ -12,9 +12,11 @@ import {
   sembrarHorarioAtencion,
   sembrarServicio,
   sembrarFilas004,
+  sembrarFilas008,
   sembrarSesion,
   sembrarSuscripcion,
   TABLAS_004_CON_BARBERIA,
+  TABLAS_008_CON_BARBERIA,
 } from '../../helpers/fixtures';
 import { cerrarPools, poolDe } from '../../helpers/test-db';
 
@@ -75,7 +77,7 @@ describe('PR09 · RLS en la base de datos', () => {
         inicio: manana,
         fin: new Date(manana.getTime() + 3600_000),
       });
-      const { clienteId } = await sembrarCliente({ tenantId });
+      const { clienteId, usuarioId: usuarioClienteId } = await sembrarCliente({ tenantId });
       const citaId = await sembrarCita({
         tenantId,
         barberoId,
@@ -142,6 +144,14 @@ describe('PR09 · RLS en la base de datos', () => {
         clienteId,
         citaId,
         barberoId,
+        usuarioId: barberia.propietarioId,
+      });
+      // 008 (T004): una fila en cada tabla nueva del adelanto.
+      await sembrarFilas008({
+        tenantId,
+        citaId,
+        clienteId,
+        usuarioClienteId: usuarioClienteId as string,
         usuarioId: barberia.propietarioId,
       });
     }
@@ -232,6 +242,29 @@ describe('PR09 · RLS en la base de datos', () => {
           WHERE table_schema = 'public' AND table_name = 'action_link_attempt' ORDER BY ordinal_position`,
       );
       expect(rows.map((f) => f.columna)).toEqual(['id', 'ip_hash', 'attempted_at']);
+    });
+  });
+
+  // T004 de 008 · Constitución 1.6.0, principio III: las cuatro tablas del adelanto tienen tenant_id, RLS
+  // activada y forzada y la política tenant_isolation.
+  describe('tablas de 008', () => {
+    it('las tablas nuevas con barbería tienen tenant_id y RLS activada y forzada', () => {
+      expect(TABLAS_008_CON_BARBERIA.filter((tabla) => !tablasConTenant.includes(tabla))).toEqual([]);
+      expect(TABLAS_008_CON_BARBERIA.filter((tabla) => !tablasConRls.includes(tabla))).toEqual([]);
+    });
+
+    it('cada una tiene la política tenant_isolation con el tenant de la transacción', async () => {
+      const { rows } = await poolDe('seed').query<{ tabla: string; usando: string; comprobando: string }>(
+        `SELECT tablename AS tabla, qual AS usando, with_check AS comprobando FROM pg_policies
+          WHERE schemaname = 'public' AND policyname = 'tenant_isolation' AND tablename = ANY($1)
+          ORDER BY tablename`,
+        [[...TABLAS_008_CON_BARBERIA]],
+      );
+      expect(rows.map((f) => f.tabla)).toEqual([...TABLAS_008_CON_BARBERIA].sort());
+      for (const fila of rows) {
+        expect(fila.usando).toContain("current_setting('app.tenant_id'");
+        expect(fila.comprobando).toContain("current_setting('app.tenant_id'");
+      }
     });
   });
 

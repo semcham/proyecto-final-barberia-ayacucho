@@ -186,9 +186,16 @@ describe('Las matrices de M01 y M02 coinciden con contracts/rbac.md de 002', () 
 
   // 004 (T050): operaciones de M02 que agrega la funcionalidad 004; su fila está en el rbac.md de 004.
   const M02_DE_004: OperacionCatalogoCitas[] = ['REPROGRAMAR_CITA'];
+  // 008 (T010): confirmar el adelanto y la bandeja; sus filas están en el rbac.md de 008 (las prueba
+  // test/unit/adelantos/base-008.spec.ts).
+  const M02_DE_008: OperacionCatalogoCitas[] = ['REVISAR_ADELANTO'];
 
-  it('cada operación de M02 aparece en la tabla (o en la de 004)', () => {
-    const cubiertas = [...M02_POR_FILA.flatMap(([, operaciones]) => operaciones), ...M02_DE_004].sort();
+  it('cada operación de M02 aparece en la tabla (o en la de 004 o 008)', () => {
+    const cubiertas = [
+      ...M02_POR_FILA.flatMap(([, operaciones]) => operaciones),
+      ...M02_DE_004,
+      ...M02_DE_008,
+    ].sort();
     expect(cubiertas).toEqual([...OPERACIONES_CATALOGO_CITAS].sort());
   });
 

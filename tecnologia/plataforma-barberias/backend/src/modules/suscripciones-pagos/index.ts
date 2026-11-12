@@ -15,3 +15,14 @@ export { ConciliarPagos } from './pagos/application/conciliar-pagos';
 export { ExpirarTransferencias } from './pagos/application/expirar-transferencias';
 export { VencerSuscripciones } from './suscripciones/application/vencer-suscripciones';
 export { AvisarFinDePrueba } from './suscripciones/application/avisar-fin-de-prueba';
+// Funcionalidad 008 (research R01): lo único del adelanto que ven M02 y el host.
+export {
+  AdelantosApi,
+  type AdelantoParaReservar,
+  type CandidatoPorVencer,
+  type DatosDelAdelantoNuevo,
+  type ResultadoDeVencimiento,
+  type ResumenDeAdelanto,
+} from './adelantos-api';
+export type { CancelacionDeLaCita, CausaDeVencimiento, EstadoAdelanto } from './adelantos/domain/adelanto';
+export { AdelantoPendiente, SinTiempoParaAdelanto } from './adelantos/domain/errores';

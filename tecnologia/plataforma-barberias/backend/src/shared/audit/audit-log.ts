@@ -53,7 +53,17 @@ export type AccionAuditada =
   | 'BARBERIA_REACTIVADA'
   | 'SUSCRIPCION_SUSPENDIDA'
   | 'SUSCRIPCION_REACTIVADA'
-  | 'ACTIVACION_MANUAL';
+  | 'ACTIVACION_MANUAL'
+  // Funcionalidad 008 (research R13, FR-029): recurso `cita:<id>;<estado>`. Nunca el número de operación, la
+  // captura ni el motivo del rechazo (queda en booking_deposit_payment).
+  | 'ADELANTO_CONFIGURADO'
+  | 'ADELANTO_PAGO_REGISTRADO'
+  | 'ADELANTO_CONFIRMADO'
+  | 'ADELANTO_PAGO_RECHAZADO'
+  | 'ADELANTO_VENCIDO'
+  | 'ADELANTO_DEVUELTO'
+  // Por devolver o retenido al cancelar la cita o marcar que no asistió.
+  | 'ADELANTO_RESUELTO';
 
 export interface EntradaAuditoria {
   accion: AccionAuditada;

@@ -26,6 +26,9 @@ export const OPERACIONES_CATALOGO_CITAS = [
   'VER_HISTORIAL',
   // 004 (specs/004-notificaciones-reprogramacion/contracts/rbac.md): el barbero no reprograma.
   'REPROGRAMAR_CITA',
+  // 008 (specs/008-adelanto-reserva-qr/contracts/rbac.md): confirmar el adelanto y la bandeja de verificación,
+  // rutas de M02. Misma fila que REVISAR_ADELANTO de M03: solo el propietario.
+  'REVISAR_ADELANTO',
 ] as const;
 export type OperacionCatalogoCitas = (typeof OPERACIONES_CATALOGO_CITAS)[number];
 
@@ -44,6 +47,7 @@ const MATRIZ: Readonly<Record<OperacionCatalogoCitas, Readonly<Partial<Record<Ro
   VER_AGENDA: { PROPIETARIO: 'TODOS', BARBERO: 'PROPIOS' },
   VER_HISTORIAL: { CLIENTE: 'PROPIOS' },
   REPROGRAMAR_CITA: { PROPIETARIO: 'TODOS', CLIENTE: 'PROPIOS' },
+  REVISAR_ADELANTO: { PROPIETARIO: 'TODOS' },
 };
 
 export const PermisosCatalogoCitas = {

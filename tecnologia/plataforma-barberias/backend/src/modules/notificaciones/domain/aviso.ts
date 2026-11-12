@@ -16,6 +16,12 @@ export const TIPOS_DE_AVISO = [
   'SUSCRIPCION_VENCIDA',
   'PAGO_APROBADO',
   'PAGO_RECHAZADO',
+  // Funcionalidad 008 (contracts/eventos.md §3 de 008, migración 0030).
+  'ADELANTO_SOLICITADO',
+  'PAGO_ADELANTO_REGISTRADO',
+  'ADELANTO_CONFIRMADO',
+  'PAGO_ADELANTO_RECHAZADO',
+  'ADELANTO_VENCIDO',
 ] as const;
 export type TipoAviso = (typeof TIPOS_DE_AVISO)[number];
 
@@ -70,3 +76,15 @@ export const TIPOS_DE_AVISO_DE_SUSCRIPCION: readonly TipoAviso[] = Object.values
 );
 
 export const PLAZO_AVISO_DE_SUSCRIPCION_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * 008 · Tipo de aviso de cada evento del adelanto (specs/008-adelanto-reserva-qr/contracts/eventos.md §3). Su plazo
+ * es el de los demás avisos que no son recordatorio: creación + 24 h. El manejador llega en las fases de 008.
+ */
+export const AVISO_POR_EVENTO_DE_ADELANTO: Readonly<Record<string, TipoAviso>> = {
+  AdelantoSolicitado: 'ADELANTO_SOLICITADO',
+  PagoDeAdelantoRegistrado: 'PAGO_ADELANTO_REGISTRADO',
+  AdelantoConfirmado: 'ADELANTO_CONFIRMADO',
+  PagoDeAdelantoRechazado: 'PAGO_ADELANTO_RECHAZADO',
+  AdelantoVencido: 'ADELANTO_VENCIDO',
+};

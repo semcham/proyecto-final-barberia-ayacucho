@@ -6,8 +6,18 @@ import { COLUMNAS_PLATAFORMA, PERMISOS_APP_PLATAFORMA } from '../../../migration
 import { COLUMNAS_PLATAFORMA_TAREAS, UPDATE_APP_TAREAS } from '../../../migrations/0017_tareas';
 import { COLUMNAS_PLATAFORMA_EVENTOS } from '../../../migrations/0021_salida_de_eventos';
 import { COLUMNAS_PLATAFORMA_AVISOS } from '../../../migrations/0024_avisos';
+import { COLUMNAS_PLATAFORMA_ADELANTOS } from '../../../migrations/0029_adelantos';
 import { LecturaPlataforma } from '../../../src/shared/lectura-plataforma';
-import { sembrarBarberia, sembrarPago, sembrarSuscripcion } from '../../helpers/fixtures';
+import {
+  sembrarBarberia,
+  sembrarBarbero,
+  sembrarCita,
+  sembrarCliente,
+  sembrarFilas008,
+  sembrarPago,
+  sembrarServicio,
+  sembrarSuscripcion,
+} from '../../helpers/fixtures';
 import { cerrarPools, poolDe } from '../../helpers/test-db';
 
 // T012 · PR09 de la lectura de la plataforma (ADR-031, constitución 1.3.1, data-model.md §4):
@@ -27,7 +37,16 @@ const PERMISOS_ESPERADOS: Record<string, readonly string[]> = {
   // 004 (ADR-025): solo las cinco columnas técnicas de la salida de eventos y de los avisos.
   ...COLUMNAS_PLATAFORMA_EVENTOS,
   ...COLUMNAS_PLATAFORMA_AVISOS,
+  // 008 (research R09): las cinco columnas técnicas de booking_deposit, para la tarea vencer-adelantos.
+  ...COLUMNAS_PLATAFORMA_ADELANTOS,
 };
+
+/** Tablas nuevas de 008 que barberias_plataforma no lee en absoluto (data-model §7 de 008). */
+const TABLAS_008_SIN_LECTURA_DE_PLATAFORMA = [
+  'booking_deposit_settings',
+  'booking_deposit_file',
+  'booking_deposit_payment',
+];
 
 /** Tablas nuevas de 004 que barberias_plataforma no lee en absoluto (data-model §7). */
 const TABLAS_004_SIN_LECTURA_DE_PLATAFORMA = [
@@ -56,6 +75,14 @@ async function como<T>(
 }
 
 const comoPlataforma = <T>(fn: (c: PoolClient) => Promise<T>) => como('plataforma', null, fn);
+
+/** Servicio, barbero y cliente con cuenta, para sembrar una cita con adelanto (008). */
+async function sembrarAgenda(tenantId: string) {
+  const { servicioId } = await sembrarServicio({ tenantId });
+  const { barberoId } = await sembrarBarbero({ tenantId, servicios: [servicioId] });
+  const { clienteId, usuarioId } = await sembrarCliente({ tenantId });
+  return { servicioId, barberoId, clienteId, usuarioClienteId: usuarioId as string };
+}
 
 describe('PR09 · Lectura de la plataforma (ADR-031, constitución 1.3.1)', () => {
   const tenants: { tenantId: string; suscripcionId: string; pagoId: string; numero: string }[] = [];
@@ -336,6 +363,93 @@ describe('PR09 · Lectura de la plataforma (ADR-031, constitución 1.3.1)', () =
         [TABLAS_004],
       );
       expect(rows).toEqual([]);
+    });
+  });
+
+  // T005 de 008 · data-model §7 de 008, research R09: la tarea vencer-adelantos lista los candidatos leyendo solo
+  // cinco columnas técnicas de booking_deposit; nada del monto, el código, el cliente ni los archivos.
+  describe('5c. Tablas de 008', () => {
+    it('booking_deposit: exactamente id, tenant_id, status, due_at y review_limit_at', async () => {
+      expect([...COLUMNAS_PLATAFORMA_ADELANTOS.booking_deposit].sort()).toEqual(
+        ['id', 'tenant_id', 'status', 'due_at', 'review_limit_at'].sort(),
+      );
+      expect(Object.keys(COLUMNAS_PLATAFORMA_ADELANTOS)).toEqual(['booking_deposit']);
+      const { rows } = await poolDe('seed').query<{ columna: string }>(
+        `SELECT column_name AS columna FROM information_schema.column_privileges
+          WHERE grantee = 'barberias_plataforma' AND table_name = 'booking_deposit' AND privilege_type = 'SELECT'`,
+      );
+      expect(rows.map((f) => f.columna).sort()).toEqual(
+        ['id', 'tenant_id', 'status', 'due_at', 'review_limit_at'].sort(),
+      );
+    });
+
+    it.each([
+      ['SELECT appointment_id FROM booking_deposit'],
+      ['SELECT customer_id FROM booking_deposit'],
+      ['SELECT customer_user_id FROM booking_deposit'],
+      ['SELECT code FROM booking_deposit'],
+      ['SELECT amount_cents FROM booking_deposit'],
+      ['SELECT service_name FROM booking_deposit'],
+      ['SELECT qr_file_id FROM booking_deposit'],
+      ['SELECT * FROM booking_deposit'],
+      ...TABLAS_008_SIN_LECTURA_DE_PLATAFORMA.map((tabla) => [`SELECT tenant_id FROM ${tabla}`]),
+      ['SELECT content FROM booking_deposit_file'],
+      ['SELECT operation_number FROM booking_deposit_payment'],
+    ])('%s → permiso denegado', async (consulta) => {
+      await expect(comoPlataforma((c) => c.query(consulta))).rejects.toThrow(/permission denied/);
+    });
+
+    it('nada sobre las otras tres tablas, ni de tabla ni de columna', async () => {
+      const { rows } = await poolDe('seed').query(
+        `SELECT table_name, privilege_type FROM information_schema.table_privileges
+          WHERE grantee = 'barberias_plataforma' AND table_name = ANY($1)
+         UNION ALL
+         SELECT table_name, privilege_type FROM information_schema.column_privileges
+          WHERE grantee = 'barberias_plataforma' AND table_name = ANY($1)`,
+        [TABLAS_008_SIN_LECTURA_DE_PLATAFORMA],
+      );
+      expect(rows).toEqual([]);
+    });
+
+    it('lee las columnas técnicas de los adelantos de todas las barberías (política plataforma_lectura)', async () => {
+      const ids: string[] = [];
+      for (const t of tenants) {
+        const { barberoId, servicioId, clienteId, usuarioClienteId } = await sembrarAgenda(t.tenantId);
+        const citaId = await sembrarCita({
+          tenantId: t.tenantId,
+          barberoId,
+          servicioId,
+          clienteId,
+          estado: 'PENDIENTE',
+          inicio: new Date(Date.now() + 2 * DIA_MS),
+        });
+        const { adelantoId } = await sembrarFilas008({
+          tenantId: t.tenantId,
+          citaId,
+          clienteId,
+          usuarioClienteId,
+          usuarioId: usuarioClienteId,
+        });
+        ids.push(adelantoId);
+      }
+      const { rows } = await comoPlataforma((c) =>
+        c.query(
+          `SELECT id, tenant_id, status FROM booking_deposit
+            WHERE id = ANY($1) AND due_at IS NOT NULL AND review_limit_at IS NOT NULL ORDER BY id`,
+          [ids],
+        ),
+      );
+      expect(rows).toEqual(
+        tenants
+          .map((t, i) => ({ id: ids[i], tenant_id: t.tenantId, status: 'POR_REVISAR' }))
+          .sort((x, y) => x.id.localeCompare(y.id)),
+      );
+    });
+
+    it('no puede cambiar ningún adelanto', async () => {
+      await expect(
+        comoPlataforma((c) => c.query(`UPDATE booking_deposit SET status = 'VENCIDO'`)),
+      ).rejects.toThrow(/permission denied/);
     });
   });
 

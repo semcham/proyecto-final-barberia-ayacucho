@@ -511,6 +511,86 @@ export interface ActionLinkAttemptTable {
   attempted_at: Generated<Date>;
 }
 
+// Funcionalidad 008 (migraciones 0028 a 0030, data-model.md de 008). Importes en céntimos enteros.
+
+export type EstadoAdelantoDb =
+  | 'POR_PAGAR'
+  | 'POR_REVISAR'
+  | 'CONFIRMADO'
+  | 'VENCIDO'
+  | 'ANULADO'
+  | 'POR_DEVOLVER'
+  | 'DEVUELTO'
+  | 'RETENIDO';
+
+export interface BookingDepositFileTable {
+  id: string;
+  tenant_id: string;
+  kind: 'QR' | 'CAPTURA';
+  content_type: 'image/jpeg' | 'image/png' | 'application/pdf';
+  size_bytes: number;
+  sha256: string;
+  content: Buffer;
+  created_at: Generated<Date>;
+  created_by: string;
+}
+
+export interface BookingDepositSettingsTable {
+  tenant_id: string;
+  enabled: Generated<boolean>;
+  kind: ColumnType<
+    'FIJO' | 'PORCENTAJE' | null,
+    'FIJO' | 'PORCENTAJE' | null | undefined,
+    'FIJO' | 'PORCENTAJE' | null
+  >;
+  amount_cents: ColumnType<number | null, number | null | undefined, number | null>;
+  percent: ColumnType<number | null, number | null | undefined, number | null>;
+  payment_window_minutes: ColumnType<number | null, number | null | undefined, number | null>;
+  qr_file_id: TextoNulo;
+  updated_at: Generated<Date>;
+  updated_by: string;
+}
+
+export interface BookingDepositTable {
+  id: string;
+  tenant_id: string;
+  appointment_id: string;
+  customer_id: string;
+  customer_user_id: string;
+  code: string;
+  amount_cents: number;
+  service_price_cents: number;
+  service_name: string;
+  starts_at: Fecha;
+  time_zone: string;
+  qr_file_id: string;
+  due_at: Fecha;
+  review_limit_at: Fecha;
+  status: Generated<EstadoAdelantoDb>;
+  resolved_at: FechaNula;
+  refunded_at: FechaNula;
+  refunded_by: TextoNulo;
+  created_at: Generated<Date>;
+}
+
+export interface BookingDepositPaymentTable {
+  id: string;
+  tenant_id: string;
+  deposit_id: string;
+  operation_number: string;
+  file_id: TextoNulo;
+  registered_at: Generated<Date>;
+  registered_by: string;
+  review_result: ColumnType<
+    'CONFIRMADO' | 'RECHAZADO' | null,
+    'CONFIRMADO' | 'RECHAZADO' | null | undefined,
+    'CONFIRMADO' | 'RECHAZADO' | null
+  >;
+  reviewed_at: FechaNula;
+  reviewed_by: TextoNulo;
+  rejection_reason: TextoNulo;
+}
+
 export interface Database {
   tenant: TenantTable;
   role: RoleTable;
@@ -551,4 +631,8 @@ export interface Database {
   appointment_link_use: AppointmentLinkUseTable;
   notification: NotificationTable;
   action_link_attempt: ActionLinkAttemptTable;
+  booking_deposit_file: BookingDepositFileTable;
+  booking_deposit_settings: BookingDepositSettingsTable;
+  booking_deposit: BookingDepositTable;
+  booking_deposit_payment: BookingDepositPaymentTable;
 }
