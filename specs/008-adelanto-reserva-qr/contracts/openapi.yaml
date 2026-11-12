@@ -1,0 +1,381 @@
+openapi: 3.1.0
+info:
+  title: Plataforma de barberías · 008 Adelanto de reserva con QR
+  version: 0.8.0
+  description: >
+    Contrato de las rutas nuevas de la funcionalidad 008 y del cambio en POST /citas. Prefijo /api/v1. Errores con
+    el formato común { codigo, mensaje, detalles } (001). Horas en ISO 8601 con el desplazamiento de la barbería
+    (002). Importes en céntimos enteros (003). Todas las rutas tienen sesión de barbería y toman la barbería solo
+    del token (principio III): ninguna recibe tenantId. La plataforma no cobra el adelanto: solo registra lo que
+    declara el cliente y la decisión del propietario (constitución 1.5.0, principio V; ADR-033). Los archivos (QR
+    y captura) se sirven solo con sesión y permiso, con Cache-Control no-store y X-Content-Type-Options nosniff
+    (ADR-023).
+servers:
+  - url: /api/v1
+tags:
+  - name: Configuración del adelanto (propietario)
+  - name: Adelanto de la cita (cliente y propietario)
+  - name: Reserva (cambio sobre 002)
+paths:
+  /barberia/adelanto:
+    get:
+      tags: [Configuración del adelanto (propietario)]
+      summary: Configuración del adelanto de la barbería del token (US1). Solo PROPIETARIO
+      security: [{ barberia: [] }]
+      responses:
+        "200":
+          description: Configuración vigente (enabled=false si nunca se activó)
+          content: { application/json: { schema: { $ref: "#/components/schemas/ConfiguracionAdelanto" } } }
+        "403": { $ref: "#/components/responses/AccesoDenegado" }
+    put:
+      tags: [Configuración del adelanto (propietario)]
+      summary: Activar, cambiar o desactivar el adelanto (FR-001, FR-002). Solo PROPIETARIO
+      description: >
+        Los cambios valen para las reservas nuevas; las citas ya hechas conservan su monto, su hora límite y su QR
+        (FR-004). Activar exige que la barbería ya tenga un QR subido.
+      security: [{ barberia: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/CambiarConfiguracionAdelanto" } } }
+      responses:
+        "200":
+          description: Configuración guardada
+          content: { application/json: { schema: { $ref: "#/components/schemas/ConfiguracionAdelanto" } } }
+        "400": { $ref: "#/components/responses/Validacion" }
+        "403": { $ref: "#/components/responses/AccesoDenegadoOSuscripcion" }
+        "422":
+          description: VALIDACION (rango del monto, porcentaje o plazo) o QR_REQUERIDO (activar sin QR)
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+  /barberia/adelanto/qr:
+    put:
+      tags: [Configuración del adelanto (propietario)]
+      summary: Subir o reemplazar el QR de Yape o Plin de la barbería. Solo PROPIETARIO
+      description: >
+        multipart/form-data con el campo "archivo". Solo JPEG o PNG, detectados por sus bytes, hasta 1 MB. El
+        QR anterior se conserva mientras alguna cita lo use (FR-004).
+      security: [{ barberia: [] }]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [archivo]
+              properties:
+                archivo: { type: string, format: binary }
+      responses:
+        "200":
+          description: QR guardado
+          content: { application/json: { schema: { $ref: "#/components/schemas/ConfiguracionAdelanto" } } }
+        "403": { $ref: "#/components/responses/AccesoDenegadoOSuscripcion" }
+        "413": { description: Archivo de más de 1 MB }
+        "422":
+          description: ARCHIVO_INVALIDO (no es JPEG ni PNG por sus bytes)
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    get:
+      tags: [Configuración del adelanto (propietario)]
+      summary: El QR vigente de la barbería, para el propietario
+      security: [{ barberia: [] }]
+      responses:
+        "200":
+          description: Imagen, con Cache-Control no-store
+          content:
+            image/png: { schema: { type: string, format: binary } }
+            image/jpeg: { schema: { type: string, format: binary } }
+        "403": { $ref: "#/components/responses/AccesoDenegado" }
+        "404": { $ref: "#/components/responses/NoEncontrado" }
+
+  /citas:
+    post:
+      tags: [Reserva (cambio sobre 002)]
+      summary: Reservar (002). Con el adelanto activo y una reserva del CLIENTE, la cita nace PENDIENTE
+      description: >
+        Mismo cuerpo, reglas e Idempotency-Key que 002. Cambia la respuesta: si la barbería tiene el adelanto
+        activo y reserva el CLIENTE, la cita viene con estado PENDIENTE y con el objeto adelanto. Una reserva del
+        PROPIETARIO nunca pide adelanto (FR-005). Si el plazo para pagar no cabe antes del inicio menos 30 minutos,
+        422 SIN_TIEMPO_PARA_ADELANTO.
+      security: [{ barberia: [] }]
+      responses:
+        "201":
+          description: Cita creada (CONFIRMADA sin adelanto; PENDIENTE con adelanto)
+          content: { application/json: { schema: { $ref: "#/components/schemas/CitaConAdelanto" } } }
+        "409": { description: HORARIO_NO_DISPONIBLE o CITA_SOLAPADA_DEL_CLIENTE (002) }
+        "422":
+          description: RESERVA_INVALIDA (002) o SIN_TIEMPO_PARA_ADELANTO
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+  /citas/{id}/adelanto:
+    get:
+      tags: [Adelanto de la cita (cliente y propietario)]
+      summary: El adelanto de la cita, para su cliente o el propietario (FR-008, FR-020)
+      security: [{ barberia: [] }]
+      parameters: [{ $ref: "#/components/parameters/CitaId" }]
+      responses:
+        "200":
+          description: Adelanto
+          content: { application/json: { schema: { $ref: "#/components/schemas/Adelanto" } } }
+        "404": { $ref: "#/components/responses/NoEncontrado" }
+
+  /citas/{id}/adelanto/qr:
+    get:
+      tags: [Adelanto de la cita (cliente y propietario)]
+      summary: El QR con el que se reservó la cita (FR-004, FR-008). Cliente de la cita (mientras pague) o PROPIETARIO
+      security: [{ barberia: [] }]
+      parameters: [{ $ref: "#/components/parameters/CitaId" }]
+      responses:
+        "200":
+          description: Imagen, con Cache-Control no-store
+          content:
+            image/png: { schema: { type: string, format: binary } }
+            image/jpeg: { schema: { type: string, format: binary } }
+        "404": { $ref: "#/components/responses/NoEncontrado" }
+
+  /citas/{id}/adelanto/pago:
+    post:
+      tags: [Adelanto de la cita (cliente y propietario)]
+      summary: Registrar el pago (FR-009 a FR-011). Solo el CLIENTE de la cita, dentro del plazo
+      description: >
+        multipart/form-data con "numeroOperacion" (4 a 20 caracteres alfanuméricos; se guarda sin espacios y en
+        mayúsculas) y, opcionalmente, "archivo" (captura JPEG, PNG o PDF por sus bytes, hasta 5 MB). Un solo
+        registro vigente por cita; el número no puede repetirse en la barbería.
+      security: [{ barberia: [] }]
+      parameters: [{ $ref: "#/components/parameters/CitaId" }]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [numeroOperacion]
+              properties:
+                numeroOperacion: { type: string, minLength: 4, maxLength: 24 }
+                archivo: { type: string, format: binary }
+      responses:
+        "201":
+          description: Pago registrado; el adelanto queda POR_REVISAR
+          content: { application/json: { schema: { $ref: "#/components/schemas/Adelanto" } } }
+        "404": { $ref: "#/components/responses/NoEncontrado" }
+        "409":
+          description: >
+            NUMERO_OPERACION_REPETIDO (ya usado en la barbería) o PAGO_YA_REGISTRADO (ya hay un registro
+            vigente) o ADELANTO_RESUELTO (confirmado, vencido o anulado)
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "413": { description: Captura de más de 5 MB }
+        "422":
+          description: VALIDACION (formato del número), ARCHIVO_INVALIDO o ADELANTO_VENCIDO (pasó la hora límite)
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+  /citas/{id}/adelanto/captura:
+    get:
+      tags: [Adelanto de la cita (cliente y propietario)]
+      summary: La captura del registro vigente (FR-011). Cliente de la cita o PROPIETARIO
+      security: [{ barberia: [] }]
+      parameters: [{ $ref: "#/components/parameters/CitaId" }]
+      responses:
+        "200":
+          description: Archivo como adjunto, con Cache-Control no-store y nosniff
+          content:
+            image/png: { schema: { type: string, format: binary } }
+            image/jpeg: { schema: { type: string, format: binary } }
+            application/pdf: { schema: { type: string, format: binary } }
+        "404": { $ref: "#/components/responses/NoEncontrado" }
+
+  /citas/{id}/adelanto/confirmacion:
+    post:
+      tags: [Adelanto de la cita (cliente y propietario)]
+      summary: Confirmar el adelanto (FR-012, FR-013, FR-015). Solo PROPIETARIO. La cita pasa a CONFIRMADA
+      description: >
+        Idempotente: si ya estaba confirmado, 200 sin cambios ni aviso. Con la cita y el adelanto bloqueados en el
+        mismo orden que el vencimiento: con operaciones simultáneas, exactamente una tiene efecto (EQ-24).
+      security: [{ barberia: [] }]
+      parameters: [{ $ref: "#/components/parameters/CitaId" }]
+      responses:
+        "200":
+          description: Adelanto confirmado y cita confirmada
+          content: { application/json: { schema: { $ref: "#/components/schemas/CitaConAdelanto" } } }
+        "403": { $ref: "#/components/responses/AccesoDenegadoOSuscripcion" }
+        "404": { $ref: "#/components/responses/NoEncontrado" }
+        "409":
+          description: SIN_PAGO_REGISTRADO o ADELANTO_RESUELTO (vencido, anulado o la cita ya cancelada)
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+  /citas/{id}/adelanto/rechazo:
+    post:
+      tags: [Adelanto de la cita (cliente y propietario)]
+      summary: Rechazar el pago registrado con un motivo (FR-014). Solo PROPIETARIO
+      security: [{ barberia: [] }]
+      parameters: [{ $ref: "#/components/parameters/CitaId" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [motivo]
+              properties:
+                motivo: { type: string, minLength: 5, maxLength: 300 }
+      responses:
+        "200":
+          description: Pago rechazado; el adelanto vuelve a POR_PAGAR con su hora límite original
+          content: { application/json: { schema: { $ref: "#/components/schemas/Adelanto" } } }
+        "403": { $ref: "#/components/responses/AccesoDenegadoOSuscripcion" }
+        "404": { $ref: "#/components/responses/NoEncontrado" }
+        "409":
+          description: SIN_PAGO_REGISTRADO o ADELANTO_RESUELTO
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+  /citas/{id}/adelanto/devolucion:
+    post:
+      tags: [Adelanto de la cita (cliente y propietario)]
+      summary: Marcar el adelanto como devuelto (FR-022). Solo PROPIETARIO y solo desde POR_DEVOLVER
+      security: [{ barberia: [] }]
+      parameters: [{ $ref: "#/components/parameters/CitaId" }]
+      responses:
+        "200":
+          description: Adelanto DEVUELTO, con su fecha
+          content: { application/json: { schema: { $ref: "#/components/schemas/Adelanto" } } }
+        "403": { $ref: "#/components/responses/AccesoDenegadoOSuscripcion" }
+        "404": { $ref: "#/components/responses/NoEncontrado" }
+        "409":
+          description: ADELANTO_NO_POR_DEVOLVER (pendiente, confirmado, retenido o ya devuelto)
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+  /adelantos/por-revisar:
+    get:
+      tags: [Adelanto de la cita (cliente y propietario)]
+      summary: Bandeja de verificación (US3). Solo PROPIETARIO
+      description: >
+        Citas PENDIENTES con un pago registrado sin revisar, de la hora límite más próxima a la más lejana, con el
+        límite máximo adicional; y adelantos POR_DEVOLVER. Sin la captura (se pide aparte).
+      security: [{ barberia: [] }]
+      parameters:
+        - { name: estado, in: query, required: false, schema: { type: string, enum: [POR_REVISAR, POR_DEVOLVER], default: POR_REVISAR } }
+      responses:
+        "200":
+          description: Lista
+          content:
+            application/json:
+              schema:
+                type: array
+                maxItems: 200
+                items: { $ref: "#/components/schemas/AdelantoEnBandeja" }
+        "403": { $ref: "#/components/responses/AccesoDenegado" }
+
+components:
+  securitySchemes:
+    barberia:
+      type: http
+      scheme: bearer
+      description: Token de barbería de 001/002 (con tid). El de plataforma se rechaza.
+
+  parameters:
+    CitaId:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+
+  responses:
+    NoEncontrado:
+      description: >
+        NO_ENCONTRADO: la cita no existe en la barbería del token, no tiene adelanto o no es del cliente (sin
+        revelar cuál)
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    AccesoDenegado:
+      description: ACCESO_DENEGADO (rol sin permiso, contracts/rbac.md)
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    AccesoDenegadoOSuscripcion:
+      description: ACCESO_DENEGADO o SUSCRIPCION_NO_PERMITE (003; research R12)
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    Validacion:
+      description: VALIDACION (cuerpo mal formado o con campos no declarados, como tenantId)
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+  schemas:
+    Error:
+      type: object
+      required: [codigo, mensaje]
+      properties:
+        codigo: { type: string }
+        mensaje: { type: string }
+        detalles: { type: array, items: { type: object } }
+
+    ConfiguracionAdelanto:
+      type: object
+      required: [activo, tieneQr]
+      properties:
+        activo: { type: boolean }
+        tipo: { type: string, enum: [FIJO, PORCENTAJE] }
+        montoCentimos: { type: integer, minimum: 100, maximum: 50000, description: Solo con tipo FIJO }
+        porcentaje: { type: integer, minimum: 1, maximum: 100, description: Solo con tipo PORCENTAJE }
+        plazoMinutos: { type: integer, minimum: 10, maximum: 1440 }
+        tieneQr: { type: boolean }
+        actualizadoEn: { type: string, format: date-time }
+
+    CambiarConfiguracionAdelanto:
+      type: object
+      additionalProperties: false
+      required: [activo]
+      properties:
+        activo: { type: boolean }
+        tipo: { type: string, enum: [FIJO, PORCENTAJE] }
+        montoCentimos: { type: integer }
+        porcentaje: { type: integer }
+        plazoMinutos: { type: integer }
+
+    EstadoAdelanto:
+      type: string
+      enum: [POR_PAGAR, POR_REVISAR, CONFIRMADO, VENCIDO, ANULADO, POR_DEVOLVER, DEVUELTO, RETENIDO]
+
+    Adelanto:
+      type: object
+      description: >
+        Para el cliente de la cita y el propietario. El número de operación va completo solo a ellos dos (FR-011);
+        nunca a otro cliente ni a otra barbería, y nunca en los avisos.
+      required: [citaId, estado, montoCentimos, codigo, horaLimite, limiteRevision, precioCentimos, saldoCentimos]
+      properties:
+        citaId: { type: string, format: uuid }
+        estado: { $ref: "#/components/schemas/EstadoAdelanto" }
+        montoCentimos: { type: integer }
+        precioCentimos: { type: integer, description: Precio del servicio al reservar }
+        saldoCentimos: { type: integer, description: precio − adelanto (solo cuenta con el adelanto CONFIRMADO) }
+        codigo: { type: string, minLength: 6, maxLength: 6 }
+        horaLimite: { type: string, format: date-time }
+        limiteRevision: { type: string, format: date-time }
+        pago:
+          type: [object, "null"]
+          description: Registro vigente o el último rechazado
+          properties:
+            numeroOperacion: { type: string }
+            tieneCaptura: { type: boolean }
+            registradoEn: { type: string, format: date-time }
+            resultado: { type: [string, "null"], enum: [CONFIRMADO, RECHAZADO, null] }
+            motivoRechazo: { type: [string, "null"] }
+        devueltoEn: { type: [string, "null"], format: date-time }
+
+    CitaConAdelanto:
+      type: object
+      description: La Cita de 002 (estado PENDIENTE o CONFIRMADA), con su adelanto si lo tiene
+      required: [id, estado, inicio, fin, servicio, barbero]
+      properties:
+        id: { type: string, format: uuid }
+        estado: { type: string, enum: [PENDIENTE, CONFIRMADA, COMPLETADA, NO_ASISTIO, CANCELADA] }
+        inicio: { type: string, format: date-time }
+        fin: { type: string, format: date-time }
+        servicio: { type: string }
+        barbero: { type: string }
+        precio: { type: string, description: Como en 002 }
+        adelanto: { oneOf: [{ $ref: "#/components/schemas/Adelanto" }, { type: "null" }] }
+
+    AdelantoEnBandeja:
+      type: object
+      required: [citaId, cliente, servicio, inicio, adelanto]
+      properties:
+        citaId: { type: string, format: uuid }
+        cliente: { type: string, description: Nombre del cliente (el propietario ya lo ve en la agenda) }
+        servicio: { type: string }
+        barbero: { type: string }
+        inicio: { type: string, format: date-time }
+        adelanto: { $ref: "#/components/schemas/Adelanto" }
