@@ -30,8 +30,19 @@ type CodigoError003 =
 /** Códigos de la funcionalidad 004 (specs/004-notificaciones-reprogramacion/contracts/openapi.yaml). */
 type CodigoError004 =
   'CITA_CAMBIO' | 'SIN_ANTELACION_PARA_REPROGRAMAR' | 'ENLACE_NO_VALIDO' | 'CONSENTIMIENTO_REQUERIDO';
+/** Códigos de la funcionalidad 008 (specs/008-adelanto-reserva-qr/contracts/openapi.yaml). */
+type CodigoError008 =
+  | 'SIN_TIEMPO_PARA_ADELANTO'
+  | 'NUMERO_OPERACION_REPETIDO'
+  | 'PAGO_YA_REGISTRADO'
+  | 'ADELANTO_RESUELTO'
+  | 'ADELANTO_VENCIDO'
+  | 'SIN_PAGO_REGISTRADO'
+  | 'ADELANTO_NO_POR_DEVOLVER'
+  | 'QR_REQUERIDO'
+  | 'ADELANTO_PENDIENTE';
 export type CodigoError =
-  CuerpoError['codigo'] | CodigoError002 | CodigoError006 | CodigoError003 | CodigoError004;
+  CuerpoError['codigo'] | CodigoError002 | CodigoError006 | CodigoError003 | CodigoError004 | CodigoError008;
 
 const BASE = '/api/v1';
 

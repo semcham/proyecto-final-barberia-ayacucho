@@ -162,6 +162,83 @@ export function canalDeAviso(
   ];
 }
 
+/** 008 (T015): la configuración del adelanto (esquema ConfiguracionAdelanto). */
+export interface ConfiguracionAdelantoDePrueba {
+  activo: boolean;
+  tipo?: 'FIJO' | 'PORCENTAJE';
+  montoCentimos?: number;
+  porcentaje?: number;
+  plazoMinutos?: number;
+  tieneQr: boolean;
+  actualizadoEn?: string;
+}
+
+/** Lo que recibió el servidor de prueba del adelanto: los cuerpos de cada PUT y el tamaño de cada QR subido. */
+export interface RecibidoAdelanto {
+  cambios: Record<string, unknown>[];
+  qrs: number[];
+}
+
+/** Bytes de un PNG mínimo, para el QR que devuelve GET /barberia/adelanto/qr. */
+export const QR_DE_PRUEBA = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3]);
+
+/**
+ * 008 (T015): GET y PUT de /barberia/adelanto y de /barberia/adelanto/qr con un estado en memoria. El PUT responde
+ * 422 QR_REQUERIDO si se activa sin QR (como el backend) y, si no, devuelve la configuración guardada.
+ */
+export function adelantoDePrueba(
+  inicial: ConfiguracionAdelantoDePrueba = { activo: false, tieneQr: false },
+  recibido: RecibidoAdelanto = { cambios: [], qrs: [] },
+) {
+  let actual = inicial;
+  return [
+    http.get('/api/v1/barberia/adelanto', () => HttpResponse.json(actual)),
+    http.put('/api/v1/barberia/adelanto', async ({ request }) => {
+      const cuerpo = (await request.json()) as Record<string, unknown>;
+      recibido.cambios.push(cuerpo);
+      if (cuerpo.activo === true && !actual.tieneQr) {
+        return HttpResponse.json(
+          {
+            codigo: 'QR_REQUERIDO',
+            mensaje: 'Sube el QR de Yape o Plin de tu barbería antes de activar el adelanto.',
+            detalles: [],
+          },
+          { status: 422 },
+        );
+      }
+      const { montoCentimos, porcentaje, ...resto } = actual;
+      const valores =
+        cuerpo.tipo === 'FIJO'
+          ? { montoCentimos: cuerpo.montoCentimos as number }
+          : cuerpo.tipo === 'PORCENTAJE'
+            ? { porcentaje: cuerpo.porcentaje as number }
+            : { montoCentimos, porcentaje };
+      actual = {
+        ...resto,
+        ...valores,
+        activo: cuerpo.activo as boolean,
+        tipo: (cuerpo.tipo as ConfiguracionAdelantoDePrueba['tipo']) ?? actual.tipo,
+        plazoMinutos: (cuerpo.plazoMinutos as number | undefined) ?? actual.plazoMinutos,
+        actualizadoEn: '2026-11-12T10:00:00-05:00',
+      };
+      return HttpResponse.json(actual);
+    }),
+    http.put('/api/v1/barberia/adelanto/qr', async ({ request }) => {
+      recibido.qrs.push((await request.arrayBuffer()).byteLength);
+      actual = { ...actual, tieneQr: true, actualizadoEn: '2026-11-12T10:00:00-05:00' };
+      return HttpResponse.json(actual);
+    }),
+    http.get('/api/v1/barberia/adelanto/qr', () =>
+      actual.tieneQr
+        ? new HttpResponse(QR_DE_PRUEBA, { headers: { 'Content-Type': 'image/png' } })
+        : HttpResponse.json(
+            { codigo: 'NO_ENCONTRADO', mensaje: 'No se encontró el recurso solicitado.', detalles: [] },
+            { status: 404 },
+          ),
+    ),
+  ];
+}
+
 /** Cita mínima que devuelve POST /citas/{id}/reprogramar (CitaConConfirmacion de 004). */
 interface CitaReprogramable {
   id: string;

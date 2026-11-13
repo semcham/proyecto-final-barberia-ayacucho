@@ -25,6 +25,8 @@ const DESTINOS: Destino[] = [
   { a: '/app/barberos', etiqueta: 'Barberos', icono: 'usuario', roles: ['PROPIETARIO'] },
   { a: '/app/clientes', etiqueta: 'Clientes', icono: 'celular', roles: ['PROPIETARIO'] },
   { a: '/app/barberia', etiqueta: 'Barbería', icono: 'tienda', roles: ['PROPIETARIO'] },
+  // Funcionalidad 008 (T018): configuración del adelanto de reserva con el QR de la barbería.
+  { a: '/app/adelanto', etiqueta: 'Adelanto', icono: 'calendarioCheck', roles: ['PROPIETARIO'] },
   { a: '/app/usuarios', etiqueta: 'Usuarios', icono: 'usuarios', roles: ['PROPIETARIO'] },
   // Funcionalidad 003 (T051).
   { a: '/app/suscripcion', etiqueta: 'Suscripción', icono: 'dinero', roles: ['PROPIETARIO'] },

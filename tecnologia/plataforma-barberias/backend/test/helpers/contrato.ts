@@ -6,7 +6,7 @@ import { parse } from 'yaml';
 
 // Validación de respuestas HTTP contra los contratos OpenAPI de las funcionalidades:
 // specs/001-registro-acceso-barberia, specs/002-catalogo-citas-cliente, specs/003-suscripciones-pagos y
-// specs/004-notificaciones-reprogramacion (contracts/openapi.yaml de cada una).
+// specs/004-notificaciones-reprogramacion y specs/008-adelanto-reserva-qr (contracts/openapi.yaml de cada una).
 
 const CONTRATOS = {
   '001': join(
@@ -54,6 +54,18 @@ const CONTRATOS = {
     '..',
     'specs',
     '004-notificaciones-reprogramacion',
+    'contracts',
+    'openapi.yaml',
+  ),
+  '008': join(
+    __dirname,
+    '..',
+    '..',
+    '..',
+    '..',
+    '..',
+    'specs',
+    '008-adelanto-reserva-qr',
     'contracts',
     'openapi.yaml',
   ),
@@ -167,4 +179,14 @@ export function erroresDeContrato004(
   cuerpo: unknown,
 ): string[] {
   return erroresDeContrato(ruta, metodo, estado, cuerpo, '004');
+}
+
+/** Igual que `erroresDeContrato`, contra el contrato de la funcionalidad 008 (adelanto de reserva con QR). */
+export function erroresDeContrato008(
+  ruta: string,
+  metodo: string,
+  estado: number,
+  cuerpo: unknown,
+): string[] {
+  return erroresDeContrato(ruta, metodo, estado, cuerpo, '008');
 }

@@ -64,11 +64,18 @@ import {
 } from './plataforma/application/suscripciones-plataforma';
 import { ResumenesDeSuscripcionPlataforma } from './plataforma/infrastructure/plataforma/resumenes-de-suscripcion-plataforma';
 import { SuscripcionesPlataformaController } from './plataforma/presentation/suscripciones-plataforma.controller';
+import { ConfigurarAdelanto } from './adelantos/application/configurar-adelanto';
+import { ArchivosAdelanto } from './adelantos/application/ports/archivos-adelanto';
+import { ConfiguracionAdelantoRepository } from './adelantos/application/ports/configuracion-adelanto-repository';
+import { ArchivosAdelantoPostgres } from './adelantos/infrastructure/archivos-adelanto-postgres';
+import { KyselyConfiguracionAdelanto } from './adelantos/infrastructure/kysely-configuracion-adelanto';
+import { AdelantoConfiguracionController } from './adelantos/presentation/adelanto-configuracion.controller';
 
 /**
  * M03 Suscripciones y pagos. Prueba gratuita y límites (001 y 002); en 003, planes, períodos, pagos con la
  * pasarela detrás de PaymentGateway (elegida por PAGOS_PROVEEDOR, ADR-022), notificaciones firmadas,
- * conciliación y restricciones por estado.
+ * conciliación y restricciones por estado. En 008, el adelanto de reserva con el QR de la barbería (submódulo
+ * adelantos/): la plataforma no cobra ese dinero ni usa PaymentGateway para él.
  */
 @Module({
   controllers: [
@@ -77,6 +84,8 @@ import { SuscripcionesPlataformaController } from './plataforma/presentation/sus
     ComprobantesPlataformaController,
     PagosPlataformaController,
     SuscripcionesPlataformaController,
+    // 008 (US1): configuración del adelanto de reserva.
+    AdelantoConfiguracionController,
   ],
   providers: [
     { provide: SuscripcionRepository, useClass: KyselySuscripcionRepository },
@@ -123,6 +132,10 @@ import { SuscripcionesPlataformaController } from './plataforma/presentation/sus
     ReactivarSuscripcion,
     ActivacionManual,
     PlanesParaPlataforma,
+    // 008 (US1): adelanto de reserva con QR, configuración y archivos privados (research R01, R05).
+    { provide: ConfiguracionAdelantoRepository, useClass: KyselyConfiguracionAdelanto },
+    { provide: ArchivosAdelanto, useClass: ArchivosAdelantoPostgres },
+    ConfigurarAdelanto,
   ],
   exports: [SuscripcionesApi, ConciliarPagos, VencerSuscripciones, ExpirarTransferencias, AvisarFinDePrueba],
 })

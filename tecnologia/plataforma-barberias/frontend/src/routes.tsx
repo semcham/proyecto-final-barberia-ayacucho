@@ -33,6 +33,8 @@ const IngresarBarberia = lazy(() => import('./pages/publico/IngresarBarberia'));
 const Enlace = lazy(() => import('./pages/publico/Enlace'));
 // Funcionalidad 003 (T051).
 const Suscripcion = lazy(() => import('./pages/panel/Suscripcion'));
+// Funcionalidad 008 (T018): configuración del adelanto de reserva con QR.
+const Adelanto = lazy(() => import('./pages/panel/Adelanto'));
 const ReservarProtegida = lazy(() =>
   import('./pages/publico/Reservar').then((m) => ({ default: m.ReservarProtegida })),
 );
@@ -166,6 +168,14 @@ export function RutasApp() {
               element={
                 <RutaProtegida roles={['PROPIETARIO']}>
                   <Suscripcion />
+                </RutaProtegida>
+              }
+            />
+            <Route
+              path="adelanto"
+              element={
+                <RutaProtegida roles={['PROPIETARIO']}>
+                  <Adelanto />
                 </RutaProtegida>
               }
             />
