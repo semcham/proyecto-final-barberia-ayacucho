@@ -35,6 +35,9 @@ esta tabla: sus usuarios no pueden iniciar sesión (001).
 | `ReemplazarHorarioAtencion`, `ReemplazarDisponibilidad`    | M02 `catalogo`  | `CONFIGURAR_CATALOGO` |
 | `CrearBloqueo`, `EliminarBloqueo`                          | M02 `catalogo`  | `CONFIGURAR_CATALOGO` |
 | `CrearUsuario`, `ActualizarUsuario`, `RegenerarActivacion` | M01 `identidad` | `GESTIONAR_USUARIOS`  |
+| `ConfirmarAdelanto` (agregada por 008)                     | M02 `citas`     | `GESTIONAR_CITAS`     |
+| `RechazarPagoDeAdelanto` (agregada por 008)                | M03 `adelantos` | `GESTIONAR_CITAS`     |
+| `ConfigurarAdelanto` (agregada por 008)                    | M03 `adelantos` | `CONFIGURAR_CATALOGO` |
 
 `CancelarCita` y `CambiarEstadoCita` también llaman a `exigirOperacion` (con `GESTIONAR_CITAS`, que
 hoy es ✓ en todos los estados). Así, la prueba de arquitectura exige la llamada en **todo** caso de
@@ -44,3 +47,11 @@ uso de escritura listado, y un cambio futuro de la política no necesita tocar M
 nueva, así que exige `RESERVAR` como una reserva (specs/004-notificaciones-reprogramacion/contracts/rbac.md,
 US1-7). La prueba de arquitectura `operaciones-con-politica` y la de integración `restricciones-estado` la
 recorren como a las demás.
+
+**Nota (008, adelanto de reserva con QR; research R12 de 008):** las filas `ConfirmarAdelanto`,
+`RechazarPagoDeAdelanto` y `ConfigurarAdelanto` las agregó la funcionalidad 008 (T044). Confirmar o rechazar el pago
+de un adelanto es gestionar una cita ya reservada (`GESTIONAR_CITAS`): con la suscripción vencida o suspendida, el
+propietario sigue resolviendo las pendientes, mientras la reserva nueva queda bloqueada. Configurar el adelanto
+(activarlo, cambiarlo o subir el QR) es configuración, como el catálogo (`CONFIGURAR_CATALOGO`). El registro del pago
+del cliente (`RegistrarPagoDeAdelanto`) **no** se restringe: completa una reserva ya aceptada. `MarcarAdelantoDevuelto`
+(`GESTIONAR_CITAS`) se agrega en la fase 6 de 008, cuando exista el caso de uso.

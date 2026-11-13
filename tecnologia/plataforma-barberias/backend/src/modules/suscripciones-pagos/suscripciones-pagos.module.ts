@@ -74,6 +74,7 @@ import { AdelantosApi } from './adelantos-api';
 import { AdelantosApiImpl } from './adelantos/application/adelantos-api-impl';
 import { ConsultarAdelanto } from './adelantos/application/consultar-adelanto';
 import { AdelantoRepository } from './adelantos/application/ports/adelanto-repository';
+import { RechazarPagoDeAdelanto } from './adelantos/application/rechazar-pago';
 import { RegistrarPagoDeAdelanto } from './adelantos/application/registrar-pago';
 import { KyselyAdelantoRepository } from './adelantos/infrastructure/kysely-adelanto-repository';
 import { AdelantoCitaController } from './adelantos/presentation/adelanto-cita.controller';
@@ -150,6 +151,8 @@ import { AdelantoCitaController } from './adelantos/presentation/adelanto-cita.c
     { provide: AdelantosApi, useClass: AdelantosApiImpl },
     RegistrarPagoDeAdelanto,
     ConsultarAdelanto,
+    // 008 (US3): el propietario rechaza el pago (confirmar lo orquesta M02 por AdelantosApi).
+    RechazarPagoDeAdelanto,
   ],
   exports: [
     SuscripcionesApi,

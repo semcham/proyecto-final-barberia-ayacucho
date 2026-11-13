@@ -256,6 +256,11 @@ export interface DatosDeAdelanto {
   codigo: string;
   horaLimite?: string;
   limiteRevision?: string;
+  /** Fase 4: el barbero y el saldo a pagar el día de la cita (adelanto confirmado). */
+  barbero?: string;
+  saldoCentimos?: number;
+  /** Fase 4: el motivo con el que el propietario rechazó el pago (lo escribió para el cliente). */
+  motivo?: string;
   /** Dirección de la cita en la aplicación (URL_PUBLICA/mis-citas/<id>/adelanto): pide sesión, no es un secreto. */
   enlaceCita?: string;
 }
@@ -277,6 +282,11 @@ export function datosDeAdelanto(
   if (horaLimite) datos.horaLimite = horaLimite;
   const limiteRevision = texto(payload.limiteRevision);
   if (limiteRevision) datos.limiteRevision = limiteRevision;
+  const barbero = texto(payload.barbero);
+  if (barbero) datos.barbero = barbero;
+  if (Number.isInteger(payload.saldoCentimos)) datos.saldoCentimos = payload.saldoCentimos as number;
+  const motivo = texto(payload.motivo).trim();
+  if (motivo) datos.motivo = motivo;
   if (enlaceCita) datos.enlaceCita = enlaceCita;
   return datos;
 }
@@ -320,6 +330,37 @@ export function componerAvisoDeAdelanto(tipo: TipoAviso, datos: DatosDeAdelanto)
         '',
         'Comprueba el pago en tu aplicación de Yape o Plin y confírmalo o recházalo en el panel de tu barbería,',
         'en Adelantos por revisar. El número de operación y la captura están ahí.',
+      ];
+      break;
+    // Fase 4 (US3). El de confirmado hace las veces del aviso de cita creada (research R08 de 008).
+    case 'ADELANTO_CONFIRMADO':
+      asunto = `Cita confirmada en ${barberia}`;
+      cuerpo = [
+        'La barbería confirmó el pago de tu adelanto: tu cita quedó confirmada.',
+        '',
+        ...detalle,
+        ...(datos.barbero ? [`Barbero: ${datos.barbero}`] : []),
+        `Adelanto pagado: ${soles(montoCentimos)}`,
+        ...(datos.saldoCentimos !== undefined
+          ? [`Saldo a pagar el día de la cita: ${soles(datos.saldoCentimos)}`]
+          : []),
+      ];
+      break;
+    case 'PAGO_ADELANTO_RECHAZADO':
+      asunto = `La barbería rechazó el pago de tu adelanto (${barberia})`;
+      cuerpo = [
+        'La barbería no pudo comprobar el pago del adelanto de tu cita.',
+        ...(datos.motivo ? ['', `Motivo: ${datos.motivo}`] : []),
+        '',
+        ...detalle,
+        `Adelanto: ${soles(montoCentimos)}`,
+        `Código de tu reserva: ${codigo}`,
+        ...(datos.horaLimite
+          ? [`Puedes registrar otro número de operación antes del ${cuando(datos.horaLimite, zona)}`]
+          : []),
+        ...(datos.enlaceCita ? [`Tu cita: ${datos.enlaceCita}`] : []),
+        '',
+        'Si no registras un pago válido a tiempo, la reserva se cancela y el horario queda libre.',
       ];
       break;
     default:

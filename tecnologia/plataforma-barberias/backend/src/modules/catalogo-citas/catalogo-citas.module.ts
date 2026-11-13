@@ -68,6 +68,9 @@ import { CitaRepositoryPostgres } from './citas/infrastructure/cita-repository-p
 import { AgendaController } from './citas/presentation/agenda.controller';
 import { CitasController } from './citas/presentation/citas.controller';
 import { HistorialController } from './citas/presentation/historial.controller';
+import { BandejaAdelantos } from './citas/application/bandeja-adelantos';
+import { ConfirmarAdelanto } from './citas/application/confirmar-adelanto';
+import { AdelantoController } from './citas/presentation/adelanto.controller';
 
 /**
  * M02 Catálogo y citas (submódulos catalogo y citas). Matriz de dependencias: M02 → M01 (ADR-020), M03 y
@@ -87,6 +90,8 @@ import { HistorialController } from './citas/presentation/historial.controller';
     HistorialController,
     // Acciones por enlace del recordatorio (004, US3).
     EnlacesController,
+    // 008 (US3): confirmar el adelanto y la bandeja de verificación.
+    AdelantoController,
   ],
   providers: [
     AutorizacionCatalogoCitas,
@@ -139,6 +144,9 @@ import { HistorialController } from './citas/presentation/historial.controller';
     CancelarCita,
     // Historial del cliente (US6).
     ConsultarHistorial,
+    // 008 (US3): el propietario confirma el adelanto (la cita pasa a CONFIRMADA) y su bandeja.
+    ConfirmarAdelanto,
+    BandejaAdelantos,
   ],
   // PurgarIntentosEnlace: la tarea purgar-intentos-enlaces, que registra el host (host/tareas.ts).
   exports: [CatalogQuery, PurgarIntentosEnlace],

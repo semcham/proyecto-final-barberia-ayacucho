@@ -67,6 +67,18 @@ export abstract class AdelantoRepository {
    */
   abstract registrarPago(nuevo: PagoNuevo): Promise<void>;
 
+  /**
+   * Anota la revisión del propietario en el registro de pago vigente (solo si aún no se revisó); false si ya estaba
+   * revisado. El motivo, solo en un rechazo (CHECK de la base).
+   */
+  abstract revisarPago(
+    pagoId: string,
+    revision: { resultado: 'CONFIRMADO' | 'RECHAZADO'; por: string; en: Date; motivo: string | null },
+  ): Promise<boolean>;
+
+  /** Adelantos en un estado (la bandeja), de la hora límite más próxima a la más lejana, hasta `limite`. */
+  abstract porEstado(estado: EstadoAdelanto, limite: number): Promise<AdelantoGuardado[]>;
+
   /** Transición condicional del estado; false si el adelanto ya no estaba en `desde`. */
   abstract cambiarEstado(
     adelantoId: string,

@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { sembrarAdelanto } from '../../helpers/adelantos';
 import { type AppDePrueba, crearApp } from '../../helpers/app';
 import {
   sembrarBloqueo,
@@ -24,6 +25,8 @@ import { cerrarPools, poolDe } from '../../helpers/test-db';
 // real: 2xx si la acción está permitida, o 403 SUSCRIPCION_NO_PERMITE con el mensaje propio si no. Las
 // lecturas siguen respondiendo y nada se borra ni se cancela. Además, SC-008: una barbería vencida que
 // paga vuelve a aceptar reservas en la solicitud siguiente a la aprobación, sin esperar a la tarea.
+// 008 (T039): confirmar y rechazar un adelanto (GESTIONAR_CITAS) y configurarlo (CONFIGURAR_CATALOGO); con la
+// suscripción vencida se resuelven las pendientes y la reserva nueva sigue bloqueada.
 
 const CONTRATO = join(
   __dirname,
@@ -83,6 +86,9 @@ interface Escenario {
   citaIntacta: string;
   citaAReprogramar: string;
   bloqueoId: string;
+  /** 008: dos citas PENDIENTES con su adelanto por revisar (una se confirma y otra se rechaza). */
+  citaPorConfirmar: string;
+  citaPorRechazar: string;
 }
 
 describe('Restricciones por estado de la suscripción (T054)', () => {
@@ -193,6 +199,20 @@ describe('Restricciones por estado de la suscripción (T054)', () => {
         .send({ estado: 'DESACTIVADA' }),
     RegenerarActivacion: (s) =>
       prueba.agente.post(`/api/v1/usuarios/${s.barberoPendiente}/activacion`).set(como(s.propietario)),
+    // 008 (T039; research R12): resolver un adelanto pendiente es gestionar una cita (se permite siempre);
+    // configurar el adelanto es configuración (como el catálogo).
+    ConfirmarAdelanto: (s) =>
+      prueba.agente
+        .post(`/api/v1/citas/${s.citaPorConfirmar}/adelanto/confirmacion`)
+        .set(como(s.propietario))
+        .send({}),
+    RechazarPagoDeAdelanto: (s) =>
+      prueba.agente
+        .post(`/api/v1/citas/${s.citaPorRechazar}/adelanto/rechazo`)
+        .set(como(s.propietario))
+        .send({ motivo: 'No aparece en Yape' }),
+    ConfigurarAdelanto: (s) =>
+      prueba.agente.put('/api/v1/barberia/adelanto').set(como(s.propietario)).send({ activo: false }),
   };
 
   /** Lecturas que no se restringen en ningún estado (§1). */
@@ -239,6 +259,27 @@ describe('Restricciones por estado de la suscripción (T054)', () => {
     const citaPasada = await cita(new Date(horaLima(fechaEnDias(-1), '12:00')));
     const citaIntacta = await cita(new Date(horaLima(fechaEnDias(6), '12:00')));
     const citaAReprogramar = await cita(new Date(horaLima(fechaEnDias(7), '12:00')));
+    // 008: citas pendientes con el pago del adelanto por revisar (se siembran: la reserva no depende del estado).
+    const conAdelanto = async (hora: string) => {
+      const citaId = await sembrarCita({
+        tenantId,
+        barberoId: e.otroBarberoId,
+        servicioId: e.servicioId,
+        clienteId: cliente.cliente.clienteId,
+        estado: 'PENDIENTE',
+        inicio: new Date(horaLima(fechaEnDias(8), hora)),
+      });
+      await sembrarAdelanto({
+        tenantId,
+        citaId,
+        clienteId: cliente.cliente.clienteId,
+        usuarioClienteId: cliente.cliente.usuarioId as string,
+        propietarioId: e.barberia.propietarioId,
+      });
+      return citaId;
+    };
+    const citaPorConfirmar = await conAdelanto('10:00');
+    const citaPorRechazar = await conAdelanto('11:00');
     const inicioBloqueo = new Date(Date.now() + 11 * DIA);
     const bloqueoId = await sembrarBloqueo({
       tenantId,
@@ -268,6 +309,8 @@ describe('Restricciones por estado de la suscripción (T054)', () => {
       citaIntacta,
       citaAReprogramar,
       bloqueoId,
+      citaPorConfirmar,
+      citaPorRechazar,
     };
   }
 
@@ -328,9 +371,17 @@ describe('Restricciones por estado de la suscripción (T054)', () => {
     expect(rows[0]).toEqual({
       servicios: permitido('CONFIGURAR_CATALOGO') ? 2 : 1,
       barberos: permitido('CONFIGURAR_CATALOGO') ? 3 : 2,
-      // Reprogramar no crea filas: mueve la cita sembrada (6 = 4 sembradas + 2 reservas).
-      citas: permitido('RESERVAR') ? 6 : 4,
+      // Reprogramar no crea filas: mueve la cita sembrada (8 = 6 sembradas, 2 con adelanto, + 2 reservas).
+      citas: permitido('RESERVAR') ? 8 : 6,
     });
+    // 008 (FR-030): las pendientes con adelanto se resuelven en cualquier estado de la suscripción.
+    const estadoDe = async (id: string) =>
+      (await seed.query('SELECT status FROM appointment WHERE id = $1', [id])).rows[0].status;
+    expect(await estadoDe(s.citaPorConfirmar)).toBe('CONFIRMADA');
+    expect(
+      (await seed.query('SELECT status FROM booking_deposit WHERE appointment_id = $1', [s.citaPorRechazar]))
+        .rows[0].status,
+    ).toBe('POR_PAGAR');
     // La cita a reprogramar solo cambió de hora si el estado acepta reservas (la movió el propietario a las 15:00).
     const movida = (await seed.query('SELECT starts_at FROM appointment WHERE id = $1', [s.citaAReprogramar]))
       .rows[0].starts_at;

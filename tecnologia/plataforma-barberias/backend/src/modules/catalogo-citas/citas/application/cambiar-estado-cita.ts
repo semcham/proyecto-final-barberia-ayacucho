@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { type Actor, BarberiasApi } from '../../../acceso-barberias';
-import { SuscripcionesApi } from '../../../suscripciones-pagos';
+import { AdelantoPendiente, AdelantosApi, SuscripcionesApi } from '../../../suscripciones-pagos';
 import { AuditLog, BusDeEventos, Clock, TenantId, UnitOfWork } from '../../../../shared';
 import { AutorizacionCatalogoCitas } from '../../catalogo/application/autorizacion';
 import { BarberoRepository } from '../../catalogo/application/ports/catalogo-repositorios';
@@ -32,6 +32,7 @@ export class CambiarEstadoCita {
     private readonly auditoria: AuditLog,
     private readonly suscripciones: SuscripcionesApi,
     private readonly eventos: BusDeEventos,
+    private readonly adelantos: AdelantosApi,
   ) {}
 
   async ejecutar(actor: Actor, citaId: string, destino: EstadoDestino): Promise<CitaVista> {
@@ -45,6 +46,10 @@ export class CambiarEstadoCita {
         const propio = await this.barberos.porUsuario(actor.usuarioId);
         if (!propio || propio.id !== cita.barberoId) throw new NoEncontrado();
       }
+
+      // 008 (research R15): una cita con adelanto se confirma solo con la confirmación del adelanto, que exige un pago
+      // registrado; aprobarla aquí la dejaría confirmada sin revisar el pago. 409 para el propietario y el barbero.
+      if (destino === 'CONFIRMADA' && (await this.adelantos.deCita(cita.id))) throw new AdelantoPendiente();
 
       const anterior = cita.estado;
       cita.cambiarA(destino, this.reloj.ahora());

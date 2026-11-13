@@ -1,4 +1,11 @@
-import { activarAdelanto, numeroDeOperacion, registrarPago, reservar } from '../../helpers/adelantos';
+import {
+  activarAdelanto,
+  confirmarAdelanto,
+  numeroDeOperacion,
+  rechazarPago,
+  registrarPago,
+  reservar,
+} from '../../helpers/adelantos';
 import type { AppDePrueba } from '../../helpers/app';
 import {
   appConCorreo,
@@ -14,7 +21,7 @@ import {
 import { png } from '../../helpers/comprobantes';
 import { iniciarMailpit, type Mailpit } from '../../helpers/mailpit';
 import { barberiaParaReservar, fechaEnDias, horaLima } from '../../helpers/reservas';
-import { sesionCliente } from '../../helpers/sesiones';
+import { sesionCliente, tokenPara } from '../../helpers/sesiones';
 import { cerrarPools, poolDe } from '../../helpers/test-db';
 
 // T025 de 008 · Avisos del adelanto con Mailpit (US2-2; FR-023, FR-024; SC-008; contracts/eventos.md §3 y §4), por
@@ -134,6 +141,72 @@ describe('Avisos del adelanto (T025, US2)', () => {
     ]);
     // El cliente solo recibió las instrucciones de pago.
     expect(await esperarCorreos(mailpit, cliente.cliente.correo as string, 1)).toHaveLength(1);
+  });
+
+  // T038 · Fase 4 (US3): confirmar y rechazar.
+  it('al confirmar, el cliente recibe UN correo de adelanto confirmado con el saldo, y no el de "cita creada"', async () => {
+    const { e, cliente, nombre } = await escenario();
+    const propietario = await tokenPara(e.barberia.tenantId, e.barberia.propietarioId, 'PROPIETARIO');
+    const { body: cita } = await reservar(instancias[0], cliente.token, {
+      servicioId: e.servicioId,
+      barberoId: e.barberoId,
+      inicio: horaLima(dia, '13:00'),
+    }).expect(201);
+    const numero = numeroDeOperacion();
+    await registrarPago(instancias[0], cliente.token, cita.id, { numero }).expect(201);
+    await confirmarAdelanto(instancias[1], propietario, cita.id).expect(200);
+    await confirmarAdelanto(instancias[0], propietario, cita.id).expect(200);
+    await Promise.all(instancias.map((i) => correrTareasDeAvisos(i)));
+    await Promise.all(instancias.map((i) => enviarSinCandado(i)));
+
+    // Instrucciones de pago y adelanto confirmado: dos correos, nunca "cita creada" aparte.
+    const correos = await esperarCorreos(mailpit, cliente.cliente.correo as string, 2);
+    expect(correos).toHaveLength(2);
+    const confirmado = correos.find((c) => /confirmad/i.test(c.asunto));
+    if (!confirmado) throw new Error('Falta el correo de adelanto confirmado');
+    for (const parte of [nombre, 'Corte', 'Luis', '13:00', soles(400), soles(1600)]) {
+      expect(confirmado.texto).toContain(parte);
+    }
+    expect(confirmado.texto).toMatch(/saldo/i);
+    expect(confirmado.texto).not.toContain(numero);
+    const tipos = (await avisosDe(e.barberia.tenantId)).map((a) => a.kind).sort();
+    expect(tipos).toEqual(['ADELANTO_CONFIRMADO', 'ADELANTO_SOLICITADO', 'PAGO_ADELANTO_REGISTRADO']);
+  });
+
+  it('al rechazar, el cliente recibe UN correo con el motivo y la hora límite, sin el número', async () => {
+    const { e, cliente, nombre } = await escenario();
+    const propietario = await tokenPara(e.barberia.tenantId, e.barberia.propietarioId, 'PROPIETARIO');
+    const { body: cita } = await reservar(instancias[0], cliente.token, {
+      servicioId: e.servicioId,
+      barberoId: e.barberoId,
+      inicio: horaLima(dia, '14:00'),
+    }).expect(201);
+    const numero = numeroDeOperacion();
+    await registrarPago(instancias[0], cliente.token, cita.id, { numero }).expect(201);
+    await rechazarPago(instancias[1], propietario, cita.id, 'No aparece en Yape').expect(200);
+    await Promise.all(instancias.map((i) => correrTareasDeAvisos(i)));
+    await Promise.all(instancias.map((i) => enviarSinCandado(i)));
+
+    const correos = await esperarCorreos(mailpit, cliente.cliente.correo as string, 2);
+    expect(correos).toHaveLength(2);
+    const rechazo = correos.find((c) => /rechaz/i.test(c.asunto));
+    if (!rechazo) throw new Error('Falta el correo de pago rechazado');
+    for (const parte of [
+      nombre,
+      'No aparece en Yape',
+      cita.adelanto.codigo,
+      horaEnLima(cita.adelanto.horaLimite),
+      `/mis-citas/${cita.id}/adelanto`,
+    ]) {
+      expect(rechazo.texto).toContain(parte);
+    }
+    expect(rechazo.texto).not.toContain(numero);
+    const tipos = (await avisosDe(e.barberia.tenantId)).map((a) => [a.kind, a.recipient_kind]).sort();
+    expect(tipos).toEqual([
+      ['ADELANTO_SOLICITADO', 'CLIENTE'],
+      ['PAGO_ADELANTO_RECHAZADO', 'CLIENTE'],
+      ['PAGO_ADELANTO_REGISTRADO', 'PROPIETARIO'],
+    ]);
   });
 
   describe('con el correo caído', () => {

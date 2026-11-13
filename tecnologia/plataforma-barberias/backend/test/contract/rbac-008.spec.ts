@@ -3,7 +3,10 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
   activarAdelanto,
+  bandejaDeAdelantos,
   cambiarConfiguracion,
+  confirmarAdelanto,
+  rechazarPago,
   registrarPago,
   reservar,
   subirQr,
@@ -174,6 +177,18 @@ const IMPLEMENTADAS: Caso[] = [
     exito: 201,
     ejecutar: (p, t, s) => registrarPago(p, t, s.citaSinPago),
   },
+  // Fase 4 (US3): confirmar, rechazar y la bandeja.
+  {
+    fila: 'POST /citas/{id}/adelanto/confirmacion',
+    exito: 200,
+    ejecutar: (p, t, s) => confirmarAdelanto(p, t, s.citaConPago),
+  },
+  {
+    fila: 'POST /citas/{id}/adelanto/rechazo',
+    exito: 200,
+    ejecutar: (p, t, s) => rechazarPago(p, t, s.citaConPago, 'No aparece en Yape'),
+  },
+  { fila: 'GET /adelantos/por-revisar', exito: 200, ejecutar: (p, t) => bandejaDeAdelantos(p, t) },
   {
     fila: 'GET /citas/{id}/adelanto/captura',
     exito: 200,

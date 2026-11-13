@@ -98,6 +98,9 @@ export const TIPOS_DE_AVISO_DE_ADELANTO: readonly TipoAviso[] = Object.values(AV
 export const DESTINATARIOS_POR_EVENTO_DE_ADELANTO: Readonly<Record<string, readonly TipoDestinatario[]>> = {
   AdelantoSolicitado: ['CLIENTE'],
   PagoDeAdelantoRegistrado: ['PROPIETARIO'],
+  // Fase 4 (US3).
+  AdelantoConfirmado: ['CLIENTE'],
+  PagoDeAdelantoRechazado: ['CLIENTE'],
 };
 
 /** Plazo de un aviso del adelanto: el de los avisos que no son recordatorio, creación + 24 h. */

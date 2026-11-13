@@ -95,6 +95,8 @@ export abstract class CitaRepository {
     antes: CitaAntesDeReprogramar,
     autor: AutorDeReprogramacion,
   ): Promise<void>;
+  /** 008 (bandeja de adelantos): las citas con esos ids (las que no existen en la barbería no aparecen). */
+  abstract porIds(ids: readonly string[]): Promise<Cita[]>;
   /** Citas (en cualquier estado) que empiezan en [desde, hasta), opcionalmente de un barbero, por inicio. */
   abstract delRango(desde: Date, hasta: Date, barberoId?: string): Promise<Cita[]>;
   /**

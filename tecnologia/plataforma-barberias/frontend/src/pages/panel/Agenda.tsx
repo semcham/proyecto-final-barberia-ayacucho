@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import type { AdelantoDeCita } from '../../api/adelanto';
 import { clavesConsulta } from '../../api/claves';
 import { ApiError, llamarApi } from '../../api/client';
 import type { components } from '../../api/schema-002';
@@ -23,6 +25,7 @@ import {
   fechaIsoDeBarberia,
   horaDeBarberia,
 } from '../../hora-barberia';
+import { ESTADO_ADELANTO, soles } from '../cliente/textos-adelanto';
 import { Cargando } from './Cargando';
 import { BuscadorClientes, type ClienteResumen, FormularioClientePresencial } from './Clientes';
 import { mensajeDeError, useZonaBarberia } from './datos-barberia';
@@ -36,6 +39,8 @@ type HorariosLibres = components['schemas']['HorariosLibres'];
 type EstadoCita = components['schemas']['EstadoCita'];
 /** 004: la cita de la agenda trae además la marca de asistencia del cliente (CitaConConfirmacion). */
 type CitaConConfirmacion = CitaAgenda & { confirmadaPorClienteEn?: string | null };
+/** 008: y, si la tiene, su adelanto (al barbero le llega sin el registro de pago). */
+type CitaConAdelanto = CitaAgenda & { adelanto?: AdelantoDeCita | null };
 
 const ESTADO: Record<EstadoCita, { texto: string; tono: TonoEtiqueta }> = {
   PENDIENTE: { texto: 'Pendiente', tono: 'aviso' },
@@ -220,6 +225,7 @@ export default function Agenda() {
             <ul className={estilos.lista}>
               {agenda.data.citas.map((cita) => {
                 const llego = ahora >= Date.parse(cita.inicio);
+                const adelanto = (cita as CitaConAdelanto).adelanto ?? null;
                 return (
                   <li key={cita.id} className={estilos.elemento}>
                     <div className={estilos.elementoTextos}>
@@ -231,6 +237,12 @@ export default function Agenda() {
                         {cita.servicio} · {cita.barbero} · {cita.cliente.telefono}
                         {cita.origen === 'PRESENCIAL' && ' · Presencial'}
                       </span>
+                      {adelanto && (
+                        <span className={estilos.elementoDetalle}>
+                          Adelanto {soles(adelanto.montoCentimos)}
+                          {adelanto.estado === 'CONFIRMADO' && ` · saldo ${soles(adelanto.saldoCentimos)}`}
+                        </span>
+                      )}
                     </div>
                     <div className={estilos.acciones}>
                       <EtiquetaEstado tono={ESTADO[cita.estado].tono}>
@@ -241,6 +253,19 @@ export default function Agenda() {
                           confirmadaEn={(cita as CitaConConfirmacion).confirmadaPorClienteEn ?? null}
                           zona={zona}
                         />
+                      )}
+                      {adelanto && (
+                        <EtiquetaEstado tono={ESTADO_ADELANTO[adelanto.estado].tono}>
+                          {ESTADO_ADELANTO[adelanto.estado].enLista}
+                        </EtiquetaEstado>
+                      )}
+                      {esPropietario && adelanto?.estado === 'POR_REVISAR' && (
+                        <Link
+                          to="/app/adelantos"
+                          className={clasesBoton({ variante: 'secundario', tamano: 'sm' })}
+                        >
+                          Revisar pago
+                        </Link>
                       )}
                       {cita.enConflicto && <EtiquetaEstado tono="error">En conflicto</EtiquetaEstado>}
                       {cita.cancelacionTardia && (

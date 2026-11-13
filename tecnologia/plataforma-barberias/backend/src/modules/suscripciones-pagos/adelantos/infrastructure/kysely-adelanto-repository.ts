@@ -215,6 +215,40 @@ export class KyselyAdelantoRepository extends AdelantoRepository {
     }
   }
 
+  async revisarPago(
+    pagoId: string,
+    revision: { resultado: 'CONFIRMADO' | 'RECHAZADO'; por: string; en: Date; motivo: string | null },
+  ): Promise<boolean> {
+    const resultado = await this.uow
+      .transaccionActual()
+      .updateTable('booking_deposit_payment')
+      .set({
+        review_result: revision.resultado,
+        reviewed_at: revision.en,
+        reviewed_by: revision.por,
+        rejection_reason: revision.motivo,
+      })
+      .where('tenant_id', '=', this.tenant())
+      .where('id', '=', pagoId)
+      .where('review_result', 'is', null)
+      .executeTakeFirst();
+    return Number(resultado.numUpdatedRows) === 1;
+  }
+
+  async porEstado(estado: EstadoAdelanto, limite: number): Promise<AdelantoGuardado[]> {
+    const filas = await this.uow
+      .transaccionActual()
+      .selectFrom('booking_deposit')
+      .select(COLUMNAS)
+      .where('tenant_id', '=', this.tenant())
+      .where('status', '=', estado)
+      .orderBy('due_at')
+      .orderBy('id')
+      .limit(limite)
+      .execute();
+    return filas.map(aAdelanto);
+  }
+
   async cambiarEstado(
     adelantoId: string,
     cambio: { desde: EstadoAdelanto; hacia: EstadoAdelanto; en: Date },

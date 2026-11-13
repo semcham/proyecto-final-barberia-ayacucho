@@ -10,12 +10,15 @@ export type TipoAdelanto = NonNullable<ConfiguracionAdelanto['tipo']>;
 /** El adelanto de una cita (fase 3, US2): estado, monto, código, plazos y el último registro de pago. */
 export type AdelantoDeCita = components['schemas']['Adelanto'];
 export type EstadoAdelanto = components['schemas']['EstadoAdelanto'];
+/** Fase 4 (US3): un pago en la bandeja del propietario. */
+export type AdelantoEnBandeja = components['schemas']['AdelantoEnBandeja'];
 
 export const clavesAdelanto = {
   configuracion: ['adelanto', 'configuracion'] as const,
   qr: ['adelanto', 'qr'] as const,
   deCita: (citaId: string) => ['adelanto', 'cita', citaId] as const,
   qrDeCita: (citaId: string) => ['adelanto', 'cita', citaId, 'qr'] as const,
+  bandeja: ['adelanto', 'bandeja'] as const,
 };
 
 const deCita = (citaId: string) => `/citas/${encodeURIComponent(citaId)}/adelanto`;
@@ -45,4 +48,13 @@ export const apiAdelanto = {
     formulario.append('numeroOperacion', datos.numeroOperacion);
     return llamarApi<AdelantoDeCita>(`${deCita(citaId)}/pago`, { metodo: 'POST', formulario });
   },
+  /** Fase 4 (US3): los pagos por revisar de la barbería, de la hora límite más próxima a la más lejana. */
+  porRevisar: () => llamarApi<AdelantoEnBandeja[]>('/adelantos/por-revisar'),
+  /** La captura del pago registrado, como Blob en memoria (solo con la sesión). */
+  captura: (citaId: string) => obtenerArchivo(`${deCita(citaId)}/captura`),
+  /** El propietario confirma el pago: la cita pasa a CONFIRMADA. */
+  confirmar: (citaId: string) => llamarApi<unknown>(`${deCita(citaId)}/confirmacion`, { metodo: 'POST' }),
+  /** El propietario rechaza el pago con un motivo (5 a 300 caracteres). */
+  rechazar: (citaId: string, motivo: string) =>
+    llamarApi<AdelantoDeCita>(`${deCita(citaId)}/rechazo`, { metodo: 'POST', cuerpo: { motivo } }),
 };

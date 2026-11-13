@@ -126,4 +126,13 @@ export abstract class AdelantosApi {
 
   /** Los adelantos de varias citas (agenda e historial), por id de cita. */
   abstract deCitas(citaIds: readonly string[]): Promise<ReadonlyMap<string, ResumenDeAdelanto>>;
+
+  /**
+   * Fase 4 (US3) · Los adelantos de la bandeja del propietario en un estado (por revisar o por devolver), de la hora
+   * límite más próxima a la más lejana, hasta `limite`. M02 les suma la cita y el nombre del cliente.
+   */
+  abstract enBandeja(
+    estado: Extract<EstadoAdelanto, 'POR_REVISAR' | 'POR_DEVOLVER'>,
+    limite: number,
+  ): Promise<readonly ResumenDeAdelanto[]>;
 }

@@ -26,4 +26,4 @@ export {
   type ResumenDeAdelanto,
 } from './adelantos-api';
 export type { CancelacionDeLaCita, CausaDeVencimiento, EstadoAdelanto } from './adelantos/domain/adelanto';
-export { AdelantoPendiente, SinTiempoParaAdelanto } from './adelantos/domain/errores';
+export { AdelantoPendiente, AdelantoResuelto, SinTiempoParaAdelanto } from './adelantos/domain/errores';

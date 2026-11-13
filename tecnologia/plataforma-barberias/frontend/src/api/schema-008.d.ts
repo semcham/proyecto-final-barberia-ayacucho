@@ -514,6 +514,15 @@ export interface paths {
             'application/json': components['schemas']['Error'];
           };
         };
+        /** @description VALIDACION del campo "motivo" (falta, o tiene menos de 5 o más de 300 caracteres sin contar los espacios de los extremos) */
+        422: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
       };
     };
     delete?: never;

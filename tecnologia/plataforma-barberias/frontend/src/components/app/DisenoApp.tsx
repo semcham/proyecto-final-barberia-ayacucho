@@ -20,6 +20,8 @@ const DESTINOS: Destino[] = [
   { a: '/app', etiqueta: 'Inicio', icono: 'inicio' },
   // Funcionalidad 002 (T038).
   { a: '/app/agenda', etiqueta: 'Agenda', icono: 'calendario', roles: ['PROPIETARIO', 'BARBERO'] },
+  // Funcionalidad 008 (T045): los pagos de adelanto que el propietario debe confirmar o rechazar.
+  { a: '/app/adelantos', etiqueta: 'Adelantos por revisar', icono: 'documento', roles: ['PROPIETARIO'] },
   { a: '/app/disponibilidad', etiqueta: 'Disponibilidad', icono: 'reloj', roles: ['PROPIETARIO', 'BARBERO'] },
   { a: '/app/servicios', etiqueta: 'Servicios', icono: 'tijeras', roles: ['PROPIETARIO'] },
   { a: '/app/barberos', etiqueta: 'Barberos', icono: 'usuario', roles: ['PROPIETARIO'] },

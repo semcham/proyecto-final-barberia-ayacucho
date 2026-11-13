@@ -230,6 +230,9 @@ paths:
         "409":
           description: SIN_PAGO_REGISTRADO o ADELANTO_RESUELTO
           content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "422":
+          description: VALIDACION del campo "motivo" (falta, o tiene menos de 5 o más de 300 caracteres sin contar los espacios de los extremos)
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
 
   /citas/{id}/adelanto/devolucion:
     post:

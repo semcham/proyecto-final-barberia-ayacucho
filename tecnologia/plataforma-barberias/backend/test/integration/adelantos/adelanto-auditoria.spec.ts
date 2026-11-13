@@ -2,7 +2,9 @@ import {
   activarAdelanto,
   archivosDeAdelanto,
   cambiarConfiguracion,
+  confirmarAdelanto,
   numeroDeOperacion,
+  rechazarPago,
   registrarPago,
   reservar,
   subirQr,
@@ -153,6 +155,63 @@ describe('Auditoría del adelanto (T014)', () => {
       await registrarPago(prueba, cliente.token, citaId).expect(201);
       await registrarPago(prueba, cliente.token, citaId).expect(409);
       expect(await auditoriaDel(e.barberia.tenantId, 'ADELANTO_PAGO_REGISTRADO')).toHaveLength(1);
+    });
+  });
+
+  // T038 · Fase 4 (US3): confirmar y rechazar, con el propietario como actor.
+  describe('ADELANTO_CONFIRMADO y ADELANTO_PAGO_RECHAZADO (US3)', () => {
+    async function conPago() {
+      const e = await barberiaParaReservar();
+      await activarAdelanto(e.barberia.tenantId, e.barberia.propietarioId);
+      const propietario = await tokenPara(e.barberia.tenantId, e.barberia.propietarioId, 'PROPIETARIO');
+      const cliente = await sesionCliente(e.barberia.tenantId);
+      const { body } = await reservar(prueba, cliente.token, {
+        servicioId: e.servicioId,
+        barberoId: e.barberoId,
+        inicio: horaLima(fechaEnDias(3), '11:00'),
+      }).expect(201);
+      const numero = numeroDeOperacion();
+      await registrarPago(prueba, cliente.token, body.id, { numero }).expect(201);
+      return { e, propietario, cliente, citaId: body.id as string, numero };
+    }
+
+    it('confirmar deja una entrada con el estado nuevo; confirmar otra vez no deja otra', async () => {
+      const { e, propietario, citaId, numero } = await conPago();
+      await confirmarAdelanto(prueba, propietario, citaId).expect(200);
+      await confirmarAdelanto(prueba, propietario, citaId).expect(200);
+      const entradas = await auditoriaDel(e.barberia.tenantId, 'ADELANTO_CONFIRMADO');
+      expect(entradas).toHaveLength(1);
+      expect(entradas[0]).toMatchObject({
+        actor_id: e.barberia.propietarioId,
+        resource: `cita:${citaId};CONFIRMADO`,
+        result: 'PERMITIDO',
+        reason: null,
+      });
+      expect(JSON.stringify(entradas[0])).not.toContain(numero);
+    });
+
+    it('rechazar deja una entrada sin el motivo (queda en el registro de pago, como en 003) ni el número', async () => {
+      const { e, propietario, citaId, numero } = await conPago();
+      const motivo = 'El monto no coincide con el adelanto';
+      await rechazarPago(prueba, propietario, citaId, motivo).expect(200);
+      const entradas = await auditoriaDel(e.barberia.tenantId, 'ADELANTO_PAGO_RECHAZADO');
+      expect(entradas).toHaveLength(1);
+      expect(entradas[0]).toMatchObject({
+        actor_id: e.barberia.propietarioId,
+        resource: `cita:${citaId};POR_PAGAR`,
+        result: 'PERMITIDO',
+        reason: null,
+      });
+      const texto = JSON.stringify(await filasDe('audit_log', e.barberia.tenantId));
+      expect(texto).not.toContain(motivo);
+      expect(texto).not.toContain(numero);
+    });
+
+    it('un rechazo sin motivo o una confirmación sin pago no dejan entrada', async () => {
+      const { e, propietario, citaId } = await conPago();
+      await rechazarPago(prueba, propietario, citaId).expect(422);
+      expect(await auditoriaDel(e.barberia.tenantId, 'ADELANTO_PAGO_RECHAZADO')).toEqual([]);
+      expect(await auditoriaDel(e.barberia.tenantId, 'ADELANTO_CONFIRMADO')).toEqual([]);
     });
   });
 });

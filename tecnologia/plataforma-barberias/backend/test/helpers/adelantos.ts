@@ -183,6 +183,92 @@ export async function eventosDe(tenantId: string, tipo: string): Promise<Record<
   return rows;
 }
 
+// --- Fase 4 (US3): confirmar y rechazar el pago ---
+
+/** POST /citas/{id}/adelanto/confirmacion. */
+export function confirmarAdelanto(prueba: AppDePrueba, token: string | null, citaId: string) {
+  return prueba.agente.post(`/api/v1/citas/${citaId}/adelanto/confirmacion`).set(como(token)).send({});
+}
+
+/** POST /citas/{id}/adelanto/rechazo con el motivo (sin cuerpo si `motivo` es undefined). */
+export function rechazarPago(prueba: AppDePrueba, token: string | null, citaId: string, motivo?: string) {
+  return prueba.agente
+    .post(`/api/v1/citas/${citaId}/adelanto/rechazo`)
+    .set(como(token))
+    .send(motivo === undefined ? {} : { motivo });
+}
+
+/** GET /adelantos/por-revisar (con el estado de la bandeja si se indica). */
+export function bandejaDeAdelantos(prueba: AppDePrueba, token: string | null, estado?: string) {
+  return prueba.agente
+    .get(`/api/v1/adelantos/por-revisar${estado ? `?estado=${estado}` : ''}`)
+    .set(como(token));
+}
+
+/** POST /citas/{id}/estado (002). */
+export function cambiarEstadoCita(prueba: AppDePrueba, token: string | null, citaId: string, estado: string) {
+  return prueba.agente.post(`/api/v1/citas/${citaId}/estado`).set(como(token)).send({ estado });
+}
+
+/**
+ * Adelanto de una cita ya sembrada, sembrado sin pasar por la API (para las pruebas que no prueban la reserva):
+ * POR_PAGAR, o POR_REVISAR con un registro de pago vigente. Usa el QR de la configuración de la barbería si existe;
+ * si no, siembra uno.
+ */
+export async function sembrarAdelanto(opciones: {
+  tenantId: string;
+  citaId: string;
+  clienteId: string;
+  usuarioClienteId: string;
+  propietarioId: string;
+  estado?: 'POR_PAGAR' | 'POR_REVISAR';
+  montoCentimos?: number;
+}): Promise<{ adelantoId: string; codigo: string; numero: string | null }> {
+  const seed = poolDe('seed');
+  let { rows } = await seed.query<{ qr_file_id: string }>(
+    'SELECT qr_file_id FROM booking_deposit_settings WHERE tenant_id = $1 AND qr_file_id IS NOT NULL',
+    [opciones.tenantId],
+  );
+  if (rows.length === 0) {
+    await activarAdelanto(opciones.tenantId, opciones.propietarioId);
+    ({ rows } = await seed.query<{ qr_file_id: string }>(
+      'SELECT qr_file_id FROM booking_deposit_settings WHERE tenant_id = $1',
+      [opciones.tenantId],
+    ));
+  }
+  const adelantoId = uuidv7();
+  const codigo = Array.from(randomBytes(6), (b) => 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'[b % 31]).join('');
+  const estado = opciones.estado ?? 'POR_REVISAR';
+  await seed.query(
+    `INSERT INTO booking_deposit (id, tenant_id, appointment_id, customer_id, customer_user_id, code, amount_cents,
+       service_price_cents, service_name, starts_at, time_zone, qr_file_id, due_at, review_limit_at, status)
+     SELECT $1, $2, a.id, $3, $4, $5, $6, 2000, a.service_name, a.starts_at, 'America/Lima', $7,
+            now() + interval '30 minutes', now() + interval '1 day', $8
+       FROM appointment a WHERE a.id = $9`,
+    [
+      adelantoId,
+      opciones.tenantId,
+      opciones.clienteId,
+      opciones.usuarioClienteId,
+      codigo,
+      opciones.montoCentimos ?? 400,
+      rows[0].qr_file_id,
+      estado,
+      opciones.citaId,
+    ],
+  );
+  let numero: string | null = null;
+  if (estado === 'POR_REVISAR') {
+    numero = numeroDeOperacion();
+    await seed.query(
+      `INSERT INTO booking_deposit_payment (id, tenant_id, deposit_id, operation_number, registered_by)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [uuidv7(), opciones.tenantId, adelantoId, numero, opciones.usuarioClienteId],
+    );
+  }
+  return { adelantoId, codigo, numero };
+}
+
 /** Un reloj que la prueba mueve: empieza en el instante real y `fijar` o `avanzar` lo cambian. */
 export class RelojDePrueba extends Clock {
   private desplazamientoMs = 0;

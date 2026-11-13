@@ -8,7 +8,8 @@ import {
   type ResultadoDeVencimiento,
   type ResumenDeAdelanto,
 } from '../../adelantos-api';
-import type { CancelacionDeLaCita, EstadoAdelanto } from '../domain/adelanto';
+import { NoEncontrado } from '../../suscripciones/domain/errores';
+import { Adelanto, type CancelacionDeLaCita, type EstadoAdelanto } from '../domain/adelanto';
 import { PoliticaAdelanto, type ReglaDeAdelanto } from '../domain/politica-adelanto';
 import { AdelantoRepository } from './ports/adelanto-repository';
 import { ConfiguracionAdelantoRepository } from './ports/configuracion-adelanto-repository';
@@ -24,8 +25,8 @@ function pendienteDeFase(operacion: string, fase: number): never {
 
 /**
  * T029 de 008 · Implementación de AdelantosApi (research R01). Todas sus operaciones corren en la transacción del
- * llamador (M02), con su tenant y RLS. Fase 3 (US2): paraReservar, crear, deCita y deCitas; las demás llegan con las
- * fases 4 a 6.
+ * llamador (M02), con su tenant y RLS. Fase 3 (US2): paraReservar, crear, deCita y deCitas; fase 4 (US3): confirmar
+ * y enBandeja; las demás llegan con las fases 5 y 6.
  */
 @Injectable()
 export class AdelantosApiImpl extends AdelantosApi {
@@ -109,12 +110,46 @@ export class AdelantosApiImpl extends AdelantosApi {
     return new Map(adelantos.map((a) => [a.citaId, aResumen(a, pagos.get(a.id) ?? null)]));
   }
 
-  confirmar(
-    _citaId: string,
-    _actorId: string,
-    _ahora: Date,
+  async enBandeja(
+    estado: 'POR_REVISAR' | 'POR_DEVOLVER',
+    limite: number,
+  ): Promise<readonly ResumenDeAdelanto[]> {
+    const adelantos = await this.adelantos.porEstado(estado, limite);
+    const pagos = await this.adelantos.ultimosPagos(adelantos.map((a) => a.id));
+    return adelantos.map((a) => aResumen(a, pagos.get(a.id) ?? null));
+  }
+
+  /**
+   * T041 · POR_REVISAR → CONFIRMADO, con el adelanto bloqueado (M02 ya bloqueó la cita, research R06) y el registro de
+   * pago vigente marcado como confirmado por el propietario. Sobre uno ya confirmado no hace nada (efecto: false).
+   * Lanza NoEncontrado (la cita no tiene adelanto), SinPagoRegistrado o AdelantoResuelto.
+   */
+  async confirmar(
+    citaId: string,
+    actorId: string,
+    ahora: Date,
   ): Promise<{ efecto: boolean; adelanto: ResumenDeAdelanto }> {
-    return pendienteDeFase('confirmar', 4);
+    const adelanto = await this.adelantos.deCita(citaId, { bloquear: true });
+    if (!adelanto) throw new NoEncontrado();
+    const decision = Adelanto.confirmar(adelanto.estado);
+    if (decision.efecto) {
+      const pago = (await this.adelantos.ultimosPagos([adelanto.id])).get(adelanto.id);
+      if (!pago || pago.resultado !== null) throw new Error('Un adelanto POR_REVISAR sin registro vigente');
+      await this.adelantos.revisarPago(pago.id, {
+        resultado: 'CONFIRMADO',
+        por: actorId,
+        en: ahora,
+        motivo: null,
+      });
+      const cambiado = await this.adelantos.cambiarEstado(adelanto.id, {
+        desde: adelanto.estado,
+        hacia: decision.estado,
+        en: ahora,
+      });
+      if (!cambiado) throw new Error('El adelanto cambió durante la transacción a pesar del bloqueo');
+    }
+    const resumen = await this.deCita(citaId);
+    return { efecto: decision.efecto, adelanto: resumen as ResumenDeAdelanto };
   }
 
   decidirVencimiento(_citaId: string, _ahora: Date): Promise<ResultadoDeVencimiento | null> {

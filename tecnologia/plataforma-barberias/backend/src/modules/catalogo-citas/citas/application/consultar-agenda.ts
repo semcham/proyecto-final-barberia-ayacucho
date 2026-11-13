@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { type Actor, BarberiasApi, ClientesApi } from '../../../acceso-barberias';
+import { AdelantosApi } from '../../../suscripciones-pagos';
 import { FechaLocal, TenantId, UnitOfWork, ZonaHoraria } from '../../../../shared';
 import { AutorizacionCatalogoCitas } from '../../catalogo/application/autorizacion';
 import { BarberoRepository, HorarioRepository } from '../../catalogo/application/ports/catalogo-repositorios';
@@ -41,6 +42,7 @@ export class ConsultarAgenda {
     private readonly catalogo: CatalogQuery,
     private readonly clientes: ClientesApi,
     private readonly barberias: BarberiasApi,
+    private readonly adelantos: AdelantosApi,
   ) {}
 
   async ejecutar(actor: Actor, consulta: { fecha: string; barberoId?: string }): Promise<AgendaVista> {
@@ -89,6 +91,9 @@ export class ConsultarAgenda {
       const contactos = new Map(
         (await this.clientes.datosDeContacto(citas.map((c) => c.clienteId))).map((p) => [p.clienteId, p]),
       );
+      // 008 (FR-020; contracts/rbac.md): el adelanto de cada cita que lo tenga. El barbero ve el estado y el monto,
+      // no el registro de pago (el número de operación es del cliente y del propietario, FR-011).
+      const adelantos = await this.adelantos.deCitas(citas.map((c) => c.id));
 
       vista.citas = citas.map((cita) => {
         const contexto = porBarbero.get(cita.barberoId) as {
@@ -105,11 +110,13 @@ export class ConsultarAgenda {
             disponibilidad: contexto.disponibilidad,
           }) !== null;
         const contacto = contactos.get(cita.clienteId);
+        const adelanto = adelantos.get(cita.id);
         return {
           ...aVista(cita, agenda, nombres.get(cita.barberoId) ?? ''),
           barberoId: cita.barberoId,
           cliente: { nombre: contacto?.nombre ?? '', telefono: contacto?.telefono ?? '' },
           enConflicto,
+          ...(adelanto && { adelanto: alcance === 'PROPIOS' ? { ...adelanto, pago: null } : adelanto }),
         };
       });
       return vista;

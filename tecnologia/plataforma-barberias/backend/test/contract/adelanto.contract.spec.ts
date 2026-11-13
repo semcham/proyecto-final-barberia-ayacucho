@@ -1,7 +1,10 @@
 import {
   activarAdelanto,
+  bandejaDeAdelantos,
   cambiarConfiguracion,
+  confirmarAdelanto,
   numeroDeOperacion,
+  rechazarPago,
   registrarPago,
   reservar,
   subirQr,
@@ -13,7 +16,7 @@ import { erroresDeContrato002, erroresDeContrato008, erroresDeEsquema008 } from 
 import { png } from '../helpers/comprobantes';
 import { barberiaEnPrueba } from '../helpers/pagos';
 import { barberiaParaReservar, fechaEnDias, horaLima } from '../helpers/reservas';
-import { sesionCliente } from '../helpers/sesiones';
+import { sesionCliente, tokenPara } from '../helpers/sesiones';
 import { cerrarPools } from '../helpers/test-db';
 
 // T013 de 008 · PR08, US1-5: las respuestas de la configuración del adelanto cumplen el esquema
@@ -127,6 +130,33 @@ describe('Contrato de 008 · Configuración del adelanto (T013)', () => {
       }).expect(201);
       const formato = await registrarPago(prueba, otro.token, otra.body.id, { numero: '12' }).expect(422);
       expect(erroresDeContrato008('/citas/{id}/adelanto/pago', 'post', 422, formato.body)).toEqual([]);
+    });
+
+    // T038 · Fase 4 (US3): confirmación, rechazo y bandeja.
+    it('confirmación (CitaConAdelanto), rechazo (Adelanto) y bandeja (AdelantoEnBandeja), y sus errores', async () => {
+      const { e, cliente, r } = await citaPendiente('13:00');
+      const propietario = await tokenPara(e.barberia.tenantId, e.barberia.propietarioId, 'PROPIETARIO');
+      const sinPago = await confirmarAdelanto(prueba, propietario, r.body.id).expect(409);
+      expect(erroresDeContrato008('/citas/{id}/adelanto/confirmacion', 'post', 409, sinPago.body)).toEqual(
+        [],
+      );
+      await registrarPago(prueba, cliente.token, r.body.id, { captura: png() }).expect(201);
+
+      const bandeja = await bandejaDeAdelantos(prueba, propietario).expect(200);
+      expect(bandeja.body).toHaveLength(1);
+      expect(erroresDeContrato008('/adelantos/por-revisar', 'get', 200, bandeja.body)).toEqual([]);
+
+      const motivoCorto = await rechazarPago(prueba, propietario, r.body.id, 'no').expect(422);
+      expect(erroresDeContrato008('/citas/{id}/adelanto/rechazo', 'post', 422, motivoCorto.body)).toEqual([]);
+      const rechazo = await rechazarPago(prueba, propietario, r.body.id, 'No aparece en Yape').expect(200);
+      expect(erroresDeContrato008('/citas/{id}/adelanto/rechazo', 'post', 200, rechazo.body)).toEqual([]);
+
+      await registrarPago(prueba, cliente.token, r.body.id).expect(201);
+      const confirmada = await confirmarAdelanto(prueba, propietario, r.body.id).expect(200);
+      expect(erroresDeContrato002('/citas', 'post', 201, confirmada.body)).toEqual([]);
+      expect(erroresDeEsquema008('Adelanto', confirmada.body.adelanto)).toEqual([]);
+      const resuelto = await rechazarPago(prueba, propietario, r.body.id, 'No aparece en Yape').expect(409);
+      expect(erroresDeContrato008('/citas/{id}/adelanto/rechazo', 'post', 409, resuelto.body)).toEqual([]);
     });
   });
 });

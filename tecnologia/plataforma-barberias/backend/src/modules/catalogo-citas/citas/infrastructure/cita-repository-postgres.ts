@@ -260,6 +260,14 @@ export class CitaRepositoryPostgres extends CitaRepository {
     }
   }
 
+  async porIds(ids: readonly string[]): Promise<Cita[]> {
+    if (ids.length === 0) return [];
+    const filas = await this.consulta()
+      .where('id', 'in', [...ids])
+      .execute();
+    return filas.map(aCita);
+  }
+
   async delRango(desde: Date, hasta: Date, barberoId?: string): Promise<Cita[]> {
     let consulta = this.consulta().where('starts_at', '>=', desde).where('starts_at', '<', hasta);
     if (barberoId) consulta = consulta.where('barber_id', '=', barberoId);
