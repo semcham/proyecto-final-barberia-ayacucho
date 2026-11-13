@@ -19,6 +19,9 @@ export const OPERACIONES_SUSCRIPCIONES = [
   'CONFIGURAR_ADELANTO',
   'REVISAR_ADELANTO',
   'PAGAR_ADELANTO',
+  // Ver el adelanto de una cita, su QR y su captura: el propietario (cualquier cita de su barbería) y el cliente
+  // (solo la suya; el caso de uso lo exige). Las filas GET /citas/{id}/adelanto* de contracts/rbac.md de 008.
+  'VER_ADELANTO',
 ] as const;
 export type OperacionSuscripciones = (typeof OPERACIONES_SUSCRIPCIONES)[number];
 
@@ -30,6 +33,7 @@ const MATRIZ: Readonly<Record<OperacionSuscripciones, readonly RolEnBarberia[]>>
   CONFIGURAR_ADELANTO: ['PROPIETARIO'],
   REVISAR_ADELANTO: ['PROPIETARIO'],
   PAGAR_ADELANTO: ['CLIENTE'],
+  VER_ADELANTO: ['PROPIETARIO', 'CLIENTE'],
 };
 
 export const PermisosSuscripciones = {

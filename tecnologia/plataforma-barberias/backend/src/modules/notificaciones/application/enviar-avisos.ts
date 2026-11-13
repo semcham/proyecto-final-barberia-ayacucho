@@ -10,7 +10,12 @@ import {
   UnitOfWork,
 } from '../../../shared';
 import { EnlacesFirmados } from '../../../shared/enlaces-firmados';
-import { type CodigoErrorAviso, type Destinatario, TIPOS_DE_AVISO_DE_SUSCRIPCION } from '../domain/aviso';
+import {
+  type CodigoErrorAviso,
+  type Destinatario,
+  TIPOS_DE_AVISO_DE_ADELANTO,
+  TIPOS_DE_AVISO_DE_SUSCRIPCION,
+} from '../domain/aviso';
 import {
   type CanalElegido,
   type ContactoDelDestinatario,
@@ -20,7 +25,9 @@ import {
 } from '../domain/eleccion-canal';
 import {
   componerAviso,
+  componerAvisoDeAdelanto,
   componerAvisoDeSuscripcion,
+  datosDeAdelanto,
   datosDelEvento,
   datosDeSuscripcion,
   type EnlacesDelRecordatorio,
@@ -241,6 +248,17 @@ export class EnviarAvisos {
     if (TIPOS_DE_AVISO_DE_SUSCRIPCION.includes(aviso.tipo)) {
       const { nombre, zonaHoraria } = await this.barberias.configuracionAgenda();
       return componerAvisoDeSuscripcion(aviso.tipo, datosDeSuscripcion(payload, nombre, zonaHoraria));
+    }
+    // 008 (T032): los avisos del adelanto; el del cliente lleva la dirección de su cita (pide sesión).
+    if (TIPOS_DE_AVISO_DE_ADELANTO.includes(aviso.tipo)) {
+      const enlace =
+        aviso.destinatario.tipo === 'CLIENTE' && aviso.citaId
+          ? `${this.urlPublica}/mis-citas/${aviso.citaId}/adelanto`
+          : undefined;
+      return componerAvisoDeAdelanto(
+        aviso.tipo,
+        datosDeAdelanto(payload, await this.barberias.nombre(), enlace),
+      );
     }
     const datos = datosDelEvento(payload, await this.barberias.nombre());
     const enlaces = aviso.tipo === 'RECORDATORIO' ? this.enlacesDelRecordatorio(aviso) : undefined;

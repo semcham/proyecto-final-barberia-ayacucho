@@ -70,6 +70,13 @@ import { ConfiguracionAdelantoRepository } from './adelantos/application/ports/c
 import { ArchivosAdelantoPostgres } from './adelantos/infrastructure/archivos-adelanto-postgres';
 import { KyselyConfiguracionAdelanto } from './adelantos/infrastructure/kysely-configuracion-adelanto';
 import { AdelantoConfiguracionController } from './adelantos/presentation/adelanto-configuracion.controller';
+import { AdelantosApi } from './adelantos-api';
+import { AdelantosApiImpl } from './adelantos/application/adelantos-api-impl';
+import { ConsultarAdelanto } from './adelantos/application/consultar-adelanto';
+import { AdelantoRepository } from './adelantos/application/ports/adelanto-repository';
+import { RegistrarPagoDeAdelanto } from './adelantos/application/registrar-pago';
+import { KyselyAdelantoRepository } from './adelantos/infrastructure/kysely-adelanto-repository';
+import { AdelantoCitaController } from './adelantos/presentation/adelanto-cita.controller';
 
 /**
  * M03 Suscripciones y pagos. Prueba gratuita y límites (001 y 002); en 003, planes, períodos, pagos con la
@@ -86,6 +93,8 @@ import { AdelantoConfiguracionController } from './adelantos/presentation/adelan
     SuscripcionesPlataformaController,
     // 008 (US1): configuración del adelanto de reserva.
     AdelantoConfiguracionController,
+    // 008 (US2): el adelanto de la cita y el registro del pago del cliente.
+    AdelantoCitaController,
   ],
   providers: [
     { provide: SuscripcionRepository, useClass: KyselySuscripcionRepository },
@@ -136,7 +145,19 @@ import { AdelantoConfiguracionController } from './adelantos/presentation/adelan
     { provide: ConfiguracionAdelantoRepository, useClass: KyselyConfiguracionAdelanto },
     { provide: ArchivosAdelanto, useClass: ArchivosAdelantoPostgres },
     ConfigurarAdelanto,
+    // 008 (US2): AdelantosApi para M02 (research R01), el registro del pago y la consulta del adelanto.
+    { provide: AdelantoRepository, useClass: KyselyAdelantoRepository },
+    { provide: AdelantosApi, useClass: AdelantosApiImpl },
+    RegistrarPagoDeAdelanto,
+    ConsultarAdelanto,
   ],
-  exports: [SuscripcionesApi, ConciliarPagos, VencerSuscripciones, ExpirarTransferencias, AvisarFinDePrueba],
+  exports: [
+    SuscripcionesApi,
+    ConciliarPagos,
+    VencerSuscripciones,
+    ExpirarTransferencias,
+    AvisarFinDePrueba,
+    AdelantosApi,
+  ],
 })
 export class SuscripcionesPagosModule {}

@@ -4,8 +4,8 @@ import type { CancelacionDeLaCita, CausaDeVencimiento, EstadoAdelanto } from './
 // T009 de 008 · Interfaz pública del adelanto de reserva (research R01). M03 es dueño de los datos y las reglas del
 // adelanto; M02 orquesta todo lo que cambia la cita (reservar pendiente, confirmar, vencer, cancelar, no asistió y
 // reprogramar) y en cada caso llama aquí, en la MISMA transacción, con la cita ya bloqueada (research R06). La regla
-// PR14 adelantos-solo-por-api impide que M02 importe otra cosa del submódulo. La implementación
-// (adelantos/application/adelantos-api-impl.ts) llega con las historias de 008.
+// PR14 adelantos-solo-por-api impide que M02 importe otra cosa del submódulo. La implementación está en
+// adelantos/application/adelantos-api-impl.ts; cada fase de 008 completa sus operaciones.
 
 /** El adelanto que corresponde a una reserva, calculado con la configuración vigente al reservar. */
 export interface AdelantoParaReservar extends AdelantoCalculado {
@@ -26,16 +26,34 @@ export interface DatosDelAdelantoNuevo {
   adelanto: AdelantoParaReservar;
 }
 
-/** El adelanto de una cita, como lo ven el cliente y el propietario (contracts/openapi.yaml, Adelanto). */
+/**
+ * El registro de pago vigente, o el último rechazado (contracts/openapi.yaml, Adelanto.pago). El número va completo:
+ * solo lo ven el cliente de la cita y el propietario de su barbería (FR-011).
+ */
+export interface PagoDeAdelantoVista {
+  numeroOperacion: string;
+  tieneCaptura: boolean;
+  /** ISO 8601 con el desplazamiento de la barbería. */
+  registradoEn: string;
+  resultado: 'CONFIRMADO' | 'RECHAZADO' | null;
+  motivoRechazo: string | null;
+}
+
+/**
+ * El adelanto de una cita, como lo ven el cliente y el propietario (contracts/openapi.yaml, Adelanto). Las horas, en
+ * ISO 8601 con el desplazamiento de la barbería, como el resto de la API.
+ */
 export interface ResumenDeAdelanto {
   citaId: string;
   estado: EstadoAdelanto;
   montoCentimos: number;
-  codigo: string;
-  horaLimite: Date;
-  limiteRevision: Date;
   precioCentimos: number;
   saldoCentimos: number;
+  codigo: string;
+  horaLimite: string;
+  limiteRevision: string;
+  pago: PagoDeAdelantoVista | null;
+  devueltoEn: string | null;
 }
 
 /** Un adelanto que la tarea vencer-adelantos debe revisar (research R09). */

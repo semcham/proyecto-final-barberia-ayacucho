@@ -1,5 +1,6 @@
 import { Injectable, type OnApplicationBootstrap } from '@nestjs/common';
 import {
+  ManejadoresDeAdelanto,
   ManejadoresDeCita,
   ManejadoresDeSuscripcion,
   ManejadorRecordatorio,
@@ -14,6 +15,7 @@ import { BusDeEventos } from '../shared';
  * Fase 4 de 004: el recordatorio del día (RecordatorioDeCita), con los enlaces de acción.
  * Fase 6 de 004: los avisos de suscripción al propietario (PruebaPorTerminar, SuscripcionEnGracia,
  * SuscripcionVencida, PagoAprobado y PagoRechazado).
+ * 008 (T032): los avisos del adelanto de reserva (fase 3: AdelantoSolicitado y PagoDeAdelantoRegistrado).
  */
 @Injectable()
 export class SuscripcionesDeEventos implements OnApplicationBootstrap {
@@ -22,6 +24,7 @@ export class SuscripcionesDeEventos implements OnApplicationBootstrap {
     private readonly avisosDeCita: ManejadoresDeCita,
     private readonly recordatorio: ManejadorRecordatorio,
     private readonly avisosDeSuscripcion: ManejadoresDeSuscripcion,
+    private readonly avisosDeAdelanto: ManejadoresDeAdelanto,
   ) {}
 
   onApplicationBootstrap(): void {
@@ -31,6 +34,9 @@ export class SuscripcionesDeEventos implements OnApplicationBootstrap {
     this.bus.suscribir(ManejadorRecordatorio.TIPO, (evento) => this.recordatorio.manejar(evento));
     for (const tipo of ManejadoresDeSuscripcion.TIPOS) {
       this.bus.suscribir(tipo, (evento) => this.avisosDeSuscripcion.manejar(evento));
+    }
+    for (const tipo of ManejadoresDeAdelanto.TIPOS) {
+      this.bus.suscribir(tipo, (evento) => this.avisosDeAdelanto.manejar(evento));
     }
   }
 }

@@ -1,0 +1,44 @@
+/* Pagar el adelanto (/mis-citas/:citaId/adelanto): el QR y los datos del pago, uno debajo del otro a 360 px. */
+
+.pago {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--espacio-5);
+}
+
+.pago > dl {
+  flex: 1 1 16rem;
+  min-width: 0;
+}
+
+/* Fondo blanco fijo: el QR se escanea igual en tema claro y oscuro. */
+.qr {
+  display: block;
+  width: 100%;
+  max-width: 16rem;
+  height: auto;
+  padding: var(--espacio-2);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio);
+  background: #fff;
+}
+
+.monto {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.codigo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--espacio-3);
+}
+
+.codigo > span {
+  font-family: var(--fuente-mono, ui-monospace, monospace);
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+}

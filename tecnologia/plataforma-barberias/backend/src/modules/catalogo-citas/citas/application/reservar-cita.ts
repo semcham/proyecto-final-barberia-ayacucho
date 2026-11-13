@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import { v7 as uuidv7 } from 'uuid';
 import { type Actor, BarberiasApi, ClientesApi, type ConfiguracionAgenda } from '../../../acceso-barberias';
-import { SuscripcionesApi } from '../../../suscripciones-pagos';
+import { AdelantosApi, type ResumenDeAdelanto, SuscripcionesApi } from '../../../suscripciones-pagos';
 import { AuditLog, BusDeEventos, Clock, TenantId, UnitOfWork, ZonaHoraria } from '../../../../shared';
 import { AutorizacionCatalogoCitas } from '../../catalogo/application/autorizacion';
 import { CatalogQuery } from '../../catalogo/application/ports/catalog-query';
@@ -47,6 +47,11 @@ export interface CitaVista {
   origen: 'EN_LINEA' | 'PRESENCIAL';
   /** 004: cuándo confirmó el cliente su asistencia por el enlace; null = "sin confirmar" (FR-028). */
   confirmadaPorClienteEn: string | null;
+  /**
+   * 008 (CitaConAdelanto): el adelanto de la cita, solo si tiene uno. Sin adelanto el campo no aparece: la respuesta
+   * es la de 002.
+   */
+  adelanto?: ResumenDeAdelanto;
 }
 
 export interface ResultadoReserva {
@@ -76,6 +81,7 @@ export class ReservarCita {
     private readonly auditoria: AuditLog,
     private readonly suscripciones: SuscripcionesApi,
     private readonly eventos: BusDeEventos,
+    private readonly adelantos: AdelantosApi,
   ) {}
 
   async ejecutar(actor: Actor, comando: ComandoReservarCita, clave: string): Promise<ResultadoReserva> {
@@ -146,6 +152,13 @@ export class ReservarCita {
       zonaHoraria: agenda.zonaHoraria,
     });
 
+    // 008 (research R03): solo la reserva del CLIENTE pide adelanto, y solo con el adelanto activo y un precio mayor
+    // que cero. Si el plazo para pagar no cabe antes del inicio menos 30 min, SinTiempoParaAdelanto (422) sin
+    // guardar nada. La reserva del propietario nunca pide adelanto (FR-005).
+    const precioCentimos = centimosDe(servicio.precio);
+    const adelanto =
+      actor.rol === 'CLIENTE' ? await this.adelantos.paraReservar({ precioCentimos, inicio, ahora }) : null;
+
     const cita = Cita.reservar({
       id: uuidv7(),
       barberoId: comando.barberoId,
@@ -155,9 +168,10 @@ export class ReservarCita {
       origen: actor.rol === 'PROPIETARIO' ? 'PRESENCIAL' : 'EN_LINEA',
       creadoPor: actor.usuarioId,
       ahora,
+      pendiente: adelanto !== null,
     });
 
-    // 3. Inserción: aquí actúan las restricciones de exclusión (principio IV).
+    // 3. Inserción: aquí actúan las restricciones de exclusión (principio IV). PENDIENTE también ocupa el horario.
     await this.citas.guardar(cita, { clave, hashSolicitud });
     await this.auditoria.registrar({
       accion: 'CITA_RESERVADA',
@@ -165,6 +179,23 @@ export class ReservarCita {
       recurso: `cita:${cita.id}`,
       resultado: 'PERMITIDO',
     });
+
+    if (adelanto) {
+      // 008 (research R08): con adelanto, en la misma transacción, M03 guarda el adelanto y publica
+      // AdelantoSolicitado. NO se publica CitaCreada ("tu cita quedó confirmada") ni se programa el recordatorio:
+      // los dos salen al confirmar el adelanto (fase 4).
+      const resumen = await this.adelantos.crear({
+        citaId: cita.id,
+        clienteId: cliente.clienteId,
+        usuarioClienteId: actor.usuarioId,
+        servicio: cita.servicio.nombre,
+        precioCentimos,
+        inicio: cita.rango.inicio,
+        zonaHoraria: agenda.zonaHoraria,
+        adelanto,
+      });
+      return { cita: { ...aVista(cita, agenda, barbero.nombre), adelanto: resumen }, creada: true };
+    }
     // 004 (T067, FR-010; contracts/eventos.md §3): en la misma transacción que la cita, sin datos de contacto.
     // Un reintento idempotente devuelve la cita previa antes de llegar aquí: no publica otro evento.
     const usuarioDelBarbero = (await this.catalogo.barbero(cita.barberoId))?.usuarioId;
@@ -219,11 +250,22 @@ export class ReservarCita {
     if (previa.hashSolicitud !== hashSolicitud) throw new IdempotenciaConflicto();
     const agenda = await this.barberias.configuracionAgenda();
     const barbero = await this.catalogo.barbero(previa.cita.barberoId);
+    // 008: el reintento devuelve la misma cita, también con su adelanto si lo tiene.
+    const adelanto = await this.adelantos.deCita(previa.cita.id);
     return {
-      cita: aVista(previa.cita, agenda, barbero?.nombre ?? ''),
+      cita: {
+        ...aVista(previa.cita, agenda, barbero?.nombre ?? ''),
+        ...(adelanto && { adelanto }),
+      },
       creada: false,
     };
   }
+}
+
+/** Precio del servicio ("25.50", soles con dos decimales) en céntimos enteros, sin pasar por coma flotante. */
+export function centimosDe(precio: string): number {
+  const [soles, decimales = ''] = precio.trim().split('.');
+  return Number(soles) * 100 + Number(decimales.padEnd(2, '0').slice(0, 2));
 }
 
 /** SHA-256 del contenido normalizado de la reserva (el inicio, en UTC). */

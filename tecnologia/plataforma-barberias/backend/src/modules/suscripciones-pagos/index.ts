@@ -21,6 +21,7 @@ export {
   type AdelantoParaReservar,
   type CandidatoPorVencer,
   type DatosDelAdelantoNuevo,
+  type PagoDeAdelantoVista,
   type ResultadoDeVencimiento,
   type ResumenDeAdelanto,
 } from './adelantos-api';

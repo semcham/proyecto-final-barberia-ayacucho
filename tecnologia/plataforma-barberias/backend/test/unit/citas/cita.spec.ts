@@ -26,6 +26,25 @@ describe('Cita.reservar', () => {
     expect(cita.ocupaHorario()).toBe(true);
   });
 
+  // T028 de 008 (research R03): con adelanto, la cita nace PENDIENTE (ocupa el horario) y `aprobar` la confirma.
+  it('con la opción pendiente nace PENDIENTE, ocupa el horario y aprobar la deja CONFIRMADA', () => {
+    const cita = Cita.reservar({
+      id: 'cita-2',
+      barberoId: 'barbero-1',
+      clienteId: 'cliente-1',
+      servicio: SERVICIO,
+      inicio: new Date('2026-10-20T15:00:00Z'),
+      origen: 'EN_LINEA',
+      creadoPor: 'usuario-1',
+      ahora: AHORA,
+      pendiente: true,
+    });
+    expect(cita.estado).toBe('PENDIENTE');
+    expect(cita.ocupaHorario()).toBe(true);
+    cita.aprobar();
+    expect(cita.estado).toBe('CONFIRMADA');
+  });
+
   it('fin = inicio + duración del servicio', () => {
     const cita = reservar(new Date('2026-10-20T15:00:00Z'));
     expect(cita.rango.inicio.toISOString()).toBe('2026-10-20T15:00:00.000Z');

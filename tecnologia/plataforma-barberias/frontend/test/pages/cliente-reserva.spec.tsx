@@ -107,6 +107,7 @@ function renderizar(
             <Route path="/b/:slug/ingresar" element={<IngresarBarberia />} />
             <Route path="/b/:slug/reservar" element={<ReservarProtegida />} />
             <Route path="/mis-citas" element={<h1>Mis citas</h1>} />
+            <Route path="/mis-citas/:citaId/adelanto" element={<h1>Pagar adelanto</h1>} />
           </Routes>
           <RutaActual />
           <OtraHora />
@@ -312,6 +313,38 @@ describe('Reserva (/b/:slug/reservar)', () => {
     expect(hecho).toHaveTextContent('10:00 (hora de la barbería)');
     expect(hecho).toHaveTextContent('S/ 25.00');
     expect(within(hecho).getByRole('link', { name: /ver mis citas/i })).toHaveAttribute('href', '/mis-citas');
+  });
+
+  // T027 de 008 · Con el adelanto activo, la cita nace PENDIENTE y la interfaz lleva a pagar el adelanto.
+  it('una reserva con adelanto lleva a /mis-citas/:citaId/adelanto', async () => {
+    conSesionYCatalogo();
+    servidor.use(
+      http.post('/api/v1/citas', () =>
+        HttpResponse.json(
+          {
+            ...CITA,
+            estado: 'PENDIENTE',
+            adelanto: {
+              citaId: CITA.id,
+              estado: 'POR_PAGAR',
+              montoCentimos: 500,
+              precioCentimos: 2500,
+              saldoCentimos: 2000,
+              codigo: 'K7Q2MP',
+              horaLimite: '2026-10-20T09:30:00-05:00',
+              limiteRevision: '2026-10-20T10:00:00-05:00',
+              pago: null,
+              devueltoEn: null,
+            },
+          },
+          { status: 201 },
+        ),
+      ),
+    );
+    renderizar(`/b/${SLUG}/reservar?${SELECCION}`);
+    await userEvent.setup().click(await screen.findByRole('button', { name: /confirmar reserva/i }));
+    expect(await screen.findByRole('heading', { name: 'Pagar adelanto' })).toBeInTheDocument();
+    expect(rutaActual()).toBe(`/mis-citas/${CITA.id}/adelanto`);
   });
 
   it('cambia la Idempotency-Key si cambia la selección', async () => {

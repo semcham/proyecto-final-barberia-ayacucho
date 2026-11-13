@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { type Actor, BarberiasApi, ClientesApi } from '../../../acceso-barberias';
+import { AdelantosApi } from '../../../suscripciones-pagos';
 import { TenantId, UnitOfWork } from '../../../../shared';
 import { AutorizacionCatalogoCitas } from '../../catalogo/application/autorizacion';
 import { BarberoRepository } from '../../catalogo/application/ports/catalogo-repositorios';
@@ -28,6 +29,7 @@ export class ConsultarHistorial {
     private readonly citas: CitaRepository,
     private readonly barberos: BarberoRepository,
     private readonly barberias: BarberiasApi,
+    private readonly adelantos: AdelantosApi,
   ) {}
 
   async ejecutar(actor: Actor, pagina: number, tamano: number): Promise<PaginaCitasVista> {
@@ -40,11 +42,19 @@ export class ConsultarHistorial {
       if (citas.length === 0) return { total, pagina, tamano, elementos: [] };
       const agenda = await this.barberias.configuracionAgenda();
       const nombres = new Map((await this.barberos.listar()).map((b) => [b.id, b.nombre]));
+      // 008 (FR-008, FR-020): el adelanto de cada cita que lo tenga; las demás se ven como en 002.
+      const adelantos = await this.adelantos.deCitas(citas.map((cita) => cita.id));
       return {
         total,
         pagina,
         tamano,
-        elementos: citas.map((cita) => aVista(cita, agenda, nombres.get(cita.barberoId) ?? '')),
+        elementos: citas.map((cita) => {
+          const adelanto = adelantos.get(cita.id);
+          return {
+            ...aVista(cita, agenda, nombres.get(cita.barberoId) ?? ''),
+            ...(adelanto && { adelanto }),
+          };
+        }),
       };
     });
   }

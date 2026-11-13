@@ -239,3 +239,91 @@ export function componerAvisoDeSuscripcion(tipo: TipoAviso, datos: DatosDeSuscri
   }
   return { asunto: asunto.slice(0, 120), texto: [...cuerpo, '', PIE].join('\n') };
 }
+
+// ---------------------------------------------------------------------------------------------------------------
+// 008 (T032; FR-023, FR-024; contracts/eventos.md §4 de 008; constitución 1.6.0, principio VII) · Avisos del
+// adelanto, en texto simple. `datosDeAdelanto` arma una lista CERRADA de campos: la barbería, el servicio, la fecha y
+// hora, el monto, el código de la reserva, la hora límite o el límite de revisión y, en un rechazo, el motivo.
+// Nunca llegan a la plantilla el número de operación, la captura, el QR, teléfonos ni correos.
+
+export interface DatosDeAdelanto {
+  barberia: string;
+  servicio: string;
+  /** Instantes ISO 8601. */
+  inicio: string;
+  zonaHoraria: string;
+  montoCentimos: number;
+  codigo: string;
+  horaLimite?: string;
+  limiteRevision?: string;
+  /** Dirección de la cita en la aplicación (URL_PUBLICA/mis-citas/<id>/adelanto): pide sesión, no es un secreto. */
+  enlaceCita?: string;
+}
+
+export function datosDeAdelanto(
+  payload: Record<string, unknown>,
+  barberia: string,
+  enlaceCita?: string,
+): DatosDeAdelanto {
+  const datos: DatosDeAdelanto = {
+    barberia,
+    servicio: texto(payload.servicio),
+    inicio: texto(payload.inicio),
+    zonaHoraria: texto(payload.zonaHoraria) || 'America/Lima',
+    montoCentimos: Number.isInteger(payload.montoCentimos) ? (payload.montoCentimos as number) : 0,
+    codigo: texto(payload.codigo),
+  };
+  const horaLimite = texto(payload.horaLimite);
+  if (horaLimite) datos.horaLimite = horaLimite;
+  const limiteRevision = texto(payload.limiteRevision);
+  if (limiteRevision) datos.limiteRevision = limiteRevision;
+  if (enlaceCita) datos.enlaceCita = enlaceCita;
+  return datos;
+}
+
+const soles = (centimos: number) =>
+  new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(centimos / 100);
+
+/** Asunto y texto de un aviso del adelanto para su destinatario. */
+export function componerAvisoDeAdelanto(tipo: TipoAviso, datos: DatosDeAdelanto): MensajeCompuesto {
+  const { barberia, servicio, inicio, zonaHoraria: zona, montoCentimos, codigo } = datos;
+  const detalle = [`Servicio: ${servicio}`, `Barbería: ${barberia}`, `Fecha: ${cuando(inicio, zona)}`];
+
+  let asunto: string;
+  let cuerpo: string[];
+  switch (tipo) {
+    case 'ADELANTO_SOLICITADO':
+      asunto = `Paga el adelanto de tu cita en ${barberia}`;
+      cuerpo = [
+        'Tu cita está pendiente: se confirma cuando la barbería compruebe el pago del adelanto.',
+        '',
+        ...detalle,
+        `Adelanto: ${soles(montoCentimos)}`,
+        `Código de tu reserva: ${codigo} (escríbelo en el mensaje del pago)`,
+        ...(datos.horaLimite ? [`Paga antes del ${cuando(datos.horaLimite, zona)}`] : []),
+        '',
+        'Paga con el QR de Yape o Plin de la barbería, que está en Mis citas, y registra ahí el número de operación.',
+        ...(datos.enlaceCita ? [`Tu cita: ${datos.enlaceCita}`] : []),
+        '',
+        'Si no registras el pago a tiempo, la reserva se cancela y el horario queda libre.',
+      ];
+      break;
+    case 'PAGO_ADELANTO_REGISTRADO':
+      asunto = `Un cliente registró el pago de un adelanto en ${barberia}`;
+      cuerpo = [
+        'Un cliente registró el pago del adelanto de su cita.',
+        '',
+        ...detalle,
+        `Adelanto: ${soles(montoCentimos)}`,
+        `Código de la reserva: ${codigo}`,
+        ...(datos.limiteRevision ? [`Revísalo hasta el ${cuando(datos.limiteRevision, zona)}`] : []),
+        '',
+        'Comprueba el pago en tu aplicación de Yape o Plin y confírmalo o recházalo en el panel de tu barbería,',
+        'en Adelantos por revisar. El número de operación y la captura están ahí.',
+      ];
+      break;
+    default:
+      throw new Error(`No hay plantilla de adelanto para el aviso ${tipo}`);
+  }
+  return { asunto: asunto.slice(0, 120), texto: [...cuerpo, '', PIE].join('\n') };
+}

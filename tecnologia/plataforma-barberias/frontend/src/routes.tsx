@@ -35,6 +35,8 @@ const Enlace = lazy(() => import('./pages/publico/Enlace'));
 const Suscripcion = lazy(() => import('./pages/panel/Suscripcion'));
 // Funcionalidad 008 (T018): configuración del adelanto de reserva con QR.
 const Adelanto = lazy(() => import('./pages/panel/Adelanto'));
+// Funcionalidad 008 (T033): el cliente paga el adelanto de su cita.
+const PagarAdelanto = lazy(() => import('./pages/cliente/PagarAdelanto'));
 const ReservarProtegida = lazy(() =>
   import('./pages/publico/Reservar').then((m) => ({ default: m.ReservarProtegida })),
 );
@@ -135,6 +137,14 @@ export function RutasApp() {
             element={
               <RutaProtegida roles={['CLIENTE']}>
                 <MisCitas />
+              </RutaProtegida>
+            }
+          />
+          <Route
+            path="/mis-citas/:citaId/adelanto"
+            element={
+              <RutaProtegida roles={['CLIENTE']}>
+                <PagarAdelanto />
               </RutaProtegida>
             }
           />

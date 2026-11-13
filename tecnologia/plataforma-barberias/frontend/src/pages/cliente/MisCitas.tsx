@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import type { AdelantoDeCita } from '../../api/adelanto';
 import { clavesConsulta } from '../../api/claves';
 import { llamarApi } from '../../api/client';
 import type { components } from '../../api/schema-002';
@@ -22,9 +23,11 @@ import { Cargando } from '../panel/Cargando';
 import { mensajeDeError } from '../panel/datos-barberia';
 import panel from '../panel/Panel.module.css';
 import estilos from './MisCitas.module.css';
+import { ESTADO_ADELANTO, soles } from './textos-adelanto';
 
-type Cita = components['schemas']['Cita'];
-type PaginaCitas = components['schemas']['PaginaCitas'];
+/** 008: la Cita de 002 y, si la tiene, su adelanto (el historial lo incluye solo en las citas con adelanto). */
+type Cita = components['schemas']['Cita'] & { adelanto?: AdelantoDeCita | null };
+type PaginaCitas = Omit<components['schemas']['PaginaCitas'], 'elementos'> & { elementos: Cita[] };
 type Catalogo = components['schemas']['CatalogoPublico'];
 
 const TAMANO_PAGINA = 10;
@@ -134,6 +137,9 @@ export default function MisCitas() {
             {historial.data.elementos.map((cita) => {
               const activa = cita.estado === 'CONFIRMADA' || cita.estado === 'PENDIENTE';
               const futura = Date.parse(cita.inicio) > ahora;
+              const adelanto = cita.adelanto ?? null;
+              // 008 (research R11): una cita pendiente de su adelanto no se reprograma; se puede cancelar.
+              const reprogramable = activa && futura && !(cita.estado === 'PENDIENTE' && adelanto);
               return (
                 <li key={cita.id} className={panel.elemento}>
                   <div className={panel.elementoTextos}>
@@ -142,24 +148,48 @@ export default function MisCitas() {
                       {fechaDeBarberia(cita.inicio, zona)}, {horaDeBarberia(cita.inicio, zona)} ·{' '}
                       {cita.barbero} · S/ {cita.precio}
                     </span>
+                    {adelanto && (
+                      <span className={panel.elementoDetalle}>
+                        Adelanto {soles(adelanto.montoCentimos)}
+                        {adelanto.estado === 'CONFIRMADO' && ` · saldo ${soles(adelanto.saldoCentimos)}`}
+                      </span>
+                    )}
                   </div>
                   <div className={panel.acciones}>
                     <EtiquetaEstado tono={ESTADO[cita.estado].tono}>
                       {ESTADO[cita.estado].texto}
                     </EtiquetaEstado>
+                    {adelanto && (
+                      <EtiquetaEstado tono={ESTADO_ADELANTO[adelanto.estado].tono}>
+                        {ESTADO_ADELANTO[adelanto.estado].enLista}
+                      </EtiquetaEstado>
+                    )}
                     {cita.cancelacionTardia && (
                       <EtiquetaEstado tono="aviso">Cancelación tardía</EtiquetaEstado>
                     )}
+                    {adelanto && (
+                      <Link
+                        to={`/mis-citas/${encodeURIComponent(cita.id)}/adelanto`}
+                        className={clasesBoton({
+                          variante: adelanto.estado === 'POR_PAGAR' ? 'primario' : 'secundario',
+                          tamano: 'sm',
+                        })}
+                      >
+                        {adelanto.estado === 'POR_PAGAR' ? 'Pagar adelanto' : 'Ver adelanto'}
+                      </Link>
+                    )}
                     {activa && futura && (
                       <>
-                        <Boton
-                          type="button"
-                          variante="secundario"
-                          tamano="sm"
-                          onClick={() => setPorReprogramar(cita)}
-                        >
-                          Reprogramar
-                        </Boton>
+                        {reprogramable && (
+                          <Boton
+                            type="button"
+                            variante="secundario"
+                            tamano="sm"
+                            onClick={() => setPorReprogramar(cita)}
+                          >
+                            Reprogramar
+                          </Boton>
+                        )}
                         <Boton
                           type="button"
                           variante="peligro"

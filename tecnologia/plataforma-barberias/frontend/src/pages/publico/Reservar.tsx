@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { type ReactNode, useEffect, useId, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import type { AdelantoDeCita } from '../../api/adelanto';
 import { clavesConsulta } from '../../api/claves';
 import { ApiError, esRestriccionDeSuscripcion, llamarApi } from '../../api/client';
 import type { components } from '../../api/schema-002';
@@ -19,7 +20,8 @@ import estilos from './Reservar.module.css';
 import { FormularioUnion, mensajeDeError } from './Union';
 
 type Catalogo = components['schemas']['CatalogoPublico'];
-type Cita = components['schemas']['Cita'];
+/** 008 (CitaConAdelanto): la Cita de 002 y, con el adelanto activo, su adelanto. */
+type Cita = components['schemas']['Cita'] & { adelanto?: AdelantoDeCita | null };
 type SolicitudReserva = components['schemas']['ReservarCitaRequest'];
 
 /** Conflictos que vuelven al catálogo con los horarios del día actualizados. */
@@ -129,6 +131,10 @@ function ConfirmarReserva({ slug, seleccion }: { slug: string; seleccion: Solici
         } satisfies SolicitudReserva,
         encabezados: { 'Idempotency-Key': clave },
       }),
+    // 008 (T033): con el adelanto activo la cita queda pendiente; se sigue en la pantalla de pago del adelanto.
+    onSuccess: (cita) => {
+      if (cita.adelanto) navegar(`/mis-citas/${encodeURIComponent(cita.id)}/adelanto`);
+    },
     onError: (error) => {
       // El estado cambió con la confirmación abierta: se vuelve a consultar y la pantalla muestra el aviso.
       if (esRestriccionDeSuscripcion(error)) {
@@ -185,6 +191,8 @@ function ConfirmarReserva({ slug, seleccion }: { slug: string; seleccion: Solici
   }
 
   if (reserva.data) {
+    // Con adelanto, la navegación a la pantalla de pago ya está en curso (onSuccess).
+    if (reserva.data.adelanto) return <PantallaCarga />;
     return <CitaReservada cita={reserva.data} zona={zona} />;
   }
 

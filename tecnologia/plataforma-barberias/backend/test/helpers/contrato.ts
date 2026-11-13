@@ -181,6 +181,24 @@ export function erroresDeContrato004(
   return erroresDeContrato(ruta, metodo, estado, cuerpo, '004');
 }
 
+/**
+ * Errores de validación de `cuerpo` frente a un esquema con nombre de components/schemas del contrato de 008 (p. ej.
+ * `Adelanto`). Sirve para CitaConAdelanto, que combina la Cita de 002 (por referencia externa) con el adelanto: la
+ * cita se valida con el contrato de 002 y el adelanto con este.
+ */
+export function erroresDeEsquema008(nombre: string, cuerpo: unknown): string[] {
+  const { ajv, compilados } = validadorDe('008');
+  const clave = `esquema ${nombre}`;
+  let validar = compilados.get(clave);
+  if (!validar) {
+    validar = ajv.compile({ $ref: `openapi#/components/schemas/${nombre}` });
+    compilados.set(clave, validar);
+  }
+  return validar(cuerpo)
+    ? []
+    : (validar.errors ?? []).map((error) => `${error.instancePath || '/'} ${error.message ?? ''}`.trim());
+}
+
 /** Igual que `erroresDeContrato`, contra el contrato de la funcionalidad 008 (adelanto de reserva con QR). */
 export function erroresDeContrato008(
   ruta: string,

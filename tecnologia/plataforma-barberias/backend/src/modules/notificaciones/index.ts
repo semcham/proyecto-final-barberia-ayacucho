@@ -8,3 +8,5 @@ export { EnviarAvisos } from './application/enviar-avisos';
 export { ManejadorRecordatorio } from './application/manejador-recordatorio';
 // Fase 6 de 004: los avisos de suscripción al propietario (US5).
 export { ManejadoresDeSuscripcion } from './application/manejadores-de-suscripcion';
+// 008 (T032): los avisos del adelanto de reserva.
+export { ManejadoresDeAdelanto } from './application/manejadores-de-adelanto';

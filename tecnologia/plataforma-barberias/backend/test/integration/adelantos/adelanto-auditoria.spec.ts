@@ -1,9 +1,18 @@
-import { cambiarConfiguracion, archivosDeAdelanto, subirQr } from '../../helpers/adelantos';
+import {
+  activarAdelanto,
+  archivosDeAdelanto,
+  cambiarConfiguracion,
+  numeroDeOperacion,
+  registrarPago,
+  reservar,
+  subirQr,
+} from '../../helpers/adelantos';
 import { type AppDePrueba, crearApp } from '../../helpers/app';
 import { png } from '../../helpers/comprobantes';
 import { filasDe, sembrarUsuario } from '../../helpers/fixtures';
 import { barberiaEnPrueba } from '../../helpers/pagos';
-import { tokenPara } from '../../helpers/sesiones';
+import { barberiaParaReservar, fechaEnDias, horaLima } from '../../helpers/reservas';
+import { sesionCliente, tokenPara } from '../../helpers/sesiones';
 import { cerrarPools } from '../../helpers/test-db';
 
 // T014 de 008 · Auditoría del adelanto (FR-029, research R13). Cada acción deja una entrada en la barbería, con su
@@ -101,6 +110,49 @@ describe('Auditoría del adelanto (T014)', () => {
       const denegadas = await auditoriaDel(b.tenantId, 'ACCESO_DENEGADO_ROL');
       expect(denegadas).toHaveLength(1);
       expect(denegadas[0]).toMatchObject({ actor_id: barbero.usuarioId, result: 'DENEGADO' });
+    });
+  });
+
+  // T026 · Fase 3 (US2): el registro del pago del cliente.
+  describe('ADELANTO_PAGO_REGISTRADO (US2)', () => {
+    async function citaPendiente() {
+      const e = await barberiaParaReservar();
+      await activarAdelanto(e.barberia.tenantId, e.barberia.propietarioId);
+      const cliente = await sesionCliente(e.barberia.tenantId);
+      const { body } = await reservar(prueba, cliente.token, {
+        servicioId: e.servicioId,
+        barberoId: e.barberoId,
+        inicio: horaLima(fechaEnDias(3), '10:00'),
+      }).expect(201);
+      return { e, cliente, citaId: body.id as string };
+    }
+
+    it('una entrada con el cliente como actor y el estado nuevo, sin el número ni la captura', async () => {
+      const { e, cliente, citaId } = await citaPendiente();
+      const numero = numeroDeOperacion();
+      await registrarPago(prueba, cliente.token, citaId, { numero, captura: png() }).expect(201);
+      const entradas = await auditoriaDel(e.barberia.tenantId, 'ADELANTO_PAGO_REGISTRADO');
+      expect(entradas).toHaveLength(1);
+      expect(entradas[0]).toMatchObject({
+        tenant_id: e.barberia.tenantId,
+        actor_id: cliente.cliente.usuarioId,
+        resource: `cita:${citaId};POR_REVISAR`,
+        result: 'PERMITIDO',
+        reason: null,
+      });
+      const [captura] = (await archivosDeAdelanto(e.barberia.tenantId)).filter((a) => a.kind === 'CAPTURA');
+      const texto = JSON.stringify(entradas[0]);
+      expect(texto).not.toContain(numero);
+      expect(texto).not.toContain(captura.id as string);
+      expect(texto).not.toContain(captura.sha256 as string);
+    });
+
+    it('un registro rechazado (número repetido, fuera de formato o segundo registro) no deja entrada', async () => {
+      const { e, cliente, citaId } = await citaPendiente();
+      await registrarPago(prueba, cliente.token, citaId, { numero: '12' }).expect(422);
+      await registrarPago(prueba, cliente.token, citaId).expect(201);
+      await registrarPago(prueba, cliente.token, citaId).expect(409);
+      expect(await auditoriaDel(e.barberia.tenantId, 'ADELANTO_PAGO_REGISTRADO')).toHaveLength(1);
     });
   });
 });

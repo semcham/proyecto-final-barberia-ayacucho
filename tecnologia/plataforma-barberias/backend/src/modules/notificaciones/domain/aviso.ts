@@ -88,3 +88,17 @@ export const AVISO_POR_EVENTO_DE_ADELANTO: Readonly<Record<string, TipoAviso>> =
   PagoDeAdelantoRechazado: 'PAGO_ADELANTO_RECHAZADO',
   AdelantoVencido: 'ADELANTO_VENCIDO',
 };
+
+export const TIPOS_DE_AVISO_DE_ADELANTO: readonly TipoAviso[] = Object.values(AVISO_POR_EVENTO_DE_ADELANTO);
+
+/**
+ * 008 (contracts/eventos.md §3): a quién va cada aviso del adelanto. El cliente, por su canal elegido; el
+ * propietario, por correo (`ref` es la barbería). Las fases 4 y 5 suman sus eventos.
+ */
+export const DESTINATARIOS_POR_EVENTO_DE_ADELANTO: Readonly<Record<string, readonly TipoDestinatario[]>> = {
+  AdelantoSolicitado: ['CLIENTE'],
+  PagoDeAdelantoRegistrado: ['PROPIETARIO'],
+};
+
+/** Plazo de un aviso del adelanto: el de los avisos que no son recordatorio, creación + 24 h. */
+export const PLAZO_AVISO_DE_ADELANTO_MS = 24 * 60 * 60 * 1000;

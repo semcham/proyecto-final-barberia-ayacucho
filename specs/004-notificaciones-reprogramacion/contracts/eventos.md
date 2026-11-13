@@ -27,10 +27,10 @@ El `payload` lleva **solo** lo que el mensaje necesita, sin datos de contacto (c
 
 | Tipo                   | Publica | Cuándo                                                                 | `payload`                                                                                                   | Clave de reemplazo                |
 | ---------------------- | ------- | ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | --------------------------------- |
-| `CitaCreada`           | M02     | Reserva del cliente o cita presencial                                  | `citaId, version, clienteId, servicio, barbero, barberoUsuarioId?, inicio, fin, zonaHoraria, origen`         | —                                 |
+| `CitaCreada`           | M02     | Reserva del cliente o cita presencial (con adelanto, al confirmar; ver 008) | `citaId, version, clienteId, servicio, barbero, barberoUsuarioId?, inicio, fin, zonaHoraria, origen`    | —                                 |
 | `CitaCancelada`        | M02     | Cancelación (sesión, propietario o enlace)                             | `citaId, clienteId, servicio, barbero, barberoUsuarioId?, inicio, zonaHoraria, canceladaPor (CLIENTE o PROPIETARIO), tardia` | —                 |
 | `CitaReprogramada`     | M02     | Reprogramación con cambio (sesión, propietario o enlace)               | `citaId, version, clienteId, servicio, barbero, barberoUsuarioId?, inicioAnterior, inicio, fin, zonaHoraria, reprogramadaPor` | —                 |
-| `RecordatorioDeCita`   | M02     | Programado a `inicio − 2 h` al crear o reprogramar (si faltan ≥ 2 h)   | `citaId, version, clienteId, servicio, barbero, inicio, fin, zonaHoraria`                                   | `recordatorio:<citaId>`           |
+| `RecordatorioDeCita`   | M02     | Programado a `inicio − 2 h` al crear o reprogramar (si faltan ≥ 2 h; con adelanto, al confirmar; ver 008) | `citaId, version, clienteId, servicio, barbero, inicio, fin, zonaHoraria` | `recordatorio:<citaId>`           |
 | `PruebaPorTerminar`    | M03     | Tarea `avisar-fin-de-prueba` (US5)                                     | `suscripcionId, finPrueba`                                                                                  | `prueba-por-terminar:<id>` (única por prueba) |
 | `SuscripcionEnGracia`  | M03     | Transición a `PAST_DUE` en `vencer-suscripciones` (US5)                | `suscripcionId, finGracia`                                                                                  | —                                 |
 | `SuscripcionVencida`   | M03     | Transición a `EXPIRED` en `vencer-suscripciones` (US5)                 | `suscripcionId, vencidaEn`                                                                                  | —                                 |
@@ -38,6 +38,8 @@ El `payload` lleva **solo** lo que el mensaje necesita, sin datos de contacto (c
 | `PagoRechazado`        | M03     | Rechazo del pago (proveedor o comprobante) (US5)                       | `pagoId, plan, motivo?`                                                                                     | —                                 |
 
 `servicio` y `barbero` son el nombre del servicio copiado en la cita y el **nombre visible** del barbero (dato público de la barbería). El nombre de la barbería lo obtiene M05 de M01 al componer el mensaje.
+
+**Nota que agrega 008** (adelanto de reserva con QR, [contracts/eventos.md de 008](../../008-adelanto-reserva-qr/contracts/eventos.md) §2): una reserva del cliente con el adelanto activo nace PENDIENTE y **no** publica `CitaCreada` ni programa `RecordatorioDeCita`; publica `AdelantoSolicitado`. Al confirmar el adelanto se publica `AdelantoConfirmado`, que hace las veces de `CitaCreada` (research R08 de 008), y se programa el recordatorio si faltan 2 h o más. Sin adelanto, todo sigue como arriba.
 
 ## 4. Destinatarios que crea M05 por evento
 

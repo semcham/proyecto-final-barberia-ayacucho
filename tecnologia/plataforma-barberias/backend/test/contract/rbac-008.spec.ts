@@ -1,11 +1,22 @@
 import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { cambiarConfiguracion, subirQr, verConfiguracion, verQr } from '../helpers/adelantos';
+import {
+  activarAdelanto,
+  cambiarConfiguracion,
+  registrarPago,
+  reservar,
+  subirQr,
+  verAdelanto,
+  verCaptura,
+  verConfiguracion,
+  verQr,
+  verQrDeCita,
+} from '../helpers/adelantos';
 import { type AppDePrueba, crearApp } from '../helpers/app';
 import { png } from '../helpers/comprobantes';
 import { filasDe, sembrarUsuario } from '../helpers/fixtures';
-import { barberiaEnPrueba } from '../helpers/pagos';
+import { barberiaParaReservar, fechaEnDias, horaLima } from '../helpers/reservas';
 import { sesionCliente, tokenPara, tokenPlataformaPara } from '../helpers/sesiones';
 import { cerrarPools } from '../helpers/test-db';
 
@@ -58,39 +69,74 @@ interface Escenario {
   tenantId: string;
   tokens: Record<Columna, string | null>;
   actores: Record<'PROPIETARIO' | 'BARBERO' | 'CLIENTE', string>;
+  servicioId: string;
+  barberoId: string;
+  clienteId: string;
+  /** Cita PENDIENTE del cliente con su pago registrado con captura. */
+  citaConPago: string;
+  /** Cita PENDIENTE del cliente sin pago registrado. */
+  citaSinPago: string;
 }
 
-/** Barbería en prueba con su QR ya subido, un barbero y un cliente. */
+const DIA = fechaEnDias(3);
+
+/**
+ * Barbería con el adelanto activo (su QR subido por la API), un barbero, un cliente con dos citas pendientes (una con
+ * el pago registrado con captura y otra sin pago).
+ */
 async function crearEscenario(prueba: AppDePrueba): Promise<Escenario> {
-  const b = await barberiaEnPrueba();
-  await subirQr(prueba, b.token, png()).expect(200);
-  const barbero = await sembrarUsuario({ tenantId: b.tenantId, rol: 'BARBERO', estado: 'ACTIVA' });
-  const cliente = await sesionCliente(b.tenantId);
+  const e = await barberiaParaReservar();
+  const tenantId = e.barberia.tenantId;
+  await activarAdelanto(tenantId, e.barberia.propietarioId);
+  const propietario = await tokenPara(tenantId, e.barberia.propietarioId, 'PROPIETARIO');
+  await subirQr(prueba, propietario, png()).expect(200);
+  const barbero = await sembrarUsuario({ tenantId, rol: 'BARBERO', estado: 'ACTIVA' });
+  const cliente = await sesionCliente(tenantId);
+  const cita = async (hora: string) =>
+    (
+      await reservar(prueba, cliente.token, {
+        servicioId: e.servicioId,
+        barberoId: e.barberoId,
+        inicio: horaLima(DIA, hora),
+      }).expect(201)
+    ).body.id as string;
+  const citaConPago = await cita('10:00');
+  await registrarPago(prueba, cliente.token, citaConPago, { captura: png() }).expect(201);
   return {
-    tenantId: b.tenantId,
+    tenantId,
     tokens: {
-      PROPIETARIO: b.token,
-      BARBERO: await tokenPara(b.tenantId, barbero.usuarioId, 'BARBERO'),
+      PROPIETARIO: propietario,
+      BARBERO: await tokenPara(tenantId, barbero.usuarioId, 'BARBERO'),
       CLIENTE: cliente.token,
       ANONIMO: null,
       PLATAFORMA: (await tokenPlataformaPara(randomUUID())).token,
     },
     actores: {
-      PROPIETARIO: b.propietarioId,
+      PROPIETARIO: e.barberia.propietarioId,
       BARBERO: barbero.usuarioId,
       CLIENTE: cliente.cliente.usuarioId as string,
     },
+    servicioId: e.servicioId,
+    barberoId: e.barberoId,
+    clienteId: cliente.cliente.clienteId,
+    citaConPago,
+    citaSinPago: await cita('11:00'),
   };
 }
 
 interface Caso {
   fila: string;
   exito: number;
-  ejecutar: (prueba: AppDePrueba, token: string | null) => Promise<{ status: number }>;
+  ejecutar: (
+    prueba: AppDePrueba,
+    token: string | null,
+    s: Escenario,
+    columna: Columna,
+  ) => Promise<{ status: number }>;
 }
 
-/** Filas implementadas (fase 2: configuración del adelanto). */
-const IMPLEMENTADAS: Caso[] = [
+/** Filas de configuración (fase 2): solo el propietario. */
+const DE_CONFIGURACION: Caso[] = [
   { fila: 'GET /barberia/adelanto', exito: 200, ejecutar: (p, t) => verConfiguracion(p, t) },
   {
     fila: 'PUT /barberia/adelanto',
@@ -100,6 +146,39 @@ const IMPLEMENTADAS: Caso[] = [
   },
   { fila: 'PUT /barberia/adelanto/qr', exito: 200, ejecutar: (p, t) => subirQr(p, t, png()) },
   { fila: 'GET /barberia/adelanto/qr', exito: 200, ejecutar: (p, t) => verQr(p, t) },
+];
+
+/** Filas implementadas (fase 2: configuración; fase 3: reserva pendiente y registro del pago). */
+const IMPLEMENTADAS: Caso[] = [
+  ...DE_CONFIGURACION,
+  {
+    fila: 'POST /citas',
+    exito: 201,
+    // El propietario registra una cita presencial (con el cliente en el cuerpo); el cliente reserva la suya.
+    ejecutar: (p, t, s, columna) =>
+      reservar(p, t, {
+        servicioId: s.servicioId,
+        barberoId: s.barberoId,
+        inicio: horaLima(DIA, '15:00'),
+        ...(columna === 'PROPIETARIO' && { clienteId: s.clienteId }),
+      }),
+  },
+  { fila: 'GET /citas/{id}/adelanto', exito: 200, ejecutar: (p, t, s) => verAdelanto(p, t, s.citaConPago) },
+  {
+    fila: 'GET /citas/{id}/adelanto/qr',
+    exito: 200,
+    ejecutar: (p, t, s) => verQrDeCita(p, t, s.citaConPago),
+  },
+  {
+    fila: 'POST /citas/{id}/adelanto/pago',
+    exito: 201,
+    ejecutar: (p, t, s) => registrarPago(p, t, s.citaSinPago),
+  },
+  {
+    fila: 'GET /citas/{id}/adelanto/captura',
+    exito: 200,
+    ejecutar: (p, t, s) => verCaptura(p, t, s.citaConPago),
+  },
 ];
 
 function esperado(columna: Columna, simbolo: string, exito: number): number {
@@ -126,7 +205,7 @@ describe('PR08 · Matriz de permisos de 008 (contracts/rbac.md)', () => {
   });
 
   it('las rutas de configuración son solo del propietario, como dice el contrato', () => {
-    for (const { fila } of IMPLEMENTADAS) {
+    for (const { fila } of DE_CONFIGURACION) {
       expect({ fila, ...MATRIZ.get(fila) }).toEqual({
         fila,
         PROPIETARIO: '✓',
@@ -146,7 +225,7 @@ describe('PR08 · Matriz de permisos de 008 (contracts/rbac.md)', () => {
     const simbolo = (MATRIZ.get(caso.fila) as Record<Columna, string>)[columna];
     const estado = esperado(columna, simbolo, caso.exito);
     const s = await crearEscenario(prueba);
-    const respuesta = await caso.ejecutar(prueba, s.tokens[columna]);
+    const respuesta = await caso.ejecutar(prueba, s.tokens[columna], s, columna);
     expect({ celda: simbolo, estado: respuesta.status }).toEqual({ celda: simbolo, estado });
     if (estado === 403) {
       const denegaciones = (await filasDe('audit_log', s.tenantId)).filter(

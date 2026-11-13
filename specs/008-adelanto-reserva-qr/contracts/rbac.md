@@ -33,4 +33,7 @@ responde 401 en todas estas rutas (ADR-031). La prueba `rbac-008.spec.ts` lee es
 
 **Operaciones nuevas de la matriz de autorización** (`Permisos` de M03 y de M02): `CONFIGURAR_ADELANTO`,
 `REVISAR_ADELANTO` (confirmar, rechazar, bandeja, marcar devuelto) — solo PROPIETARIO — y `PAGAR_ADELANTO` —
-solo CLIENTE, además de ser el cliente de la cita. Ver la cita y su adelanto usa las operaciones de 002.
+solo CLIENTE, además de ser el cliente de la cita. Ver la cita usa las operaciones de 002; ver su adelanto, su QR
+y su captura (`GET /citas/{id}/adelanto*`, rutas de M03) usa `VER_ADELANTO` — PROPIETARIO y CLIENTE, este solo el de
+su cita —, con las mismas celdas de la tabla de arriba (agregada en la fase 3 de 008: ninguna operación de 002 tiene
+esos dos roles y M03 no usa la matriz de M02).

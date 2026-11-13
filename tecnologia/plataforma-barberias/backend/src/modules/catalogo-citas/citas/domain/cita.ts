@@ -111,6 +111,11 @@ export class Cita {
     origen: OrigenCita;
     creadoPor: string;
     ahora: Date;
+    /**
+     * 008 (research R03): la reserva del cliente con el adelanto activo nace PENDIENTE (ocupa el horario igual) y se
+     * confirma con `aprobar` al confirmar el adelanto.
+     */
+    pendiente?: boolean;
   }): Cita {
     if (entrada.inicio.getTime() <= entrada.ahora.getTime()) throw new ReservaInvalida('HORA_PASADA');
     return new Cita({
@@ -119,8 +124,8 @@ export class Cita {
       clienteId: entrada.clienteId,
       servicio: { ...entrada.servicio },
       rango: RangoHorario.desde(entrada.inicio, entrada.servicio.duracionMin),
-      // Toda cita nueva nace confirmada (FR-035a): ningún flujo de 002 crea citas pendientes.
-      estado: 'CONFIRMADA',
+      // Sin adelanto, toda cita nueva nace confirmada (FR-035a de 002); con adelanto, pendiente (008).
+      estado: entrada.pendiente ? 'PENDIENTE' : 'CONFIRMADA',
       origen: entrada.origen,
       cancelacionTardia: false,
       creadoPor: entrada.creadoPor,

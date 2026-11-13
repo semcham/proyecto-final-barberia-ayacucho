@@ -5,6 +5,7 @@ import { EnviarAvisos } from './application/enviar-avisos';
 import { ManejadoresDeCita } from './application/manejadores-de-cita';
 import { ManejadorRecordatorio } from './application/manejador-recordatorio';
 import { ManejadoresDeSuscripcion } from './application/manejadores-de-suscripcion';
+import { ManejadoresDeAdelanto } from './application/manejadores-de-adelanto';
 import { AvisoRepository, PendientesDeAvisos } from './application/ports/aviso-repository';
 import { CanalesDeAviso } from './application/ports/notification-channel';
 import { crearCanalesDeAviso } from './infrastructure/fabrica-canales';
@@ -36,8 +37,16 @@ import { AvisosPendientesPlataforma } from './infrastructure/plataforma/avisos-p
     ManejadorRecordatorio,
     // Fase 6: los avisos de suscripción al propietario (US5).
     ManejadoresDeSuscripcion,
+    // 008 (T032): los avisos del adelanto de reserva.
+    ManejadoresDeAdelanto,
     EnviarAvisos,
   ],
-  exports: [ManejadoresDeCita, ManejadorRecordatorio, ManejadoresDeSuscripcion, EnviarAvisos],
+  exports: [
+    ManejadoresDeCita,
+    ManejadorRecordatorio,
+    ManejadoresDeSuscripcion,
+    ManejadoresDeAdelanto,
+    EnviarAvisos,
+  ],
 })
 export class NotificacionesModule {}
