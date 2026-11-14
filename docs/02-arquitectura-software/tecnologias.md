@@ -236,3 +236,18 @@ eventos), ADR-026 (correo y WhatsApp detrás de `NotificationChannel`) y ADR-032
 
 El simulador de WhatsApp no se importa desde el monolito (regla `simulador-whatsapp-fuera-del-monolito` de
 PR14): el adaptador le habla solo por HTTP. Ni el simulador ni Mailpit se despliegan en producción.
+
+### 5.8 Funcionalidad 008 (adelanto de reserva con QR)
+
+Fuente: `specs/008-adelanto-reserva-qr/research.md`. Decisión: ADR-033 (adelanto por QR de la barbería con
+verificación manual). **Sin dependencias nuevas** ni cambios en los `package-lock.json` (comprobado con
+`git diff` de los `package.json` del backend y del frontend entre el inicio y el cierre de 008): el único cambio
+es el script `gen:api` del frontend, que suma el contrato de 008 (`src/api/schema-008.d.ts`).
+
+| Necesidad                                  | Cómo se resolvió                                                                                                                                         | Decisión         |
+| ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- |
+| Cobrar el adelanto sin tocar el dinero     | Ninguna librería ni proveedor: el cliente paga con el QR de Yape o Plin de la barbería y el propietario lo verifica a mano en su aplicación               | ADR-033          |
+| QR y capturas privados                     | La misma verificación por bytes y el mismo almacenamiento en PostgreSQL de los comprobantes de 003 (`detectarTipoComprobante`, `bytea` con RLS)          | ADR-023          |
+| Código de la reserva                       | 6 caracteres de un alfabeto sin ambigüedades, con `node:crypto` (`randomBytes`); único en la barbería                                                   | research R07     |
+| Vencimiento                                | La tarea `vencer-adelantos` en el ejecutor existente (cada 60 s, con el candado de PostgreSQL) y la lectura de la plataforma ya existente                  | ADR-024          |
+| Avisos                                     | El bus, la salida transaccional y `NotificationChannel` de 004 (correo con `nodemailer` y Mailpit; WhatsApp simulado)                                     | ADR-025, ADR-026 |

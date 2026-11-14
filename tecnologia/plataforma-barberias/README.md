@@ -9,14 +9,17 @@ funcionalidades:
   ningún cobro real);
 - [004 · Notificaciones y reprogramación](../../specs/004-notificaciones-reprogramacion/spec.md) (correo
   contra Mailpit y WhatsApp simulado: ningún proveedor real);
-- [006 · Escalabilidad: balanceador Nginx, dos réplicas y Redis](../../specs/006-escalado-cache-balanceo/spec.md).
+- [006 · Escalabilidad: balanceador Nginx, dos réplicas y Redis](../../specs/006-escalado-cache-balanceo/spec.md);
+- [008 · Adelanto de reserva con QR](../../specs/008-adelanto-reserva-qr/spec.md) (QR de Yape o Plin de la barbería con verificación
+  manual del propietario: la plataforma no recibe el dinero).
 
 Las guías completas (requisitos, escenarios manuales, criterios de cierre y registro de ejecuciones) están en
 [quickstart de 001](../../specs/001-registro-acceso-barberia/quickstart.md),
 [quickstart de 002](../../specs/002-catalogo-citas-cliente/quickstart.md),
 [quickstart de 003](../../specs/003-suscripciones-pagos/quickstart.md),
-[quickstart de 004](../../specs/004-notificaciones-reprogramacion/quickstart.md) y
-[quickstart de 006](../../specs/006-escalado-cache-balanceo/quickstart.md). Este archivo es el resumen.
+[quickstart de 004](../../specs/004-notificaciones-reprogramacion/quickstart.md),
+[quickstart de 006](../../specs/006-escalado-cache-balanceo/quickstart.md) y
+[quickstart de 008](../../specs/008-adelanto-reserva-qr/quickstart.md). Este archivo es el resumen.
 
 ## Contenido
 
@@ -271,25 +274,57 @@ Son los mismos pasos que ejecuta el CI ([`.github/workflows/plataforma-barberias
 - **Pantallas nuevas:** reprogramar desde Mis citas y desde la Agenda, la página del enlace del recordatorio
   (`/e`) y "Cómo recibo mis avisos" (`/mis-avisos`, solo cliente).
 
+## Funcionalidad 008: adelanto de reserva con QR
+
+- **Decisión:** ADR-033 (adelanto por QR de la barbería con verificación manual), con la enmienda 1.5.0 del
+  principio V de la constitución. Contratos:
+  [openapi de 008](../../specs/008-adelanto-reserva-qr/contracts/openapi.yaml),
+  [rbac de 008](../../specs/008-adelanto-reserva-qr/contracts/rbac.md) y
+  [eventos de 008](../../specs/008-adelanto-reserva-qr/contracts/eventos.md).
+- **La plataforma no recibe dinero:** el cliente paga el adelanto con el QR de Yape o Plin de la propia
+  barbería, y el propietario comprueba el pago **a mano** en su aplicación antes de confirmarlo. La plataforma no
+  cobra comisión, no maneja datos de tarjeta y no consulta a Yape ni a Plin; "devuelto" es solo la marca que pone
+  el propietario. Los avisos del adelanto salen por correo (Mailpit en desarrollo) y por el WhatsApp **simulado**.
+- **Migraciones `0028`–`0030`:** configuración y archivos del adelanto (`booking_deposit_settings`,
+  `booking_deposit_file`), el adelanto de cada cita y sus registros de pago (`booking_deposit`,
+  `booking_deposit_payment`, con el número de operación único en la barbería y cinco columnas técnicas
+  legibles por `barberias_plataforma`) y los cinco tipos de aviso del adelanto (`notification.kind`).
+- **Código:** el submódulo `adelantos` de M03 (`backend/src/modules/suscripciones-pagos/adelantos/`), al que M02
+  llega solo por su interfaz `AdelantosApi` (regla `adelantos-solo-por-api` de PR14); la cita `PENDIENTE`, su
+  confirmación y su vencimiento en M02; los avisos en M05.
+- **Tarea `vencer-adelantos`** (cada 60 s, con el candado de las tareas): cancela sola la cita sin pago a la hora
+  límite (adelanto vencido) y la que tiene el pago sin revisar al llegar su límite máximo (2 h antes del inicio o
+  24 h después de la hora límite, lo que llegue antes; el adelanto queda por devolver). Ninguna variable nueva.
+- **Pantallas nuevas:** configuración del adelanto (`/app/adelanto`, propietario), pagar el adelanto
+  (`/mis-citas/:citaId/adelanto`, cliente) y la bandeja **Adelantos por revisar** (`/app/adelantos`, propietario),
+  con las pestañas "Por revisar" (confirmar o rechazar con motivo) y "Por devolver" (marcar devuelto). La Agenda y
+  Mis citas muestran el estado del adelanto y el saldo a pagar el día de la cita.
+- **Pendientes del responsable:** las revisiones manuales de interfaz, SC-001 y SC-002 con cronómetro y el
+  recorrido de la [guía rápida de 008](../../specs/008-adelanto-reserva-qr/quickstart.md) con Docker Compose.
+
 ## Referencias
 
 - Plan técnico: [plan de 001](../../specs/001-registro-acceso-barberia/plan.md),
   [plan de 002](../../specs/002-catalogo-citas-cliente/plan.md),
-  [plan de 003](../../specs/003-suscripciones-pagos/plan.md) y
-  [plan de 004](../../specs/004-notificaciones-reprogramacion/plan.md) · contratos:
+  [plan de 003](../../specs/003-suscripciones-pagos/plan.md),
+  [plan de 004](../../specs/004-notificaciones-reprogramacion/plan.md) y
+  [plan de 008](../../specs/008-adelanto-reserva-qr/plan.md) · contratos:
   [openapi de 001](../../specs/001-registro-acceso-barberia/contracts/openapi.yaml),
   [openapi de 002](../../specs/002-catalogo-citas-cliente/contracts/openapi.yaml),
-  [openapi de 003](../../specs/003-suscripciones-pagos/contracts/openapi.yaml) y
-  [openapi de 004](../../specs/004-notificaciones-reprogramacion/contracts/openapi.yaml) · permisos:
+  [openapi de 003](../../specs/003-suscripciones-pagos/contracts/openapi.yaml),
+  [openapi de 004](../../specs/004-notificaciones-reprogramacion/contracts/openapi.yaml) y
+  [openapi de 008](../../specs/008-adelanto-reserva-qr/contracts/openapi.yaml) · permisos:
   [rbac de 001](../../specs/001-registro-acceso-barberia/contracts/rbac.md),
   [rbac de 002](../../specs/002-catalogo-citas-cliente/contracts/rbac.md),
-  [rbac de 003](../../specs/003-suscripciones-pagos/contracts/rbac.md) y
-  [rbac de 004](../../specs/004-notificaciones-reprogramacion/contracts/rbac.md).
+  [rbac de 003](../../specs/003-suscripciones-pagos/contracts/rbac.md),
+  [rbac de 004](../../specs/004-notificaciones-reprogramacion/contracts/rbac.md) y
+  [rbac de 008](../../specs/008-adelanto-reserva-qr/contracts/rbac.md).
 - Decisiones: [ADR-014 a ADR-021](../../docs/01-analisis-de-sistema/07-decisiones-arquitectonicas.md)
   (frontend, autenticación sin tenant, sistema de diseño, indicador de sesión, carga diferida, período de
   gracia en la renovación, cuenta de cliente en varias barberías y lecturas públicas por enlace), y
   ADR-029 y ADR-030 (caché compartida y balanceo local, funcionalidad 006), ADR-022 a ADR-024 y ADR-031
   (pagos, comprobantes, tareas programadas y administrador de la plataforma, funcionalidad 003), y ADR-013,
-  ADR-025, ADR-026 y ADR-032 (notificaciones, eventos, canales y enlaces de acción, funcionalidad 004).
+  ADR-025, ADR-026 y ADR-032 (notificaciones, eventos, canales y enlaces de acción, funcionalidad 004), y ADR-033
+  (adelanto de reserva por QR de la barbería, funcionalidad 008).
 - Librerías, versiones, licencias y mediciones: [tecnologias.md](../../docs/02-arquitectura-software/tecnologias.md).
 - Imágenes de marca (formato, peso máximo, licencia y autoría): [frontend/public/img/README.md](frontend/public/img/README.md).

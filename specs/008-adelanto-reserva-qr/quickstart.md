@@ -30,6 +30,14 @@ el vencimiento).
 
 ## 2. Recorrido con Docker Compose (dos réplicas)
 
+> **Estado al cierre de 008 (2026-11-14): pendiente del responsable (T064).** El recorrido con Docker Compose
+> **no se hizo**; la columna "Resultado" queda vacía hasta hacerlo. Lo que cada paso comprueba ya lo cubren las
+> pruebas automáticas de §1, en verde: pasos 1 (`adelanto-configuracion`), 2, 3 y 13 (`reserva-con-adelanto`,
+> `avisos-adelanto`), 4 y 5 (`registro-pago-adelanto`), 6 y 8 (`confirmacion-adelanto`, `avisos-adelanto`), 7,
+> 9 y 10 (`vencimiento-adelantos`, con el reloj de la prueba), 11 y 12 (`adelanto-al-cancelar`), 14 (las pruebas
+> de dos instancias de 004 y de 008, sin detener un contenedor) y 15 (`aislamiento-adelantos`: ni el número ni
+> el archivo en la auditoría ni en los eventos; los registros de las réplicas no se revisaron).
+
 | Paso | Acción | Esperado | Resultado |
 | ---- | ------ | -------- | --------- |
 | 1 | El propietario abre `/app/adelanto`, elige porcentaje 20 %, plazo 10 min y sube el QR | Guardado; la vista previa del QR aparece. Sin QR, "Activar" muestra el error y no guarda | |

@@ -36,7 +36,7 @@ Un ADR registra **qué** se decidió, **por qué**, qué alternativas se descart
 | ADR-030 | Balanceo local con Nginx como representación de ADR-006                 | DA03, DA04, DA05       | Demostrar reparto y tolerancia a la caída de una réplica sin costo de nube                               | Nginx con dos réplicas de IP fija, comprobación pasiva, XFF sobrescrito, `/salud/listo`; equivale al ALB documentado. **Aceptado (2026-10-19)**                                                                                                            |
 | ADR-031 | Operaciones del administrador de la plataforma fuera de las barberías   | DA01, DA11             | El administrador opera sobre todas las barberías sin pertenecer a ninguna                                | Identidad y token de plataforma sin tenant, con TOTP obligatorio; lectura entre barberías con un rol `NOBYPASSRLS` por columna; escrituras con el tenant fijado. **Aceptado (2026-10-24), con la enmienda 1.3.0 y la aclaración 1.3.1 de la constitución** |
 | ADR-032 | Acciones sobre una cita por enlace firmado, sin sesión                  | DA01, DA11             | RF34 exige confirmar, reprogramar o cancelar desde el recordatorio sin iniciar sesión                    | Enlace HMAC con tenant, cita, acción, versión y vencimiento; verificación antes de leer; `barberias_app` con RLS; uso único por hash. **Aceptado (2026-11-04), con la enmienda 1.4.0 de la constitución; implementado (004)**                              |
-| ADR-033 | Adelanto de reserva por QR de la barbería con verificación manual       | DA02, DA07, DA11       | RF35 exige un adelanto para que nadie reserve "por jugar", sin que la plataforma cobre dinero de citas   | Cita `PENDIENTE` con el horario retenido; QR de Yape o Plin de la barbería; número de operación no repetible; confirmación del propietario; vencimiento automático. **Aceptado (2026-11-12), con la enmienda 1.5.0 de la constitución; planificado (008)**   |
+| ADR-033 | Adelanto de reserva por QR de la barbería con verificación manual       | DA02, DA07, DA11       | RF35 exige un adelanto para que nadie reserve "por jugar", sin que la plataforma cobre dinero de citas   | Cita `PENDIENTE` con el horario retenido; QR de Yape o Plin de la barbería; número de operación no repetible; confirmación del propietario; vencimiento automático. **Aceptado (2026-11-12), con la enmienda 1.5.0 de la constitución; implementado (008)**   |
 
 ---
 
@@ -756,7 +756,7 @@ Un ADR registra **qué** se decidió, **por qué**, qué alternativas se descart
 
 ## ADR-033 Adelanto de reserva por QR de la barbería con verificación manual
 
-- **Estado:** Aceptado (decisión del responsable, 2026-11-12), junto con la **enmienda 1.5.0 del principio V** de la constitución, ya aplicada en `.specify/memory/constitution.md`. Propuesto el 2026-11-09. Planificado para la funcionalidad 008; no hay código.
+- **Estado:** Aceptado (decisión del responsable, 2026-11-12), junto con la **enmienda 1.5.0 del principio V** de la constitución, ya aplicada en `.specify/memory/constitution.md`. Propuesto el 2026-11-09. **Implementado (008, 2026-11-12 a 2026-11-14):** el submódulo `adelantos` de M03 (`backend/src/modules/suscripciones-pagos/adelantos/`, con su interfaz pública `AdelantosApi`), las migraciones 0028 a 0030, la cita `PENDIENTE` y la tarea `vencer-adelantos` en M02, y los avisos en M05. Pruebas PR31 y PR32 en verde; revisiones manuales de la interfaz y cronómetros pendientes del responsable.
 - **Contexto:**
   - RF35 y HU29, pedidos por la profesora: si la reserva no exige un adelanto, cualquiera reserva "por jugar" y la barbería pierde ese horario. Hay que avisar al cliente y al propietario y ofrecer al menos un QR de pago.
   - El principio V limita los pagos a la suscripción de las barberías y deja fuera el pago de citas por clientes (ver ADR-007).
@@ -776,9 +776,14 @@ Un ADR registra **qué** se decidió, **por qué**, qué alternativas se descart
 - **Justificación:** el dinero va directo a la barbería; la plataforma no lo toca, no cobra comisión ni maneja datos de tarjeta, así que RC12 queda intacta.
 - **Ventajas:** sin proveedor ni contrato nuevo; usa piezas ya construidas o planificadas; el cliente paga con la app que ya usa.
 - **Desventajas:** **la verificación es manual** (limitación declarada): depende de que el propietario compruebe el pago en su app.
+- **Limitaciones declaradas (confirmadas al implementar 008):**
+  - **Verificación manual del pago:** la plataforma no consulta a Yape ni a Plin; el propietario compara el monto, el código de la reserva y el número de operación en su propia aplicación, y confirma o rechaza.
+  - **La plataforma no recibe dinero:** no recibe, retiene ni transfiere el adelanto, ni cobra comisión; "devuelto" es solo la marca que pone el propietario cuando devolvió el dinero por su cuenta.
+  - **El QR depende de la aplicación de Yape o Plin de la barbería:** la plataforma guarda la imagen privada y la muestra al cliente; si la barbería cambia de cuenta, debe subir el QR nuevo (las reservas ya hechas conservan el suyo).
+  - **WhatsApp simulado:** los avisos del adelanto salen por correo (probado con Mailpit) y por el WhatsApp simulado de 004; no hay proveedor real de WhatsApp.
 - **Riesgos:**
   - **Comprobante falso o reutilizado.** **Mitigación:** número de operación no repetible, comparar el monto y la hora, y la confirmación del propietario.
-  - Qué pasa si el cliente ya registró el pago y el propietario no lo confirma antes de que venza el tiempo: **por definir en la especificación de 008**.
+  - Qué pasa si el cliente ya registró el pago y el propietario no lo confirma antes de que venza el tiempo: **resuelto en la especificación de 008** (FR-017, FR-018): la cita no se cancela; queda retenida hasta un límite máximo adicional, el momento más temprano entre 2 horas antes del inicio y 24 horas después de la hora límite; al alcanzarlo se cancela sin marca de tardía y el adelanto queda por devolver.
 - **Evolución:** cobrar el adelanto con una pasarela real queda como evolución, con el puerto `PaymentGateway` ya preparado (ADR-007, ADR-022).
 - **Drivers:** DA02, DA07, DA11.
 - **Consecuencias:**

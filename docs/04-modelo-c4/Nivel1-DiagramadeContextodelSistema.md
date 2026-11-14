@@ -80,7 +80,7 @@ En algunos diagramas se usa además rojo para una solicitud rechazada. Los diagr
 | Propietario de barbería         | Persona         | HU02–HU04, HU17, HU18, HU23, HU24 / RF01, RF06, RF20, RF29      | Implementado (001–003); reportes e IA planificados     |
 | Barbero                         | Persona         | HU09, HU14 / RF09, RF15, RF16                                   | Implementado (002)                                     |
 | Cliente                         | Persona         | HU06, HU10–HU13, HU22, HU25 / RF05, RF11–RF14, RF27, RF30, RF33 | Implementado (002); reprogramar, avisos e IA planificados |
-| Plataforma SaaS                 | Sistema         | Todos los RF                                                    | Implementado en local: 25 RF, 1 parcial y 8 planificados |
+| Plataforma SaaS                 | Sistema         | Todos los RF                                                    | Implementado en local: 30 RF, 1 parcial y 4 planificados |
 | Proveedor de pagos              | Sistema externo | RF23–RF26, RC05, ADR-007, ADR-022                               | **Simulado** (pasarela simulada); proveedor real planificado (candidato: Culqi, sin contratar) |
 | Proveedor de IA                 | Sistema externo | RF27, RF28, RC11, ADR-008                                       | Planificado (sin elegir)                              |
 | Servicio de correo              | Sistema externo | RF30, HU25                                                      | Integrado por SMTP (004), probado con Mailpit; proveedor de producción sin elegir |

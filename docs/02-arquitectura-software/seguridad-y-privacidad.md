@@ -32,6 +32,10 @@ Decisión base: [ADR-010](../01-analisis-de-sistema/07-decisiones-arquitectonica
 | Reprogramar cita (004)                                     | —   | ✓\* (con la antelación mínima) | —       | ✓ (sin antelación mínima) | — |
 | Elegir el canal de aviso y el consentimiento de WhatsApp (004) | — | ✓\*                     | —              | —                    | —   |
 | Confirmar, reprogramar o cancelar con el enlace del recordatorio (004) | ✓ (solo con el enlace firmado de esa cita) | — | — | — | — |
+| Configurar el adelanto de reserva y su QR (008)            | —   | —                       | —              | ✓                    | —   |
+| Ver el adelanto, su QR y la captura de una cita (008)      | —   | ✓\* (la suya; otra → 404) | —            | ✓ (su barbería)      | —   |
+| Registrar el pago del adelanto (008)                       | —   | ✓\* (la suya, antes de la hora límite) | — | —                    | —   |
+| Confirmar o rechazar el pago, marcar devuelto y la bandeja (008) | — | —                     | —              | ✓                    | —   |
 | Buscar clientes y registrar cliente presencial             | —   | —                       | —              | ✓                    | —   |
 | Ver estado de suscripción, pagar e historial de pagos      | —   | —                       | —              | ✓                    | —   |
 | Saber si la barbería acepta reservas                       | —   | ✓                       | ✓              | ✓                    | —   |
@@ -44,7 +48,7 @@ Decisión base: [ADR-010](../01-analisis-de-sistema/07-decisiones-arquitectonica
 | Asistente de IA: consultas administrativas _(planificado, 005)_ | —   | —                       | —              | ✓                    | —   |
 | Solicitar acceso, rectificación o eliminación de datos _(planificado, 007)_ | —   | ✓\*                     | —              | ✓\*                  | —   |
 
-La matriz se convierte en una **prueba parametrizada** (PR08): cada celda es un caso. Las matrices detalladas por ruta están en `specs/001-registro-acceso-barberia/contracts/rbac.md`, `specs/002-catalogo-citas-cliente/contracts/rbac.md`, `specs/003-suscripciones-pagos/contracts/rbac.md` y `specs/004-notificaciones-reprogramacion/contracts/rbac.md`; las pruebas de 002, 003 y 004 (`backend/test/contract/rbac-002.spec.ts`, `rbac-003.spec.ts` y `rbac-004.spec.ts`) leen su tabla y ejecutan cada celda. La de 003 recorre la tabla **completa** (falla si una fila no tiene su caso), con los cuatro roles de barbería, el administrador y sin token, y además comprueba que el token del administrador responde 401 en **todas** las rutas de 001 y 002, leídas de la propia aplicación.
+La matriz se convierte en una **prueba parametrizada** (PR08): cada celda es un caso. Las matrices detalladas por ruta están en `specs/001-registro-acceso-barberia/contracts/rbac.md`, `specs/002-catalogo-citas-cliente/contracts/rbac.md`, `specs/003-suscripciones-pagos/contracts/rbac.md`, `specs/004-notificaciones-reprogramacion/contracts/rbac.md` y `specs/008-adelanto-reserva-qr/contracts/rbac.md`; las pruebas de 002, 003, 004 y 008 (`backend/test/contract/rbac-002.spec.ts`, `rbac-003.spec.ts`, `rbac-004.spec.ts` y `rbac-008.spec.ts`) leen su tabla y ejecutan cada celda. En 008, aprobar una cita con adelanto por la ruta de 002 responde 409 `ADELANTO_PENDIENTE` también al propietario y al barbero: solo se confirma con el pago revisado. La de 003 recorre la tabla **completa** (falla si una fila no tiene su caso), con los cuatro roles de barbería, el administrador y sin token, y además comprueba que el token del administrador responde 401 en **todas** las rutas de 001 y 002, leídas de la propia aplicación.
 
 **Vía pública por enlace (ADR-021):** el catálogo y los horarios libres se leen sin sesión por el `slug` de la barbería, con un rol de base propio (`barberias_publico`: `NOBYPASSRLS`, solo `SELECT` sobre una lista cerrada de columnas públicas, transacción de solo lectura con el tenant del enlace y RLS). Nunca devuelve datos de clientes, del personal ni motivos de bloqueos; un enlace inexistente, cambiado o suspendido responde igual. El `slug` solo se acepta además para elegir la membresía del cliente (registro, ingreso, unión y cambio de barbería, ADR-020); ninguna operación de negocio con sesión lo usa: el tenant sale siempre del token.
 
@@ -181,6 +185,13 @@ Evidencia: `backend/src/modules/acceso-barberias/identidad/presentation/platafor
 - Solo se descargan con una sesión con permiso (el propietario de esa barbería o el administrador), como adjunto, con `Cache-Control: no-store` y `X-Content-Type-Options: nosniff`. La interfaz los muestra en memoria (`blob:`) y libera la URL al minuto.
 - Ni el contenido, ni el nombre, ni el número de operación completo aparecen en registros, errores o auditoría; el número completo solo lo ve el administrador en el detalle del pago, y en los listados solo sus últimos 4 caracteres. Un número de operación se aprueba una sola vez en toda la plataforma.
 
+### 4.3.1 QR y comprobantes del adelanto de reserva (008, ADR-023 y ADR-033)
+
+- El QR de la barbería y la captura del cliente se tratan igual que los comprobantes de 003: tipo por los **primeros bytes**, tope de 1 MB (QR) y 5 MB (captura), en PostgreSQL con RLS (ooking_deposit_file), sin el nombre original, **sin URL pública**, servidos solo con sesión como adjunto con Cache-Control: no-store; la interfaz los muestra en memoria (lob:).
+- Solo el cliente de la cita y el propietario de su barbería los ven (el barbero no); una cita de otro cliente o de otra barbería responde 404, igual que una inexistente (PR31). El rol de la plataforma no tiene ningún permiso sobre los archivos ni sobre los registros de pago: lee solo cinco columnas técnicas de ooking_deposit.
+- El número de operación es **único en la barbería**, también si se rechazó, y nunca aparece en registros, errores, eventos, avisos ni auditoría.
+- **Principio V, enmienda 1.5.0:** la plataforma no recibe, retiene ni transfiere el adelanto, no cobra comisión ni maneja datos de tarjeta. La verificación del pago es **manual** (la hace el propietario en su aplicación de Yape o Plin): es una limitación declarada, no un control automático.
+
 ### 4.4 Notificaciones del proveedor de pagos (003, PR17)
 
 - Firma HMAC-SHA256 sobre el cuerpo crudo con marca de tiempo (`X-Firma: t=…,v1=…`), ventana de 5 minutos y comparación en tiempo constante. Sin firma, con firma inválida o vencida: 401, sin ningún efecto, y una sola línea `PAGO_NOTIFICACION_RECHAZADA` con la IP, **sin el cuerpo**.
@@ -191,6 +202,7 @@ Evidencia: `backend/src/modules/acceso-barberias/identidad/presentation/platafor
 
 - **Rotación de la llave TOTP:** no hay un procedimiento para cambiar `PLATAFORMA_LLAVE_TOTP`. Cambiarla deja ilegibles los secretos guardados: habría que volver a dar de alta a cada administrador (nuevo secreto y nuevos códigos). Una rotación sin interrupción exigiría guardar la versión de la llave con cada secreto y recifrarlos; queda pendiente.
 - **Proveedor real:** el adaptador real (Culqi) depende de obtener credenciales de pruebas y de confirmar que el comercio puede cobrar con Yape (riesgo R15). Hasta entonces, todo pago es con el simulador.
+- **Adelanto de reserva (008):** un comprobante falso o de otra persona solo lo detecta el propietario al comparar en su aplicación el monto, la hora, el código de la reserva y el número de operación; la plataforma rechaza el número repetido, pero no puede comprobar que el pago exista.
 
 ## 5. Privacidad y protección de datos personales (Ley N.° 29733)
 
@@ -221,7 +233,7 @@ Evidencia: `backend/src/modules/acceso-barberias/identidad/presentation/platafor
 
 ## 6. Auditoría
 
-Se registran hoy: alta, suspensión y reactivación de barberías; cambios de rol y de usuarios; cambios de plan; accesos denegados a otra barbería (`ACCESO_TENANT_AJENO`); pagos y comprobantes. Planificado: acciones de IA con herramientas sensibles (005) y solicitudes de datos personales (007). Cada registro tiene actor, acción, recurso, tenant, fecha y origen. Sin datos sensibles innecesarios.
+Se registran hoy: alta, suspensión y reactivación de barberías; cambios de rol y de usuarios; cambios de plan; accesos denegados a otra barbería (`ACCESO_TENANT_AJENO`); pagos y comprobantes; desde 008, el adelanto de reserva (configuración, pago registrado, confirmado, rechazado, vencido, resuelto al cancelar o no asistir y devuelto), sin el número de operación ni el motivo del rechazo. Planificado: acciones de IA con herramientas sensibles (005) y solicitudes de datos personales (007). Cada registro tiene actor, acción, recurso, tenant, fecha y origen. Sin datos sensibles innecesarios.
 
 La funcionalidad 002 agrega 12 acciones (R19): `CLIENTE_REGISTRADO`, `CLIENTE_UNIDO`, `CLIENTE_PRESENCIAL_REGISTRADO`, `BARBERIA_CAMBIADA`, `ENLACE_CAMBIADO`, `SERVICIO_DESACTIVADO`, `BARBERO_DESACTIVADO`, `BLOQUEO_CON_CONFLICTO`, `CAMBIO_CON_CONFLICTO`, `CITA_RESERVADA`, `CITA_CANCELADA` y `CITA_ESTADO_CAMBIADO`. El recurso va siempre como `tipo:identificador` (nunca nombres, teléfonos ni correos); la suite PR13 lo comprueba para cada una.
 

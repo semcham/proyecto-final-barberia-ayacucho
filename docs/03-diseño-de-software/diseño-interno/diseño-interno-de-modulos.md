@@ -42,9 +42,9 @@ _Figura 1. Estados de la cita._
 ```mermaid
 stateDiagram-v2
     [*] --> CONFIRMADA: reservar
-    [*] --> PENDIENTE: reserva con aprobación
-    PENDIENTE --> CONFIRMADA: aprobar
-    PENDIENTE --> CANCELADA: cancelar
+    [*] --> PENDIENTE: reserva con adelanto (008)
+    PENDIENTE --> CONFIRMADA: confirmar el adelanto
+    PENDIENTE --> CANCELADA: cancelar o vencer el adelanto
     CONFIRMADA --> CANCELADA: cancelar
     CONFIRMADA --> COMPLETADA: completar
     CONFIRMADA --> NO_ASISTIO: no asistió
@@ -54,15 +54,14 @@ stateDiagram-v2
 
     classDef implementado fill:#e8eef7,stroke:#3b5b8c,color:#1f2d4a
     classDef planificado fill:#f5f5f5,stroke:#9e9e9e,stroke-dasharray:5 5,color:#424242
-    class CONFIRMADA,CANCELADA,COMPLETADA,NO_ASISTIO implementado
-    class PENDIENTE planificado
+    class PENDIENTE,CONFIRMADA,CANCELADA,COMPLETADA,NO_ASISTIO implementado
 ```
 
 </details>
 
-Leyenda: gris discontinuo = estado definido en la base y en el dominio, pero que ningún flujo crea todavía.
+Leyenda: todos los estados están implementados (desde 008, también `PENDIENTE`). La imagen `estados-de-la-cita.png` está **por regenerar** desde este código: todavía muestra `PENDIENTE` en gris.
 
-Toda cita nueva nace `CONFIRMADA` (FR-035a de 002); `PENDIENTE` y la transición `aprobar` quedan para una futura "reserva con aprobación". El cliente cancela hasta la hora de inicio; el propietario, siempre. `COMPLETADA` y `NO_ASISTIO` se marcan desde la hora de inicio. La reprogramación (RF13, implementada en 004) no es una transición de estado: la cita activa conserva su estado y cambia de hora (y, si se pide, de barbero) en una sola transacción, con la misma restricción de exclusión que una reserva; sube su `version` y deja una fila en `appointment_reschedule`. `COMPLETADA`, `NO_ASISTIO` y `CANCELADA` son finales; cualquier otra transición lanza `TransicionInvalida` (422 `TRANSICION_INVALIDA`). Cada cambio, incluida la creación, deja una fila en `appointment_status_history` en la misma transacción, con la fila de la cita bloqueada (`FOR UPDATE`).
+Sin adelanto, toda cita nueva nace `CONFIRMADA` (FR-035a de 002). **Con el adelanto activo (008, ADR-033)**, la reserva del cliente nace `PENDIENTE` (ocupa el horario igual) y solo pasa a `CONFIRMADA` con `aprobar` cuando el propietario confirma el pago del adelanto (`ConfirmarAdelanto`); la aprobación de 002 (`POST /citas/{id}/estado`) responde 409 `ADELANTO_PENDIENTE` en una cita con adelanto. La tarea `vencer-adelantos` la cancela sola (`vencerAdelanto`: sin marca de tardía ni autor) si vence sin pago o sin revisión. El cliente cancela hasta la hora de inicio; el propietario, siempre. `COMPLETADA` y `NO_ASISTIO` se marcan desde la hora de inicio. La reprogramación (RF13, implementada en 004) cambia la hora sin otra transición, salvo una: una cita `PENDIENTE` sin adelanto queda `CONFIRMADA` (FR-007 de 004), y la que espera su adelanto sigue `PENDIENTE` (008, R11; solo la reprograma el propietario). La cita cambia de hora (y, si se pide, de barbero) en una sola transacción, con la misma restricción de exclusión que una reserva; sube su `version` y deja una fila en `appointment_reschedule`. `COMPLETADA`, `NO_ASISTIO` y `CANCELADA` son finales; cualquier otra transición lanza `TransicionInvalida` (422 `TRANSICION_INVALIDA`). Cada cambio, incluida la creación, deja una fila en `appointment_status_history` en la misma transacción, con la fila de la cita bloqueada (`FOR UPDATE`).
 
 Solo `PENDIENTE` y `CONFIRMADA` ocupan el horario. Dos restricciones de exclusión de PostgreSQL sobre `period tstzrange [)` usan esos estados (principio IV):
 
@@ -403,7 +402,7 @@ Evidencia: `backend/src/modules/suscripciones-pagos/suscripciones/domain/suscrip
 
 | Elemento                                                   | Capa                          | Responsabilidad                                                                                                     |
 | ---------------------------------------------------------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| `ManejadoresDeCita`, `ManejadorRecordatorio`, `ManejadoresDeSuscripcion` | Aplicación          | Reciben los eventos del bus (`CitaCreada`, `CitaCancelada`, `CitaReprogramada`, `RecordatorioDeCita` y los cinco de suscripción) y crean un aviso `PENDIENTE` por destinatario, idempotente por evento y destinatario |
+| `ManejadoresDeCita`, `ManejadorRecordatorio`, `ManejadoresDeSuscripcion`, `ManejadoresDeAdelanto` (008) | Aplicación          | Reciben los eventos del bus (`CitaCreada`, `CitaCancelada`, `CitaReprogramada`, `RecordatorioDeCita`, los cinco de suscripción y, desde 008, los cinco del adelanto) y crean un aviso `PENDIENTE` por destinatario, idempotente por evento y destinatario |
 | `EnviarAvisos` (tarea `enviar-avisos`)                     | Aplicación                    | Reclama los avisos pendientes, lee el contacto en M01 al enviar, elige el canal, compone el texto y envía por el puerto; reintenta y usa el correo de respaldo |
 | `elegirCanal`, `plantillas`, `politica-reintentos`         | Dominio                       | Reglas puras: canal según preferencia y consentimiento vigente, textos con datos mínimos y esperas entre intentos |
 | `NotificationChannel`                                      | Aplicación (puerto)           | `enviar(mensaje)`                                                                                                   |

@@ -2,7 +2,7 @@
 
 Decisiones: [ADR-003](../01-analisis-de-sistema/07-decisiones-arquitectonicas.md#adr-003-estrategia-multi-tenant), [ADR-004](../01-analisis-de-sistema/07-decisiones-arquitectonicas.md#adr-004-postgresql-como-base-principal), [ADR-009](../01-analisis-de-sistema/07-decisiones-arquitectonicas.md#adr-009-prevención-de-reservas-duplicadas) y [ADR-010](../01-analisis-de-sistema/07-decisiones-arquitectonicas.md#adr-010-autenticación-autorización-y-aislamiento-de-datos). Drivers: DA01, DA02, DA09, DA11.
 
-> Los fragmentos SQL **resumen** las migraciones reales de `backend/migrations/` (funcionalidades 001, 002 y 003, migraciones 0001 a 0020); el texto exacto está en esos archivos. Todo lo de este documento está implementado y probado en local, salvo lo marcado _(planificado)_.
+> Los fragmentos SQL **resumen** las migraciones reales de `backend/migrations/` (funcionalidades 001, 002 y 003, migraciones 0001 a 0020, y 008, migraciones 0028 a 0030, en §3.3); el texto exacto está en esos archivos. Las tablas de 004 (migraciones 0021 a 0027) están en el [modelo de datos de 004](../../specs/004-notificaciones-reprogramacion/data-model.md), todavía no resumidas aquí. Todo lo de este documento está implementado y probado en local, salvo lo marcado _(planificado)_.
 
 ## 1. Comparación de estrategias
 
@@ -173,7 +173,7 @@ CREATE POLICY tenant_isolation ON appointment
 - _Tareas programadas ([ADR-024](../01-analisis-de-sistema/07-decisiones-arquitectonicas.md#adr-024-tareas-programadas-sin-duplicados-entre-instancias)):_ cada réplica intenta la tarea con un candado de PostgreSQL. Busca los elementos pendientes con la lectura de `barberias_plataforma` y procesa **cada barbería en su propia transacción**, con su tenant y una transición condicional, para que ningún efecto se repita.
 - _Acciones por enlace de la cita ([ADR-032](../01-analisis-de-sistema/07-decisiones-arquitectonicas.md#adr-032-acciones-sobre-una-cita-por-enlace-firmado-sin-sesión), funcionalidad 004, implementado):_ llegan sin token. Se verifica la firma HMAC del enlace **antes de leer nada**; con el tenant y la cita del dato firmado, la acción corre con `barberias_app`, el tenant fijado y RLS, usando los mismos casos de uso que la vía con sesión. El uso se registra por el SHA-256 del enlace con `UNIQUE` en la misma transacción. No se usan `barberias_auth` ni `barberias_plataforma`.
 - _Tablas técnicas de intentos (constitución 1.4.1):_ `login_attempt` (001) y `action_link_attempt` (004) no tienen `tenant_id` ni RLS, ni correos en claro ni datos de negocio. `login_attempt` guarda hoy el SHA-256 del correo, la **IP en claro** y la fecha; sus filas de más de 24 h se borran de forma oportunista al registrar un fallo nuevo, y un ingreso correcto borra los fallos de ese par cuenta e IP (`identidad/infrastructure/kysely-intentos-repository.ts`). Pasarla a un hash de la IP está planificado para 007. `action_link_attempt` guarda el origen solo como hash con sal (`ENLACES_SAL_IP`), y la tarea `purgar-intentos-enlaces` borra cada hora las filas de más de 24 h.
-- _Listado de pendientes por los trabajos en segundo plano (constitución 1.4.1):_ las tareas pueden listar los pendientes de sus tablas con `barberias_plataforma`, leyendo solo columnas técnicas (identificador, `tenant_id`, estado y fechas), y procesar cada uno con su tenant y RLS. Lo hacen `vencer-suscripciones` y `conciliar-pagos` (003) y, desde 004, `despachar-eventos`, `enviar-avisos` y `avisar-fin-de-prueba`.
+- _Listado de pendientes por los trabajos en segundo plano (constitución 1.4.1):_ las tareas pueden listar los pendientes de sus tablas con `barberias_plataforma`, leyendo solo columnas técnicas (identificador, `tenant_id`, estado y fechas), y procesar cada uno con su tenant y RLS. Lo hacen `vencer-suscripciones` y `conciliar-pagos` (003), desde 004 `despachar-eventos`, `enviar-avisos` y `avisar-fin-de-prueba`, y desde 008 `vencer-adelantos` (§3.3).
 - _Conexiones agrupadas (pool):_ usar `set_config(..., true)` dentro de la transacción para que el contexto no se filtre entre solicitudes.
 - _Inicio de sesión, renovación y activación de cuenta ([ADR-015](../01-analisis-de-sistema/07-decisiones-arquitectonicas.md#adr-015-autenticación-antes-de-conocer-el-tenant-y-rls-en-user_account)):_ ocurren sin token, cuando el sistema todavía no conoce la barbería del usuario, y las tablas que consultan (`user_account`, `membership`, `auth_session`, `account_activation`) están bajo RLS. Para esos tres casos hay tres funciones `SECURITY DEFINER` (`auth_resolver_cuenta`, `auth_buscar_sesion`, `auth_buscar_activacion`) cuyo dueño es el rol `barberias_auth` (`NOLOGIN BYPASSRLS`, sin propiedad de tablas), con `search_path` fijo y `EXECUTE` solo para el rol de la aplicación. Cada una busca por una clave exacta, devuelve como máximo una fila y **no recibe `tenant_id`**. Con el `tenant_id` obtenido, el resto del flujo corre en una transacción con RLS normal. Con `FORCE ROW LEVEL SECURITY` ni el dueño de las tablas omite RLS; por eso el dueño de las funciones debe ser un rol con `BYPASSRLS`. La prueba de aislamiento PR09 (unciones-definer.spec.ts) lo cubre. **Por validar:** que Amazon RDS for PostgreSQL permita crear ese rol.
 
@@ -572,6 +572,26 @@ El rol `barberias_plataforma` lee entre barberías solo por políticas `FOR SELE
 por columna y sobre una lista cerrada (nunca el número de operación completo ni el contenido de los
 comprobantes); una prueba compara sus permisos con esa lista exacta (PR09). Las escrituras del
 administrador sobre una barbería corren con el rol de la aplicación y el tenant de la ruta.
+
+### 3.3 Tablas de la funcionalidad 008 (M03, submódulo `adelantos`)
+
+Detalle completo en el [modelo de datos de 008](../../specs/008-adelanto-reserva-qr/data-model.md) (migraciones
+`0028` a `0030`). Las cuatro son de barbería, con `rlsPorTenant()` y claves foráneas compuestas con `tenant_id`.
+**Ninguna guarda datos de tarjeta, cuentas bancarias ni movimientos de dinero**: el adelanto lo recibe la barbería
+por su QR, y la plataforma solo registra el comprobante y el estado.
+
+| Tabla                      | Tenant y RLS                      | Restricciones clave                                                                                                                                                                                                        |
+| -------------------------- | --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `booking_deposit_settings` | Sí (una fila por barbería)        | Monto fijo o porcentaje, con su valor; plazo para pagar; con el adelanto activo, el QR es obligatorio (`CHECK`)                                                                                                            |
+| `booking_deposit_file`     | Sí                                | QR (≤ 1 MB) y capturas (≤ 5 MB) privados, con tipo verificado por bytes y SHA-256; sin URL pública ni nombre original, como `payment_receipt_file` (ADR-023). La plataforma no tiene ningún permiso sobre esta tabla |
+| `booking_deposit`          | Sí; FK compuesta a `appointment`  | Uno por cita (`UNIQUE (tenant_id, appointment_id)`); código de reserva único en la barbería; adelanto ≤ precio; `review_limit_at >= due_at`; resuelto ⇔ fecha de resolución; devuelto ⇔ fecha y quién (`CHECK`)            |
+| `booking_deposit_payment`  | Sí; FK compuesta al adelanto      | Número de operación **único en la barbería**, también si se rechazó; un solo registro vigente por adelanto (índice único parcial); motivo obligatorio si y solo si se rechazó                                              |
+| `notification` (cambio)    | Sí                                | Migración 0030: el `CHECK` de `kind` suma los cinco tipos de aviso del adelanto                                                                                                                                            |
+
+**Columnas de la plataforma.** El rol `barberias_plataforma` lee de `booking_deposit` **solo cinco columnas
+técnicas** (`id`, `tenant_id`, `status`, `due_at`, `review_limit_at`), para que la tarea `vencer-adelantos`
+encuentre los candidatos de todas las barberías; nada de las otras tres tablas ni el número de operación. Cada
+candidato se procesa después con su tenant y RLS (`lectura-plataforma` compara los permisos con esa lista exacta).
 
 ## 4. Claves, restricciones e índices
 

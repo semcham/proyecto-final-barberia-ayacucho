@@ -620,10 +620,10 @@ Un escenario de atributo de calidad es una descripción **concreta y medible** d
 | **Estímulo**            | Intenta ver el número de operación o la captura del adelanto de una cita ajena, o registra un número de operación ya usado                                       |
 | **Artefacto**           | M02 (cita pendiente), M03 (comprobantes privados, ADR-023), RLS                                                                                                  |
 | **Entorno / condición** | Operación normal, varias barberías con adelanto activo                                                                                                           |
-| **Respuesta esperada**  | Solo el cliente de la cita y el personal de esa barbería ven el comprobante, siempre con sesión; el número de operación repetido se rechaza                       |
+| **Respuesta esperada**  | Solo el cliente de la cita y el propietario de esa barbería ven el comprobante, siempre con sesión (el barbero no: contracts/rbac.md de 008); el número de operación repetido se rechaza |
 | **Medida**              | 0 accesos a comprobantes de otra cita o de otra barbería; 100 % de los números de operación repetidos rechazados _(propuesta por validar)_                       |
 | **Verificación**        | PR31: pruebas de aislamiento y de número repetido sobre los comprobantes del adelanto                                                                            |
-| **Estado**              | Por medir (planificado, 008)                                                                                                                                     |
+| **Estado**              | **Medido** (008, 2026-11-13): en verde, ver la ficha                                                                                                              |
 
 **Ficha de medición**
 
@@ -631,12 +631,12 @@ Un escenario de atributo de calidad es una descripción **concreta y medible** d
 | ------------------------- | ----------------------------------------------------------------------------------------------------------------- |
 | **Herramienta y versión** | Jest + Testcontainers (la principal del atributo)                                                                 |
 | **Entorno**               | Pruebas                                                                                                           |
-| **Preparación**           | Dos barberías con el adelanto activo y citas pendientes con comprobante: por definir en 008                        |
-| **Configuración**         | Por definir en 008                                                                                                |
+| **Preparación**           | Dos barberías con el adelanto activo; clientes con citas pendientes, con y sin pago registrado y captura            |
+| **Configuración**         | Tokens del cliente de la cita, de otro cliente, del barbero, del propietario y de otra barbería; números repetidos en la misma barbería (también de una cita cancelada) y en otra |
 | **Métrica y umbral**      | 0 accesos a comprobantes ajenos; 100 % de los números de operación repetidos rechazados                           |
-| **Comando**               | Por definir                                                                                                       |
-| **Evidencia**             | Por definir                                                                                                       |
-| **Estado**                | **Planificada** (RF35 no tiene código todavía; 008)                                                               |
+| **Comando**               | `npm run test:int -- adelantos/aislamiento-adelantos adelantos/registro-pago-adelanto aislamiento/aislamiento-008` (en `backend/`) |
+| **Evidencia**             | [Pruebas §2 (PR31) y §2.6](../05-gestion/04-pruebas.md): 0 accesos ajenos (404 como una cita inexistente; el barbero, 403); 100 % de los números repetidos rechazados (409); el número y el archivo no aparecen en la auditoría ni en los eventos |
+| **Estado**                | **Usada** (Jest + Testcontainers). En verde (PR31, 008)                                                           |
 
 ## EQ-24. Consistencia: El adelanto no confirma la cita dos veces
 
@@ -650,20 +650,20 @@ Un escenario de atributo de calidad es una descripción **concreta y medible** d
 | **Respuesta esperada**  | La cita pasa de pendiente a confirmada una sola vez y se envía un solo aviso; si la cita ya se canceló por vencimiento, la confirmación se rechaza                |
 | **Medida**              | Exactamente 1 transición y 1 aviso por cita; 0 citas que queden confirmadas y canceladas a la vez _(propuesta por validar)_                                       |
 | **Verificación**        | PR32: prueba de concurrencia de la confirmación y del vencimiento, con comprobación en la base de datos                                                          |
-| **Estado**              | Por medir (planificado, 008)                                                                                                                                      |
+| **Estado**              | **Medido** (008, 2026-11-13 y 2026-11-14): en verde, ver la ficha                                                                                                  |
 
 **Ficha de medición**
 
 | Campo                     | Detalle                                                                                                           |
 | ------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| **Herramienta y versión** | k6 (versión por fijar) y una consulta SQL que cuenta duplicados; Jest + Testcontainers                            |
+| **Herramienta y versión** | Jest + Testcontainers con dos instancias en el proceso y consultas SQL que cuentan transiciones, auditorías, eventos y avisos por cita (k6 no hizo falta) |
 | **Entorno**               | Pruebas, con dos instancias en proceso                                                                            |
-| **Preparación**           | Una barbería con el adelanto activo y una cita pendiente con el pago registrado: por definir en 008               |
-| **Configuración**         | Confirmaciones simultáneas de la misma cita, y una confirmación a la vez que el vencimiento: por definir en 008     |
+| **Preparación**           | Una barbería con el adelanto activo y 20 o 50 citas pendientes con el pago registrado (o sin pago, para el vencimiento) |
+| **Configuración**         | 20 pares de confirmaciones simultáneas repartidas entre dos instancias; 50 vencidos con dos réplicas de la tarea; 20 confirmaciones a la vez que el vencimiento; cancelar a la vez que vencer o confirmar |
 | **Métrica y umbral**      | Exactamente 1 transición y 1 aviso por cita; 0 citas confirmadas y canceladas a la vez                            |
-| **Comando**               | Por definir                                                                                                       |
-| **Evidencia**             | Por definir                                                                                                       |
-| **Estado**                | **Planificada** (RF35 no tiene código todavía; 008)                                                               |
+| **Comando**               | `npm run test:int -- confirmacion-adelanto-concurrencia vencimiento-adelantos-dos-replicas adelanto-al-cancelar-concurrencia` (en `backend/`) |
+| **Evidencia**             | [Pruebas §2 (PR32) y §2.6](../05-gestion/04-pruebas.md): 1 transición, 1 auditoría, 1 evento y 1 aviso por cita; confirmar a la vez que vence → uno de los dos (19 confirmadas y 1 vencida en la corrida medida); 0 citas confirmadas y canceladas a la vez; 0 respuestas 5xx |
+| **Estado**                | **Usada** (Jest + Testcontainers). En verde (PR32, 008)                                                           |
 
 ## Resumen de escenarios
 

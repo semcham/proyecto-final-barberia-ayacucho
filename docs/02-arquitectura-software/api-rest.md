@@ -94,6 +94,25 @@ el período siguiente con otro plan: no hay una ruta aparte.
 | `GET /plataforma/pagos/por-revisar`                                  | Duplicados, importes distintos, aprobados tras rechazo, devoluciones y notificaciones sin pago       | RF25, RF26 | ADM               |
 | `POST /plataforma/barberias/{id}/pagos/{pagoId}/revision/resolucion` | Marcar resuelto un caso con una nota (no mueve dinero)                                               | RF25       | ADM               |
 
+### Adelanto de reserva (008, M03 submódulo `adelantos` y M02)
+
+Implementadas en la funcionalidad 008 ([contrato](../../specs/008-adelanto-reserva-qr/contracts/openapi.yaml),
+[matriz de permisos](../../specs/008-adelanto-reserva-qr/contracts/rbac.md)). Ninguna ruta mueve dinero: el
+cliente paga con el QR de Yape o Plin de la barbería y el propietario verifica el pago en su aplicación (ADR-033).
+
+| Método y ruta                                  | Propósito                                                                                                      | RF   | Roles                        |
+| ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------- | ---- | ---------------------------- |
+| `GET/PUT /barberia/adelanto`                   | Ver, activar, cambiar o desactivar el adelanto (monto fijo o porcentaje y plazo); vale para las reservas nuevas | RF35 | PRO                          |
+| `PUT/GET /barberia/adelanto/qr`                | Subir (multipart, hasta 1 MB, tipo por bytes) y ver el QR de Yape o Plin, privado                              | RF35 | PRO                          |
+| `GET /citas/{id}/adelanto`                     | El adelanto de la cita: estado, monto, saldo, código, plazos y el último registro de pago                     | RF35 | CLI (la suya), PRO           |
+| `GET /citas/{id}/adelanto/qr`                  | El QR con el que se reservó la cita, mientras esté por pagar o por revisar                                     | RF35 | CLI (la suya), PRO           |
+| `POST /citas/{id}/adelanto/pago`               | Registrar el número de operación y, si quiere, la captura (hasta 5 MB), antes de la hora límite               | RF35 | CLI (la suya)                |
+| `GET /citas/{id}/adelanto/captura`             | La captura del registro vigente, como adjunto privado                                                          | RF35 | CLI (la suya), PRO           |
+| `POST /citas/{id}/adelanto/confirmacion` (M02) | Confirmar el pago: la cita pasa a confirmada; repetir no tiene efecto                                          | RF35 | PRO                          |
+| `POST /citas/{id}/adelanto/rechazo`            | Rechazar el pago con un motivo (5 a 300 caracteres); el adelanto vuelve a por pagar                            | RF35 | PRO                          |
+| `POST /citas/{id}/adelanto/devolucion`         | Marcar que la barbería devolvió el adelanto, solo desde por devolver                                           | RF35 | PRO                          |
+| `GET /adelantos/por-revisar?estado=` (M02)     | Bandeja del propietario: pagos por revisar (por defecto) o adelantos por devolver (`estado=POR_DEVOLVER`)      | RF35 | PRO                          |
+
 ### M04 Asistente IA y reportes, indicadores y salud
 
 | Método y ruta                       | Propósito                                                                     | RF         | Roles    |
@@ -122,6 +141,7 @@ Las notificaciones (M05, implementadas en 004) no exponen endpoints propios: se 
 - **Notificaciones del proveedor (003, PR17):** sin firma, con firma inválida o fuera de la ventana de tiempo, `401` sin efecto y una línea `PAGO_NOTIFICACION_RECHAZADA` en el registro, sin el cuerpo. Una notificación repetida (mismo `evento_id`) responde `200` sin volver a aplicarse.
 - **Comprobantes (003, ADR-023):** solo se sirven con una sesión con permiso, como adjunto con `Cache-Control: no-store` y `X-Content-Type-Options: nosniff`. El tipo se verifica por los bytes, no por el nombre. Nginx admite 6 MB solo en la ruta de subida (16 KB en el resto).
 - **Reprogramar y enlaces (004):** la reprogramación usa la misma restricción de exclusión que la reserva (`409` `HORARIO_NO_DISPONIBLE`); el cliente con menos antelación que la mínima de cancelación recibe `422` `SIN_ANTELACION_PARA_REPROGRAMAR` (el propietario sí puede). Una acción por enlace se aplica una sola vez, aunque llegue a las dos réplicas a la vez; un intento fallido de reprogramar no consume el enlace.
+- **Adelanto de reserva (008, ADR-033):** con el adelanto activo, `POST /citas` del cliente crea la cita `PENDIENTE` con su adelanto (`422` `SIN_TIEMPO_PARA_ADELANTO` si el plazo no cabe antes del inicio menos 30 min). Un número de operación ya registrado en la barbería responde `409` `NUMERO_OPERACION_REPETIDO`; un segundo registro sin revisar, `409` `PAGO_YA_REGISTRADO`; pasada la hora límite, `422` `ADELANTO_VENCIDO`. Confirmar sin pago, `409` `SIN_PAGO_REGISTRADO`; un adelanto ya resuelto, `409` `ADELANTO_RESUELTO`; marcar devuelto fuera de "por devolver", `409` `ADELANTO_NO_POR_DEVOLVER`. En una cita con adelanto, aprobarla por `POST /citas/{id}/estado` y que el cliente la reprograme mientras está pendiente responden `409` `ADELANTO_PENDIENTE`. El QR y la captura se sirven como los comprobantes de 003 (sin URL pública, `no-store`), y nunca aparecen el número de operación ni los archivos en la auditoría, los registros ni los eventos.
 - **Canal de aviso (004):** elegir WhatsApp sin aceptar el texto vigente responde `422` `CONSENTIMIENTO_REQUERIDO`; un número inválido, `422` `VALIDACION`. Cualquier campo de barbería en el cuerpo responde `400`.
 - El contrato completo de cada funcionalidad está en `specs/<funcionalidad>/contracts/openapi.yaml`; esta tabla es el resumen.
 
