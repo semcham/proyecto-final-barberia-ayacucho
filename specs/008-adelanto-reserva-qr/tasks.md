@@ -50,7 +50,7 @@ description: "Tareas de la funcionalidad 008: adelanto de reserva con QR de la b
 - [X] T008 [P] Crear el dominio puro en `adelantos/domain/`: `politica-adelanto.ts`, `adelanto.ts` (estados y transiciones), `numero-operacion.ts`, `codigo-reserva.ts` y `errores.ts` (`SinTiempoParaAdelanto`, `NumeroOperacionRepetido`, `PagoYaRegistrado`, `AdelantoResuelto`, `AdelantoVencido`, `SinPagoRegistrado`, `AdelantoNoPorDevolver`, `QrRequerido`, `AdelantoPendiente`; el archivo inválido reutiliza `ComprobanteInvalido` de 003, código `VALIDACION`), con su código HTTP en `backend/src/host/error.filter.ts` (contracts/openapi.yaml)
 - [X] T009 [P] Crear la interfaz pública `backend/src/modules/suscripciones-pagos/adelantos-api.ts` (clase abstracta con `paraReservar`, `crear`, `confirmar`, `decidirVencimiento`, `porVencer`, `alCancelar`, `alNoAsistir`, `alReprogramar`, `deCita` y `deCitas`), exportarla en `backend/src/modules/suscripciones-pagos/index.ts`, y agregar la regla `adelantos-solo-por-api` a `backend/.dependency-cruiser.cjs` (research R01)
 - [X] T010 [P] Agregar las acciones de auditoría de research R13 a `backend/src/shared/audit/audit-log.ts`, los cinco tipos de aviso a `backend/src/modules/notificaciones/domain/aviso.ts` (`TIPOS_DE_AVISO` y un mapa `AVISO_POR_EVENTO_DE_ADELANTO`) y las operaciones `CONFIGURAR_ADELANTO`, `REVISAR_ADELANTO` y `PAGAR_ADELANTO` a la matriz de permisos de M03 (`suscripciones/domain/permisos.ts`) y de M02 (contracts/rbac.md)
-- [ ] T011 Cierre de fase 1: suite completa del backend (incluido `npm run test:arch`), del frontend y CI en verde (`.github/workflows/plataforma-barberias.yml`). Commit: `feat(008): base del adelanto de reserva (fase 1)`
+- [X] T011 Cierre de fase 1: suite completa del backend (incluido `npm run test:arch`), del frontend y CI en verde (`.github/workflows/plataforma-barberias.yml`). Commit: `feat(008): base del adelanto de reserva (fase 1)`
 
 **Checkpoint**: tablas con RLS probadas, dominio en verde y `AdelantosApi` declarada; ninguna ruta nueva todavía.
 
@@ -75,7 +75,7 @@ description: "Tareas de la funcionalidad 008: adelanto de reserva con QR de la b
 - [X] T017 [US1] Crear `adelantos/application/configurar-adelanto.ts` (obtener, cambiar, subir y ver el QR; autorización `CONFIGURAR_ADELANTO`; `exigirOperacion('CONFIGURAR_CATALOGO')` para cambiar; auditoría `ADELANTO_CONFIGURADO`) y `adelantos/presentation/adelanto-configuracion.controller.ts` con su DTO, con un interceptor de archivos de tope configurable extraído de `pagos/presentation/comprobante.interceptor.ts` (1 MB para el QR, 5 MB para la captura), sin cambiar el comportamiento de los comprobantes de 003 (sus pruebas siguen en verde); registrarlos en `backend/src/modules/suscripciones-pagos/suscripciones-pagos.module.ts`
 - [X] T018 [US1] Agregar `specs/008-adelanto-reserva-qr/contracts/openapi.yaml` al script `gen:api` de `frontend/package.json`, generar `frontend/src/api/schema-008.d.ts`, y crear `frontend/src/pages/panel/Adelanto.tsx` con su ruta `adelanto` (solo `PROPIETARIO`) en `frontend/src/routes.tsx` y su entrada en el menú del panel
 - [ ] T019 [US1] **Del responsable:** revisión manual de `/app/adelanto` a 360 px y en escritorio, en tema claro y oscuro, solo con teclado y con la extensión axe DevTools; anotar el resultado en `specs/008-adelanto-reserva-qr/quickstart.md` §4
-- [ ] T020 [US1] Cierre de fase 2: suite completa, `npm run test:arch` y CI en verde. Commit: `feat(008): configuración del adelanto (fase 2, US1)`
+- [X] T020 [US1] Cierre de fase 2: suite completa, `npm run test:arch` y CI en verde. Commit: `feat(008): configuración del adelanto (fase 2, US1)`
 
 **Checkpoint**: el propietario configura el adelanto; las reservas todavía no lo piden.
 
@@ -106,7 +106,7 @@ description: "Tareas de la funcionalidad 008: adelanto de reserva con QR de la b
 - [X] T032 [US2] En M05: plantillas de `ADELANTO_SOLICITADO` y `PAGO_ADELANTO_REGISTRADO` en `backend/src/modules/notificaciones/domain/plantillas.ts`, `backend/src/modules/notificaciones/application/manejadores-de-adelanto.ts` (cliente por su canal, propietario por correo; [contracts/eventos.md](contracts/eventos.md) §3), su exportación en `notificaciones/index.ts`, la suscripción en `backend/src/host/eventos.ts` y la composición en `enviar-avisos.ts`
 - [X] T033 [US2] Crear `frontend/src/pages/cliente/PagarAdelanto.tsx` con su ruta `/mis-citas/:citaId/adelanto` (solo `CLIENTE`) en `frontend/src/routes.tsx`; en `frontend/src/pages/publico/Reservar.tsx`, llevar ahí tras una reserva con adelanto; en `frontend/src/pages/cliente/MisCitas.tsx`, mostrar el estado del adelanto y el enlace "Pagar adelanto"
 - [ ] T034 [US2] **Del responsable:** revisión manual de `/mis-citas/:citaId/adelanto` y del paso de Reservar a 360 px y en escritorio, en tema claro y oscuro, solo con teclado y con axe DevTools; anotar en `quickstart.md` §4
-- [ ] T035 [US2] Cierre de fase 3: suite completa, `npm run test:arch` y CI en verde. Commit: `feat(008): reserva pendiente y registro del pago (fase 3, US2)`
+- [X] T035 [US2] Cierre de fase 3: suite completa, `npm run test:arch` y CI en verde. Commit: `feat(008): reserva pendiente y registro del pago (fase 3, US2)`
 
 **Checkpoint**: el cliente reserva, paga a la barbería y registra su número; el propietario recibe el aviso.
 
@@ -134,7 +134,7 @@ description: "Tareas de la funcionalidad 008: adelanto de reserva con QR de la b
 - [X] T044 [US3] Agregar las filas `ConfirmarAdelanto`, `RechazarPagoDeAdelanto` y `MarcarAdelantoDevuelto` (`GESTIONAR_CITAS`), `ConfigurarAdelanto` (`CONFIGURAR_CATALOGO`) y `RegistrarPagoDeAdelanto` (sin restricción: completa una reserva ya aceptada, research R12) a `specs/003-suscripciones-pagos/contracts/restricciones-estado.md` §2, con la nota de que las agrega 008, y `ConfirmarAdelanto` a `backend/test/architecture/operaciones-con-politica.spec.ts` (fase 4: la fila `MarcarAdelantoDevuelto` se agrega en la fase 6, cuando exista la clase; `RegistrarPagoDeAdelanto` va como nota)
 - [X] T045 [US3] Crear `frontend/src/pages/panel/AdelantosPorRevisar.tsx` con su ruta `adelantos` (solo `PROPIETARIO`) y su entrada en el menú, y mostrar en `frontend/src/pages/panel/Agenda.tsx` el estado del adelanto de cada cita pendiente
 - [ ] T046 [US3] **Del responsable:** revisión manual de `/app/adelantos` y de la Agenda a 360 px y en escritorio, en tema claro y oscuro, solo con teclado y con axe DevTools; anotar en `quickstart.md` §4
-- [ ] T047 [US3] Cierre de fase 4: suite completa, `npm run test:arch` y CI en verde. Commit: `feat(008): confirmar y rechazar el adelanto (fase 4, US3)`
+- [X] T047 [US3] Cierre de fase 4: suite completa, `npm run test:arch` y CI en verde. Commit: `feat(008): confirmar y rechazar el adelanto (fase 4, US3)`
 
 **Checkpoint**: el flujo principal de RF35 completo de punta a punta (US1 + US2 + US3).
 
@@ -156,7 +156,7 @@ description: "Tareas de la funcionalidad 008: adelanto de reserva con QR de la b
 - [X] T050 [US4] En M03: `adelantos/infrastructure/plataforma/adelantos-por-vencer.ts` (lectura de `barberias_plataforma` de las cinco columnas técnicas, en lotes de 100) y `AdelantosApi.porVencer` y `decidirVencimiento` (sin pago → VENCIDO; pago sin revisar y límite alcanzado → POR_DEVOLVER; si no, nada) (research R09)
 - [X] T051 [US4] En M02: `citas/application/vencer-adelantos.ts` (por cada candidato, transacción con su tenant; bloquea la cita con `SKIP LOCKED` y después el adelanto; cancela la cita sin marca de tardía; publica `AdelantoVencido`; anula el recordatorio), exportado en `catalogo-citas/index.ts` y registrado cada 60 s en `backend/src/host/tareas.ts`
 - [X] T052 [US4] En M05: plantilla `ADELANTO_VENCIDO` (con la indicación de devolver cuando `porDevolver`) y su caso en `manejadores-de-adelanto.ts`
-- [ ] T053 [US4] Cierre de fase 5: suite completa, `npm run test:arch` y CI en verde. Commit: `feat(008): vencimiento automático del adelanto (fase 5, US4)`
+- [X] T053 [US4] Cierre de fase 5: suite completa, `npm run test:arch` y CI en verde. Commit: `feat(008): vencimiento automático del adelanto (fase 5, US4)`
 
 **Checkpoint**: ningún horario queda retenido sin pago, y un pago registrado no se pierde por el vencimiento.
 
@@ -182,7 +182,7 @@ description: "Tareas de la funcionalidad 008: adelanto de reserva con QR de la b
 - [X] T060 [US5] En el frontend: saldo y estado del adelanto en `frontend/src/pages/cliente/MisCitas.tsx` y `frontend/src/pages/panel/Agenda.tsx`; "Marcar devuelto" en la bandeja (`AdelantosPorRevisar.tsx`, pestaña "Por devolver"); el error `ADELANTO_PENDIENTE` en el diálogo de reprogramar
 - [ ] T061 [US5] **Del responsable:** revisión manual de Agenda, Mis citas y la pestaña "Por devolver" a 360 px y en escritorio, en tema claro y oscuro, solo con teclado y con axe DevTools; anotar en `quickstart.md` §4
 - [ ] T062 [US5] **Del responsable:** medición manual con cronómetro de SC-001 (activar el adelanto en < 3 min) y SC-002 (registrar el pago en < 1 min), anotada en `quickstart.md` §4
-- [ ] T063 [US5] Cierre de fase 6: suite completa, `npm run test:arch` y CI en verde. Commit: `feat(008): adelanto al cancelar y devolución (fase 6, US5)`
+- [X] T063 [US5] Cierre de fase 6: suite completa, `npm run test:arch` y CI en verde. Commit: `feat(008): adelanto al cancelar y devolución (fase 6, US5)`
 
 **Checkpoint**: RF35 y HU29 completos.
 
@@ -199,7 +199,7 @@ description: "Tareas de la funcionalidad 008: adelanto de reserva con QR de la b
 - [X] T068 [P] Actualizar `docs/02-arquitectura-software/api-rest.md` (rutas nuevas), `docs/02-arquitectura-software/seguridad-y-privacidad.md` (fila RBAC del adelanto, comprobantes del adelanto privados y principio V 1.5.0) y `docs/02-arquitectura-software/tecnologias.md` (sin dependencias nuevas)
 - [X] T069 [P] Actualizar `tecnologia/plataforma-barberias/README.md`: funcionalidad 008, migraciones `0028`–`0030`, pantallas nuevas y la tarea `vencer-adelantos`
 - [ ] T070 **Del responsable:** confirmar las revisiones manuales de T019, T034, T046 y T061 y las mediciones de T062 antes de marcarlas
-- [ ] T071 Cierre de fase 7: suite completa del backend (incluido `npm run test:arch`) y del frontend, Prettier y CI en verde. Commit: `docs(008): cierre del adelanto de reserva (fase 7)`
+- [X] T071 Cierre de fase 7: suite completa del backend (incluido `npm run test:arch`) y del frontend, Prettier y CI en verde. Commit: `docs(008): cierre del adelanto de reserva (fase 7)`
 
 ---
 
