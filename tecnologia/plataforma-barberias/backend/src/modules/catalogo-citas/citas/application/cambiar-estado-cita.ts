@@ -52,7 +52,8 @@ export class CambiarEstadoCita {
       if (destino === 'CONFIRMADA' && (await this.adelantos.deCita(cita.id))) throw new AdelantoPendiente();
 
       const anterior = cita.estado;
-      cita.cambiarA(destino, this.reloj.ahora());
+      const ahora = this.reloj.ahora();
+      cita.cambiarA(destino, ahora);
       await this.citas.actualizarEstado(cita, anterior, actor.usuarioId);
       await this.auditoria.registrar({
         accion: 'CITA_ESTADO_CAMBIADO',
@@ -60,6 +61,19 @@ export class CambiarEstadoCita {
         recurso: `cita:${cita.id}`,
         resultado: 'PERMITIDO',
       });
+      // 008 (T058; FR-021): si no asistió, el adelanto confirmado queda RETENIDO. Completada, sigue CONFIRMADO: ya se
+      // descontó del precio (FR-020).
+      if (destino === 'NO_ASISTIO') {
+        const adelanto = await this.adelantos.alNoAsistir(cita.id, ahora);
+        if (adelanto) {
+          await this.auditoria.registrar({
+            accion: 'ADELANTO_RESUELTO',
+            actorId: actor.usuarioId,
+            recurso: `cita:${cita.id};${adelanto}`,
+            resultado: 'PERMITIDO',
+          });
+        }
+      }
       // T089 (004, R09): completada o no asistió, ya no hace falta recordarla (y sus enlaces dejan de valer).
       if (destino !== 'CONFIRMADA') await anularRecordatorio(this.eventos, cita.id);
 

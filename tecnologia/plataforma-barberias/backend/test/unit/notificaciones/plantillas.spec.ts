@@ -109,3 +109,40 @@ describe('Plantillas de avisos de cita (T059)', () => {
     },
   );
 });
+
+// T059 de 008 (fase 6, US5-2; contracts/eventos.md §2 de 008): CitaCancelada trae `adelanto` (POR_DEVOLVER o
+// RETENIDO) cuando la cita tenía uno; la plantilla lo menciona al cliente y al propietario. Sin el campo, igual que en 004.
+describe('CITA_CANCELADA con el adelanto (T059 de 008)', () => {
+  const conAdelanto = (adelanto: string) =>
+    datosDelEvento({ ...payload, canceladaPor: 'CLIENTE', adelanto }, 'Barbería Huamanga');
+
+  it('datosDelEvento solo deja pasar POR_DEVOLVER o RETENIDO', () => {
+    expect(conAdelanto('POR_DEVOLVER').adelanto).toBe('POR_DEVOLVER');
+    expect(conAdelanto('RETENIDO').adelanto).toBe('RETENIDO');
+    expect(conAdelanto('ANULADO').adelanto).toBeUndefined();
+    expect(conAdelanto('cualquier cosa').adelanto).toBeUndefined();
+    expect(datos.adelanto).toBeUndefined();
+  });
+
+  it('por devolver: al cliente, que la barbería se lo devolverá; al propietario, que lo devuelva', () => {
+    const alCliente = componerAviso('CITA_CANCELADA', 'CLIENTE', conAdelanto('POR_DEVOLVER')).texto;
+    const alPropietario = componerAviso('CITA_CANCELADA', 'PROPIETARIO', conAdelanto('POR_DEVOLVER')).texto;
+    expect(alCliente).toMatch(/la barbería debe devolverte el adelanto/i);
+    expect(alPropietario).toMatch(/devuelve el adelanto/i);
+    expect(alPropietario).toMatch(/por devolver/i);
+  });
+
+  it('retenido: al cliente y al propietario, que el adelanto queda para la barbería', () => {
+    const alCliente = componerAviso('CITA_CANCELADA', 'CLIENTE', conAdelanto('RETENIDO')).texto;
+    const alPropietario = componerAviso('CITA_CANCELADA', 'PROPIETARIO', conAdelanto('RETENIDO')).texto;
+    expect(alCliente).toMatch(/el adelanto no se devuelve/i);
+    expect(alPropietario).toMatch(/el adelanto queda para la barbería/i);
+    expect(`${alCliente}${alPropietario}`).not.toMatch(/devuelve el adelanto|debe devolverte/i);
+  });
+
+  it('el barbero no recibe datos del adelanto, y sin el campo el texto es el de 004', () => {
+    const alBarbero = componerAviso('CITA_CANCELADA', 'BARBERO', conAdelanto('POR_DEVOLVER')).texto;
+    expect(alBarbero).not.toMatch(/adelanto/i);
+    expect(componerAviso('CITA_CANCELADA', 'CLIENTE', datos).texto).not.toMatch(/adelanto/i);
+  });
+});

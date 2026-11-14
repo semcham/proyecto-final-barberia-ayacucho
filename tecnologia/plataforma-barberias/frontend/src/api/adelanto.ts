@@ -18,8 +18,13 @@ export const clavesAdelanto = {
   qr: ['adelanto', 'qr'] as const,
   deCita: (citaId: string) => ['adelanto', 'cita', citaId] as const,
   qrDeCita: (citaId: string) => ['adelanto', 'cita', citaId, 'qr'] as const,
+  /** Prefijo de las dos pestañas de la bandeja: invalidarlo refresca las dos. */
   bandeja: ['adelanto', 'bandeja'] as const,
+  bandejaDe: (estado: EstadoDeBandeja) => ['adelanto', 'bandeja', estado] as const,
 };
+
+/** Fase 6 (US5): las dos pestañas de la bandeja del propietario. */
+export type EstadoDeBandeja = 'POR_REVISAR' | 'POR_DEVOLVER';
 
 const deCita = (citaId: string) => `/citas/${encodeURIComponent(citaId)}/adelanto`;
 
@@ -48,8 +53,16 @@ export const apiAdelanto = {
     formulario.append('numeroOperacion', datos.numeroOperacion);
     return llamarApi<AdelantoDeCita>(`${deCita(citaId)}/pago`, { metodo: 'POST', formulario });
   },
-  /** Fase 4 (US3): los pagos por revisar de la barbería, de la hora límite más próxima a la más lejana. */
-  porRevisar: () => llamarApi<AdelantoEnBandeja[]>('/adelantos/por-revisar'),
+  /**
+   * Fase 4 (US3): los pagos por revisar de la barbería, de la hora límite más próxima a la más lejana. Fase 6 (US5):
+   * con `POR_DEVOLVER`, los adelantos que la barbería debe devolver.
+   */
+  porRevisar: (estado: EstadoDeBandeja = 'POR_REVISAR') =>
+    llamarApi<AdelantoEnBandeja[]>(
+      estado === 'POR_REVISAR' ? '/adelantos/por-revisar' : `/adelantos/por-revisar?estado=${estado}`,
+    ),
+  /** Fase 6 (US5): el propietario marca que devolvió el adelanto (solo desde por devolver). */
+  devolver: (citaId: string) => llamarApi<AdelantoDeCita>(`${deCita(citaId)}/devolucion`, { metodo: 'POST' }),
   /** La captura del pago registrado, como Blob en memoria (solo con la sesión). */
   captura: (citaId: string) => obtenerArchivo(`${deCita(citaId)}/captura`),
   /** El propietario confirma el pago: la cita pasa a CONFIRMADA. */

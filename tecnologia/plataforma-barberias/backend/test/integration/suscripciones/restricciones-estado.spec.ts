@@ -89,6 +89,7 @@ interface Escenario {
   /** 008: dos citas PENDIENTES con su adelanto por revisar (una se confirma y otra se rechaza). */
   citaPorConfirmar: string;
   citaPorRechazar: string;
+  citaPorDevolver: string;
 }
 
 describe('Restricciones por estado de la suscripción (T054)', () => {
@@ -213,6 +214,12 @@ describe('Restricciones por estado de la suscripción (T054)', () => {
         .send({ motivo: 'No aparece en Yape' }),
     ConfigurarAdelanto: (s) =>
       prueba.agente.put('/api/v1/barberia/adelanto').set(como(s.propietario)).send({ activo: false }),
+    // 008 fase 6 (T057): marcar devuelto también es gestionar una cita.
+    MarcarAdelantoDevuelto: (s) =>
+      prueba.agente
+        .post(`/api/v1/citas/${s.citaPorDevolver}/adelanto/devolucion`)
+        .set(como(s.propietario))
+        .send({}),
   };
 
   /** Lecturas que no se restringen en ningún estado (§1). */
@@ -280,6 +287,16 @@ describe('Restricciones por estado de la suscripción (T054)', () => {
     };
     const citaPorConfirmar = await conAdelanto('10:00');
     const citaPorRechazar = await conAdelanto('11:00');
+    // 008 fase 6: una cita cancelada con su adelanto por devolver (el pago sin revisar), para marcarlo devuelto.
+    const citaPorDevolver = await conAdelanto('12:00');
+    await poolDe('seed').query(
+      `UPDATE booking_deposit SET status = 'POR_DEVOLVER', resolved_at = now() WHERE appointment_id = $1`,
+      [citaPorDevolver],
+    );
+    await poolDe('seed').query(
+      `UPDATE appointment SET status = 'CANCELADA', cancelled_at = now() WHERE id = $1`,
+      [citaPorDevolver],
+    );
     const inicioBloqueo = new Date(Date.now() + 11 * DIA);
     const bloqueoId = await sembrarBloqueo({
       tenantId,
@@ -311,6 +328,7 @@ describe('Restricciones por estado de la suscripción (T054)', () => {
       bloqueoId,
       citaPorConfirmar,
       citaPorRechazar,
+      citaPorDevolver,
     };
   }
 
@@ -371,9 +389,13 @@ describe('Restricciones por estado de la suscripción (T054)', () => {
     expect(rows[0]).toEqual({
       servicios: permitido('CONFIGURAR_CATALOGO') ? 2 : 1,
       barberos: permitido('CONFIGURAR_CATALOGO') ? 3 : 2,
-      // Reprogramar no crea filas: mueve la cita sembrada (8 = 6 sembradas, 2 con adelanto, + 2 reservas).
-      citas: permitido('RESERVAR') ? 8 : 6,
+      // Reprogramar no crea filas: mueve la cita sembrada (9 = 7 sembradas, 3 con adelanto, + 2 reservas).
+      citas: permitido('RESERVAR') ? 9 : 7,
     });
+    expect(
+      (await seed.query('SELECT status FROM booking_deposit WHERE appointment_id = $1', [s.citaPorDevolver]))
+        .rows[0].status,
+    ).toBe('DEVUELTO');
     // 008 (FR-030): las pendientes con adelanto se resuelven en cualquier estado de la suscripción.
     const estadoDe = async (id: string) =>
       (await seed.query('SELECT status FROM appointment WHERE id = $1', [id])).rows[0].status;

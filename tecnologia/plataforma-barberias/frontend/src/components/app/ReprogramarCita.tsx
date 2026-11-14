@@ -94,8 +94,9 @@ export function ReprogramarCita({
       onReprogramada(resultado);
     },
     onError: (error) => {
-      // La hora se ocupó o la cita cambió: se vuelven a pedir las horas libres.
-      if (error instanceof ApiError && error.estado === 409) {
+      // La hora se ocupó o la cita cambió: se vuelven a pedir las horas libres. 008: si la cita espera su adelanto, la
+      // hora no es el problema.
+      if (error instanceof ApiError && error.estado === 409 && error.codigo !== 'ADELANTO_PENDIENTE') {
         setInicio(null);
         void horarios.refetch();
       }
@@ -104,6 +105,8 @@ export function ReprogramarCita({
 
   const error = reprogramar.error;
   const sinAntelacion = error instanceof ApiError && error.codigo === 'SIN_ANTELACION_PARA_REPROGRAMAR';
+  // 008 (research R11): la cita pendiente de su adelanto no la reprograma el cliente: paga, espera o cancela.
+  const adelantoPendiente = error instanceof ApiError && error.codigo === 'ADELANTO_PENDIENTE';
   const cuandoActual = `${fechaDeBarberia(cita.inicio, zona)} a las ${horaConEtiqueta(cita.inicio, zona)}`;
 
   return (
@@ -188,7 +191,7 @@ export function ReprogramarCita({
 
           {error && !horarios.isError && (
             <Alerta>
-              {error instanceof ApiError && error.estado === 409
+              {error instanceof ApiError && error.estado === 409 && !adelantoPendiente
                 ? `${error.message} ${comoCliente ? 'Tu cita sigue' : 'La cita sigue'} el ${cuandoActual}.`
                 : mensajeDe(error)}
             </Alerta>
@@ -200,7 +203,7 @@ export function ReprogramarCita({
                 Volver
               </Boton>
             </Dialog.Close>
-            {sinAntelacion && onCancelar ? (
+            {(sinAntelacion || adelantoPendiente) && onCancelar ? (
               <Boton variante="peligro" onClick={onCancelar}>
                 Cancelar la cita
               </Boton>

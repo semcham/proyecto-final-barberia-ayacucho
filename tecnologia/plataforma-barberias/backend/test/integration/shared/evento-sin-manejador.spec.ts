@@ -8,7 +8,9 @@ import { cerrarPools, poolDe } from '../../helpers/test-db';
 // 2026-11-04): queda SIN_MANEJADOR en su primer despacho, con una advertencia que solo dice el tipo y el id
 // (nunca el payload), y no se reintenta ni consume intentos. Un evento con suscriptor no se ve afectado.
 
-const PAYLOAD_SENSIBLE = { citaId: 'c-77', nota: 'contenido-que-no-debe-registrarse-0451' };
+// Con letras que un UUID no tiene (solo 0-9, a-f y guiones): el id del evento, que sí va en la advertencia, nunca
+// puede contenerlas por casualidad (antes 'c-77' coincidió con un id como …-17dc-77b1-…).
+const PAYLOAD_SENSIBLE = { citaId: 'cita-sensible-77', nota: 'contenido-que-no-debe-registrarse-0451' };
 
 async function estado(id: string) {
   const { rows } = await poolDe('seed').query<{ status: string; attempts: number; procesado: boolean }>(

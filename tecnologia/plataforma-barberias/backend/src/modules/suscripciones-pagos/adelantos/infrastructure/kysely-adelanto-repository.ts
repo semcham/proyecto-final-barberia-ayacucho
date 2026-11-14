@@ -260,6 +260,31 @@ export class KyselyAdelantoRepository extends AdelantoRepository {
     return filas.map(aAdelanto);
   }
 
+  async marcarDevuelto(adelantoId: string, devolucion: { por: string; en: Date }): Promise<boolean> {
+    const resultado = await this.uow
+      .transaccionActual()
+      .updateTable('booking_deposit')
+      .set({ status: 'DEVUELTO', refunded_at: devolucion.en, refunded_by: devolucion.por })
+      .where('tenant_id', '=', this.tenant())
+      .where('id', '=', adelantoId)
+      .where('status', '=', 'POR_DEVOLVER')
+      .executeTakeFirst();
+    return Number(resultado.numUpdatedRows) === 1;
+  }
+
+  async actualizarCopiaDeLaCita(
+    citaId: string,
+    cita: { inicio: Date; servicio: string; zonaHoraria: string },
+  ): Promise<void> {
+    await this.uow
+      .transaccionActual()
+      .updateTable('booking_deposit')
+      .set({ starts_at: cita.inicio, service_name: cita.servicio, time_zone: cita.zonaHoraria })
+      .where('tenant_id', '=', this.tenant())
+      .where('appointment_id', '=', citaId)
+      .execute();
+  }
+
   async cambiarEstado(
     adelantoId: string,
     cambio: { desde: EstadoAdelanto; hacia: EstadoAdelanto; en: Date },

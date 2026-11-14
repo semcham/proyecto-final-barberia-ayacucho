@@ -186,6 +186,11 @@ export class Cita {
     quien: QuienReprograma,
     ahora: Date,
     antelacionMinutos: number,
+    /**
+     * 008 (research R11; FR-025): la cita PENDIENTE que espera su adelanto (solo la mueve el propietario) sigue
+     * PENDIENTE: se confirma al confirmar el adelanto. Sin adelanto, como en 004: queda CONFIRMADA (FR-007).
+     */
+    opciones: { esperaAdelanto?: boolean } = {},
   ): ResultadoReprogramacion {
     const anterior: PosicionDeCita = { barberoId: this.datos.barberoId, inicio: this.datos.rango.inicio };
     if (!this.ocupaHorario() || this.empezo(ahora)) {
@@ -205,8 +210,9 @@ export class Cita {
       ...this.datos,
       barberoId: destino.barberoId,
       rango: RangoHorario.desde(destino.inicio, this.datos.servicio.duracionMin),
-      // Una cita reprogramada queda confirmada y sin la marca de asistencia del cliente (FR-007).
-      estado: 'CONFIRMADA',
+      // Una cita reprogramada queda confirmada y sin la marca de asistencia del cliente (FR-007), salvo la que espera
+      // su adelanto (008, R11), que sigue pendiente.
+      estado: opciones.esperaAdelanto && this.datos.estado === 'PENDIENTE' ? 'PENDIENTE' : 'CONFIRMADA',
       confirmadaPorClienteEn: null,
       version: this.version + 1,
     };

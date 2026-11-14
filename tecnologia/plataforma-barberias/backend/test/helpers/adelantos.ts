@@ -210,6 +210,31 @@ export function cambiarEstadoCita(prueba: AppDePrueba, token: string | null, cit
   return prueba.agente.post(`/api/v1/citas/${citaId}/estado`).set(como(token)).send({ estado });
 }
 
+// --- Fase 6 (US5): cancelar, no asistió, reprogramar y marcar devuelto ---
+
+/** POST /citas/{id}/cancelar (002), con el motivo si se indica. */
+export function cancelarCita(prueba: AppDePrueba, token: string | null, citaId: string, motivo?: string) {
+  return prueba.agente
+    .post(`/api/v1/citas/${citaId}/cancelar`)
+    .set(como(token))
+    .send(motivo === undefined ? {} : { motivo });
+}
+
+/** POST /citas/{id}/reprogramar (004). */
+export function reprogramarCita(
+  prueba: AppDePrueba,
+  token: string | null,
+  citaId: string,
+  cuerpo: { inicio: string; barberoId?: string },
+) {
+  return prueba.agente.post(`/api/v1/citas/${citaId}/reprogramar`).set(como(token)).send(cuerpo);
+}
+
+/** POST /citas/{id}/adelanto/devolucion. */
+export function marcarDevuelto(prueba: AppDePrueba, token: string | null, citaId: string) {
+  return prueba.agente.post(`/api/v1/citas/${citaId}/adelanto/devolucion`).set(como(token)).send({});
+}
+
 /**
  * Adelanto de una cita ya sembrada, sembrado sin pasar por la API (para las pruebas que no prueban la reserva):
  * POR_PAGAR, o POR_REVISAR con un registro de pago vigente. Usa el QR de la configuración de la barbería si existe;

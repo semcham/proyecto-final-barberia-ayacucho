@@ -246,6 +246,39 @@ describe('Reprogramar desde Mis citas (cliente)', () => {
     expect(confirmar).toHaveTextContent(/¿cancelar la cita\?/i);
   });
 
+  // T056 de 008 (research R11): si la cita espera su adelanto (p. ej., la lista estaba desactualizada), el servidor
+  // responde 409 ADELANTO_PENDIENTE: se explica con su mensaje, sin pedir otras horas, y se ofrece cancelar.
+  it('409 ADELANTO_PENDIENTE: explica que la cita espera su adelanto y ofrece cancelarla', async () => {
+    clienteConCita();
+    const consultas: string[] = [];
+    servidor.use(
+      horariosLibres(consultas),
+      http.post(`/api/v1/citas/${CITA.id}/reprogramar`, () =>
+        HttpResponse.json(
+          {
+            codigo: 'ADELANTO_PENDIENTE',
+            mensaje: 'Esta cita espera el pago de su adelanto: paga y espera la confirmación, o cancela.',
+            detalles: [],
+          },
+          { status: 409 },
+        ),
+      ),
+    );
+    const { usuario, dialogo } = await abrirDesdeMisCitas();
+    const horas = await within(dialogo).findByRole('group', { name: /horas libres/i });
+    await usuario.click(within(horas).getByRole('button', { name: '10:00' }));
+    await usuario.click(within(dialogo).getByRole('button', { name: /reprogramar a las 10:00/i }));
+
+    const alerta = await within(dialogo).findByRole('alert');
+    expect(alerta).toHaveTextContent(
+      'Esta cita espera el pago de su adelanto: paga y espera la confirmación, o cancela.',
+    );
+    expect(alerta).not.toHaveTextContent(/tu cita sigue/i);
+    expect(consultas).toHaveLength(1);
+    await usuario.click(within(dialogo).getByRole('button', { name: /cancelar la cita/i }));
+    expect(await screen.findByRole('alertdialog')).toHaveTextContent(/¿cancelar la cita\?/i);
+  });
+
   it('se completa solo con el teclado', async () => {
     clienteConCita();
     const solicitudes: unknown[] = [];

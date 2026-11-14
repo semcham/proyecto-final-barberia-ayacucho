@@ -14,6 +14,8 @@ export interface DatosDelAviso {
   /** Solo en la reprogramación. */
   inicioAnterior?: string;
   zonaHoraria: string;
+  /** 008 (fase 6): en la cancelación de una cita con adelanto, si queda por devolver o retenido. */
+  adelanto?: 'POR_DEVOLVER' | 'RETENIDO';
 }
 
 export interface MensajeCompuesto {
@@ -34,7 +36,28 @@ export function datosDelEvento(payload: Record<string, unknown>, barberia: strin
   };
   const anterior = texto(payload.inicioAnterior);
   if (anterior) datos.inicioAnterior = anterior;
+  if (payload.adelanto === 'POR_DEVOLVER' || payload.adelanto === 'RETENIDO')
+    datos.adelanto = payload.adelanto;
   return datos;
+}
+
+/** 008 (T059; US5-2): qué pasa con el adelanto de la cita cancelada, para el cliente o el propietario. */
+function lineasDelAdelanto(adelanto: DatosDelAviso['adelanto'], para: TipoDestinatario): string[] {
+  if (!adelanto || para === 'BARBERO') return [];
+  if (adelanto === 'POR_DEVOLVER') {
+    return [
+      '',
+      para === 'CLIENTE'
+        ? 'Como la cancelación fue con tiempo, la barbería debe devolverte el adelanto que pagaste.'
+        : 'El adelanto queda por devolver: devuelve el adelanto al cliente y márcalo como devuelto en Adelantos por revisar, en la pestaña Por devolver.',
+    ];
+  }
+  return [
+    '',
+    para === 'CLIENTE'
+      ? 'Como la cancelación fue con menos anticipación de la que pide la barbería, el adelanto no se devuelve.'
+      : 'La cancelación fue tardía: el adelanto queda para la barbería.',
+  ];
 }
 
 function fecha(instante: string, zona: string): string {
@@ -96,6 +119,7 @@ export function componerAviso(
         '',
         `Fecha: ${cuando(inicio, zona)}`,
         ...detalle,
+        ...lineasDelAdelanto(datos.adelanto, para),
       ];
       break;
     case 'CITA_REPROGRAMADA':

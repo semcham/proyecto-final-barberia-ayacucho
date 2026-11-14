@@ -326,3 +326,84 @@ describe('Clientes (/app/clientes)', () => {
     });
   });
 });
+
+// T056 de 008 (fase 6, US5): en la Agenda, el saldo de la cita confirmada, el estado del adelanto (por devolver,
+// devuelto o retenido) y, para el propietario, el acceso a "Marcar devuelto" en la pestaña Por devolver.
+describe('Agenda · adelanto al cancelar y devolución (T056 de 008)', () => {
+  const adelanto = (estado: string, cambios: Record<string, unknown> = {}) => ({
+    citaId: 'x',
+    estado,
+    montoCentimos: 500,
+    precioCentimos: 2500,
+    saldoCentimos: 2000,
+    codigo: 'K7Q2MP',
+    horaLimite: iso(pasada),
+    limiteRevision: iso(pasada),
+    pago: null,
+    devueltoEn: null,
+    ...cambios,
+  });
+
+  function conAdelantos() {
+    lecturas();
+    servidor.use(
+      http.get('/api/v1/agenda', ({ request }) =>
+        HttpResponse.json({
+          fecha: new URL(request.url).searchParams.get('fecha'),
+          zonaHoraria: ZONA,
+          citas: [
+            cita({
+              id: 'a1',
+              cliente: { nombre: 'Ana Confirmada', telefono: '911111111' },
+              adelanto: adelanto('CONFIRMADO'),
+            }),
+            cita({
+              id: 'a2',
+              estado: 'CANCELADA',
+              cliente: { nombre: 'Beto Pordevolver', telefono: '922222221' },
+              adelanto: adelanto('POR_DEVOLVER'),
+            }),
+            cita({
+              id: 'a3',
+              estado: 'CANCELADA',
+              cancelacionTardia: true,
+              cliente: { nombre: 'Carla Retenido', telefono: '933333331' },
+              adelanto: adelanto('RETENIDO'),
+            }),
+            cita({
+              id: 'a4',
+              estado: 'CANCELADA',
+              cliente: { nombre: 'Dani Devuelto', telefono: '944444441' },
+              adelanto: adelanto('DEVUELTO', { devueltoEn: iso(pasada) }),
+            }),
+          ],
+        }),
+      ),
+    );
+  }
+
+  it('la confirmada muestra el adelanto y el saldo a pagar el día de la cita', async () => {
+    conAdelantos();
+    renderizar('/app/agenda');
+    const fila = await filaDe('Ana Confirmada');
+    expect(fila).toHaveTextContent(/Adelanto S\/\s?5\.00 · saldo S\/\s?20\.00/);
+    expect(within(fila).getByText('Adelanto confirmado')).toBeInTheDocument();
+  });
+
+  it('por devolver, devuelto y retenido; solo el por devolver ofrece "Marcar devuelto"', async () => {
+    conAdelantos();
+    renderizar('/app/agenda');
+    const porDevolver = await filaDe('Beto Pordevolver');
+    expect(within(porDevolver).getByText('Adelanto por devolver')).toBeInTheDocument();
+    expect(within(porDevolver).getByRole('link', { name: /marcar devuelto/i })).toHaveAttribute(
+      'href',
+      '/app/adelantos?ver=por-devolver',
+    );
+    const retenido = await filaDe('Carla Retenido');
+    expect(within(retenido).getByText('Adelanto retenido')).toBeInTheDocument();
+    expect(within(retenido).queryByRole('link', { name: /marcar devuelto/i })).not.toBeInTheDocument();
+    const devuelto = await filaDe('Dani Devuelto');
+    expect(within(devuelto).getByText('Adelanto devuelto')).toBeInTheDocument();
+    expect(within(devuelto).queryByRole('link', { name: /marcar devuelto/i })).not.toBeInTheDocument();
+  });
+});

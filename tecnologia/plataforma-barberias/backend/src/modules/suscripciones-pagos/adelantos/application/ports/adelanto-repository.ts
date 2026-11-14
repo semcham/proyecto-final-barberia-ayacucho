@@ -82,6 +82,18 @@ export abstract class AdelantoRepository {
   /** Adelantos en un estado (la bandeja), de la hora límite más próxima a la más lejana, hasta `limite`. */
   abstract porEstado(estado: EstadoAdelanto, limite: number): Promise<AdelantoGuardado[]>;
 
+  /**
+   * Fase 6 · POR_DEVOLVER → DEVUELTO con la fecha y quién lo marcó (CHECK booking_deposit_devuelto); false si ya no
+   * estaba por devolver.
+   */
+  abstract marcarDevuelto(adelantoId: string, devolucion: { por: string; en: Date }): Promise<boolean>;
+
+  /** Fase 6 · La copia de la hora y el servicio de la cita, al reprogramarla (research R02, R11). */
+  abstract actualizarCopiaDeLaCita(
+    citaId: string,
+    cita: { inicio: Date; servicio: string; zonaHoraria: string },
+  ): Promise<void>;
+
   /** Transición condicional del estado; false si el adelanto ya no estaba en `desde`. */
   abstract cambiarEstado(
     adelantoId: string,

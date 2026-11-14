@@ -61,6 +61,21 @@ describe('Cita.reprogramar', () => {
     expect(c.estado).toBe('CONFIRMADA');
   });
 
+  // 008 (T058; research R11, FR-025): la que espera su adelanto sigue PENDIENTE, con la versión + 1.
+  it('una cita PENDIENTE que espera su adelanto sigue PENDIENTE al reprogramarla', () => {
+    const c = cita('PENDIENTE');
+    c.reprogramar({ barberoId: 'b1', inicio: NUEVO }, PROPIETARIO, antesDelInicio(600), ANTELACION, {
+      esperaAdelanto: true,
+    });
+    expect(c.estado).toBe('PENDIENTE');
+    expect(c.version).toBe(4);
+    const confirmada = cita('CONFIRMADA');
+    confirmada.reprogramar({ barberoId: 'b1', inicio: NUEVO }, PROPIETARIO, antesDelInicio(600), ANTELACION, {
+      esperaAdelanto: true,
+    });
+    expect(confirmada.estado).toBe('CONFIRMADA');
+  });
+
   it('puede cambiar de barbero a la misma hora', () => {
     const c = cita();
     const resultado = c.reprogramar({ barberoId: 'b2', inicio: INICIO }, PROPIETARIO, antesDelInicio(600), 0);

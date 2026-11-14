@@ -267,6 +267,16 @@ export default function Agenda() {
                           Revisar pago
                         </Link>
                       )}
+                      {/* 008 (fase 6, US5): la cita cancelada con su adelanto por devolver lleva a la pestaña Por devolver. */}
+                      {esPropietario && adelanto?.estado === 'POR_DEVOLVER' && (
+                        <Link
+                          to="/app/adelantos?ver=por-devolver"
+                          className={clasesBoton({ variante: 'secundario', tamano: 'sm' })}
+                        >
+                          Marcar devuelto
+                          <span className="sr-only"> el adelanto de {cita.cliente.nombre}</span>
+                        </Link>
+                      )}
                       {cita.enConflicto && <EtiquetaEstado tono="error">En conflicto</EtiquetaEstado>}
                       {cita.cancelacionTardia && (
                         <EtiquetaEstado tono="aviso">Cancelación tardía</EtiquetaEstado>

@@ -302,6 +302,122 @@ describe('Adelantos por revisar (/app/adelantos)', () => {
   });
 });
 
+// T056 de 008 (fase 6, US5): la pestaña "Por devolver" de la bandeja y "Marcar devuelto" (FR-022).
+describe('Adelantos por revisar · pestaña Por devolver (T056)', () => {
+  const porDevolver = (citaId: string, cliente: string) =>
+    enBandeja(citaId, cliente, { estado: 'POR_DEVOLVER', pago: null });
+
+  function servidorConPestanas(devolver = [porDevolver(CITA_A, 'Luis Huamán')]) {
+    servidorDeLaBandeja();
+    let lista = devolver;
+    const pedidas: (string | null)[] = [];
+    const devueltas: string[] = [];
+    servidor.use(
+      http.get('/api/v1/adelantos/por-revisar', ({ request }) => {
+        const estado = new URL(request.url).searchParams.get('estado');
+        pedidas.push(estado);
+        return HttpResponse.json(estado === 'POR_DEVOLVER' ? lista : [enBandeja(CITA_B, 'Rocío Huamaní')]);
+      }),
+      http.post('/api/v1/citas/:id/adelanto/devolucion', ({ params }) => {
+        devueltas.push(params.id as string);
+        lista = lista.filter((x) => x.citaId !== params.id);
+        return HttpResponse.json({
+          ...porDevolver(params.id as string, '').adelanto,
+          estado: 'DEVUELTO',
+          devueltoEn: '2026-12-21T10:00:00-05:00',
+        });
+      }),
+    );
+    return { pedidas, devueltas };
+  }
+
+  it('dos pestañas; "Por devolver" pide la bandeja con estado=POR_DEVOLVER y se abre por la dirección', async () => {
+    const { pedidas } = servidorConPestanas();
+    renderizar('/app/adelantos?ver=por-devolver');
+    const pestanas = await screen.findByRole('tablist', { name: 'Adelantos' });
+    expect(within(pestanas).getByRole('tab', { name: 'Por devolver' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    expect(within(pestanas).getByRole('tab', { name: 'Por revisar' })).toHaveAttribute(
+      'aria-selected',
+      'false',
+    );
+    const panel = screen.getByRole('tabpanel', { name: 'Por devolver' });
+    expect(await within(panel).findByRole('list', { name: 'Adelantos por devolver' })).toHaveTextContent(
+      'Luis Huamán',
+    );
+    expect(pedidas).toContain('POR_DEVOLVER');
+  });
+
+  it('se cambia de pestaña con el teclado (flechas), como pide el patrón de pestañas', async () => {
+    servidorConPestanas();
+    renderizar();
+    const usuario = userEvent.setup();
+    const porRevisar = await screen.findByRole('tab', { name: 'Por revisar' });
+    expect(porRevisar).toHaveAttribute('aria-selected', 'true');
+    porRevisar.focus();
+    await usuario.keyboard('{ArrowRight}');
+    const devolver = screen.getByRole('tab', { name: 'Por devolver' });
+    expect(devolver).toHaveFocus();
+    expect(devolver).toHaveAttribute('aria-selected', 'true');
+    expect(await screen.findByRole('list', { name: 'Adelantos por devolver' })).toBeInTheDocument();
+    await usuario.keyboard('{ArrowLeft}');
+    expect(screen.getByRole('tab', { name: 'Por revisar' })).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('"Marcar devuelto" pide confirmación, lo marca y el adelanto sale de la lista', async () => {
+    const { devueltas } = servidorConPestanas();
+    renderizar('/app/adelantos?ver=por-devolver');
+    const usuario = userEvent.setup();
+    const listaDevolver = await screen.findByRole('list', { name: 'Adelantos por devolver' });
+    const fila = within(listaDevolver).getAllByRole('listitem')[0];
+    expect(fila).toHaveTextContent(/S\/\s?4\.00/);
+    expect(fila).toHaveTextContent('K7Q2MP');
+    // Sin número de operación ni captura en esta pestaña.
+    expect(fila).not.toHaveTextContent('OP12345678');
+    await usuario.click(within(fila).getByRole('button', { name: /marcar devuelto/i }));
+    const dialogo = await screen.findByRole('alertdialog', { name: '¿Marcar el adelanto como devuelto?' });
+    expect(dialogo).toHaveTextContent(/S\/\s?4\.00/);
+    expect(devueltas).toEqual([]);
+    await usuario.click(within(dialogo).getByRole('button', { name: 'Marcar devuelto' }));
+    expect(await screen.findByText('Adelanto marcado como devuelto')).toBeInTheDocument();
+    expect(devueltas).toEqual([CITA_A]);
+    expect(await screen.findByText('No hay adelantos por devolver')).toBeInTheDocument();
+  });
+
+  it('un error al marcar (409 ADELANTO_NO_POR_DEVOLVER) se muestra con su mensaje', async () => {
+    servidorConPestanas();
+    servidor.use(
+      http.post('/api/v1/citas/:id/adelanto/devolucion', () =>
+        HttpResponse.json(
+          {
+            codigo: 'ADELANTO_NO_POR_DEVOLVER',
+            mensaje: 'Solo se puede marcar como devuelto un adelanto por devolver.',
+            detalles: [],
+          },
+          { status: 409 },
+        ),
+      ),
+    );
+    renderizar('/app/adelantos?ver=por-devolver');
+    const usuario = userEvent.setup();
+    const listaDevolver = await screen.findByRole('list', { name: 'Adelantos por devolver' });
+    await usuario.click(within(listaDevolver).getByRole('button', { name: /marcar devuelto/i }));
+    const dialogo = await screen.findByRole('alertdialog');
+    await usuario.click(within(dialogo).getByRole('button', { name: 'Marcar devuelto' }));
+    expect(
+      await screen.findByText('Solo se puede marcar como devuelto un adelanto por devolver.'),
+    ).toBeInTheDocument();
+  });
+
+  it('sin adelantos por devolver muestra su estado vacío', async () => {
+    servidorConPestanas([]);
+    renderizar('/app/adelantos?ver=por-devolver');
+    expect(await screen.findByText('No hay adelantos por devolver')).toBeInTheDocument();
+  });
+});
+
 describe('Agenda con adelantos (T045)', () => {
   const HORA_MS = 60 * 60 * 1000;
   const futura = new Date(Date.now() + 3 * HORA_MS);

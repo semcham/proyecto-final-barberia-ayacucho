@@ -5,6 +5,8 @@ import {
   activarAdelanto,
   bandejaDeAdelantos,
   cambiarConfiguracion,
+  cancelarCita,
+  marcarDevuelto,
   confirmarAdelanto,
   rechazarPago,
   registrarPago,
@@ -193,6 +195,21 @@ const IMPLEMENTADAS: Caso[] = [
     fila: 'GET /citas/{id}/adelanto/captura',
     exito: 200,
     ejecutar: (p, t, s) => verCaptura(p, t, s.citaConPago),
+  },
+  // Fase 6 (US5): marcar devuelto (la cita con el pago por revisar, cancelada por el propietario, queda POR_DEVOLVER)
+  // y la bandeja de los por devolver.
+  {
+    fila: 'POST /citas/{id}/adelanto/devolucion',
+    exito: 200,
+    ejecutar: async (p, t, s) => {
+      await cancelarCita(p, s.tokens.PROPIETARIO, s.citaConPago).expect(200);
+      return marcarDevuelto(p, t, s.citaConPago);
+    },
+  },
+  {
+    fila: 'GET /adelantos/por-revisar',
+    exito: 200,
+    ejecutar: (p, t) => bandejaDeAdelantos(p, t, 'POR_DEVOLVER'),
   },
 ];
 

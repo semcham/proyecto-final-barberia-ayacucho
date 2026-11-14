@@ -195,3 +195,57 @@ describe('Mis citas (/mis-citas)', () => {
     expect(screen.getByRole('button', { name: /anteriores/i })).toBeDisabled();
   });
 });
+
+// T056 de 008 (fase 6, US5): el cliente ve el saldo de su cita confirmada y qué pasó con su adelanto al cancelar o no
+// asistir (por devolver, devuelto o retenido).
+describe('Mis citas · el adelanto (T056 de 008)', () => {
+  const adelanto = (estado: string) => ({
+    citaId: 'x',
+    estado,
+    montoCentimos: 500,
+    precioCentimos: 2500,
+    saldoCentimos: 2000,
+    codigo: 'K7Q2MP',
+    horaLimite: pasado,
+    limiteRevision: pasado,
+    pago: null,
+    devueltoEn: estado === 'DEVUELTO' ? pasado : null,
+  });
+
+  it('confirmada con su saldo; canceladas con el adelanto por devolver, devuelto o retenido', async () => {
+    conSesionYCatalogo();
+    servidor.use(
+      http.get('/api/v1/clientes/yo/citas', () =>
+        HttpResponse.json({
+          total: 4,
+          pagina: 1,
+          tamano: 10,
+          elementos: [
+            { ...cita('m1', { servicio: 'Corte uno' }), adelanto: adelanto('CONFIRMADO') },
+            {
+              ...cita('m2', { servicio: 'Corte dos', estado: 'CANCELADA' }),
+              adelanto: adelanto('POR_DEVOLVER'),
+            },
+            {
+              ...cita('m3', { servicio: 'Corte tres', estado: 'CANCELADA', cancelacionTardia: true }),
+              adelanto: adelanto('RETENIDO'),
+            },
+            {
+              ...cita('m4', { servicio: 'Corte cuatro', estado: 'CANCELADA', inicio: pasado }),
+              adelanto: adelanto('DEVUELTO'),
+            },
+          ],
+        }),
+      ),
+    );
+    renderizar();
+    const confirmada = await filaDe('Corte uno');
+    expect(confirmada).toHaveTextContent(/Adelanto S\/\s?5\.00 · saldo S\/\s?20\.00/);
+    expect(within(confirmada).getByText('Adelanto confirmado')).toBeInTheDocument();
+    expect(within(await filaDe('Corte dos')).getByText('Adelanto por devolver')).toBeInTheDocument();
+    const retenida = await filaDe('Corte tres');
+    expect(within(retenida).getByText('Adelanto retenido')).toBeInTheDocument();
+    expect(within(retenida).getByText('Cancelación tardía')).toBeInTheDocument();
+    expect(within(await filaDe('Corte cuatro')).getByText('Adelanto devuelto')).toBeInTheDocument();
+  });
+});

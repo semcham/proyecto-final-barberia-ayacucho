@@ -19,16 +19,14 @@ import { aResumen } from './vista-adelanto';
 /** El instante sin sus milisegundos (hacia atrás: la hora límite nunca queda más tarde que la calculada). */
 const alSegundo = (instante: Date) => new Date(Math.floor(instante.getTime() / 1000) * 1000);
 
-/** Una operación de AdelantosApi que llega en una fase posterior de 008 (tasks.md): nadie la llama todavía. */
-function pendienteDeFase(operacion: string, fase: number): never {
-  throw new Error(`AdelantosApi.${operacion} llega en la fase ${fase} de 008`);
-}
+/** Los estados del adelanto mientras su cita está activa (PENDIENTE o CONFIRMADA). */
+const CON_LA_CITA_ACTIVA: readonly EstadoAdelanto[] = ['POR_PAGAR', 'POR_REVISAR', 'CONFIRMADO'];
 
 /**
  * T029 de 008 · Implementación de AdelantosApi (research R01). Todas sus operaciones corren en la transacción del
  * llamador (M02), con su tenant y RLS, salvo porVencer (lectura de la plataforma). Fase 3 (US2): paraReservar, crear,
  * deCita y deCitas; fase 4 (US3): confirmar y enBandeja; fase 5 (US4): porVencer, citaDelAdelanto y
- * decidirVencimiento; las demás llegan con la fase 6.
+ * decidirVencimiento; fase 6 (US5): alCancelar, alNoAsistir y alReprogramar.
  */
 @Injectable()
 export class AdelantosApiImpl extends AdelantosApi {
@@ -191,22 +189,53 @@ export class AdelantosApiImpl extends AdelantosApi {
     return this.adelantos.citaDe(adelantoId);
   }
 
-  alCancelar(
-    _citaId: string,
-    _cancelacion: CancelacionDeLaCita,
-    _ahora: Date,
+  /**
+   * T057 · Al cancelar la cita (research R10; FR-019, FR-021), con la cita ya bloqueada por M02 y el adelanto bloqueado
+   * aquí: sin pago → ANULADO; con el pago por revisar → POR_DEVOLVER; confirmado → RETENIDO si cancela tarde el
+   * cliente, si no POR_DEVOLVER. Un adelanto ya resuelto (no debería pasar con la cita activa) no se toca: null, y la
+   * cancelación sigue (no se impide cancelar por el estado del dinero).
+   */
+  async alCancelar(
+    citaId: string,
+    cancelacion: CancelacionDeLaCita,
+    ahora: Date,
   ): Promise<EstadoAdelanto | null> {
-    return pendienteDeFase('alCancelar', 6);
+    const adelanto = await this.adelantos.deCita(citaId, { bloquear: true });
+    if (!adelanto || !CON_LA_CITA_ACTIVA.includes(adelanto.estado)) return null;
+    return this.resolver(
+      adelanto.id,
+      adelanto.estado,
+      Adelanto.alCancelar(adelanto.estado, cancelacion),
+      ahora,
+    );
   }
 
-  alNoAsistir(_citaId: string, _ahora: Date): Promise<EstadoAdelanto | null> {
-    return pendienteDeFase('alNoAsistir', 6);
+  /** T057 · El cliente no asistió a su cita confirmada: CONFIRMADO → RETENIDO (FR-021). null si no aplica. */
+  async alNoAsistir(citaId: string, ahora: Date): Promise<EstadoAdelanto | null> {
+    const adelanto = await this.adelantos.deCita(citaId, { bloquear: true });
+    if (!adelanto || adelanto.estado !== 'CONFIRMADO') return null;
+    return this.resolver(adelanto.id, adelanto.estado, Adelanto.alNoAsistir(adelanto.estado), ahora);
   }
 
-  alReprogramar(
-    _citaId: string,
-    _cita: { inicio: Date; servicio: string; zonaHoraria: string },
+  /**
+   * T057 · Al reprogramar (research R11): la copia de la hora y del servicio sigue a la cita; el monto, la hora límite
+   * y el límite máximo adicional no cambian.
+   */
+  async alReprogramar(
+    citaId: string,
+    cita: { inicio: Date; servicio: string; zonaHoraria: string },
   ): Promise<void> {
-    return pendienteDeFase('alReprogramar', 6);
+    await this.adelantos.actualizarCopiaDeLaCita(citaId, { ...cita, inicio: alSegundo(cita.inicio) });
+  }
+
+  private async resolver(
+    adelantoId: string,
+    desde: EstadoAdelanto,
+    hacia: EstadoAdelanto,
+    ahora: Date,
+  ): Promise<EstadoAdelanto> {
+    const cambiado = await this.adelantos.cambiarEstado(adelantoId, { desde, hacia, en: ahora });
+    if (!cambiado) throw new Error('El adelanto cambió durante la transacción a pesar del bloqueo');
+    return hacia;
   }
 }

@@ -38,6 +38,7 @@ esta tabla: sus usuarios no pueden iniciar sesión (001).
 | `ConfirmarAdelanto` (agregada por 008)                     | M02 `citas`     | `GESTIONAR_CITAS`     |
 | `RechazarPagoDeAdelanto` (agregada por 008)                | M03 `adelantos` | `GESTIONAR_CITAS`     |
 | `ConfigurarAdelanto` (agregada por 008)                    | M03 `adelantos` | `CONFIGURAR_CATALOGO` |
+| `MarcarAdelantoDevuelto` (agregada por 008)                | M03 `adelantos` | `GESTIONAR_CITAS`     |
 
 `CancelarCita` y `CambiarEstadoCita` también llaman a `exigirOperacion` (con `GESTIONAR_CITAS`, que
 hoy es ✓ en todos los estados). Así, la prueba de arquitectura exige la llamada en **todo** caso de
@@ -49,9 +50,9 @@ US1-7). La prueba de arquitectura `operaciones-con-politica` y la de integració
 recorren como a las demás.
 
 **Nota (008, adelanto de reserva con QR; research R12 de 008):** las filas `ConfirmarAdelanto`,
-`RechazarPagoDeAdelanto` y `ConfigurarAdelanto` las agregó la funcionalidad 008 (T044). Confirmar o rechazar el pago
-de un adelanto es gestionar una cita ya reservada (`GESTIONAR_CITAS`): con la suscripción vencida o suspendida, el
-propietario sigue resolviendo las pendientes, mientras la reserva nueva queda bloqueada. Configurar el adelanto
-(activarlo, cambiarlo o subir el QR) es configuración, como el catálogo (`CONFIGURAR_CATALOGO`). El registro del pago
-del cliente (`RegistrarPagoDeAdelanto`) **no** se restringe: completa una reserva ya aceptada. `MarcarAdelantoDevuelto`
-(`GESTIONAR_CITAS`) se agrega en la fase 6 de 008, cuando exista el caso de uso.
+`RechazarPagoDeAdelanto` y `ConfigurarAdelanto` las agregó la funcionalidad 008 (T044), y `MarcarAdelantoDevuelto`
+en su fase 6 (T057). Confirmar o rechazar el pago de un adelanto, y marcarlo devuelto, es gestionar una cita ya
+reservada (`GESTIONAR_CITAS`): con la suscripción vencida o suspendida, el propietario sigue resolviendo las pendientes
+y devolviendo adelantos, mientras la reserva nueva queda bloqueada. Configurar el adelanto (activarlo, cambiarlo o subir
+el QR) es configuración, como el catálogo (`CONFIGURAR_CATALOGO`). El registro del pago del cliente
+(`RegistrarPagoDeAdelanto`) **no** se restringe: completa una reserva ya aceptada.

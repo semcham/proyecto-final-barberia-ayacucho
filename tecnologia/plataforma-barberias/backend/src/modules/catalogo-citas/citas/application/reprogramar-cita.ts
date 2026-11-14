@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { type Actor, BarberiasApi, ClientesApi } from '../../../acceso-barberias';
-import { SuscripcionesApi } from '../../../suscripciones-pagos';
+import { AdelantoPendiente, AdelantosApi, SuscripcionesApi } from '../../../suscripciones-pagos';
 import {
   AuditLog,
   BusDeEventos,
@@ -65,6 +65,7 @@ export class ReprogramarCita {
     private readonly eventos: BusDeEventos,
     private readonly suscripciones: SuscripcionesApi,
     private readonly tenantContext: TenantContext,
+    private readonly adelantos: AdelantosApi,
   ) {}
 
   async ejecutar(
@@ -132,6 +133,15 @@ export class ReprogramarCita {
     // Reprogramar toma una hora nueva, como una reserva (003, US1-7); por enlace también (contracts §4).
     await this.suscripciones.exigirOperacion(tenantId, 'RESERVAR');
 
+    // 008 (T058; research R11): una cita PENDIENTE que espera su adelanto no la reprograma el cliente (ni por un enlace):
+    // "paga y espera la confirmación, o cancela". El propietario sí, y la cita sigue pendiente.
+    const adelanto = await this.adelantos.deCita(cita.id);
+    const esperaAdelanto =
+      cita.estado === 'PENDIENTE' &&
+      adelanto !== null &&
+      (adelanto.estado === 'POR_PAGAR' || adelanto.estado === 'POR_REVISAR');
+    if (esperaAdelanto && quien.rol === 'CLIENTE') throw new AdelantoPendiente();
+
     const agenda = await this.barberias.configuracionAgenda();
     const ahora = this.reloj.ahora();
     const antes = {
@@ -145,6 +155,7 @@ export class ReprogramarCita {
       quien,
       ahora,
       agenda.antelacionCancelacionMinutos,
+      { esperaAdelanto },
     );
     const barberoNuevo = await this.catalogo.barbero(cita.barberoId);
     if (!cambio) return { cita: vista(cita, agenda, barberoNuevo?.nombre ?? ''), cambio: false };
@@ -167,6 +178,15 @@ export class ReprogramarCita {
         ? { via: 'SESION', usuarioId: quien.usuarioId }
         : { via: 'ENLACE', usuarioId: null },
     );
+    // 008 (R11): la copia de la hora en el adelanto sigue a la cita (la cita se escribió primero: mismo orden de bloqueo
+    // que confirmar y vencer).
+    if (adelanto) {
+      await this.adelantos.alReprogramar(cita.id, {
+        inicio: cita.rango.inicio,
+        servicio: servicio.nombre,
+        zonaHoraria: agenda.zonaHoraria,
+      });
+    }
     await this.auditoria.registrar({
       accion: 'CITA_REPROGRAMADA',
       actorId: quien.usuarioId,
@@ -192,12 +212,15 @@ export class ReprogramarCita {
         reprogramadaPor: quien.rol,
       },
     });
-    // T089 (R09): el recordatorio se reemplaza por el de la hora nueva (o se anula si faltan menos de 2 h).
-    await programarRecordatorio(this.eventos, cita, {
-      barbero: barberoNuevo?.nombre ?? '',
-      zonaHoraria: agenda.zonaHoraria,
-      ahora,
-    });
+    // T089 (R09): el recordatorio se reemplaza por el de la hora nueva (o se anula si faltan menos de 2 h). 008
+    // (FR-025): una cita que sigue PENDIENTE no se recuerda; se programa al confirmar su adelanto.
+    if (cita.estado === 'CONFIRMADA') {
+      await programarRecordatorio(this.eventos, cita, {
+        barbero: barberoNuevo?.nombre ?? '',
+        zonaHoraria: agenda.zonaHoraria,
+        ahora,
+      });
+    }
 
     return {
       cita: vista(cita, agenda, barberoNuevo?.nombre ?? ''),

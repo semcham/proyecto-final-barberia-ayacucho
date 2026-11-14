@@ -75,6 +75,7 @@ import { AdelantosApiImpl } from './adelantos/application/adelantos-api-impl';
 import { ConsultarAdelanto } from './adelantos/application/consultar-adelanto';
 import { AdelantoRepository } from './adelantos/application/ports/adelanto-repository';
 import { RechazarPagoDeAdelanto } from './adelantos/application/rechazar-pago';
+import { MarcarAdelantoDevuelto } from './adelantos/application/marcar-devuelto';
 import { RegistrarPagoDeAdelanto } from './adelantos/application/registrar-pago';
 import { KyselyAdelantoRepository } from './adelantos/infrastructure/kysely-adelanto-repository';
 import { AdelantosPorVencerLectura } from './adelantos/application/ports/adelantos-por-vencer';
@@ -157,6 +158,8 @@ import { AdelantoCitaController } from './adelantos/presentation/adelanto-cita.c
     ConsultarAdelanto,
     // 008 (US3): el propietario rechaza el pago (confirmar lo orquesta M02 por AdelantosApi).
     RechazarPagoDeAdelanto,
+    // 008 fase 6 (T057): el propietario marca devuelto un adelanto por devolver.
+    MarcarAdelantoDevuelto,
   ],
   exports: [
     SuscripcionesApi,

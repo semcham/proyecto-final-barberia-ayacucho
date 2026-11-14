@@ -2,7 +2,9 @@ import {
   activarAdelanto,
   bandejaDeAdelantos,
   cambiarConfiguracion,
+  cancelarCita,
   confirmarAdelanto,
+  marcarDevuelto,
   numeroDeOperacion,
   rechazarPago,
   registrarPago,
@@ -157,6 +159,29 @@ describe('Contrato de 008 · Configuración del adelanto (T013)', () => {
       expect(erroresDeEsquema008('Adelanto', confirmada.body.adelanto)).toEqual([]);
       const resuelto = await rechazarPago(prueba, propietario, r.body.id, 'No aparece en Yape').expect(409);
       expect(erroresDeContrato008('/citas/{id}/adelanto/rechazo', 'post', 409, resuelto.body)).toEqual([]);
+    });
+
+    // T056 · Fase 6 (US5): marcar devuelto y la bandeja de los por devolver.
+    it('devolución (Adelanto), su 409 y la bandeja con estado=POR_DEVOLVER (AdelantoEnBandeja)', async () => {
+      const { e, cliente, r } = await citaPendiente('14:00');
+      const propietario = await tokenPara(e.barberia.tenantId, e.barberia.propietarioId, 'PROPIETARIO');
+      await registrarPago(prueba, cliente.token, r.body.id).expect(201);
+      const noPorDevolver = await marcarDevuelto(prueba, propietario, r.body.id).expect(409);
+      expect(
+        erroresDeContrato008('/citas/{id}/adelanto/devolucion', 'post', 409, noPorDevolver.body),
+      ).toEqual([]);
+
+      // Cancelada con el pago por revisar: queda por devolver.
+      await cancelarCita(prueba, cliente.token, r.body.id).expect(200);
+      const bandeja = await bandejaDeAdelantos(prueba, propietario, 'POR_DEVOLVER').expect(200);
+      expect(bandeja.body).toHaveLength(1);
+      expect(bandeja.body[0].adelanto.estado).toBe('POR_DEVOLVER');
+      expect(erroresDeContrato008('/adelantos/por-revisar', 'get', 200, bandeja.body)).toEqual([]);
+
+      const devuelto = await marcarDevuelto(prueba, propietario, r.body.id).expect(200);
+      expect(devuelto.body).toMatchObject({ estado: 'DEVUELTO', devueltoEn: expect.any(String) });
+      expect(erroresDeContrato008('/citas/{id}/adelanto/devolucion', 'post', 200, devuelto.body)).toEqual([]);
+      expect((await bandejaDeAdelantos(prueba, propietario, 'POR_DEVOLVER').expect(200)).body).toEqual([]);
     });
   });
 });

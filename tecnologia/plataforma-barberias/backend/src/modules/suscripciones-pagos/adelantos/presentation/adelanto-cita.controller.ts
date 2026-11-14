@@ -19,6 +19,7 @@ import { type ArchivoEnMemoria, InterceptorDeArchivo } from '../../pagos/present
 import type { ActorDeBarberia } from '../../suscripciones/application/autorizacion';
 import type { OperacionSuscripciones } from '../../suscripciones/domain/permisos';
 import { ConsultarAdelanto } from '../application/consultar-adelanto';
+import { MarcarAdelantoDevuelto } from '../application/marcar-devuelto';
 import { RechazarPagoDeAdelanto } from '../application/rechazar-pago';
 import { RegistrarPagoDeAdelanto } from '../application/registrar-pago';
 import { TAMANO_MAXIMO_ARCHIVO_ADELANTO } from '../domain/archivo-adelanto';
@@ -64,7 +65,19 @@ export class AdelantoCitaController {
     private readonly consultar: ConsultarAdelanto,
     private readonly registrar: RegistrarPagoDeAdelanto,
     private readonly rechazar: RechazarPagoDeAdelanto,
+    private readonly devolver: MarcarAdelantoDevuelto,
   ) {}
+
+  /** T057 · El propietario marca que devolvió el adelanto, solo desde POR_DEVOLVER (FR-022). Sin cuerpo. */
+  @Post('devolucion')
+  @HttpCode(200)
+  @OperacionM03('REVISAR_ADELANTO')
+  marcarDevuelto(
+    @ActorActual() actor: ActorDeBarberia,
+    @Param('id', ParseUUIDPipe) citaId: string,
+  ): Promise<ResumenDeAdelanto> {
+    return this.devolver.ejecutar(actor, citaId);
+  }
 
   /** T041 · El propietario rechaza el pago registrado, con un motivo (FR-014). */
   @Post('rechazo')

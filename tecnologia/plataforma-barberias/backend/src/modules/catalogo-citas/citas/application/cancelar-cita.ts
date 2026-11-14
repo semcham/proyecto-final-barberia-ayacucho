@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { type Actor, BarberiasApi, ClientesApi } from '../../../acceso-barberias';
-import { SuscripcionesApi } from '../../../suscripciones-pagos';
+import { AdelantosApi, SuscripcionesApi } from '../../../suscripciones-pagos';
 import { AuditLog, BusDeEventos, Clock, TenantId, UnitOfWork, ZonaHoraria } from '../../../../shared';
 import { AutorizacionCatalogoCitas } from '../../catalogo/application/autorizacion';
 import { CatalogQuery } from '../../catalogo/application/ports/catalog-query';
@@ -30,6 +30,7 @@ export class CancelarCita {
     private readonly auditoria: AuditLog,
     private readonly suscripciones: SuscripcionesApi,
     private readonly eventos: BusDeEventos,
+    private readonly adelantos: AdelantosApi,
   ) {}
 
   async ejecutar(actor: Actor, citaId: string, motivo?: string | null): Promise<CitaVista> {
@@ -67,7 +68,8 @@ export class CancelarCita {
   ): Promise<CitaVista> {
     const agenda = await this.barberias.configuracionAgenda();
     const anterior = cita.estado;
-    cita.cancelar(quien, this.reloj.ahora(), agenda.antelacionCancelacionMinutos, motivo);
+    const ahora = this.reloj.ahora();
+    cita.cancelar(quien, ahora, agenda.antelacionCancelacionMinutos, motivo);
     await this.citas.actualizarEstado(cita, anterior, quien.usuarioId);
     await this.auditoria.registrar({
       accion: via === 'ENLACE' ? 'CITA_CANCELADA_ENLACE' : 'CITA_CANCELADA',
@@ -75,6 +77,21 @@ export class CancelarCita {
       recurso: `cita:${cita.id}`,
       resultado: 'PERMITIDO',
     });
+    // 008 (T058; research R10): con la cita ya bloqueada, el adelanto queda ANULADO, POR_DEVOLVER o RETENIDO (la tardía
+    // es la regla de antelación de 002). Por enlace, la misma regla que el cliente con sesión.
+    const adelanto = await this.adelantos.alCancelar(
+      cita.id,
+      { porCliente: quien.rol === 'CLIENTE', tardia: cita.cancelacionTardia },
+      ahora,
+    );
+    if (adelanto) {
+      await this.auditoria.registrar({
+        accion: 'ADELANTO_RESUELTO',
+        actorId: quien.usuarioId,
+        recurso: `cita:${cita.id};${adelanto}`,
+        resultado: 'PERMITIDO',
+      });
+    }
     // T089 (004, R09): una cita cancelada no se recuerda.
     await anularRecordatorio(this.eventos, cita.id);
 
@@ -93,6 +110,8 @@ export class CancelarCita {
         zonaHoraria: agenda.zonaHoraria,
         canceladaPor: quien.rol,
         tardia: cita.cancelacionTardia,
+        // contracts/eventos.md §2 de 008: el adelanto, solo si queda por devolver o retenido (el aviso lo menciona).
+        ...((adelanto === 'POR_DEVOLVER' || adelanto === 'RETENIDO') && { adelanto }),
       },
     });
     return aVista(cita, agenda, barbero?.nombre ?? '');

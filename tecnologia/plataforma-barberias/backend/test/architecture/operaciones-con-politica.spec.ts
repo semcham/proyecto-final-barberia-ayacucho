@@ -70,14 +70,15 @@ describe('Operaciones con la política de la suscripción (PR14, T055)', () => {
     fuentes.map((f) => cuerpoDeClase(f, nombre)).find((c) => c !== null) ?? null;
 
   it('el contrato lista los casos de uso de M01, M02 y M03', () => {
-    // 18: los 14 de 003, ReprogramarCita (004: T042, T051) y los tres del adelanto (008: T044).
-    expect(casos.size).toBe(18);
+    // 19: los 14 de 003, ReprogramarCita (004: T042, T051) y los cuatro del adelanto (008: T044 y T057).
+    expect(casos.size).toBe(19);
     expect(casos.get('ReservarCita')).toBe('RESERVAR');
     expect(casos.get('ReprogramarCita')).toBe('RESERVAR');
     expect(casos.get('RegenerarActivacion')).toBe('GESTIONAR_USUARIOS');
     expect(casos.get('ConfirmarAdelanto')).toBe('GESTIONAR_CITAS');
     expect(casos.get('RechazarPagoDeAdelanto')).toBe('GESTIONAR_CITAS');
     expect(casos.get('ConfigurarAdelanto')).toBe('CONFIGURAR_CATALOGO');
+    expect(casos.get('MarcarAdelantoDevuelto')).toBe('GESTIONAR_CITAS');
   });
 
   it('cada caso de uso de §2 llama a exigirOperacion con su acción', () => {
