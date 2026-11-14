@@ -107,8 +107,8 @@ Si hay atraso, se recorta **profundidad o acabado** dentro de cada funcionalidad
 | ADR-025 | Bus de eventos con salida transaccional (_outbox_). **Aceptado el 2026-11-04; implementado (004)**                                                                              | 004           |
 | ADR-026 | Proveedor de correo (Mailpit en desarrollo; producción por verificar) y WhatsApp tras `NotificationChannel`. **Aceptado el 2026-11-04; implementado (004), sin proveedores reales** | 004           |
 | ADR-032 | Acciones sobre una cita por enlace firmado, sin sesión (con la enmienda 1.4.0 del principio III). **Aceptado el 2026-11-04; implementado (004)**                                | 004           |
-| ADR-027 | Proveedor de IA (OpenRouter solo en desarrollo; producción por decidir; política de datos). **Por escribir**                                                                    | 005           |
-| ADR-028 | Contrato del asistente: respuestas con datos de las herramientas, cuotas por usuario y por barbería, defensa ante inyección. **Por escribir**                                   | 005           |
+| ADR-027 | Proveedor de IA (OpenRouter solo en desarrollo; producción por decidir; política de datos). **Aceptado (2026-11-14)**, con el plan de 005                                                                     | 005           |
+| ADR-028 | Contrato del asistente: respuestas con datos de las herramientas, cuotas por usuario y por barbería, defensa ante inyección. **Aceptado (2026-11-14)**, con el plan de 005                                    | 005           |
 | ADR-033 | Adelanto de reserva por QR de la barbería con verificación manual (con la enmienda 1.5.0 del principio V). **Aceptado el 2026-11-12**                                                         | 008           |
 
 ### 3.4 Riesgos del plan

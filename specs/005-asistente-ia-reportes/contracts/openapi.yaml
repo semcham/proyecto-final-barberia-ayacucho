@@ -1,0 +1,256 @@
+openapi: 3.1.0
+info:
+  title: Plataforma de barberías · 005 Asistente de IA y reportes
+  version: 0.1.0
+  description: >
+    Rutas nuevas de M04 (research R11). La barbería sale siempre del token (principio III); ninguna ruta recibe
+    tenant, barbería ni identificadores de otros clientes. El asistente solo lee: nunca reserva ni cambia datos.
+    Las respuestas del asistente las compone el backend con los datos de sus herramientas (research R03).
+servers:
+  - url: /api/v1
+security:
+  - barberia: []
+
+paths:
+  /asistente/mensajes:
+    post:
+      tags: [Asistente]
+      summary: Una pregunta al asistente (CLIENTE, US1; PROPIETARIO, US3). Las herramientas dependen del rol del token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PreguntaAsistente" }
+      responses:
+        "200":
+          description: Respuesta compuesta con los datos de una herramienta (o que no hay dato)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RespuestaAsistente" }
+        "401": { description: Sin sesión }
+        "403": { description: "ACCESO_DENEGADO: el rol no tiene asistente (barbero; el propietario si US3 no está)" }
+        "422":
+          description: VALIDACION (pregunta vacía, de más de 500 caracteres, o contexto de más de 6 intervenciones)
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "429":
+          description: CUOTA_ASISTENTE_AGOTADA (del usuario o de la barbería), con Retry-After
+          headers:
+            Retry-After: { schema: { type: integer }, description: Segundos hasta el reinicio (medianoche de la barbería) }
+          content: { application/json: { schema: { $ref: "#/components/schemas/ErrorCuota" } } }
+        "503":
+          description: ASISTENTE_NO_DISPONIBLE (proveedor caído, lento o circuito abierto), con la alternativa manual
+          content: { application/json: { schema: { $ref: "#/components/schemas/ErrorNoDisponible" } } }
+
+  /reportes:
+    get:
+      tags: [Reportes]
+      summary: Reportes de la barbería por período (US2). Solo PROPIETARIO. Sin IA
+      parameters:
+        - { name: desde, in: query, required: true, schema: { type: string, format: date }, description: Fecha local de la barbería, incluida }
+        - { name: hasta, in: query, required: true, schema: { type: string, format: date }, description: Fecha local de la barbería, incluida }
+      responses:
+        "200":
+          description: Las tres tablas del período
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ReportesDelPeriodo" }
+        "401": { description: Sin sesión }
+        "403": { description: ACCESO_DENEGADO (barbero o cliente) }
+        "422":
+          description: VALIDACION (formato, desde > hasta, o más de 366 días)
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+components:
+  securitySchemes:
+    barberia: { type: http, scheme: bearer, bearerFormat: JWT }
+
+  schemas:
+    Error:
+      type: object
+      required: [codigo, mensaje, detalles]
+      properties:
+        codigo: { type: string }
+        mensaje: { type: string }
+        detalles: { type: array, items: { type: object } }
+
+    ErrorCuota:
+      allOf:
+        - { $ref: "#/components/schemas/Error" }
+        - type: object
+          required: [alcance, reiniciaEn]
+          properties:
+            alcance: { type: string, enum: [USUARIO, BARBERIA] }
+            reiniciaEn: { type: string, format: date-time, description: Medianoche siguiente de la barbería, con su desplazamiento }
+
+    ErrorNoDisponible:
+      allOf:
+        - { $ref: "#/components/schemas/Error" }
+        - type: object
+          required: [alternativa]
+          properties:
+            alternativa: { $ref: "#/components/schemas/Alternativa" }
+
+    Alternativa:
+      type: object
+      required: [tipo]
+      description: El flujo manual que ofrece la interfaz (reservar para el cliente; reportes para el propietario)
+      properties:
+        tipo: { type: string, enum: [RESERVAR, REPORTES] }
+
+    Intervencion:
+      type: object
+      required: [de, texto]
+      additionalProperties: false
+      properties:
+        de: { type: string, enum: [USUARIO, ASISTENTE] }
+        texto: { type: string, maxLength: 500 }
+
+    PreguntaAsistente:
+      type: object
+      required: [mensaje]
+      additionalProperties: false
+      properties:
+        mensaje: { type: string, minLength: 1, maxLength: 500 }
+        contexto:
+          type: array
+          maxItems: 6
+          description: Las últimas intervenciones de la conversación abierta (el servidor no guarda historial)
+          items: { $ref: "#/components/schemas/Intervencion" }
+
+    RespuestaAsistente:
+      type: object
+      required: [texto, resultado, cuota]
+      properties:
+        texto: { type: string, description: Compuesto por el backend con plantillas y los datos de la herramienta }
+        resultado: { type: string, enum: [RESPONDIDA, SIN_DATOS, FUERA_DE_ALCANCE, ACCION_NO_PERMITIDA] }
+        datos:
+          description: Lo que devolvió la herramienta (para mostrarlo como lista o tabla), o ausente
+          oneOf:
+            - { $ref: "#/components/schemas/DatosServicios" }
+            - { $ref: "#/components/schemas/DatosBarberos" }
+            - { $ref: "#/components/schemas/DatosHorarios" }
+            - { $ref: "#/components/schemas/DatosResumenCitas" }
+            - { $ref: "#/components/schemas/DatosServiciosMasPedidos" }
+        sugerencia:
+          description: Acción que ofrece la interfaz (nunca la ejecuta el asistente)
+          type: object
+          properties:
+            tipo: { type: string, enum: [RESERVAR, MIS_CITAS, REPORTES, CONTACTAR_BARBERIA] }
+        cuota:
+          type: object
+          required: [restantesUsuario, restantesBarberia, reiniciaEn]
+          properties:
+            restantesUsuario: { type: integer, minimum: 0 }
+            restantesBarberia: { type: integer, minimum: 0 }
+            reiniciaEn: { type: string, format: date-time }
+
+    DatosServicios:
+      type: object
+      required: [tipo, servicios]
+      properties:
+        tipo: { const: SERVICIOS }
+        servicios:
+          type: array
+          items:
+            type: object
+            required: [servicioId, nombre, precio, duracionMinutos]
+            properties:
+              servicioId: { type: string, format: uuid }
+              nombre: { type: string }
+              precio: { type: string, description: Soles, decimal como texto }
+              duracionMinutos: { type: integer }
+              descripcion: { type: [string, "null"] }
+
+    DatosBarberos:
+      type: object
+      required: [tipo, servicio, barberos]
+      properties:
+        tipo: { const: BARBEROS }
+        servicio: { type: object, required: [servicioId, nombre], properties: { servicioId: { type: string }, nombre: { type: string } } }
+        barberos:
+          type: array
+          items: { type: object, required: [barberoId, nombre], properties: { barberoId: { type: string }, nombre: { type: string } } }
+
+    DatosHorarios:
+      type: object
+      required: [tipo, servicio, fecha, horas]
+      properties:
+        tipo: { const: HORARIOS }
+        servicio: { type: object, required: [servicioId, nombre], properties: { servicioId: { type: string }, nombre: { type: string } } }
+        fecha: { type: string, format: date, description: La fecha exacta usada, en la zona de la barbería }
+        horas:
+          type: array
+          description: Exactamente las del cálculo de horarios libres de la barbería (FR-017)
+          items:
+            type: object
+            required: [inicio, barberos]
+            properties:
+              inicio: { type: string, format: date-time }
+              barberos: { type: array, items: { type: object, required: [barberoId, nombre], properties: { barberoId: { type: string }, nombre: { type: string } } } }
+
+    DatosResumenCitas:
+      type: object
+      required: [tipo, periodo, citas]
+      properties:
+        tipo: { const: RESUMEN_CITAS }
+        periodo: { $ref: "#/components/schemas/Periodo" }
+        citas: { $ref: "#/components/schemas/ConteosDeCitas" }
+
+    DatosServiciosMasPedidos:
+      type: object
+      required: [tipo, periodo, servicios]
+      properties:
+        tipo: { const: SERVICIOS_MAS_PEDIDOS }
+        periodo: { $ref: "#/components/schemas/Periodo" }
+        servicios: { type: array, items: { $ref: "#/components/schemas/ServicioSolicitado" } }
+
+    Periodo:
+      type: object
+      required: [desde, hasta, zonaHoraria]
+      properties:
+        desde: { type: string, format: date }
+        hasta: { type: string, format: date }
+        zonaHoraria: { type: string }
+
+    ConteosDeCitas:
+      type: object
+      required: [total, pendientes, confirmadas, completadas, noAsistio, canceladas, canceladasTardias]
+      properties:
+        total: { type: integer }
+        pendientes: { type: integer }
+        confirmadas: { type: integer }
+        completadas: { type: integer }
+        noAsistio: { type: integer }
+        canceladas: { type: integer }
+        canceladasTardias: { type: integer, description: Incluidas en canceladas }
+
+    ServicioSolicitado:
+      type: object
+      required: [nombre, citas]
+      properties:
+        nombre: { type: string, description: El nombre que tenía la cita al reservarse }
+        citas: { type: integer }
+
+    ReportesDelPeriodo:
+      type: object
+      required: [periodo, citas, serviciosMasSolicitados, actividad]
+      properties:
+        periodo: { $ref: "#/components/schemas/Periodo" }
+        citas: { $ref: "#/components/schemas/ConteosDeCitas" }
+        serviciosMasSolicitados:
+          type: array
+          maxItems: 10
+          items: { $ref: "#/components/schemas/ServicioSolicitado" }
+        actividad:
+          type: object
+          required: [porBarbero, porDiaDeSemana, cancelacionesTardias, noAsistencias]
+          properties:
+            porBarbero:
+              type: array
+              items: { type: object, required: [barbero, citas], properties: { barbero: { type: string }, citas: { type: integer } } }
+            porDiaDeSemana:
+              type: array
+              description: Siete filas, de lunes (1) a domingo (7), en la zona de la barbería
+              items: { type: object, required: [dia, citas], properties: { dia: { type: integer, minimum: 1, maximum: 7 }, citas: { type: integer } } }
+            cancelacionesTardias: { type: integer }
+            noAsistencias: { type: integer }

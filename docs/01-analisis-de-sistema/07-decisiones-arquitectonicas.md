@@ -32,6 +32,8 @@ Un ADR registra **qué** se decidió, **por qué**, qué alternativas se descart
 | ADR-024 | Tareas programadas sin duplicados entre instancias                      | DA04, DA05             | Vencer suscripciones y conciliar pagos con dos réplicas sin repetir efectos                              | Ejecutor en cada réplica con candado de PostgreSQL y transiciones condicionales por barbería. **Aceptado (2026-10-24)**                                                                                                                                    |
 | ADR-025 | Salida transaccional de eventos (outbox) en PostgreSQL                  | DA04, DA05, DA09       | Ningún aviso de una operación guardada puede perderse ni duplicarse con dos réplicas                     | `outbox_event` escrito en la misma transacción; despacho con `SKIP LOCKED` y manejadores idempotentes; reintentos y circuito. **Aceptado (2026-11-04); implementado (004)**                                                                                |
 | ADR-026 | Correo y WhatsApp detrás de `NotificationChannel`                       | DA05, DA09, DA11       | Enviar de forma verificable sin proveedores contratados y sin cambiar las reglas al contratarlos         | SMTP con `nodemailer` contra Mailpit (producción por verificar); WhatsApp simulado en proceso aparte; suite de contrato del puerto. **Aceptado (2026-11-04); implementado (004), sin proveedores reales**                                                 |
+| ADR-027 | Proveedor de IA: OpenRouter solo en desarrollo y política de datos      | DA08, DA09             | El asistente necesita un modelo de lenguaje sin contrato de producción y sin exponer datos personales     | Puerto `AIProvider`; proveedor falso en pruebas y CI; OpenRouter solo en desarrollo, con la llave en la configuración del servidor y solo datos de prueba; el servidor no arranca con OpenRouter en producción. **Aceptado (2026-11-14); planificado (005)** |
+| ADR-028 | Contrato del asistente: intención estructurada, cuotas y defensa ante inyección | DA08, DA09, DA11 | Ninguna cifra ni horario puede venir del modelo, ni una instrucción escrita puede cambiar sus reglas      | El modelo solo devuelve una intención cerrada; el backend ejecuta la herramienta del rol y compone la respuesta con plantillas; cuotas atómicas en PostgreSQL; registro sin texto; PR19. **Aceptado (2026-11-14); planificado (005)** |
 | ADR-029 | Caché compartida con claves por barbería y límite general compartido    | DA01, DA03, DA05       | Varias réplicas necesitan la misma caché del catálogo y el mismo conteo por IP, sin mezclar barberías    | Redis sin persistencia; claves solo con `ClavesCache` y `TenantId`; nada por `slug`; invalidación tras confirmar con generación; contadores por IP con respaldo por instancia. **Aceptado (2026-10-19)**                                                   |
 | ADR-030 | Balanceo local con Nginx como representación de ADR-006                 | DA03, DA04, DA05       | Demostrar reparto y tolerancia a la caída de una réplica sin costo de nube                               | Nginx con dos réplicas de IP fija, comprobación pasiva, XFF sobrescrito, `/salud/listo`; equivale al ALB documentado. **Aceptado (2026-10-19)**                                                                                                            |
 | ADR-031 | Operaciones del administrador de la plataforma fuera de las barberías   | DA01, DA11             | El administrador opera sobre todas las barberías sin pertenecer a ninguna                                | Identidad y token de plataforma sin tenant, con TOTP obligatorio; lectura entre barberías con un rol `NOBYPASSRLS` por columna; escrituras con el tenant fijado. **Aceptado (2026-10-24), con la enmienda 1.3.0 y la aclaración 1.3.1 de la constitución** |
@@ -597,6 +599,112 @@ Un ADR registra **qué** se decidió, **por qué**, qué alternativas se descart
   - PR14 suma reglas (entre ellas, `simulador-whatsapp-fuera-del-monolito`);
   - `tecnologias.md` lista Mailpit y `nodemailer` ([§5.7](../02-arquitectura-software/tecnologias.md)).
   - Detalle en `specs/004-notificaciones-reprogramacion/decisiones/ADR-026-correo-y-whatsapp.md` y `contracts/notification-channel.md`.
+
+## ADR-027 Proveedor de IA: OpenRouter solo en desarrollo y política de datos
+
+- **Estado:** Aceptado (decisión del responsable, 2026-11-14), con el plan de la funcionalidad [005](../../specs/005-asistente-ia-reportes/plan.md). Planificado; no hay código.
+- **Contexto:**
+  - RF27 y RF28 piden un asistente de IA; ADR-008 fija el puerto `AIProvider` y las herramientas cerradas.
+  - No hay contrato con un proveedor de IA de producción, y el presupuesto es mínimo (RC06, RC11; DA09).
+  - Cada pregunta enviada a un proveedor externo sale de la plataforma. La Ley N.° 29733 exige minimizar los datos personales.
+  - Las pruebas y la CI no pueden depender de la red, de una llave ni de un modelo que responda distinto cada vez.
+- **Problema:** ¿con qué proveedor se construye y se demuestra el asistente, y qué datos pueden enviársele?
+- **Alternativas:**
+  - (a) Un proveedor de producción ya contratado: no lo hay, y contratarlo no cabe en el plazo.
+  - (b) **OpenRouter solo en desarrollo**, detrás de `AIProvider`, con un proveedor falso en las pruebas.
+  - (c) Un modelo local en el equipo: pesado para el equipo de desarrollo y con latencia incierta.
+- **Decisión:** opción (b).
+  1. **Puerto `AIProvider`** en M04 (`asistente/application/ports/`), con tres adaptadores:
+     - `ProveedorIAFalso`: determinista, sin red, con modos de prueba; es el de las pruebas y la CI;
+     - `ProveedorIAOpenRouter`: solo desarrollo, HTTP con `fetch` nativo, sin dependencias nuevas;
+     - `ProveedorIANinguno`: sin proveedor configurado; responde siempre "no disponible".
+  2. **Configuración solo del servidor:**
+     - `IA_PROVEEDOR`: `falso`, `openrouter` o `ninguno`; por defecto `ninguno`;
+     - `IA_OPENROUTER_LLAVE` (secreto) e `IA_OPENROUTER_MODELO`;
+     - `IA_TIEMPO_LIMITE_MS`.
+
+     La llave **nunca** entra al repositorio: `.env.example` la lleva vacía, y `.env` no está en git. Con `IA_PROVEEDOR=openrouter` y `NODE_ENV=production`, el servidor **no arranca**.
+  3. **Política de datos:**
+     - en desarrollo, solo datos de prueba, nunca datos reales de clientes;
+     - al proveedor van solo las instrucciones fijas, la fecha y la zona horaria de la barbería, la pregunta y hasta 6 intervenciones previas;
+     - **nunca** van el catálogo, nombres ni datos de contacto de clientes, datos de otras barberías, el tenant ni secretos;
+     - la llave y el contenido de las preguntas no aparecen en los registros.
+  4. **Resiliencia (ADR-012):**
+     - tiempo límite de 2,5 s por llamada;
+     - un reintento ante 429 o 5xx inmediatos, dentro de un presupuesto total de 3 s;
+     - el `Interruptor` de M06 se abre tras 5 fallos en 60 s, con pausa de 30 s.
+
+     Si falla, la respuesta es 503 `ASISTENTE_NO_DISPONIBLE` con la alternativa manual en ≤ 3 s.
+- **Justificación:** se puede construir y demostrar el asistente sin contrato, sin costo fijo y sin datos reales. Las pruebas son deterministas, y cambiar de proveedor es escribir un adaptador nuevo que pase la misma suite de contrato (PR20).
+- **Ventajas:** costo bajo y variable en desarrollo; modelo intercambiable; CI sin red.
+- **Desventajas:** no hay proveedor de producción. La demostración con OpenRouter depende de la red y de su servicio, y queda como paso opcional de la guía rápida.
+- **Riesgos:**
+  - R09, datos personales hacia un tercero. **Mitigación:** solo datos de prueba, minimización y el bloqueo en producción.
+  - R11, costo. **Mitigación:** cuotas de ADR-028.
+- **Evolución:** elegir el proveedor de producción con su política de datos (retención, uso para entrenamiento, región) y su adaptador, que pase PR20. Si el responsable lo pide, puede elevarse a la constitución con una enmienda MINOR del principio VI ("el proveedor de IA de producción MUST tener aprobada su política de datos"): **propuesta, no aplicada**.
+- **Drivers:** DA08, DA09.
+- **Consecuencias:**
+  - `.env.example` suma las variables `IA_*`;
+  - `tecnologias.md` registra OpenRouter como servicio de desarrollo, sin dependencias nuevas;
+  - PR14 suma `ia-solo-por-puerto`;
+  - PR20 corre la suite del puerto contra el falso, y contra OpenRouter solo con llave (si no, se omite).
+
+## ADR-028 Contrato del asistente: intención estructurada, cuotas y defensa ante inyección
+
+- **Estado:** Aceptado (decisión del responsable, 2026-11-14), con el plan de 005. Planificado; no hay código.
+- **Contexto:**
+  - ADR-008 decide que el orquestador convierte la solicitud en una **intención estructurada** y ejecuta herramientas cerradas.
+  - Faltaba fijar qué devuelve el modelo, quién redacta la respuesta, cómo se limitan el uso y el costo, y cómo se demuestra la defensa ante inyección.
+  - La especificación de 005 exige:
+    - ninguna cifra ni horario sin una herramienta (FR-001);
+    - la barbería del token (FR-004);
+    - las instrucciones del usuario tratadas como datos (FR-006);
+    - cuotas por usuario y por barbería (FR-007);
+    - un registro sin el texto (FR-010).
+- **Problema:** ¿cómo se garantiza que el asistente no invente datos ni se salga de la barbería y del rol, aunque el modelo se equivoque o lo engañen?
+- **Alternativas:**
+  - (a) Agente con llamadas a herramientas y respuesta redactada por el modelo, con verificación posterior del texto.
+  - (b) **El modelo solo clasifica: devuelve una intención y sus argumentos; el backend ejecuta y redacta con plantillas.**
+- **Decisión:** opción (b).
+  1. **Intención cerrada:**
+     - el modelo devuelve solo `{ intencion, argumentos }` según un esquema sin propiedades extra;
+     - las intenciones son de cada rol: el cliente tiene `servicios`, `barberos` y `horarios_libres`; el propietario, `resumen_citas` y `servicios_mas_pedidos`;
+     - más `fuera_de_alcance` y `accion_no_permitida`;
+     - el esquema no admite barbería, tenant ni identificadores;
+     - lo que no cumple el esquema, o no es del rol, es `FUERA_DE_ALCANCE`.
+  2. **Ejecución y respuesta en el backend:**
+     - los argumentos (servicio, barbero, fecha o período) se resuelven dentro de la barbería del token;
+     - la herramienta es de solo lectura y usa casos de uso existentes, por `CatalogoCitasApi` de M02 y los reportes de M04;
+     - la respuesta se compone **con plantillas y los datos de la herramienta**, y el texto del modelo no llega al usuario;
+     - las cifras del propietario salen del mismo caso de uso que los reportes.
+  3. **Cuotas:**
+     - 20 preguntas por usuario y 200 por barbería al día, iguales para todos los planes y reiniciadas a medianoche de la zona horaria de la barbería;
+     - se suman de forma atómica en PostgreSQL (`assistant_quota`, con la suma condicionada al límite), compartidas entre réplicas, y no se reinician al cerrar sesión;
+     - si falla el proveedor, se devuelve la unidad;
+     - agotada, la respuesta es 429 `CUOTA_ASISTENTE_AGOTADA` con la hora de reinicio;
+     - una cuota según el plan queda como evolución.
+  4. **Registro y auditoría:**
+     - `assistant_question` guarda el rol, la intención, el resultado, la duración y los tokens, **sin el texto** de la pregunta, de la respuesta ni de los argumentos;
+     - `audit_log` registra `ASISTENTE_CONSULTADO` y `REPORTES_CONSULTADOS`.
+  5. **Defensa ante inyección:**
+     - por diseño: el modelo no tiene datos ni herramientas, el catálogo no se le envía, el esquema es cerrado, el tenant sale del token y las herramientas solo leen;
+     - **PR19** con 12 casos adversariales, corridos con el proveedor falso en modo normal y en modo "modelo engañado" (devuelve intenciones o argumentos maliciosos);
+     - se comprueba: 0 datos de otra barbería ni de otros clientes, 0 escrituras y 0 texto del modelo en la respuesta.
+- **Justificación:**
+  - FR-001 se cumple por construcción, sin verificar texto libre número por número;
+  - una sola llamada al proveedor cabe en los 3 s de SC-003;
+  - la seguridad no depende de que el modelo obedezca.
+- **Ventajas:** respuestas siempre trazables a una herramienta; la defensa se puede probar de forma determinista; costo acotado.
+- **Desventajas:** respuestas menos conversacionales; las preguntas que no encajan en una intención reciben "no tengo ese dato".
+- **Riesgos:**
+  - R10, respuestas incorrectas o inyección. **Mitigación:** esquema cerrado, plantillas y PR19.
+  - R11, costo. **Mitigación:** cuotas.
+- **Drivers:** DA08, DA09, DA11.
+- **Consecuencias:**
+  - la migración 0031 crea `assistant_quota` y `assistant_question` con RLS;
+  - M02 expone `CatalogoCitasApi`, solo de lectura;
+  - PR14 suma `matriz-m04`, `nadie-llama-a-m04`, `ia-solo-por-puerto` y `reportes-sin-ia`;
+  - el contrato está en `specs/005-asistente-ia-reportes/contracts/asistente.md`.
 
 ## ADR-029 Caché compartida con claves por barbería y límite general compartido
 
