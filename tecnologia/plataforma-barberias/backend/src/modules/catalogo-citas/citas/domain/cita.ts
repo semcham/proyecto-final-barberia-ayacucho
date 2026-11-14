@@ -260,6 +260,21 @@ export class Cita {
     this.datos = { ...this.datos, confirmadaPorClienteEn: ahora };
   }
 
+  /**
+   * 008 (T051; FR-016, FR-018): la tarea vencer-adelantos cancela la cita PENDIENTE cuyo adelanto venció (sin pago a
+   * la hora límite, o con el pago sin revisar al límite máximo adicional). Nunca es tardía y no tiene autor: la
+   * cancela la plataforma. Sube la versión, como toda cancelación.
+   */
+  vencerAdelanto(ahora: Date): void {
+    this.transicion('CANCELADA', this.datos.estado === 'PENDIENTE');
+    this.datos = {
+      ...this.datos,
+      version: this.version + 1,
+      cancelacionTardia: false,
+      cancelacion: { por: null, en: ahora, motivo: null },
+    };
+  }
+
   /** PENDIENTE → CONFIRMADA. */
   aprobar(): void {
     this.transicion('CONFIRMADA', this.datos.estado === 'PENDIENTE');

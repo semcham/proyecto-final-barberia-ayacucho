@@ -135,6 +135,17 @@ export class KyselyAdelantoRepository extends AdelantoRepository {
     return fila ? aAdelanto(fila) : null;
   }
 
+  async citaDe(adelantoId: string): Promise<string | null> {
+    const fila = await this.uow
+      .transaccionActual()
+      .selectFrom('booking_deposit')
+      .select('appointment_id')
+      .where('tenant_id', '=', this.tenant())
+      .where('id', '=', adelantoId)
+      .executeTakeFirst();
+    return fila?.appointment_id ?? null;
+  }
+
   async deCitas(citaIds: readonly string[]): Promise<AdelantoGuardado[]> {
     if (citaIds.length === 0) return [];
     const filas = await this.uow

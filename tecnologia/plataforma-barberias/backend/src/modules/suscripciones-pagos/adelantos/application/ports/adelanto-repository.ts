@@ -55,6 +55,9 @@ export abstract class AdelantoRepository {
   /** El adelanto de la cita, o null. Con `bloquear`, FOR UPDATE hasta el fin de la transacción. */
   abstract deCita(citaId: string, opciones?: { bloquear?: boolean }): Promise<AdelantoGuardado | null>;
 
+  /** Fase 5 · La cita de un adelanto de la barbería, o null (otro tenant o inexistente: RLS). */
+  abstract citaDe(adelantoId: string): Promise<string | null>;
+
   /** Los adelantos de varias citas (las que no tienen, no aparecen). */
   abstract deCitas(citaIds: readonly string[]): Promise<AdelantoGuardado[]>;
 

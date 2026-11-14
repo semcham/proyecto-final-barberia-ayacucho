@@ -79,6 +79,25 @@ describe('Cita · transiciones', () => {
     expect(() => cita('PENDIENTE').marcarNoAsistio(DESPUES)).toThrow(TransicionInvalida);
   });
 
+  // 008 (T051; FR-016, FR-018): el vencimiento del adelanto cancela la cita pendiente sin marca de tardía ni autor.
+  it('vencerAdelanto: PENDIENTE → CANCELADA, sin tardía ni autor, con la versión + 1', () => {
+    const pendiente = cita('PENDIENTE');
+    pendiente.vencerAdelanto(DESPUES);
+    expect(pendiente.estado).toBe('CANCELADA');
+    expect(pendiente.cancelacionTardia).toBe(false);
+    expect(pendiente.cancelacion).toEqual({ por: null, en: DESPUES, motivo: null });
+    expect(pendiente.version).toBe(2);
+  });
+
+  it.each(['CONFIRMADA', 'COMPLETADA', 'NO_ASISTIO', 'CANCELADA'] as const)(
+    'vencerAdelanto no cambia una cita %s',
+    (estado) => {
+      const c = cita(estado);
+      expect(detalle(() => c.vencerAdelanto(ANTES))).toEqual({ desde: estado, hacia: 'CANCELADA' });
+      expect(c.estado).toBe(estado);
+    },
+  );
+
   it('cambiarA despacha a la transición del estado pedido', () => {
     const c = cita('CONFIRMADA');
     c.cambiarA('NO_ASISTIO', DESPUES);

@@ -23,6 +23,7 @@ import { iniciarMailpit, type Mailpit } from '../../helpers/mailpit';
 import { barberiaParaReservar, fechaEnDias, horaLima } from '../../helpers/reservas';
 import { sesionCliente, tokenPara } from '../../helpers/sesiones';
 import { cerrarPools, poolDe } from '../../helpers/test-db';
+import { EjecutorTareas } from '../../../src/shared';
 
 // T025 de 008 · Avisos del adelanto con Mailpit (US2-2; FR-023, FR-024; SC-008; contracts/eventos.md §3 y §4), por
 // el mecanismo de 004 (salida de eventos, despacho y enviar-avisos): AdelantoSolicitado deja UN correo al cliente
@@ -207,6 +208,74 @@ describe('Avisos del adelanto (T025, US2)', () => {
       ['PAGO_ADELANTO_RECHAZADO', 'CLIENTE'],
       ['PAGO_ADELANTO_REGISTRADO', 'PROPIETARIO'],
     ]);
+  });
+
+  // T048 · Fase 5 (US4): el vencimiento avisa al cliente y al propietario; con el pago sin revisar, que se devuelva.
+  it('al vencer, el cliente y el propietario reciben UN correo cada uno; con el pago sin revisar, "por devolver"', async () => {
+    const { e, cliente, nombre } = await escenario();
+    const { body: sinPago } = await reservar(instancias[0], cliente.token, {
+      servicioId: e.servicioId,
+      barberoId: e.barberoId,
+      inicio: horaLima(dia, '15:00'),
+    }).expect(201);
+    const otro = await sesionCliente(e.barberia.tenantId);
+    const { body: conPago } = await reservar(instancias[0], otro.token, {
+      servicioId: e.servicioId,
+      barberoId: e.barberoId,
+      inicio: horaLima(dia, '16:00'),
+    }).expect(201);
+    const numero = numeroDeOperacion();
+    await registrarPago(instancias[0], otro.token, conPago.id, { numero }).expect(201);
+    // La hora límite y el límite máximo ya pasaron (movidos en la base: la aplicación usa el reloj real).
+    await poolDe('seed').query(
+      `UPDATE booking_deposit SET due_at = now() - interval '2 minutes', review_limit_at = now() - interval '1 minute'
+        WHERE tenant_id = $1`,
+      [e.barberia.tenantId],
+    );
+    await Promise.all(instancias.map((i) => i.app.get(EjecutorTareas).ejecutarAhora('vencer-adelantos')));
+    await Promise.all(instancias.map((i) => correrTareasDeAvisos(i)));
+    await Promise.all(instancias.map((i) => enviarSinCandado(i)));
+
+    const vencido = async (correo: string, n: number) => {
+      const correos = await esperarCorreos(mailpit, correo, n);
+      expect(correos).toHaveLength(n);
+      const encontrado = correos.find((c) => /venci/i.test(c.asunto));
+      if (!encontrado) throw new Error(`Falta el correo de adelanto vencido para ${correo}`);
+      expect(encontrado.contentType).toMatch(/^text\/plain/);
+      return encontrado;
+    };
+    // Cliente sin pago: instrucciones y vencido. Sin "devolver".
+    const alClienteSinPago = await vencido(cliente.cliente.correo as string, 2);
+    for (const parte of [nombre, 'Corte', '15:00', sinPago.adelanto.codigo]) {
+      expect(alClienteSinPago.texto).toContain(parte);
+    }
+    expect(alClienteSinPago.texto).toMatch(/cancel/i);
+    expect(alClienteSinPago.texto).not.toMatch(/devol/i);
+    // Cliente con pago sin revisar: instrucciones y vencido, que la barbería le devolverá el adelanto.
+    const alClienteConPago = await vencido(otro.cliente.correo as string, 2);
+    expect(alClienteConPago.texto).toContain('16:00');
+    expect(alClienteConPago.texto).toMatch(/devol/i);
+    expect(alClienteConPago.texto).not.toContain(numero);
+    // Propietario: un comprobante por revisar y dos vencidos; el de la cita con pago le pide devolverlo.
+    const alPropietario = await esperarCorreos(mailpit, e.barberia.correo, 3);
+    expect(alPropietario).toHaveLength(3);
+    const vencidosPropietario = alPropietario.filter((c) => /venci/i.test(c.asunto));
+    expect(vencidosPropietario).toHaveLength(2);
+    const conDevolucion = vencidosPropietario.find((c) => c.texto.includes('16:00'));
+    expect(conDevolucion?.texto).toMatch(/devol/i);
+    expect(conDevolucion?.texto).toContain(conPago.adelanto.codigo);
+    expect(conDevolucion?.texto).not.toContain(numero);
+    for (const c of vencidosPropietario) {
+      expect(c.texto).toMatch(/horario quedó libre/i);
+      expect(c.texto).not.toContain(cliente.cliente.correo as string);
+      expect(c.texto).not.toContain(otro.cliente.correo as string);
+    }
+
+    const tipos = (await avisosDe(e.barberia.tenantId))
+      .filter((a) => a.kind === 'ADELANTO_VENCIDO')
+      .map((a) => a.recipient_kind)
+      .sort();
+    expect(tipos).toEqual(['CLIENTE', 'CLIENTE', 'PROPIETARIO', 'PROPIETARIO']);
   });
 
   describe('con el correo caído', () => {

@@ -1,5 +1,5 @@
 import { Injectable, type OnApplicationBootstrap } from '@nestjs/common';
-import { PurgarIntentosEnlace } from '../modules/catalogo-citas';
+import { PurgarIntentosEnlace, VencerAdelantos } from '../modules/catalogo-citas';
 import { EnviarAvisos } from '../modules/notificaciones';
 import {
   AvisarFinDePrueba,
@@ -24,6 +24,7 @@ export class TareasProgramadas implements OnApplicationBootstrap {
     private readonly enviarAvisos: EnviarAvisos,
     private readonly purgarIntentosEnlace: PurgarIntentosEnlace,
     private readonly avisarFinDePrueba: AvisarFinDePrueba,
+    private readonly vencerAdelantos: VencerAdelantos,
     private readonly configuracion: Configuracion,
   ) {}
 
@@ -64,6 +65,13 @@ export class TareasProgramadas implements OnApplicationBootstrap {
       nombre: 'avisar-fin-de-prueba',
       intervaloMs: 6 * 60 * 60 * 1000,
       ejecutar: () => this.avisarFinDePrueba.ejecutar(),
+    });
+    // 008 (fase 5, T051; research R09; SC-003): los adelantos sin pago a la hora límite, o sin revisar al límite
+    // máximo adicional, vencen solos y liberan el horario; cada 60 s.
+    this.ejecutor.registrar({
+      nombre: 'vencer-adelantos',
+      intervaloMs: 60 * 1000,
+      ejecutar: () => this.vencerAdelantos.ejecutar(),
     });
     this.ejecutor.iniciar();
   }

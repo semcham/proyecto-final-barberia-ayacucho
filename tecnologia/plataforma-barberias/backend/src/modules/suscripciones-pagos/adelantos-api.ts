@@ -56,10 +56,13 @@ export interface ResumenDeAdelanto {
   devueltoEn: string | null;
 }
 
-/** Un adelanto que la tarea vencer-adelantos debe revisar (research R09). */
+/**
+ * Un adelanto que la tarea vencer-adelantos debe revisar (research R09). Solo lo que el rol de la plataforma puede leer
+ * (id y tenant de booking_deposit, data-model §7): la cita la resuelve `citaDelAdelanto` ya con el tenant y RLS.
+ */
 export interface CandidatoPorVencer {
   tenantId: string;
-  citaId: string;
+  adelantoId: string;
 }
 
 export interface ResultadoDeVencimiento {
@@ -93,17 +96,24 @@ export abstract class AdelantosApi {
   ): Promise<{ efecto: boolean; adelanto: ResumenDeAdelanto }>;
 
   /**
-   * Lo que decide la tarea de vencimiento sobre la cita bloqueada (FR-017, FR-018): VENCIDO, POR_DEVOLVER, o
-   * null si aún no corresponde (o ya se resolvió).
+   * Lo que decide la tarea de vencimiento sobre la cita bloqueada (FR-017, FR-018): bloquea el adelanto y aplica
+   * VENCIDO o POR_DEVOLVER (transición condicional), o devuelve null si aún no corresponde (o ya se resolvió).
    */
   abstract decidirVencimiento(citaId: string, ahora: Date): Promise<ResultadoDeVencimiento | null>;
 
   /**
-   * Candidatos de todas las barberías con la hora límite o el límite máximo adicional cumplidos, en lotes. Es la
-   * única operación fuera de la transacción del llamador: lee con el rol de solo lectura de la plataforma las
-   * cinco columnas técnicas de booking_deposit (ADR-031, research R09).
+   * Candidatos de todas las barberías con la hora límite o el límite máximo adicional cumplidos, en lotes ordenados
+   * por id (`despuesDe`: el último id del lote anterior). Es la única operación fuera de la transacción del llamador:
+   * lee con el rol de solo lectura de la plataforma las cinco columnas técnicas de booking_deposit (ADR-031, R09).
    */
-  abstract porVencer(ahora: Date, lote: number): Promise<readonly CandidatoPorVencer[]>;
+  abstract porVencer(
+    ahora: Date,
+    lote: number,
+    despuesDe: string | null,
+  ): Promise<readonly CandidatoPorVencer[]>;
+
+  /** Fase 5 (US4) · La cita de un adelanto de la barbería de la transacción (con RLS), o null. Sin bloquear. */
+  abstract citaDelAdelanto(adelantoId: string): Promise<string | null>;
 
   /** Al cancelar la cita: ANULADO, POR_DEVOLVER o RETENIDO (research R10). null si la cita no tiene adelanto. */
   abstract alCancelar(

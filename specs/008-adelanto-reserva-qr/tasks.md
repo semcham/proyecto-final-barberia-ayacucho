@@ -148,14 +148,14 @@ description: "Tareas de la funcionalidad 008: adelanto de reserva con QR de la b
 
 ### Pruebas de US4 (escribir primero, deben fallar) ⚠️
 
-- [ ] T048 [P] [US4] Crear `backend/test/integration/adelantos/vencimiento-adelantos.spec.ts` con el reloj de prueba: sin pago → cita CANCELADA sin marca de tardía, horario libre, adelanto VENCIDO; con pago sin revisar al pasar la hora límite → nada cambia; al pasar el límite máximo → CANCELADA y adelanto POR_DEVOLVER; rechazado y sin registro nuevo → VENCIDO; aviso `AdelantoVencido` al cliente y al propietario (con `porDevolver` cuando corresponde); auditoría `ADELANTO_VENCIDO` (US4-1 a US4-4; FR-016–FR-018, FR-029)
-- [ ] T049 [P] [US4] Crear `backend/test/integration/adelantos/vencimiento-adelantos-dos-replicas.spec.ts`: dos instancias corren la tarea a la vez sobre 50 adelantos vencidos → cada cita se cancela una vez y sale un aviso por destinatario; una confirmación a la vez que el vencimiento de la misma cita → exactamente uno de los dos, nunca confirmada y cancelada (PR32; US4-5; FR-015, FR-019; SC-003, SC-006)
+- [X] T048 [P] [US4] Crear `backend/test/integration/adelantos/vencimiento-adelantos.spec.ts` con el reloj de prueba: sin pago → cita CANCELADA sin marca de tardía, horario libre, adelanto VENCIDO; con pago sin revisar al pasar la hora límite → nada cambia; al pasar el límite máximo → CANCELADA y adelanto POR_DEVOLVER; rechazado y sin registro nuevo → VENCIDO; aviso `AdelantoVencido` al cliente y al propietario (con `porDevolver` cuando corresponde); auditoría `ADELANTO_VENCIDO` (US4-1 a US4-4; FR-016–FR-018, FR-029)
+- [X] T049 [P] [US4] Crear `backend/test/integration/adelantos/vencimiento-adelantos-dos-replicas.spec.ts`: dos instancias corren la tarea a la vez sobre 50 adelantos vencidos → cada cita se cancela una vez y sale un aviso por destinatario; una confirmación a la vez que el vencimiento de la misma cita → exactamente uno de los dos, nunca confirmada y cancelada (PR32; US4-5; FR-015, FR-019; SC-003, SC-006)
 
 ### Implementación de US4
 
-- [ ] T050 [US4] En M03: `adelantos/infrastructure/plataforma/adelantos-por-vencer.ts` (lectura de `barberias_plataforma` de las cinco columnas técnicas, en lotes de 100) y `AdelantosApi.porVencer` y `decidirVencimiento` (sin pago → VENCIDO; pago sin revisar y límite alcanzado → POR_DEVOLVER; si no, nada) (research R09)
-- [ ] T051 [US4] En M02: `citas/application/vencer-adelantos.ts` (por cada candidato, transacción con su tenant; bloquea la cita con `SKIP LOCKED` y después el adelanto; cancela la cita sin marca de tardía; publica `AdelantoVencido`; anula el recordatorio), exportado en `catalogo-citas/index.ts` y registrado cada 60 s en `backend/src/host/tareas.ts`
-- [ ] T052 [US4] En M05: plantilla `ADELANTO_VENCIDO` (con la indicación de devolver cuando `porDevolver`) y su caso en `manejadores-de-adelanto.ts`
+- [X] T050 [US4] En M03: `adelantos/infrastructure/plataforma/adelantos-por-vencer.ts` (lectura de `barberias_plataforma` de las cinco columnas técnicas, en lotes de 100) y `AdelantosApi.porVencer` y `decidirVencimiento` (sin pago → VENCIDO; pago sin revisar y límite alcanzado → POR_DEVOLVER; si no, nada) (research R09)
+- [X] T051 [US4] En M02: `citas/application/vencer-adelantos.ts` (por cada candidato, transacción con su tenant; bloquea la cita con `SKIP LOCKED` y después el adelanto; cancela la cita sin marca de tardía; publica `AdelantoVencido`; anula el recordatorio), exportado en `catalogo-citas/index.ts` y registrado cada 60 s en `backend/src/host/tareas.ts`
+- [X] T052 [US4] En M05: plantilla `ADELANTO_VENCIDO` (con la indicación de devolver cuando `porDevolver`) y su caso en `manejadores-de-adelanto.ts`
 - [ ] T053 [US4] Cierre de fase 5: suite completa, `npm run test:arch` y CI en verde. Commit: `feat(008): vencimiento automático del adelanto (fase 5, US4)`
 
 **Checkpoint**: ningún horario queda retenido sin pago, y un pago registrado no se pierde por el vencimiento.

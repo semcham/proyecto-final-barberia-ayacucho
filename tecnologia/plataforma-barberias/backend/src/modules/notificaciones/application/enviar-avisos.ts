@@ -258,6 +258,7 @@ export class EnviarAvisos {
       return componerAvisoDeAdelanto(
         aviso.tipo,
         datosDeAdelanto(payload, await this.barberias.nombre(), enlace),
+        aviso.destinatario.tipo,
       );
     }
     const datos = datosDelEvento(payload, await this.barberias.nombre());

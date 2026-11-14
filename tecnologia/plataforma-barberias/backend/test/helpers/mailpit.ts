@@ -1,5 +1,6 @@
 import { createServer, type Server, type Socket } from 'node:net';
 import type { AddressInfo } from 'node:net';
+import { createTransport } from 'nodemailer';
 import { GenericContainer, type StartedTestContainer, Wait } from 'testcontainers';
 
 // T017 de 004 · Buzón de correo de las pruebas (ADR-026, research R16): Mailpit en Testcontainers, con los
@@ -40,9 +41,17 @@ interface ResumenApi {
 export async function iniciarMailpit(): Promise<Mailpit> {
   const contenedor: StartedTestContainer = await new GenericContainer(IMAGEN)
     .withExposedPorts(1025, 8025)
+    // Sin la búsqueda inversa del nombre del cliente al abrir cada sesión SMTP (activa por defecto en Mailpit 1.33):
+    // dentro de Docker Desktop esa consulta puede demorar el saludo más que los 5 s que espera la aplicación.
+    .withEnvironment({ MP_SMTP_DISABLE_RDNS: 'true' })
     .withWaitStrategy(Wait.forHttp('/readyz', 8025).forStatusCode(200))
     .start();
-  const host = contenedor.getHost();
+  // Una IP, no un nombre: nodemailer (la aplicación y el calentamiento) resuelve el nombre del servidor SMTP con su
+  // propia consulta DNS, y la de "localhost" en este equipo llegó a tardar 14,5 s y 24 s, o a agotarse ("DNS lookup
+  // for localhost timed out"); la aplicación corta cada envío a los 5 s (CORREO_TIEMPO_LIMITE_MS). Con una IP no
+  // consulta nada. Testcontainers da "localhost" en Docker Desktop, que publica los puertos también en 127.0.0.1.
+  const delContenedor = contenedor.getHost();
+  const host = delContenedor === 'localhost' ? '127.0.0.1' : delContenedor;
   const api = `http://${host}:${contenedor.getMappedPort(8025)}/api/v1`;
 
   async function json<T>(ruta: string): Promise<T> {
@@ -51,9 +60,14 @@ export async function iniciarMailpit(): Promise<Mailpit> {
     return (await respuesta.json()) as T;
   }
 
+  const puertoSmtp = contenedor.getMappedPort(1025);
+  await calentarSmtp(host, puertoSmtp);
+  // El mensaje de calentamiento no debe aparecer en ninguna prueba.
+  await fetch(`${api}/messages`, { method: 'DELETE' });
+
   return {
     host,
-    puertoSmtp: contenedor.getMappedPort(1025),
+    puertoSmtp,
     async mensajesPara(destino) {
       const { messages } = await json<{ messages: ResumenApi[] }>('/messages?limit=500');
       const propios = messages
@@ -81,6 +95,35 @@ export async function iniciarMailpit(): Promise<Mailpit> {
       await contenedor.stop();
     },
   };
+}
+
+/**
+ * `/readyz` solo dice que el HTTP de Mailpit responde, no su SMTP. Un envío de calentamiento, con margen amplio, deja
+ * el SMTP comprobado antes de que empiece cualquier prueba: si falla, el arranque falla con un mensaje claro en lugar
+ * de una prueba que espera un correo que no llega (antes, el primer aviso quedaba en CANAL_NO_DISPONIBLE con un
+ * reintento para más tarde).
+ */
+async function calentarSmtp(host: string, puerto: number): Promise<void> {
+  const transporte = createTransport({
+    host,
+    port: puerto,
+    ignoreTLS: true,
+    connectionTimeout: 60_000,
+    greetingTimeout: 60_000,
+    socketTimeout: 60_000,
+  });
+  try {
+    await transporte.sendMail({
+      from: 'calentamiento@pruebas.local',
+      to: 'calentamiento@pruebas.local',
+      subject: 'calentamiento',
+      text: 'calentamiento del SMTP de las pruebas',
+    });
+  } catch (error) {
+    throw new Error(`El SMTP de Mailpit no respondió al calentamiento: ${String(error)}`);
+  } finally {
+    transporte.close();
+  }
 }
 
 /** Cómo responde el servidor SMTP falso. */

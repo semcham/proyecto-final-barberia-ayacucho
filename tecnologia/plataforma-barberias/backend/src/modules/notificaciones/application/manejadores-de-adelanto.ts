@@ -20,6 +20,7 @@ import { AvisoRepository } from './ports/aviso-repository';
  *
  * Fase 3 (US2): AdelantoSolicitado (al cliente) y PagoDeAdelantoRegistrado (al propietario).
  * Fase 4 (US3): AdelantoConfirmado y PagoDeAdelantoRechazado (al cliente).
+ * Fase 5 (US4): AdelantoVencido (al cliente y al propietario; T052).
  */
 @Injectable()
 export class ManejadoresDeAdelanto {

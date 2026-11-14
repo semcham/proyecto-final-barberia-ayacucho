@@ -12,6 +12,7 @@ import { NoEncontrado } from '../../suscripciones/domain/errores';
 import { Adelanto, type CancelacionDeLaCita, type EstadoAdelanto } from '../domain/adelanto';
 import { PoliticaAdelanto, type ReglaDeAdelanto } from '../domain/politica-adelanto';
 import { AdelantoRepository } from './ports/adelanto-repository';
+import { AdelantosPorVencerLectura } from './ports/adelantos-por-vencer';
 import { ConfiguracionAdelantoRepository } from './ports/configuracion-adelanto-repository';
 import { aResumen } from './vista-adelanto';
 
@@ -25,8 +26,9 @@ function pendienteDeFase(operacion: string, fase: number): never {
 
 /**
  * T029 de 008 · Implementación de AdelantosApi (research R01). Todas sus operaciones corren en la transacción del
- * llamador (M02), con su tenant y RLS. Fase 3 (US2): paraReservar, crear, deCita y deCitas; fase 4 (US3): confirmar
- * y enBandeja; las demás llegan con las fases 5 y 6.
+ * llamador (M02), con su tenant y RLS, salvo porVencer (lectura de la plataforma). Fase 3 (US2): paraReservar, crear,
+ * deCita y deCitas; fase 4 (US3): confirmar y enBandeja; fase 5 (US4): porVencer, citaDelAdelanto y
+ * decidirVencimiento; las demás llegan con la fase 6.
  */
 @Injectable()
 export class AdelantosApiImpl extends AdelantosApi {
@@ -34,6 +36,7 @@ export class AdelantosApiImpl extends AdelantosApi {
     private readonly configuraciones: ConfiguracionAdelantoRepository,
     private readonly adelantos: AdelantoRepository,
     private readonly eventos: BusDeEventos,
+    private readonly porVencerLectura: AdelantosPorVencerLectura,
   ) {
     super();
   }
@@ -152,12 +155,40 @@ export class AdelantosApiImpl extends AdelantosApi {
     return { efecto: decision.efecto, adelanto: resumen as ResumenDeAdelanto };
   }
 
-  decidirVencimiento(_citaId: string, _ahora: Date): Promise<ResultadoDeVencimiento | null> {
-    return pendienteDeFase('decidirVencimiento', 5);
+  /**
+   * T050 · Con la cita ya bloqueada por M02 (research R06), bloquea el adelanto y decide con el dominio (FR-016 a
+   * FR-018): sin pago a la hora límite → VENCIDO; con el pago sin revisar al límite máximo adicional → POR_DEVOLVER
+   * (el registro de pago queda tal cual, sin revisar: el propietario lo verá al devolver). Si aún no corresponde, o
+   * el adelanto ya se resolvió (otra réplica, una confirmación), null sin cambios.
+   */
+  async decidirVencimiento(citaId: string, ahora: Date): Promise<ResultadoDeVencimiento | null> {
+    const adelanto = await this.adelantos.deCita(citaId, { bloquear: true });
+    if (!adelanto) return null;
+    const decision = Adelanto.decidirVencimiento(adelanto.estado, ahora, {
+      horaLimite: adelanto.horaLimite,
+      limiteRevision: adelanto.limiteRevision,
+    });
+    if (!decision) return null;
+    const cambiado = await this.adelantos.cambiarEstado(adelanto.id, {
+      desde: adelanto.estado,
+      hacia: decision.estado,
+      en: ahora,
+    });
+    if (!cambiado) throw new Error('El adelanto cambió durante la transacción a pesar del bloqueo');
+    const resumen = (await this.deCita(citaId)) as ResumenDeAdelanto;
+    return {
+      estado: decision.estado as ResultadoDeVencimiento['estado'],
+      causa: decision.causa,
+      adelanto: resumen,
+    };
   }
 
-  porVencer(_ahora: Date, _lote: number): Promise<readonly CandidatoPorVencer[]> {
-    return pendienteDeFase('porVencer', 5);
+  porVencer(ahora: Date, lote: number, despuesDe: string | null): Promise<readonly CandidatoPorVencer[]> {
+    return this.porVencerLectura.candidatos(ahora, lote, despuesDe);
+  }
+
+  citaDelAdelanto(adelantoId: string): Promise<string | null> {
+    return this.adelantos.citaDe(adelantoId);
   }
 
   alCancelar(

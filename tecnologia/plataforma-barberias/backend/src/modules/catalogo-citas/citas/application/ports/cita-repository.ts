@@ -62,9 +62,10 @@ export abstract class CitaRepository {
   abstract buscarPorIdempotencia(autorId: string, clave: string): Promise<CitaConIdempotencia | null>;
   /**
    * La cita con su fila bloqueada (`FOR UPDATE`) hasta el fin de la transacción, o null: dos cambios de
-   * estado simultáneos se atienden uno después del otro (R10).
+   * estado simultáneos se atienden uno después del otro (R10). Con `saltarSiBloqueada` (008, tarea
+   * vencer-adelantos), `FOR UPDATE SKIP LOCKED`: si otra transacción la tiene, null sin esperar.
    */
-  abstract buscarParaActualizar(id: string): Promise<Cita | null>;
+  abstract buscarParaActualizar(id: string, opciones?: { saltarSiBloqueada?: boolean }): Promise<Cita | null>;
   /**
    * Guarda el estado nuevo (y, si se canceló, quién, cuándo, el motivo y la marca de tardía) y agrega la
    * fila del historial (inmutable) con su autor.

@@ -116,6 +116,9 @@ responsable.
   implementa M03 con la lectura de `barberias_plataforma` sobre cinco columnas técnicas de `booking_deposit`
   (`id`, `tenant_id`, `status`, `due_at`, `review_limit_at`), en lotes de 100. Cada candidato se procesa en una
   transacción con su tenant y RLS (R06).
+  - *Ajuste de la fase 5:* como ese rol no lee `appointment_id`, el candidato es `{ tenantId, adelantoId }` y M02 pide
+    la cita con `AdelantosApi.citaDelAdelanto` ya dentro de la transacción del tenant; `porVencer` recibe además el
+    último id del lote anterior (`despuesDe`), así una cita saltada por estar bloqueada no repite el mismo lote.
 - **Justificación:** SC-003 pide ≤ 5 min; es el patrón de `vencer-suscripciones` y de `enviar-avisos`.
 - **Alternativa descartada:** programar un evento con `disponibleDesde` en la hora límite: el evento se
   despacharía aunque el pago se haya registrado y el manejador tendría que deshacerlo; además, el vencimiento

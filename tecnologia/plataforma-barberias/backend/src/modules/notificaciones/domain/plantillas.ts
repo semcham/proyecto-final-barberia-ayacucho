@@ -261,6 +261,8 @@ export interface DatosDeAdelanto {
   saldoCentimos?: number;
   /** Fase 4: el motivo con el que el propietario rechazó el pago (lo escribió para el cliente). */
   motivo?: string;
+  /** Fase 5: el adelanto venció con el pago registrado y sin revisar: la barbería debe devolverlo si lo recibió. */
+  porDevolver?: boolean;
   /** Dirección de la cita en la aplicación (URL_PUBLICA/mis-citas/<id>/adelanto): pide sesión, no es un secreto. */
   enlaceCita?: string;
 }
@@ -287,6 +289,7 @@ export function datosDeAdelanto(
   if (Number.isInteger(payload.saldoCentimos)) datos.saldoCentimos = payload.saldoCentimos as number;
   const motivo = texto(payload.motivo).trim();
   if (motivo) datos.motivo = motivo;
+  if (payload.porDevolver === true) datos.porDevolver = true;
   if (enlaceCita) datos.enlaceCita = enlaceCita;
   return datos;
 }
@@ -294,8 +297,15 @@ export function datosDeAdelanto(
 const soles = (centimos: number) =>
   new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(centimos / 100);
 
-/** Asunto y texto de un aviso del adelanto para su destinatario. */
-export function componerAvisoDeAdelanto(tipo: TipoAviso, datos: DatosDeAdelanto): MensajeCompuesto {
+/**
+ * Asunto y texto de un aviso del adelanto para su destinatario. `para` solo cambia el texto del aviso de vencido, el
+ * único que va a los dos (contracts/eventos.md §3 de 008).
+ */
+export function componerAvisoDeAdelanto(
+  tipo: TipoAviso,
+  datos: DatosDeAdelanto,
+  para: TipoDestinatario = 'CLIENTE',
+): MensajeCompuesto {
   const { barberia, servicio, inicio, zonaHoraria: zona, montoCentimos, codigo } = datos;
   const detalle = [`Servicio: ${servicio}`, `Barbería: ${barberia}`, `Fecha: ${cuando(inicio, zona)}`];
 
@@ -363,6 +373,35 @@ export function componerAvisoDeAdelanto(tipo: TipoAviso, datos: DatosDeAdelanto)
         'Si no registras un pago válido a tiempo, la reserva se cancela y el horario queda libre.',
       ];
       break;
+    // Fase 5 (US4): la cita se canceló sola (sin pago a la hora límite, o sin revisar al límite máximo adicional).
+    case 'ADELANTO_VENCIDO': {
+      const alCliente = para === 'CLIENTE';
+      const porQue = datos.porDevolver
+        ? 'la barbería no revisó el pago del adelanto a tiempo'
+        : 'no se registró el pago del adelanto antes de la hora límite';
+      asunto = alCliente
+        ? `Tu reserva en ${barberia} venció y se canceló`
+        : `Una reserva con adelanto venció en ${barberia}`;
+      cuerpo = [
+        alCliente
+          ? `Tu cita pendiente se canceló porque ${porQue}. El horario quedó libre.`
+          : `La cita pendiente se canceló sola porque ${porQue}. El horario quedó libre.`,
+        '',
+        ...detalle,
+        `Adelanto: ${soles(montoCentimos)}`,
+        `Código de la reserva: ${codigo}`,
+        ...(datos.porDevolver
+          ? [
+              '',
+              alCliente
+                ? 'Como registraste el pago, la barbería debe devolverte el adelanto si lo recibió.'
+                : 'El cliente registró el pago: si lo recibiste, debes devolver el adelanto. Lo verás en Adelantos por revisar, como por devolver.',
+            ]
+          : []),
+        ...(alCliente ? ['', 'Si aún quieres la cita, puedes reservar de nuevo.'] : []),
+      ];
+      break;
+    }
     default:
       throw new Error(`No hay plantilla de adelanto para el aviso ${tipo}`);
   }

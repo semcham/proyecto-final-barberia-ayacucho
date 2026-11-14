@@ -71,6 +71,7 @@ import { HistorialController } from './citas/presentation/historial.controller';
 import { BandejaAdelantos } from './citas/application/bandeja-adelantos';
 import { ConfirmarAdelanto } from './citas/application/confirmar-adelanto';
 import { AdelantoController } from './citas/presentation/adelanto.controller';
+import { VencerAdelantos } from './citas/application/vencer-adelantos';
 
 /**
  * M02 Catálogo y citas (submódulos catalogo y citas). Matriz de dependencias: M02 → M01 (ADR-020), M03 y
@@ -147,8 +148,10 @@ import { AdelantoController } from './citas/presentation/adelanto.controller';
     // 008 (US3): el propietario confirma el adelanto (la cita pasa a CONFIRMADA) y su bandeja.
     ConfirmarAdelanto,
     BandejaAdelantos,
+    // 008 (US4): la tarea vencer-adelantos.
+    VencerAdelantos,
   ],
-  // PurgarIntentosEnlace: la tarea purgar-intentos-enlaces, que registra el host (host/tareas.ts).
-  exports: [CatalogQuery, PurgarIntentosEnlace],
+  // PurgarIntentosEnlace y VencerAdelantos: tareas que registra el host (host/tareas.ts).
+  exports: [CatalogQuery, PurgarIntentosEnlace, VencerAdelantos],
 })
 export class CatalogoCitasModule {}

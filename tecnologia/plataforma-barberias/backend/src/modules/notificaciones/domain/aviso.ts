@@ -101,6 +101,8 @@ export const DESTINATARIOS_POR_EVENTO_DE_ADELANTO: Readonly<Record<string, reado
   // Fase 4 (US3).
   AdelantoConfirmado: ['CLIENTE'],
   PagoDeAdelantoRechazado: ['CLIENTE'],
+  // Fase 5 (US4): la cita se canceló sola; el horario quedó libre.
+  AdelantoVencido: ['CLIENTE', 'PROPIETARIO'],
 };
 
 /** Plazo de un aviso del adelanto: el de los avisos que no son recordatorio, creación + 24 h. */

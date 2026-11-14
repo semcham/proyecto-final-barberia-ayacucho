@@ -101,8 +101,13 @@ export class CitaRepositoryPostgres extends CitaRepository {
     return fila ? { hashSolicitud: fila.request_hash, cita: aCita(fila) } : null;
   }
 
-  async buscarParaActualizar(id: string): Promise<Cita | null> {
-    const fila = await this.consulta().where('id', '=', id).forUpdate().executeTakeFirst();
+  async buscarParaActualizar(
+    id: string,
+    opciones: { saltarSiBloqueada?: boolean } = {},
+  ): Promise<Cita | null> {
+    let consulta = this.consulta().where('id', '=', id).forUpdate();
+    if (opciones.saltarSiBloqueada) consulta = consulta.skipLocked();
+    const fila = await consulta.executeTakeFirst();
     return fila ? aCita(fila) : null;
   }
 

@@ -77,6 +77,8 @@ import { AdelantoRepository } from './adelantos/application/ports/adelanto-repos
 import { RechazarPagoDeAdelanto } from './adelantos/application/rechazar-pago';
 import { RegistrarPagoDeAdelanto } from './adelantos/application/registrar-pago';
 import { KyselyAdelantoRepository } from './adelantos/infrastructure/kysely-adelanto-repository';
+import { AdelantosPorVencerLectura } from './adelantos/application/ports/adelantos-por-vencer';
+import { AdelantosPorVencerPlataforma } from './adelantos/infrastructure/plataforma/adelantos-por-vencer';
 import { AdelantoCitaController } from './adelantos/presentation/adelanto-cita.controller';
 
 /**
@@ -148,6 +150,8 @@ import { AdelantoCitaController } from './adelantos/presentation/adelanto-cita.c
     ConfigurarAdelanto,
     // 008 (US2): AdelantosApi para M02 (research R01), el registro del pago y la consulta del adelanto.
     { provide: AdelantoRepository, useClass: KyselyAdelantoRepository },
+    // 008 fase 5 (T050): candidatos de vencer-adelantos con la lectura de la plataforma (cinco columnas).
+    { provide: AdelantosPorVencerLectura, useClass: AdelantosPorVencerPlataforma },
     { provide: AdelantosApi, useClass: AdelantosApiImpl },
     RegistrarPagoDeAdelanto,
     ConsultarAdelanto,
