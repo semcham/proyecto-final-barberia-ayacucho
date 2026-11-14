@@ -89,6 +89,16 @@ x-backend-entorno: &backend-entorno
   URL_PUBLICA: ${URL_PUBLICA:-http://localhost:5173}
   # 004 (ADR-025): tarea despachar-eventos, respaldo del despacho tras confirmar.
   EVENTOS_INTERVALO_MS: ${EVENTOS_INTERVALO_MS:-15000}
+  # 005 (ADR-027): asistente con el proveedor FALSO (sin red ni llave), cuotas fijas y el modo de demostración del
+  # falso (normal, caido o lento; se cambia en .env y se recrean las réplicas). OpenRouter NO se usa en Compose: las
+  # réplicas corren con NODE_ENV=production y la guardia de ADR-027 no deja arrancar con él. La prueba con OpenRouter
+  # real se hace fuera de Compose, con `npm run start:dev` y el .env local. La llave se vacía aquí para que, aunque
+  # esté en el .env local, nunca llegue a las réplicas.
+  IA_PROVEEDOR: ${IA_PROVEEDOR:-falso}
+  IA_OPENROUTER_LLAVE: ""
+  IA_CUOTA_USUARIO_DIA: ${IA_CUOTA_USUARIO_DIA:-20}
+  IA_CUOTA_BARBERIA_DIA: ${IA_CUOTA_BARBERIA_DIA:-200}
+  IA_FALSO_MODO: ${IA_FALSO_MODO:-normal}
   NODE_ENV: production
   NODE_OPTIONS: --max-old-space-size=256
 

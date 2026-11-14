@@ -595,6 +595,37 @@ export async function sembrarFilas008(opciones: {
   return filas;
 }
 
+/** Tablas nuevas de 005 con barbería (data-model §1 y §2 de 005): las dos con RLS por tenant. */
+export const TABLAS_005_CON_BARBERIA = ['assistant_quota', 'assistant_question'] as const;
+
+/** Ids y claves de las filas que siembra `sembrarFilas005`. */
+export interface Filas005 {
+  /** Día (fecha local, YYYY-MM-DD) de las dos filas de cuota. */
+  dia: string;
+  preguntaId: string;
+}
+
+/**
+ * Una fila en cada tabla nueva de 005 (T001 de 005), sembrada sin RLS: la cuota de hoy de la barbería y la del
+ * usuario, y una pregunta registrada (sin texto: la tabla no tiene dónde guardarlo).
+ */
+export async function sembrarFilas005(opciones: { tenantId: string; usuarioId: string }): Promise<Filas005> {
+  const seed = poolDe('seed');
+  const { tenantId, usuarioId } = opciones;
+  const filas: Filas005 = { dia: '2026-11-14', preguntaId: uuidv7() };
+  await seed.query(
+    `INSERT INTO assistant_quota (tenant_id, scope, subject_id, day, used)
+     VALUES ($1, 'BARBERIA', $1, $3, 3), ($1, 'USUARIO', $2, $3, 2)`,
+    [tenantId, usuarioId, filas.dia],
+  );
+  await seed.query(
+    `INSERT INTO assistant_question (id, tenant_id, user_id, role, intent, result, duration_ms)
+     VALUES ($1, $2, $3, 'PROPIETARIO', 'resumen_citas', 'RESPONDIDA', 120)`,
+    [filas.preguntaId, tenantId, usuarioId],
+  );
+  return filas;
+}
+
 /** Filas de una tabla con tenant_id, leídas sin RLS, para comparar antes y después de una operación. */
 export async function filasDe(tabla: string, tenantId: string): Promise<Record<string, unknown>[]> {
   if (!/^[a-z_]+$/.test(tabla)) throw new Error(`Nombre de tabla no válido: ${tabla}`);

@@ -253,6 +253,55 @@ module.exports = {
       to: { path: '(^|/)src/shared/eventos/salida-postgres\\.ts$' },
     },
     {
+      name: 'matriz-m04',
+      comment:
+        'Matriz de dependencias (005, research R01): M04 solo puede llamar a M02 y M03 por su index.ts ' +
+        '(CatalogoCitasApi y SuscripcionesApi) y a M06; nunca a M01, M05 ni a clases internas de otros módulos.',
+      severity: 'error',
+      from: { path: '(^|/)src/modules/asistente-reportes/' },
+      to: {
+        path: '(^|/)src/modules/',
+        pathNot: [
+          '(^|/)src/modules/asistente-reportes/',
+          '(^|/)src/modules/catalogo-citas/index\\.ts$',
+          '(^|/)src/modules/suscripciones-pagos/index\\.ts$',
+        ],
+      },
+    },
+    {
+      name: 'nadie-llama-a-m04',
+      comment:
+        'Ningún módulo llama a M04 (005, estilo-arquitectonico.md §3): solo la raíz de composición (el host) ' +
+        'importa su módulo.',
+      severity: 'error',
+      from: { path: '(^|/)src/modules/', pathNot: '(^|/)src/modules/asistente-reportes/' },
+      to: { path: '(^|/)src/modules/asistente-reportes/' },
+    },
+    {
+      name: 'ia-solo-por-puerto',
+      comment:
+        'Los adaptadores del proveedor de IA (asistente/infrastructure/proveedor-ia-*.ts) solo los enlaza el ' +
+        'módulo de M04; el resto usa el puerto AIProvider (principio VI, ADR-027).',
+      severity: 'error',
+      from: {
+        path: '(^|/)src/',
+        pathNot: [
+          '(^|/)src/modules/asistente-reportes/asistente/infrastructure/',
+          '(^|/)src/modules/asistente-reportes/asistente-reportes\\.module\\.ts$',
+        ],
+      },
+      to: { path: '(^|/)src/modules/asistente-reportes/asistente/infrastructure/proveedor-ia-[^/]+\\.ts$' },
+    },
+    {
+      name: 'reportes-sin-ia',
+      comment:
+        'Los reportes no dependen del asistente ni del proveedor de IA: funcionan aunque el asistente no esté ' +
+        'disponible (FR-026 de 005).',
+      severity: 'error',
+      from: { path: '(^|/)src/modules/asistente-reportes/reportes/' },
+      to: { path: '(^|/)src/modules/asistente-reportes/asistente/' },
+    },
+    {
       name: 'enlaces-confinados',
       comment:
         'Los enlaces firmados (shared/enlaces-firmados.ts, ADR-032) solo los usa M05, que los emite en el ' +

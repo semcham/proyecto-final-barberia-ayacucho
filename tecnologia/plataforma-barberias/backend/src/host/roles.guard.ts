@@ -14,6 +14,11 @@ import {
   PermisosCatalogoCitas,
 } from '../modules/catalogo-citas';
 import {
+  OPERACIONES_ASISTENTE_REPORTES,
+  type OperacionAsistenteReportes,
+  PermisosAsistenteReportes,
+} from '../modules/asistente-reportes';
+import {
   OPERACIONES_SUSCRIPCIONES,
   type OperacionSuscripciones,
   PermisosSuscripciones,
@@ -25,7 +30,7 @@ import { CLAVE_OPERACION, type SolicitudConActor } from './solicitud';
 export { Operacion } from './solicitud';
 
 /**
- * Permiso de un rol para una operación de la matriz de M01, de M02 o de M03 (T033; T048 de 003). Una operación que no está en
+ * Permiso de un rol para una operación de la matriz de M01, de M02, de M03 o de M04 (T033; T048 de 003; T010 de 005). Una operación que no está en
  * ninguna matriz es un error de programación: se rechaza.
  */
 export function rolPermiteOperacion(rol: CodigoRol, operacion: string): boolean {
@@ -37,6 +42,10 @@ export function rolPermiteOperacion(rol: CodigoRol, operacion: string): boolean 
   }
   if ((OPERACIONES_SUSCRIPCIONES as readonly string[]).includes(operacion)) {
     return PermisosSuscripciones.permite(rol, operacion as OperacionSuscripciones);
+  }
+  // 005 (T010): la matriz de M04, una rama más. La lógica del guard no cambia: una operación por ruta.
+  if ((OPERACIONES_ASISTENTE_REPORTES as readonly string[]).includes(operacion)) {
+    return PermisosAsistenteReportes.permite(rol, operacion as OperacionAsistenteReportes);
   }
   throw new Error(`Operación desconocida en @Operacion: ${operacion}`);
 }

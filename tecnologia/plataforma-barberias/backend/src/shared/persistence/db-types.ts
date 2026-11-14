@@ -591,6 +591,51 @@ export interface BookingDepositPaymentTable {
   rejection_reason: TextoNulo;
 }
 
+/** 005 (migración 0031): cuota del asistente por barbería, alcance, sujeto y día local de la barbería. */
+export interface AssistantQuotaTable {
+  tenant_id: string;
+  scope: 'USUARIO' | 'BARBERIA';
+  /** El usuario (USUARIO) o la propia barbería (BARBERIA). */
+  subject_id: string;
+  /** Fecha local `YYYY-MM-DD` (columna date: se lee con ::text, como receipt_upload_counter.day). */
+  day: string;
+  used: Generated<number>;
+  updated_at: Generated<Date>;
+}
+
+export type IntencionAsistenteDb =
+  | 'servicios'
+  | 'barberos'
+  | 'horarios_libres'
+  | 'resumen_citas'
+  | 'servicios_mas_pedidos'
+  | 'fuera_de_alcance'
+  | 'accion_no_permitida';
+
+export type ResultadoPreguntaDb =
+  | 'RESPONDIDA'
+  | 'SIN_DATOS'
+  | 'FUERA_DE_ALCANCE'
+  | 'ACCION_NO_PERMITIDA'
+  | 'CUOTA_AGOTADA'
+  | 'PROVEEDOR_NO_DISPONIBLE'
+  | 'INVALIDA';
+
+/** 005 (migración 0031): registro de preguntas al asistente. Sin columnas de texto (FR-010, SC-007). */
+export interface AssistantQuestionTable {
+  id: string;
+  tenant_id: string;
+  user_id: string;
+  role: 'CLIENTE' | 'PROPIETARIO';
+  asked_at: Generated<Date>;
+  /** Inmutable para la aplicación: sin UPDATE (migración 0031). */
+  intent: ColumnType<IntencionAsistenteDb | null, IntencionAsistenteDb | null | undefined, never>;
+  result: ColumnType<ResultadoPreguntaDb, ResultadoPreguntaDb, never>;
+  duration_ms: ColumnType<number, number, never>;
+  tokens_in: ColumnType<number | null, number | null | undefined, never>;
+  tokens_out: ColumnType<number | null, number | null | undefined, never>;
+}
+
 export interface Database {
   tenant: TenantTable;
   role: RoleTable;
@@ -635,4 +680,6 @@ export interface Database {
   booking_deposit_settings: BookingDepositSettingsTable;
   booking_deposit: BookingDepositTable;
   booking_deposit_payment: BookingDepositPaymentTable;
+  assistant_quota: AssistantQuotaTable;
+  assistant_question: AssistantQuestionTable;
 }

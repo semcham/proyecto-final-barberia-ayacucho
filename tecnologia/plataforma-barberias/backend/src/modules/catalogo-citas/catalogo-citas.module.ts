@@ -72,6 +72,10 @@ import { BandejaAdelantos } from './citas/application/bandeja-adelantos';
 import { ConfirmarAdelanto } from './citas/application/confirmar-adelanto';
 import { AdelantoController } from './citas/presentation/adelanto.controller';
 import { VencerAdelantos } from './citas/application/vencer-adelantos';
+import { CatalogoCitasApi } from './catalogo-citas-api';
+import { CatalogoCitasApiImpl } from './catalogo/application/catalogo-citas-api-impl';
+import { ReportesDeCitasQuery } from './citas/application/ports/reportes-de-citas';
+import { KyselyReportesDeCitasQuery } from './citas/infrastructure/reportes-de-citas-query';
 
 /**
  * M02 Catálogo y citas (submódulos catalogo y citas). Matriz de dependencias: M02 → M01 (ADR-020), M03 y
@@ -150,8 +154,12 @@ import { VencerAdelantos } from './citas/application/vencer-adelantos';
     BandejaAdelantos,
     // 008 (US4): la tarea vencer-adelantos.
     VencerAdelantos,
+    // 005 (T009): la interfaz de solo lectura para M04 y su lectura de agregados por período.
+    { provide: ReportesDeCitasQuery, useClass: KyselyReportesDeCitasQuery },
+    { provide: CatalogoCitasApi, useClass: CatalogoCitasApiImpl },
   ],
-  // PurgarIntentosEnlace y VencerAdelantos: tareas que registra el host (host/tareas.ts).
-  exports: [CatalogQuery, PurgarIntentosEnlace, VencerAdelantos],
+  // PurgarIntentosEnlace y VencerAdelantos: tareas que registra el host (host/tareas.ts). CatalogoCitasApi: la
+  // interfaz de solo lectura que usa M04 (005).
+  exports: [CatalogQuery, PurgarIntentosEnlace, VencerAdelantos, CatalogoCitasApi],
 })
 export class CatalogoCitasModule {}

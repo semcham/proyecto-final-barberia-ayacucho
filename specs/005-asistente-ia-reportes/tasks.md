@@ -55,28 +55,28 @@ description: "Tareas de la funcionalidad 005: asistente de IA y reportes"
 
 ### Pruebas de la base (escribir primero, deben fallar) ⚠️
 
-- [ ] T001 [P] Crear `backend/test/integration/aislamiento/aislamiento-005.spec.ts` con el patrón de `aislamiento-008.spec.ts` (PR09; FR-004, FR-025):
+- [X] T001 [P] Crear `backend/test/integration/aislamiento/aislamiento-005.spec.ts` con el patrón de `aislamiento-008.spec.ts` (PR09; FR-004, FR-025):
   - para `assistant_quota` y `assistant_question`, con el tenant de A no se lee, no se modifica ni se inserta (`WITH CHECK`) una fila de B;
   - las dos tablas se agregan a la lista de `backend/test/integration/aislamiento/rls.spec.ts`.
-- [ ] T002 [P] Crear `backend/test/integration/asistente/esquema-asistente.spec.ts` (FR-010; SC-007; data-model):
+- [X] T002 [P] Crear `backend/test/integration/asistente/esquema-asistente.spec.ts` (FR-010; SC-007; data-model):
   - las columnas de `assistant_question` son exactamente las de [data-model](data-model.md), y ninguna guarda la pregunta, la respuesta ni los argumentos;
   - los `CHECK` de [data-model](data-model.md): `scope` en `USUARIO`/`BARBERIA`, `subject_id = tenant_id` cuando `scope = 'BARBERIA'`, `used >= 0`, y la lista cerrada de `role`, `intent` y `result`;
   - la clave primaria de `assistant_quota` es `(tenant_id, scope, subject_id, day)`;
   - los permisos de `barberias_app` son exactamente los del data-model (sin `DELETE`);
   - ningún rol usado por la aplicación tiene `BYPASSRLS`;
   - `barberias_plataforma` no lee ninguna de las dos tablas.
-- [ ] T003 [P] Ampliar `backend/test/architecture/reglas.spec.ts` y sus fixtures en `backend/test/architecture/fixture/src/modules/asistente-reportes/` con las reglas de [plan.md](plan.md) (PR14; FR-002, FR-026):
+- [X] T003 [P] Ampliar `backend/test/architecture/reglas.spec.ts` y sus fixtures en `backend/test/architecture/fixture/src/modules/asistente-reportes/` con las reglas de [plan.md](plan.md) (PR14; FR-002, FR-026):
   - `matriz-m04`: M04 no importa M01, M05 ni archivos internos de M02 o M03;
   - `nadie-llama-a-m04`: ningún módulo importa `asistente-reportes/`;
   - `ia-solo-por-puerto`: el dominio y la aplicación de `asistente` no importan `infrastructure/proveedor-ia-*`;
   - `reportes-sin-ia`: `reportes/` no importa `asistente/`;
   - `kysely-solo-en-infraestructura` alcanza a M04.
-- [ ] T004 [P] Crear `backend/test/architecture/catalogo-citas-api-solo-lectura.spec.ts` (FR-005; research R01). Comprueba que los métodos de `CatalogoCitasApi` son **exactamente** los siete de research R01:
+- [X] T004 [P] Crear `backend/test/architecture/catalogo-citas-api-solo-lectura.spec.ts` (FR-005; research R01). Comprueba que los métodos de `CatalogoCitasApi` son **exactamente** los siete de research R01:
   - `contextoDeLaBarberia`, `serviciosActivos`, `barberosQueOfrecen`, `horariosLibres`;
   - `conteosDeCitas`, `serviciosMasSolicitados`, `actividad`.
 
   Ningún otro método, por ejemplo uno de escritura, pasa la prueba.
-- [ ] T005 [P] Crear la suite de contrato del puerto `backend/test/contract/ai-provider.contract.ts`, con el patrón de `payment-gateway.contract.ts`, y `backend/test/contract/ai-provider-falso.contract.spec.ts`, que la corre contra `ProveedorIAFalso` (PR20; FR-015; contracts/asistente.md §6). La suite comprueba:
+- [X] T005 [P] Crear la suite de contrato del puerto `backend/test/contract/ai-provider.contract.ts`, con el patrón de `payment-gateway.contract.ts`, y `backend/test/contract/ai-provider-falso.contract.spec.ts`, que la corre contra `ProveedorIAFalso` (PR20; FR-015; contracts/asistente.md §6). La suite comprueba:
   - `interpretar` devuelve una intención del esquema o lanza `ProveedorIANoDisponible`, nunca otra cosa;
   - respeta el `AbortSignal` del tiempo límite.
 
@@ -85,7 +85,7 @@ description: "Tareas de la funcionalidad 005: asistente de IA y reportes"
   - los modos `guion`, `caido`, `lento(ms)`, `error(429|500)` e `invalido`, fijados desde la prueba;
   - el modo de demostración tomado de `IA_FALSO_MODO` al crearse (`normal`, `caido` o `lento`);
   - el registro de cada llamada recibida.
-- [ ] T006 [P] Crear `backend/test/unit/shared/configuracion-ia.spec.ts` (FR-015; ADR-027):
+- [X] T006 [P] Crear `backend/test/unit/shared/configuracion-ia.spec.ts` (FR-015; ADR-027):
   - `IA_PROVEEDOR` vale `ninguno` por defecto y solo acepta `falso`, `openrouter` o `ninguno`;
   - `IA_TIEMPO_LIMITE_MS` vale 2500 por defecto, con rango 500–2800 (fuera de él, no arranca), para que la respuesta quepa siempre en 3 s;
   - `IA_CUOTA_USUARIO_DIA` vale 20 y `IA_CUOTA_BARBERIA_DIA` 200 por defecto;
@@ -93,7 +93,7 @@ description: "Tareas de la funcionalidad 005: asistente de IA y reportes"
   - `openrouter` sin `IA_OPENROUTER_LLAVE` no arranca;
   - `openrouter` con `NODE_ENV=production` **no arranca**;
   - la llave nunca aparece en el mensaje de error ni en el registro de arranque.
-- [ ] T007 [P] Crear `backend/test/integration/catalogo/catalogo-citas-api.spec.ts`. Con el tenant de la barbería A (FR-002, FR-030; SC-001):
+- [X] T007 [P] Crear `backend/test/integration/catalogo/catalogo-citas-api.spec.ts`. Con el tenant de la barbería A (FR-002, FR-030; SC-001):
   - `serviciosActivos` (nombre, precio, duración y descripción pública) y `barberosQueOfrecen` devuelven lo mismo que el catálogo público de 002, solo columnas públicas, y nunca datos de B;
   - `horariosLibres` devuelve lo mismo que `ConsultarHorarios` para el mismo servicio, fecha y barbero;
   - `contextoDeLaBarberia` trae la zona horaria y el slug;
@@ -102,13 +102,13 @@ description: "Tareas de la funcionalidad 005: asistente de IA y reportes"
 
 ### Implementación de la base
 
-- [ ] T008 Crear `backend/migrations/0031_asistente.ts` con [data-model](data-model.md) y actualizar `backend/src/shared/persistence/db-types.ts`. La migración crea:
+- [X] T008 Crear `backend/migrations/0031_asistente.ts` con [data-model](data-model.md) y actualizar `backend/src/shared/persistence/db-types.ts`. La migración crea:
   - `assistant_quota` (clave `tenant_id, scope, subject_id, day`);
   - `assistant_question`, sin columnas de texto;
   - `rlsPorTenant` en las dos, los `CHECK` y los permisos de `barberias_app`, sin `BYPASSRLS`.
 
   Registrar `0031_asistente` en `backend/migrations/index.ts`. Con eso cambia `ULTIMA_MIGRACION`, que comprueba `GET /salud/listo`, igual que con cada migración anterior.
-- [ ] T009 [P] Crear la interfaz pública de M02 (research R01). Sin cambiar ninguna ruta ni caso de uso existente:
+- [X] T009 [P] Crear la interfaz pública de M02 (research R01). Sin cambiar ninguna ruta ni caso de uso existente:
   - `m02/catalogo-citas-api.ts`: clase abstracta con los siete métodos de T004;
   - `m02/catalogo/application/catalogo-citas-api-impl.ts`:
     - inyecta `FuenteDisponibilidad` (la fuente autenticada que ya provee el módulo) y llama a `ConsultarHorarios.ejecutar(fuente, zona, consulta)`;
@@ -117,7 +117,7 @@ description: "Tareas de la funcionalidad 005: asistente de IA y reportes"
   - un método nuevo `serviciosActivosPublicos()` en el puerto `CatalogQuery` y en `KyselyCatalogQuery`: servicios activos con nombre, precio, duración y descripción. No se toca ningún método existente;
   - `m02/citas/infrastructure/reportes-de-citas-query.ts`: agregados por `starts_at` sobre el índice `appointment(tenant_id, starts_at)`;
   - el proveedor se registra en `m02/catalogo-citas.module.ts`, se agrega a sus `exports` y la interfaz se exporta en `m02/index.ts`.
-- [ ] T010 [P] Crear el esqueleto de M04:
+- [X] T010 [P] Crear el esqueleto de M04:
   - `m04/asistente-reportes.module.ts` y `m04/index.ts`, que exporta `AsistenteReportesModule` y `PermisosAsistenteReportes`;
   - `m04/asistente/domain/permisos.ts` (contracts/rbac.md):
     - `USAR_ASISTENTE`, la operación de la ruta, para CLIENTE y PROPIETARIO;
@@ -127,7 +127,7 @@ description: "Tareas de la funcionalidad 005: asistente de IA y reportes"
   - los controladores de M04 usan `RequiereOperacion` y `ActorActual` de `shared`, como M03, sin importar M01;
   - importar el módulo en `backend/src/host/app.module.ts`;
   - agregar las reglas de T003 a `backend/.dependency-cruiser.cjs`.
-- [ ] T011 [P] Crear el puerto y los adaptadores sin red:
+- [X] T011 [P] Crear el puerto y los adaptadores sin red:
   - `asistente/application/ports/ai-provider.ts`: `AIProvider` con `interpretar` y el error `ProveedorIANoDisponible`;
   - `asistente/infrastructure/proveedor-ia-falso.ts`: los modos de prueba se fijan desde la prueba, y el de demostración sale de `IA_FALSO_MODO` al arrancar. No hay ruta HTTP ni archivo para cambiarlo;
   - `asistente/infrastructure/proveedor-ia-ninguno.ts`, que siempre lanza `ProveedorIANoDisponible`;
@@ -135,7 +135,7 @@ description: "Tareas de la funcionalidad 005: asistente de IA y reportes"
   - `backend/.env.example` con `IA_OPENROUTER_LLAVE=` vacía y un comentario de que la llave nunca entra al repositorio;
   - comprobar con `git check-ignore` que `.env` sigue fuera del repositorio;
   - las acciones `ASISTENTE_CONSULTADO` y `REPORTES_CONSULTADOS` en `backend/src/shared/audit/audit-log.ts` (research R13).
-- [ ] T012 [P] Sumar a `x-backend` de `docker-compose.yml`, solo variables nuevas (quickstart §2; ADR-027):
+- [X] T012 [P] Sumar a `x-backend` de `docker-compose.yml`, solo variables nuevas (quickstart §2; ADR-027):
   - `IA_PROVEEDOR: ${IA_PROVEEDOR:-falso}`;
   - `IA_CUOTA_USUARIO_DIA: ${IA_CUOTA_USUARIO_DIA:-20}` e `IA_CUOTA_BARBERIA_DIA: ${IA_CUOTA_BARBERIA_DIA:-200}`;
   - `IA_FALSO_MODO: ${IA_FALSO_MODO:-normal}`;

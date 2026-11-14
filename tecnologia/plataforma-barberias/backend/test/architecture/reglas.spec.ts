@@ -63,6 +63,11 @@ describe('Reglas de arquitectura (PR14)', () => {
       // Funcionalidad 008 (T006).
       'adelantos-solo-por-api',
       'adelantos-sin-pasarela',
+      // Funcionalidad 005 (T003).
+      'matriz-m04',
+      'nadie-llama-a-m04',
+      'ia-solo-por-puerto',
+      'reportes-sin-ia',
     ])('%s', (regla) => {
       expect(salida).toContain(regla);
     });
@@ -118,6 +123,24 @@ describe('Reglas de arquitectura (PR14)', () => {
       expect(enLinea('adelantos-solo-por-api', 'usa-adelantos-interno.ts')).toBe(true);
       expect(enLinea('adelantos-sin-pasarela', 'adelantos/application/usa-pasarela.ts')).toBe(true);
       expect(lineas.some((l) => l.includes('usa-adelantos-api.ts'))).toBe(false);
+    });
+
+    // T003 de 005 · M04 usa M02 y M03 solo por su index.ts (nunca M01 ni M05), nadie llama a M04, el asistente
+    // alcanza al proveedor de IA solo por el puerto AIProvider y los reportes no dependen del asistente (FR-026).
+    it('cada violación de 005 se atribuye a su archivo del fixture, y los usos permitidos no se señalan', () => {
+      const lineas = salida.split(/\r?\n/);
+      const enLinea = (regla: string, archivo: string) =>
+        lineas.some((linea) => linea.includes(regla) && linea.includes(archivo));
+      expect(enLinea('matriz-m04', 'asistente/application/usa-m01.ts')).toBe(true);
+      expect(enLinea('matriz-m04', 'asistente/application/usa-m05.ts')).toBe(true);
+      expect(enLinea('matriz-m04', 'usa-interno-m02.ts')).toBe(true);
+      expect(enLinea('nadie-llama-a-m04', 'usa-asistente-reportes.ts')).toBe(true);
+      expect(enLinea('ia-solo-por-puerto', 'usa-proveedor-falso.ts')).toBe(true);
+      expect(enLinea('reportes-sin-ia', 'reportes/application/usa-asistente.ts')).toBe(true);
+      expect(enLinea('kysely-solo-en-infraestructura', 'usa-kysely-en-m04.ts')).toBe(true);
+      // Usos permitidos: M02 y M03 por su index, y el módulo de M04 enlaza el adaptador con el puerto.
+      expect(lineas.some((l) => l.includes('usa-catalogo-citas-api.ts'))).toBe(false);
+      expect(lineas.some((l) => l.includes('asistente-reportes.module.ts'))).toBe(false);
     });
   });
 });

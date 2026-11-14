@@ -10,6 +10,7 @@ import {
   type BarberoDelServicio,
   CatalogQuery,
   type Intervalo,
+  type ServicioPublico,
   type ServicioVigente,
 } from '../application/ports/catalog-query';
 
@@ -142,5 +143,24 @@ export class KyselyCatalogQuery extends CatalogQuery {
       .orderBy('barber.id')
       .execute();
     return filas.map((fila) => ({ barberoId: fila.id, nombre: fila.display_name }));
+  }
+
+  async serviciosActivosPublicos(): Promise<ServicioPublico[]> {
+    const filas = await this.uow
+      .transaccionActual()
+      .selectFrom('service')
+      .select(['id', 'name', 'description', 'price', 'duration_min'])
+      .where('tenant_id', '=', this.tenantId)
+      .where('active', '=', true)
+      .orderBy('name')
+      .orderBy('id')
+      .execute();
+    return filas.map((fila) => ({
+      servicioId: fila.id,
+      nombre: fila.name,
+      descripcion: fila.description,
+      precio: fila.price,
+      duracionMinutos: fila.duration_min,
+    }));
   }
 }

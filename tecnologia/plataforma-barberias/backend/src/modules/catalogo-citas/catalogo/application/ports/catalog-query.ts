@@ -8,6 +8,19 @@ export interface ServicioVigente {
   duracionMin: number;
 }
 
+/**
+ * 005 (T009): un servicio activo con sus columnas públicas, las mismas del catálogo público de 002 (FR-017 de 005).
+ * Sin estado, fechas ni nada que no se publique.
+ */
+export interface ServicioPublico {
+  servicioId: string;
+  nombre: string;
+  descripcion: string | null;
+  /** Soles, como texto decimal (numeric de PostgreSQL). */
+  precio: string;
+  duracionMinutos: number;
+}
+
 export interface BarberoDelServicio {
   barberoId: string;
   nombre: string;
@@ -38,4 +51,9 @@ export abstract class CatalogQuery {
   abstract barbero(barberoId: string): Promise<BarberoDelServicio | null>;
   /** Barberos activos que ofrecen el servicio, por nombre. */
   abstract barberosQueOfrecen(servicioId: string): Promise<BarberoDelServicio[]>;
+  /**
+   * 005 (T009): los servicios ACTIVOS de la barbería con sus columnas públicas, en el orden del catálogo público
+   * (nombre e id). Lo usa CatalogoCitasApi para el asistente; no lo usa ninguna ruta ni caso de uso existente.
+   */
+  abstract serviciosActivosPublicos(): Promise<ServicioPublico[]>;
 }

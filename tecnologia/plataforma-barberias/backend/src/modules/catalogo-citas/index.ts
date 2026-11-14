@@ -11,3 +11,15 @@ export {
 export { PurgarIntentosEnlace } from './citas/application/purgar-intentos-enlace';
 // 008 (T051): la tarea vencer-adelantos, que registra el host cada 60 s.
 export { VencerAdelantos } from './citas/application/vencer-adelantos';
+// 005 (T009, research R01): la interfaz de solo lectura que usa M04 (asistente y reportes).
+export {
+  CatalogoCitasApi,
+  type ActividadDeCitas,
+  type BarberoVisible,
+  type ConsultaDeHorariosLibres,
+  type ConteosDeCitas,
+  type ContextoDeLaBarberia,
+  type HorariosLibresVista,
+  type ServicioPublico,
+  type ServicioSolicitado,
+} from './catalogo-citas-api';

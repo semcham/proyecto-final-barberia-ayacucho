@@ -63,7 +63,11 @@ export type AccionAuditada =
   | 'ADELANTO_VENCIDO'
   | 'ADELANTO_DEVUELTO'
   // Por devolver o retenido al cancelar la cita o marcar que no asistió.
-  | 'ADELANTO_RESUELTO';
+  | 'ADELANTO_RESUELTO'
+  // Funcionalidad 005 (research R09 y R13, FR-029): recurso `asistente:<rol>;<resultado>` y
+  // `reportes:<desde>..<hasta>`. Nunca el texto de la pregunta ni de la respuesta.
+  | 'ASISTENTE_CONSULTADO'
+  | 'REPORTES_CONSULTADOS';
 
 export interface EntradaAuditoria {
   accion: AccionAuditada;

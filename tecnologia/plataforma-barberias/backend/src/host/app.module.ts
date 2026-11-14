@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule, ThrottlerStorageService } from '@nestjs/throttler';
 import { AccesoBarberiasModule } from '../modules/acceso-barberias';
+import { AsistenteReportesModule } from '../modules/asistente-reportes';
 import { CatalogoCitasModule } from '../modules/catalogo-citas';
 import { NotificacionesModule } from '../modules/notificaciones';
 import { SuscripcionesPagosModule } from '../modules/suscripciones-pagos';
@@ -25,6 +26,8 @@ import { TenantHeaderInterceptor } from './tenant-header.interceptor';
     CatalogoCitasModule,
     SuscripcionesPagosModule,
     NotificacionesModule,
+    // 005: M04 Asistente IA y reportes (vacío en la fase 1; sus rutas llegan con US2 y US1).
+    AsistenteReportesModule,
     // Freno general por IP, compartido entre réplicas en la caché (006 US3, ADR-029), con respaldo en
     // memoria por instancia si Redis no responde. El límite estricto del inicio de sesión vive en
     // PostgreSQL (US2 de 001, principio VIII).

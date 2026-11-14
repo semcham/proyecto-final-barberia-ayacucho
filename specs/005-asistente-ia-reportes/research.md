@@ -23,15 +23,20 @@ código ya construido de M02 y M03.
   - de M06, `UnitOfWork`, `TenantContext`, `AuditLog`, `Clock`, `Configuracion`, `Interruptor`, `ZonaHoraria` y
     `FechaLocal`.
 
-  `CatalogoCitasApi` corre en la transacción del llamador (M04 la abre con el tenant del token). Su
-  implementación (`CatalogoCitasApiImpl`):
+  `CatalogoCitasApi` corre en la transacción del llamador (M04 la abre con el tenant del token), salvo
+  `contextoDeLaBarberia(tenantId)`: el slug sale de `BarberiasApi.datosPublicos`, que lee la tabla global `tenant`
+  en su propia transacción sin tenant, así que M04 la llama **antes** de abrir la suya (si ya hay una en curso,
+  falla). Su implementación (`CatalogoCitasApiImpl`):
   - inyecta la `FuenteDisponibilidad` autenticada que ya provee M02 y llama a `ConsultarHorarios.ejecutar(fuente,
     zona, consulta)`;
   - toma la zona horaria de `BarberiasApi.configuracionAgenda()` y el slug de `BarberiasApi.datosPublicos(tenant)`;
   - para `serviciosActivos()` usa un método nuevo, `serviciosActivosPublicos()`, en el puerto `CatalogQuery` y en
     `KyselyCatalogQuery` (servicios activos con nombre, precio, duración y descripción), sin tocar los métodos
     existentes;
-  - para los agregados usa una lectura nueva (`ReportesDeCitasQuery`, infraestructura de M02).
+  - para los agregados usa una lectura nueva: el puerto `ReportesDeCitasQuery` (`citas/application/ports/`) y su
+    implementación con Kysely (`citas/infrastructure/reportes-de-citas-query.ts`), porque la capa de aplicación no
+    puede importar infraestructura (PR14). El período llega como instantes `[inicio, fin)`; M04 convierte las
+    fechas locales.
 
   **Solo devuelve datos públicos** del catálogo y de los horarios, y conteos sin datos de clientes. No pasa por la
   autorización de M02 (el CLIENTE no tiene `VER_CATALOGO`): **el permiso lo da la matriz de M04** (`USAR_ASISTENTE`

@@ -187,6 +187,65 @@ function credencialesSmtp(): { usuario: string | undefined; clave: string | unde
   return { usuario, clave };
 }
 
+const PROVEEDORES_DE_IA = ['falso', 'openrouter', 'ninguno'] as const;
+export type ProveedorDeIA = (typeof PROVEEDORES_DE_IA)[number];
+
+const MODOS_FALSO = ['normal', 'caido', 'lento'] as const;
+export type ModoDemostracionIA = (typeof MODOS_FALSO)[number];
+
+/** Configuración de OpenRouter (solo desarrollo, ADR-027). La llave es no enumerable: no sale en JSON ni inspect. */
+export interface ConfiguracionOpenRouter {
+  modelo: string;
+  readonly llave: string;
+}
+
+/** Asistente de IA (005, ADR-027 y ADR-028). Solo del servidor: nada de esto llega al navegador. */
+export interface ConfiguracionIA {
+  proveedor: ProveedorDeIA;
+  /** Tiempo límite de cada llamada al proveedor: de 500 a 2800 ms, para responder siempre en 3 s (SC-003). */
+  tiempoLimiteMs: number;
+  /** Cuotas fijas e iguales para todos los planes (aclaración del 2026-11-14). */
+  cuotaUsuarioDia: number;
+  cuotaBarberiaDia: number;
+  /** Modo de demostración del proveedor falso en Docker Compose; solo se usa con `falso`. */
+  falsoModo: ModoDemostracionIA;
+  openrouter: ConfiguracionOpenRouter | null;
+}
+
+function deLista<T extends string>(nombre: string, valores: readonly T[], porDefecto: T): T {
+  const valor = opcional(nombre) ?? porDefecto;
+  if (!(valores as readonly string[]).includes(valor)) {
+    throw new Error(`La variable de entorno ${nombre} debe ser ${valores.join(', ')}`);
+  }
+  return valor as T;
+}
+
+/**
+ * ADR-027: con OpenRouter el servidor solo arranca fuera de producción, y exige la llave y el modelo. Los mensajes
+ * de error nunca incluyen la llave, y la llave queda como propiedad no enumerable (no aparece al registrar).
+ */
+function leerIa(): ConfiguracionIA {
+  const proveedor = deLista('IA_PROVEEDOR', PROVEEDORES_DE_IA, 'ninguno');
+  const ia: ConfiguracionIA = {
+    proveedor,
+    tiempoLimiteMs: enteroEnRango('IA_TIEMPO_LIMITE_MS', 2500, 500, 2800),
+    cuotaUsuarioDia: enteroEnRango('IA_CUOTA_USUARIO_DIA', 20, 1, 1000),
+    cuotaBarberiaDia: enteroEnRango('IA_CUOTA_BARBERIA_DIA', 200, 1, 100_000),
+    falsoModo: deLista('IA_FALSO_MODO', MODOS_FALSO, 'normal'),
+    openrouter: null,
+  };
+  if (proveedor !== 'openrouter') return ia;
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      'IA_PROVEEDOR=openrouter no se permite con NODE_ENV=production: OpenRouter es solo de desarrollo (ADR-027)',
+    );
+  }
+  const llave = requerida('IA_OPENROUTER_LLAVE').trim();
+  const openrouter = { modelo: requerida('IA_OPENROUTER_MODELO').trim() } as ConfiguracionOpenRouter;
+  Object.defineProperty(openrouter, 'llave', { value: llave, enumerable: false, writable: false });
+  return { ...ia, openrouter };
+}
+
 // Los PEM pueden venir en una sola línea con "\n" literales (formato de .env).
 function pem(valor: string): string {
   return valor.replace(/\\n/g, '\n');
@@ -311,6 +370,8 @@ export class Configuracion {
   readonly eventos = {
     intervaloMs: enteroEnRango('EVENTOS_INTERVALO_MS', 15_000, 1000, 3_600_000),
   };
+  /** 005 (ADR-027): proveedor de IA, tiempo límite, cuotas y modo de demostración del proveedor falso. */
+  readonly ia = leerIa();
 
   private static leerWhatsapp():
     | { proveedor: 'ninguno' }
