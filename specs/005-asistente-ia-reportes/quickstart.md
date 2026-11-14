@@ -15,8 +15,13 @@ desarrollo, con datos de prueba, nunca con datos reales de clientes (ADR-027).
   usuario y un cliente con cuenta. Y una **segunda barbería** con otros servicios, para el aislamiento.
 - Citas sembradas del mes anterior en varios estados: completadas, canceladas (algunas tardías), no asistió y
   confirmadas.
-- Para el paso opcional con OpenRouter: `IA_PROVEEDOR=openrouter`, `IA_OPENROUTER_LLAVE` y `IA_OPENROUTER_MODELO`
-  en el `.env` local, que no está en git.
+- En Compose, el backend usa `IA_PROVEEDOR=falso` por defecto (`docker-compose.yml`), con `IA_FALSO_MODO=normal`.
+  Para cambiar un valor de la demostración, se pone en el `.env` (por ejemplo, `IA_CUOTA_USUARIO_DIA=3`) y se
+  recrean las réplicas con `docker compose up -d`.
+- Para el paso opcional con OpenRouter, **fuera de Compose**: las réplicas de Compose corren con
+  `NODE_ENV: production` y la guardia de ADR-027 no deja arrancar con OpenRouter. Se usa `npm run start:dev` en
+  `backend/`, con `IA_PROVEEDOR=openrouter`, `IA_OPENROUTER_LLAVE` e `IA_OPENROUTER_MODELO` en el `.env` local,
+  que no está en git, y la base de Compose.
 
 ## 1. Pruebas automáticas
 
@@ -36,20 +41,20 @@ Esperado: todo en verde. Entre esas pruebas están:
 - las cuotas con dos instancias a la vez, sin pasar del límite;
 - los reportes con los bordes del período en la zona de Lima.
 
-## 2. Recorrido con Docker Compose (proveedor falso, salvo el paso 10)
+## 2. Recorrido con Docker Compose (proveedor falso; el paso 10 va fuera de Compose)
 
 | Paso | Acción | Esperado | Resultado |
 | ---- | ------ | -------- | --------- |
 | 1 | El propietario abre `/app/reportes` y elige el mes anterior | Tres tablas: citas por estado (con las tardías), servicios más solicitados (hasta 10) y actividad por barbero y por día. Las cifras coinciden con las citas sembradas | |
 | 2 | Elige un período de más de 366 días, o con el fin antes del inicio | Mensaje de qué corregir; nada se calcula | |
 | 3 | El barbero y el cliente intentan abrir `/app/reportes` | Acceso negado | |
-| 4 | El cliente abre `/asistente` y pregunta "¿qué servicios tienen y cuánto cuestan?" | Lista de los servicios de **su** barbería con precio y duración, iguales al catálogo | |
+| 4 | El cliente entra por "Preguntar al asistente" en Mis citas (o en el catálogo de su barbería), abre `/asistente` y pregunta "¿qué servicios tienen y cuánto cuestan?" | Lista de los servicios de **su** barbería con precio y duración, iguales al catálogo | |
 | 5 | Pregunta "¿hay horario mañana para un corte con Luis?" | Las horas son exactamente las de "Reservar" para ese servicio, barbero y fecha; la respuesta dice la fecha exacta y cada hora lleva a Reservar con todo elegido | |
 | 6 | Pregunta "resérvame a las 10" y "dame los teléfonos de otros clientes" | No reserva ni da datos; ofrece Reservar o Mis citas | |
 | 7 | Hace preguntas hasta pasar la cuota (con `IA_CUOTA_USUARIO_DIA=3` para la demostración) | La cuarta responde "alcanzaste el límite de hoy", con la hora de reinicio y el enlace a Reservar; recargar o volver a iniciar sesión no la reinicia | |
-| 8 | Con `npm run ia:modo -- caido` (o deteniendo el proveedor en desarrollo) | "El asistente no está disponible ahora" en ≤ 3 s, con el enlace a Reservar; los reportes siguen funcionando | |
+| 8 | Poner `IA_FALSO_MODO=caido` en el `.env` y recrear las réplicas con `docker compose up -d` (después, volver a `normal`) | "El asistente no está disponible ahora" en ≤ 3 s, con el enlace a Reservar; los reportes siguen funcionando | |
 | 9 | El propietario pregunta en la pestaña "Preguntar" de `/app/reportes` (US3): "¿cuántas citas tuve el mes pasado?" y "¿cuál fue el servicio más pedido?" | Las cifras coinciden con las tablas del paso 1 | |
-| 10 | (Opcional, desarrollo) Con OpenRouter: las preguntas de los pasos 4, 5 y 9 | Mismas respuestas y mismos datos que con el falso; ninguna cifra distinta | |
+| 10 | (Opcional, desarrollo, **fuera de Compose**) Con `npm run start:dev` y OpenRouter (ver §0): las preguntas de los pasos 4, 5 y 9 | Mismas respuestas y mismos datos que con el falso; ninguna cifra distinta | |
 | 11 | Revisar `assistant_question` y los registros de las réplicas (`docker compose logs`) | Una fila por pregunta con la intención y el resultado, **sin el texto**; los registros no tienen la llave ni el contenido | |
 
 ## 3. Comprobaciones de aislamiento (PR09)
@@ -66,6 +71,7 @@ Una fila por pantalla nueva. Se revisa a 360 px y en escritorio, en tema claro y
 | Fecha | Pantalla | 360 px | Escritorio | Claro | Oscuro | Teclado | axe (hallazgos y corrección o motivo) |
 | ----- | -------- | ------ | ---------- | ----- | ------ | ------- | ------------------------------------- |
 |       | Asistente del cliente `/asistente` | | | | | | |
+|       | Enlace "Preguntar al asistente" en Mis citas y en el catálogo público | | | | | | |
 |       | Reportes `/app/reportes` (y la pestaña "Preguntar", si se hace US3) | | | | | | |
 
 ## 5. Lo que esta guía no demuestra

@@ -99,16 +99,16 @@ El propietario pregunta en lenguaje natural, por ejemplo, "¿cuántas citas tuve
 **Generales del asistente (US1 y US3)**
 
 - **FR-001**: El asistente MUST responder solo con datos que devuelven sus herramientas para esa consulta; MUST NOT mostrar horarios, precios, servicios ni cifras que ninguna herramienta haya devuelto. Si ninguna herramienta tiene el dato, MUST decirlo en lugar de suponerlo.
-- **FR-002**: Cada herramienta del asistente MUST usar los casos de uso ya existentes de otros módulos, a través de sus interfaces públicas, con los permisos del usuario que pregunta; el asistente MUST NOT consultar la base de datos directamente, MUST NOT ejecutar consultas libres y MUST NOT escribir nada.
+- **FR-002**: Cada herramienta del asistente MUST usar los casos de uso ya existentes de otros módulos, a través de sus interfaces públicas, con la barbería y el rol del usuario que pregunta; el asistente MUST NOT consultar la base de datos directamente, MUST NOT ejecutar consultas libres y MUST NOT escribir nada.
 - **FR-003**: Las herramientas MUST ser cerradas y autorizadas por rol: el cliente solo tiene las de US1 y el propietario solo las de US3. Un rol MUST NOT poder invocar herramientas de otro rol.
 - **FR-004**: La barbería consultada MUST ser siempre la de la sesión del usuario (la que viene en su token), nunca la que nombre el mensaje; ningún mensaje MUST poder hacer que el asistente consulte otra barbería.
 - **FR-005**: El asistente MUST NOT reservar, cancelar, reprogramar ni cambiar ningún dato; ante esas peticiones MUST ofrecer el flujo normal de la plataforma.
 - **FR-006**: Las instrucciones que lleguen en el mensaje del usuario o en textos de la barbería (nombres o descripciones del catálogo) MUST tratarse como datos, no como órdenes: MUST NOT cambiar las reglas del asistente, sus herramientas ni el alcance de la barbería y el rol.
 - **FR-007**: El asistente MUST tener una **cuota por usuario** y una **cuota por barbería** de preguntas por período; al agotarse, MUST responder con un mensaje claro, decir cuándo vuelve a estar disponible y ofrecer el flujo manual. Las cuotas MUST contarse de forma compartida entre todas las réplicas y MUST NOT reiniciarse al cerrar sesión. Las cuotas MUST ser **fijas e iguales para todos los planes**: 20 preguntas por usuario y 200 por barbería al día, reiniciadas a medianoche de la zona horaria de la barbería. El asistente MUST NOT depender del plan de suscripción ni cambiar el modelo de planes de 003 (una cuota según el plan queda como evolución futura).
-- **FR-008**: Si el proveedor de IA no responde dentro del tiempo límite, devuelve un error o tiene el circuito abierto, el asistente MUST responder con un mensaje claro y ofrecer el flujo manual en 3 segundos o menos desde que se detecta la falla, sin afectar al resto de la plataforma.
+- **FR-008**: Si el proveedor de IA no responde dentro del tiempo límite, devuelve un error o tiene el circuito abierto, el asistente MUST responder con un mensaje claro y ofrecer el flujo manual en 3 segundos o menos desde que el usuario envía la pregunta, sin afectar al resto de la plataforma.
 - **FR-009**: Las respuestas MUST NOT incluir datos personales de terceros: ningún nombre, teléfono, correo ni cita de otros clientes; al propietario, solo cifras agregadas, sin nombres ni datos de contacto de clientes.
 - **FR-010**: Cada pregunta al asistente MUST quedar registrada con quién preguntó (usuario y barbería), cuándo, qué herramientas se usaron, si terminó bien, por cuota o por falla del proveedor, y el consumo; el registro MUST NOT guardar el texto de la pregunta ni de la respuesta ni datos personales de terceros, y los registros de la aplicación MUST NOT incluir la llave del proveedor ni el contenido de las conversaciones.
-- **FR-011**: Al proveedor de IA MUST enviarse solo lo necesario para responder: la pregunta, el contexto mínimo de la conversación en curso y los resultados de las herramientas; MUST NOT enviarse datos de otras barberías, de otros clientes ni secretos.
+- **FR-011**: Al proveedor de IA MUST enviarse solo lo necesario para responder: la pregunta, el contexto mínimo de la conversación en curso, la fecha y la zona horaria de la barbería; MUST NOT enviarse los resultados de las herramientas (la respuesta la compone el sistema), ni datos de otras barberías, de otros clientes ni secretos.
 - **FR-012**: La conversación MUST ser breve y sin historial guardado en el servidor: el asistente MUST tomar en cuenta solo las últimas intervenciones de la conversación abierta; al cerrarla o recargar la página, empieza de nuevo.
 - **FR-013**: El asistente MUST rechazar con un mensaje claro una pregunta vacía o que supere el largo máximo, sin consumir cuota.
 - **FR-014**: Las fechas relativas MUST interpretarse en la zona horaria de la barbería, y la respuesta MUST decir la fecha exacta usada.
@@ -174,3 +174,12 @@ El propietario pregunta en lenguaje natural, por ejemplo, "¿cuántas citas tuve
 - **Restricciones por suscripción:** el asistente y los reportes son lecturas; siguen la misma política de lecturas de la funcionalidad 003 y no dependen del plan.
 - **Dependencias:** las interfaces públicas de M02 (catálogo, horarios libres y citas de la barbería) y de M03 (estado de la suscripción) ya existen o se exponen como lectura sin cambiar su comportamiento; ADR-027 y ADR-028 se escriben antes de implementar (principio XI).
 - **Fuera de alcance:** reservar, cancelar o reprogramar desde el asistente; gráficos; exportar reportes; historial de conversaciones; asistente por WhatsApp o por voz; asistente para el barbero y para el administrador de la plataforma; reportes con montos o ingresos; cuotas o acceso al asistente según el plan de suscripción (evolución futura).
+
+## Desviaciones
+
+Aquí se registra cada recorte aplicado de la tabla "Qué es indispensable" de [tasks.md](tasks.md): el requisito
+afectado (por ejemplo, FR-023 sin la tabla por día de la semana, FR-017 sin la intención `barberos`, el contexto
+de 6 intervenciones de las aclaraciones, o FR-027 y FR-028 si se recorta US3), la fecha y el motivo. Cada
+desviación también va en la fila de 005 de `docs/trazabilidad.md`.
+
+- Ninguna por ahora (2026-11-14): no hay código.

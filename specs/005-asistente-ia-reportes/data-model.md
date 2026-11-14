@@ -45,7 +45,9 @@ Los reportes **no guardan nada**: se calculan al pedirlos, sobre `appointment` d
 | `tokens_in`, `tokens_out` | `integer` | los que informa el proveedor; nulos con el proveedor falso o si falló                           |
 
 - **No hay columnas para el texto** de la pregunta, de la respuesta ni de los argumentos (FR-010, SC-007). Una
-  prueba de arquitectura de la migración comprueba la lista exacta de columnas.
+  prueba de integración del esquema (`esquema-asistente.spec.ts`, tasks T002) comprueba la lista exacta de columnas.
+- El resultado `INVALIDA` lo registra el caso de uso, que valida el largo y el contexto antes de sumar la cuota
+  (contracts/asistente.md §1).
 - Índice `(tenant_id, asked_at DESC)`.
 - Sin purga en esta versión (research R09).
 

@@ -5,27 +5,47 @@ defensa ante inyección (research R03 a R07). Lo resume ADR-028.
 
 ## 1. Flujo de una pregunta
 
-1. **Validar:** la pregunta tiene de 1 a 500 caracteres y el contexto, a lo sumo 6 intervenciones. Si no, 422
-   `VALIDACION`, sin consumir cuota.
-2. **Autorizar** por el rol del token: el cliente con `USAR_ASISTENTE_CLIENTE` y el propietario con
-   `USAR_ASISTENTE_PROPIETARIO`. Se abre la transacción con el tenant del token.
-3. **Sumar la cuota** del usuario y de la barbería, de forma atómica (research R08). Si alguna está agotada, 429
+La ruta exige la operación `USAR_ASISTENTE` (CLIENTE y PROPIETARIO) en el `RolesGuard`. Todo lo demás lo hace el
+caso de uso `PreguntarAlAsistente`, en **tres tramos**. La llamada al proveedor nunca ocurre con una transacción
+abierta, así que no retiene la fila de la cuota de la barbería.
+
+1. **Autorizar por rol**, dentro del caso de uso: el cliente con `USAR_ASISTENTE_CLIENTE` y el propietario con
+   `USAR_ASISTENTE_PROPIETARIO`. Sin herramientas para el rol (el propietario mientras no exista US3) → 403
+   `ACCESO_DENEGADO`.
+2. **Validar** en el caso de uso, no en el DTO, para que quede registrada: la pregunta tiene de 1 a 500
+   caracteres, el contexto a lo sumo 6 intervenciones, y cada una tiene `de` en `USUARIO` o `ASISTENTE`. Si no, se
+   registra `INVALIDA` en una transacción propia y se responde 422 `VALIDACION`, sin consumir cuota.
+3. **Tramo 1, cuota:** una transacción corta con el tenant del token lee la zona horaria y suma la cuota del
+   usuario y la de la barbería, de forma atómica (research R08), y **confirma**. Si alguna está agotada, la
+   transacción se revierte, se registra `CUOTA_AGOTADA` en una transacción propia y se responde 429
    `CUOTA_ASISTENTE_AGOTADA`.
-4. **Interpretar:** el puerto `AIProvider` recibe:
+4. **Tramo 2, interpretar, fuera de toda transacción:** el puerto `AIProvider` recibe:
    - las instrucciones fijas del rol;
    - la fecha de hoy y la zona horaria de la barbería;
    - la pregunta y el contexto, delimitados como contenido del usuario;
    - el esquema de §2.
 
-   Devuelve **solo** `{ intencion, argumentos }`. Si falla, tarda o el circuito está abierto, se devuelve la
-   cuota y se responde 503 `ASISTENTE_NO_DISPONIBLE` con la alternativa manual.
-5. **Validar la intención** con el esquema y la lista del rol. Lo que no está en la lista o no cumple el esquema
-   es `FUERA_DE_ALCANCE`; las intenciones de reservar, cancelar o cambiar son `ACCION_NO_PERMITIDA`.
-6. **Resolver los argumentos** dentro de la barbería del token: servicio y barbero por su nombre, la fecha o el
-   rango validados.
-7. **Ejecutar la herramienta**, de solo lectura, con `CatalogoCitasApi` o los casos de uso de `reportes`.
-8. **Componer la respuesta** con plantillas (§3) y los datos de la herramienta. El texto del modelo no se usa.
-9. **Registrar** en `assistant_question` (sin texto) y en `audit_log`.
+   Devuelve **solo** `{ intencion, argumentos }`. Tiene tiempo límite, un reintento ante 429 o 5xx dentro del
+   presupuesto de 3 s, y el `Interruptor` de M06.
+5. **Tramo 3, en otra transacción con el tenant del token:**
+   - **Si el proveedor falló** (tiempo agotado, error o circuito abierto): se devuelve la unidad de cuota, se
+     registra `PROVEEDOR_NO_DISPONIBLE`, se audita y se responde 503 `ASISTENTE_NO_DISPONIBLE` con la alternativa
+     manual.
+   - **Si respondió:**
+     1. **validar la intención** con el esquema y la lista del rol: lo que no está en la lista o no cumple el
+        esquema es `FUERA_DE_ALCANCE`, y las intenciones de reservar, cancelar o cambiar son
+        `ACCION_NO_PERMITIDA`;
+     2. **resolver los argumentos** dentro de la barbería del token: servicio y barbero por su nombre, y la fecha o
+        el rango validados;
+     3. **ejecutar la herramienta**, de solo lectura, con `CatalogoCitasApi`, los casos de uso de `reportes` o
+        `SuscripcionesApi.estadoOperativo`;
+     4. **componer la respuesta** con plantillas (§3) y los datos de la herramienta; el texto del modelo no se usa;
+     5. **registrar** en `assistant_question` (sin texto) y en `audit_log`.
+
+Los errores 429 y 503 usan el formato de siempre, `{ codigo, mensaje, detalles }`:
+- 429: `detalles[0]` lleva `alcance`, `reiniciaEn` y `reintentarEnSegundos`; el filtro de errores pone `Retry-After`
+  con este último;
+- 503: `detalles[0]` lleva `alternativa`.
 
 ## 2. Intenciones y argumentos (esquema cerrado)
 
@@ -117,6 +137,8 @@ En todos los casos se comprueba:
   y la zona horaria que recibe.
 - **Modos de prueba**, controlados desde la prueba: `guion(json)`, `caido`, `lento(ms)`, `error(429|500)` e
   `invalido` (JSON roto).
+- **Modo de demostración** en Docker Compose: `IA_FALSO_MODO` (`normal`, `caido` o `lento`), leído al arrancar. Se
+  cambia recreando las réplicas con otro valor; no hay ruta HTTP ni archivo para cambiarlo.
 - **Registro** de cada llamada recibida (instrucciones y mensajes), para las comprobaciones de privacidad.
 - La misma suite de contrato del puerto (PR20) corre contra el falso y contra OpenRouter; la de OpenRouter se
   omite sin `IA_OPENROUTER_LLAVE`, como `gateway-sandbox` en 003.

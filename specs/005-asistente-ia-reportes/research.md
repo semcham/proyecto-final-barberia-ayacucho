@@ -24,8 +24,18 @@ código ya construido de M02 y M03.
     `FechaLocal`.
 
   `CatalogoCitasApi` corre en la transacción del llamador (M04 la abre con el tenant del token). Su
-  implementación (`CatalogoCitasApiImpl`) reutiliza `CatalogQuery`, `ConsultarHorarios` y una lectura nueva de
-  agregados (`ReportesDeCitasQuery`, infraestructura de M02). **No cambia** ningún caso de uso ni ruta existente.
+  implementación (`CatalogoCitasApiImpl`):
+  - inyecta la `FuenteDisponibilidad` autenticada que ya provee M02 y llama a `ConsultarHorarios.ejecutar(fuente,
+    zona, consulta)`;
+  - toma la zona horaria de `BarberiasApi.configuracionAgenda()` y el slug de `BarberiasApi.datosPublicos(tenant)`;
+  - para `serviciosActivos()` usa un método nuevo, `serviciosActivosPublicos()`, en el puerto `CatalogQuery` y en
+    `KyselyCatalogQuery` (servicios activos con nombre, precio, duración y descripción), sin tocar los métodos
+    existentes;
+  - para los agregados usa una lectura nueva (`ReportesDeCitasQuery`, infraestructura de M02).
+
+  **Solo devuelve datos públicos** del catálogo y de los horarios, y conteos sin datos de clientes. No pasa por la
+  autorización de M02 (el CLIENTE no tiene `VER_CATALOGO`): **el permiso lo da la matriz de M04** (`USAR_ASISTENTE`
+  y la operación del rol, o `VER_REPORTES`). **No cambia** ningún caso de uso ni ruta existente.
 - **Justificación:** la matriz permite M04 → M02, M03 y M06 (estilo §3); los datos de citas son de M02 (principio I:
   nadie lee tablas ajenas). M04 **no depende de M01**: la matriz no lo permite, y la zona horaria y el slug llegan
   por M02, que ya depende de M01.
@@ -107,16 +117,23 @@ código ya construido de M02 y M03.
     controlables:
     - `guion`: devuelve un JSON dado, para simular un modelo inyectado o malicioso;
     - `caido`, `lento <ms>` y `error 429/500`;
-    - registra las instrucciones y los mensajes que recibió, para las pruebas de privacidad.
+    - registra las instrucciones y los mensajes que recibió, para las pruebas de privacidad;
+    - en Docker Compose, el modo de demostración sale de `IA_FALSO_MODO` (`normal`, `caido` o `lento`) al
+      arrancar. Se cambia recreando las réplicas; no hay ruta HTTP, archivo ni script para cambiarlo.
   - **`ProveedorIAOpenRouter`** (solo desarrollo): HTTP con `fetch` nativo de Node 22, sin dependencias nuevas, a
     la API de chat compatible de OpenRouter, con salida JSON. Lee la llave de `IA_OPENROUTER_LLAVE`.
   - **`ProveedorIANinguno`**: cuando no hay proveedor configurado; responde siempre "no disponible".
 - **Configuración** (servidor, nunca en el repositorio):
   - `IA_PROVEEDOR`: `falso`, `openrouter` o `ninguno`. Por defecto `ninguno`; `falso` en las pruebas.
   - `IA_OPENROUTER_LLAVE` (secreto) e `IA_OPENROUTER_MODELO`.
-  - `IA_TIEMPO_LIMITE_MS`: 2 500 por defecto, de 500 a 10 000.
+  - `IA_TIEMPO_LIMITE_MS`: 2 500 por defecto, de 500 a 2 800 (fuera de ese rango no arranca), para que la
+    respuesta quepa siempre en los 3 s de SC-003.
+  - `IA_FALSO_MODO`: `normal` por defecto; solo se usa con `IA_PROVEEDOR=falso`.
   - Con `IA_PROVEEDOR=openrouter` y `NODE_ENV=production`, el servidor **no arranca**: OpenRouter es solo de
     desarrollo (ADR-027). `.env.example` lleva las variables sin valor.
+  - **Docker Compose** corre las réplicas con `NODE_ENV: production` y suma `IA_PROVEEDOR` (por defecto `falso`),
+    las cuotas e `IA_FALSO_MODO`. Por eso la prueba con OpenRouter real se hace **fuera de Compose**, con
+    `npm run start:dev` y el `.env` local.
 - **Resiliencia (ADR-012):**
   - tiempo límite por llamada `IA_TIEMPO_LIMITE_MS`, con `AbortSignal.timeout`;
   - **un reintento** solo ante 429 o 5xx inmediatos, y solo si queda tiempo dentro de un presupuesto total de
@@ -176,13 +193,19 @@ código ya construido de M02 y M03.
   - tabla **`assistant_quota`** (`tenant_id`, `scope` USUARIO o BARBERIA, `subject_id` (el usuario, o la
     barbería), `day`, `used`), con RLS y clave primaria `(tenant_id, scope, subject_id, day)`;
   - `day` es la **fecha local de la barbería**, así que la cuota se reinicia a la medianoche de su zona horaria;
-  - antes de llamar al proveedor, en **una transacción** con el tenant del token, se suman las dos cuotas con
-    `INSERT … ON CONFLICT DO UPDATE SET used = used + 1 WHERE used < :limite RETURNING used`, una por alcance;
-  - si alguna no devuelve fila, se **revierte** todo y se responde 429 `CUOTA_ASISTENTE_AGOTADA`, con
-    `Retry-After` y `reiniciaEn`;
-  - si el proveedor falla (tiempo agotado, error o circuito abierto), se **devuelve** la unidad en otra
-    transacción corta (`used = used - 1 WHERE used > 0`);
-  - una pregunta vacía o demasiado larga se rechaza antes y no consume (FR-013).
+  - el flujo va en **tres tramos** (contracts/asistente.md §1):
+    1. **cuota:** una transacción corta con el tenant del token suma las dos cuotas con `INSERT … ON CONFLICT DO
+       UPDATE SET used = used + 1 WHERE used < :limite RETURNING used`, una por alcance, y **confirma antes de
+       llamar al proveedor**. Si alguna no devuelve fila, se revierte, se registra `CUOTA_AGOTADA` en una
+       transacción propia y se responde 429 `CUOTA_ASISTENTE_AGOTADA` (`alcance`, `reiniciaEn` y
+       `reintentarEnSegundos` en `detalles[0]`; `Retry-After`);
+    2. **proveedor:** la llamada va **fuera de toda transacción**, así que no retiene la fila de la cuota de la
+       barbería y las preguntas simultáneas no se esperan unas a otras;
+    3. **resultado:** otra transacción ejecuta la herramienta, registra y audita. Si el proveedor falló (tiempo
+       agotado, error o circuito abierto), en esa transacción se **devuelve** la unidad (`used = used - 1 WHERE
+       used > 0`) y se registra `PROVEEDOR_NO_DISPONIBLE`;
+  - una pregunta vacía o demasiado larga la rechaza el caso de uso antes del tramo 1: no consume y queda
+    registrada como `INVALIDA` (FR-013, SC-007).
 
   Límites fijos e iguales para todos los planes: 20 por usuario y 200 por barbería (aclaración del 2026-11-14),
   en `Configuracion` (`IA_CUOTA_USUARIO_DIA`, `IA_CUOTA_BARBERIA_DIA`) para poder bajarlos en la demostración.
@@ -190,6 +213,8 @@ código ya construido de M02 y M03.
   - principio VIII: la cuota de IA en PostgreSQL, compartida entre réplicas;
   - la condición en el UPDATE hace la suma atómica sin pasarse del límite, también con dos réplicas a la vez
     (SC-004);
+  - sacar la llamada externa de la transacción evita que una pregunta lenta bloquee a las demás de la barbería
+    (SC-003) y que la devolución espere a un bloqueo de la propia pregunta;
   - no depende de la sesión (FR-007).
 - **Alternativas descartadas:**
   - Redis: el principio VIII lo prohíbe para la cuota de IA.
@@ -241,8 +266,11 @@ código ya construido de M02 y M03.
 
 - **Decisión:**
   - `POST /asistente/mensajes`: las herramientas se eligen por el **rol del token**. El cliente usa las de US1 y
-    el propietario las de US3; el barbero recibe 403. Si US3 se recorta, el propietario recibe 403 sin cambiar la
-    ruta.
+    el propietario las de US3.
+    - La ruta lleva una sola operación, `USAR_ASISTENTE` (CLIENTE y PROPIETARIO), como todas las rutas: el
+      barbero recibe 403 en el `RolesGuard`, que no cambia su lógica.
+    - El caso de uso exige después la operación del rol, `USAR_ASISTENTE_CLIENTE` o `USAR_ASISTENTE_PROPIETARIO`.
+    - Si US3 se recorta, el propietario recibe 403 del caso de uso, sin cambiar la ruta.
   - Reportes: **`GET /reportes?desde=&hasta=`**, que devuelve las tres tablas de una vez (una sola consulta
     auditada). Reemplaza la fila planificada `GET /reportes/citas` de `api-rest.md`.
 - **Justificación:** menos superficie; el contexto de la conversación lo manda el navegador (FR-012), así que el
@@ -253,14 +281,17 @@ código ya construido de M02 y M03.
 ## R12 · Interfaz
 
 - **Decisión:**
-  - **cliente:** pantalla **`/asistente`** (solo CLIENTE, desde "Mis citas"), con un cuadro de pregunta y las
+  - **cliente:** pantalla **`/asistente`** (solo CLIENTE). Se entra por un enlace "Preguntar al asistente" en
+    `MisCitas.tsx` y en `CatalogoPublico.tsx`, visible solo con sesión de CLIENTE, porque el cliente no tiene un
+    menú global. Esas dos pantallas no cambian en nada más. La pantalla tiene un cuadro de pregunta y las
     respuestas como texto y tablas simples. Para los horarios libres, cada hora es un enlace a
     `/b/{slug}/reservar?servicio=&barbero=&inicio=`: `Reservar.tsx` ya admite esos parámetros, así que no cambia;
   - **propietario:** pantalla **`/app/reportes`** con el selector de período y las tres tablas. Si se hace US3,
     suma una pestaña "Preguntar" con el asistente;
   - estados de carga, vacío, cuota agotada y "no disponible", con la alternativa manual;
   - accesible como el resto (Radix y el sistema de diseño de ADR-016).
-- **Justificación:** HU22 (reservar más rápido sin que el asistente reserve) y HU24; sin pantallas fuera de M04.
+- **Justificación:** HU22 (reservar más rápido sin que el asistente reserve) y HU24. Fuera de M04 solo se suma el
+  enlace de entrada en dos pantallas de 002, con una prueba de que lo demás no cambia.
 
 ## R13 · Enmienda de la constitución
 

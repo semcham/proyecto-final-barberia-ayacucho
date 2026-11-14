@@ -166,19 +166,24 @@ specs/005-asistente-ia-reportes/
 tecnologia/plataforma-barberias/
 ├── backend/
 │   ├── migrations/
-│   │   └── 0031_asistente.ts                  # assistant_quota + assistant_question, con RLS
+│   │   ├── 0031_asistente.ts                  # assistant_quota + assistant_question, con RLS
+│   │   └── index.ts                           # registra 0031 (cambia ULTIMA_MIGRACION)
 │   ├── src/
 │   │   ├── host/
-│   │   │   ├── roles.guard.ts                 # suma PermisosAsistenteReportes
+│   │   │   ├── roles.guard.ts                 # suma PermisosAsistenteReportes como una rama más (lógica sin cambios)
+│   │   │   ├── error.filter.ts                # suma CUOTA_ASISTENTE_AGOTADA 429 y ASISTENTE_NO_DISPONIBLE 503
 │   │   │   └── app.module.ts                  # importa AsistenteReportesModule
 │   │   ├── shared/
 │   │   │   ├── audit/audit-log.ts             # ASISTENTE_CONSULTADO, REPORTES_CONSULTADOS
-│   │   │   └── config/configuracion.ts        # IA_PROVEEDOR, IA_OPENROUTER_*, IA_TIEMPO_LIMITE_MS, IA_CUOTA_*
+│   │   │   └── config/configuracion.ts        # IA_PROVEEDOR, IA_OPENROUTER_*, IA_TIEMPO_LIMITE_MS (500–2800), IA_CUOTA_*, IA_FALSO_MODO
 │   │   └── modules/
 │   │       ├── catalogo-citas/                # M02: solo lecturas nuevas
-│   │       │   ├── catalogo-citas-api.ts      # CatalogoCitasApi (abstracta, pública)
+│   │       │   ├── catalogo-citas-api.ts      # CatalogoCitasApi (abstracta, pública, solo datos públicos)
 │   │       │   ├── index.ts                   # la exporta
-│   │       │   ├── catalogo/application/catalogo-citas-api-impl.ts
+│   │       │   ├── catalogo-citas.module.ts   # la provee y la exporta
+│   │       │   ├── catalogo/application/catalogo-citas-api-impl.ts   # inyecta FuenteDisponibilidad
+│   │       │   ├── catalogo/application/ports/catalog-query.ts       # + serviciosActivosPublicos()
+│   │       │   ├── catalogo/infrastructure/kysely-catalog-query.ts   # + serviciosActivosPublicos()
 │   │       │   └── citas/infrastructure/reportes-de-citas-query.ts
 │   │       └── asistente-reportes/            # M04 (nuevo)
 │   │           ├── index.ts                   # AsistenteReportesModule y PermisosAsistenteReportes
@@ -189,17 +194,24 @@ tecnologia/plataforma-barberias/
 │   │           │   ├── infrastructure/        # (ninguna: lee por CatalogoCitasApi)
 │   │           │   └── presentation/          # GET /reportes
 │   │           └── asistente/
-│   │               ├── domain/                # Intencion (esquema), Herramientas por rol, Plantillas, PoliticaCuota, Permisos
-│   │               ├── application/           # PreguntarAlAsistente, ports/ai-provider.ts, ports/cuotas, ports/registro
+│   │               ├── domain/                # Intencion (esquema), Herramientas por rol, Plantillas, PoliticaCuota, Entrada, Permisos
+│   │               ├── application/           # PreguntarAlAsistente (tres tramos), ports/ai-provider.ts, ports/cuotas, ports/registro
 │   │               ├── infrastructure/        # proveedor-ia-falso, proveedor-ia-openrouter, proveedor-ia-ninguno, kysely-cuotas, kysely-registro
-│   │               └── presentation/          # POST /asistente/mensajes
-│   ├── scripts/ia-modo.ts                     # cambia el modo del proveedor falso en la demostración (npm run ia:modo)
+│   │               └── presentation/          # POST /asistente/mensajes (operación de ruta USAR_ASISTENTE)
 │   └── test/                                  # unit/asistente, unit/reportes, integration/asistente, integration/reportes, contract/rbac-005, architecture
+├── docker-compose.yml                         # suma IA_PROVEEDOR (falso), IA_CUOTA_*, IA_FALSO_MODO; sin OpenRouter
 └── frontend/
     ├── src/api/asistente.ts, src/api/reportes.ts
     ├── src/pages/cliente/Asistente.tsx        # /asistente
+    ├── src/pages/cliente/MisCitas.tsx         # + enlace "Preguntar al asistente" (solo CLIENTE)
+    ├── src/pages/publico/CatalogoPublico.tsx  # + enlace "Preguntar al asistente" (solo CLIENTE)
     └── src/pages/panel/Reportes.tsx           # /app/reportes (+ pestaña "Preguntar", US3)
 ```
+
+Fuera de M04 solo se **suman** cosas: la interfaz y un método de lectura en M02, una rama de la matriz en el
+`RolesGuard`, dos códigos en el filtro de errores (los datos van en `detalles[0]`), acciones de auditoría,
+variables de configuración y de Compose, y un enlace en dos pantallas de 002. Ninguna ruta, caso de uso ni dato
+existente cambia (FR-030).
 
 **Reglas nuevas de PR14** (`backend/.dependency-cruiser.cjs`):
 
@@ -226,9 +238,9 @@ US3; después **US1**, que es _Must_ pero tiene el riesgo del proveedor; al fina
 | Fase | Contenido | Riesgo | Si hay que cortar |
 | ---- | --------- | ------ | ----------------- |
 | 1 | **Base:** carpeta de M04, matriz de permisos, `RolesGuard`, migración 0031, `CatalogoCitasApi` con sus lecturas y la prueba de que no escribe, reglas de PR14, configuración `IA_*` y aislamiento de las dos tablas (PR09) | Bajo | No se corta |
-| 2 | **US2 Reportes (P1):** `Periodo`, `ConsultarReportes`, `GET /reportes`, `/app/reportes` en tablas, bordes de zona horaria, SC-005 y `rbac-005` (reportes) | Bajo: SQL de agregados sobre un índice que ya existe | Primero se recorta la tabla de **actividad por día de la semana**; nunca el aislamiento |
-| 3 | **US1 Asistente del cliente (P1, _Must_):** puerto `AIProvider`, proveedor falso con sus modos, OpenRouter (desarrollo), interruptor y tiempo límite, esquema de intenciones, resolución de argumentos, plantillas, cuotas atómicas (dos instancias), registro sin texto, auditoría, PR19 (12 casos), PR06 y PR20, y `/asistente` | **Medio-alto**: clasificación con un modelo real, latencia de OpenRouter y la carga de PR19 | En orden: (1) el contexto de 6 intervenciones (queda en 0: cada pregunta sola); (2) la intención `barberos` (los horarios ya dicen qué barberos atienden); (3) la prueba con OpenRouter queda manual. **Nunca** se recortan PR19, PR09, las cuotas ni la degradación |
-| 4 | **US3 Asistente del propietario (P3):** dos intenciones sobre los casos de uso de la fase 2, y la pestaña "Preguntar" de `/app/reportes` | Bajo, si existen las fases 2 y 3 | **Es lo primero que se recorta entero**: el propietario tiene los reportes |
+| 2 | **US2 Reportes (P1):** `Periodo`, `ConsultarReportes`, `GET /reportes`, `/app/reportes` en tablas, bordes de zona horaria, SC-005 y `rbac-005` (reportes) | Bajo: SQL de agregados sobre un índice que ya existe | Primero se recorta la tabla de **actividad por día de la semana** (desviación de FR-023, registrada en spec.md y en trazabilidad); nunca el aislamiento |
+| 3 | **US1 Asistente del cliente (P1, _Must_):** puerto `AIProvider`, proveedor falso con sus modos, OpenRouter (desarrollo), interruptor y tiempo límite, esquema de intenciones, resolución de argumentos, plantillas, cuotas atómicas (dos instancias), registro sin texto, auditoría, PR19 (12 casos), PR06 y PR20, y `/asistente` | **Medio-alto**: clasificación con un modelo real, latencia de OpenRouter y la carga de PR19 | En orden: (1) el contexto de 6 intervenciones (queda en 0: cada pregunta sola); (2) la intención `barberos` (los horarios ya dicen qué barberos atienden); (3) la prueba con OpenRouter queda manual. Cada recorte se registra como **desviación** en spec.md y en trazabilidad. **Nunca** se recortan PR19, PR09, las cuotas ni la degradación |
+| 4 | **US3 Asistente del propietario (P3):** dos intenciones sobre los casos de uso de la fase 2, y la pestaña "Preguntar" de `/app/reportes` | Bajo, si existen las fases 2 y 3 | **Es lo primero que se recorta entero**: el propietario tiene los reportes (desviación de FR-027 y FR-028, registrada en spec.md y en trazabilidad) |
 | 5 | **Cierre:** documentación (trazabilidad, pruebas, estados a "implementado" solo en lo construido), ADR-027 y ADR-028 (Aceptados) marcados como implementados solo en lo construido, quickstart | Bajo | No se corta |
 
 **Por qué US2 antes que US1:** US2 es pequeña, no depende del proveedor y deja listas las lecturas de

@@ -15,7 +15,7 @@ paths:
   /asistente/mensajes:
     post:
       tags: [Asistente]
-      summary: Una pregunta al asistente (CLIENTE, US1; PROPIETARIO, US3). Las herramientas dependen del rol del token
+      summary: Una pregunta al asistente (CLIENTE, US1; PROPIETARIO, US3). Operación de ruta USAR_ASISTENTE; las herramientas dependen del rol del token
       requestBody:
         required: true
         content:
@@ -28,9 +28,9 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/RespuestaAsistente" }
         "401": { description: Sin sesión }
-        "403": { description: "ACCESO_DENEGADO: el rol no tiene asistente (barbero; el propietario si US3 no está)" }
+        "403": { description: "ACCESO_DENEGADO: el barbero, en el guardia (operación de ruta USAR_ASISTENTE); el propietario, en el caso de uso si US3 no está" }
         "422":
-          description: VALIDACION (pregunta vacía, de más de 500 caracteres, o contexto de más de 6 intervenciones)
+          description: VALIDACION (pregunta vacía, de más de 500 caracteres, o contexto de más de 6 intervenciones). La valida el caso de uso y queda registrada como INVALIDA
           content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
         "429":
           description: CUOTA_ASISTENTE_AGOTADA (del usuario o de la barbería), con Retry-After
@@ -74,21 +74,38 @@ components:
         detalles: { type: array, items: { type: object } }
 
     ErrorCuota:
+      description: El formato único de error; los datos de la cuota van en detalles[0] (el filtro pone Retry-After con reintentarEnSegundos)
       allOf:
         - { $ref: "#/components/schemas/Error" }
         - type: object
-          required: [alcance, reiniciaEn]
           properties:
-            alcance: { type: string, enum: [USUARIO, BARBERIA] }
-            reiniciaEn: { type: string, format: date-time, description: Medianoche siguiente de la barbería, con su desplazamiento }
+            detalles:
+              type: array
+              minItems: 1
+              maxItems: 1
+              items:
+                type: object
+                required: [alcance, reiniciaEn, reintentarEnSegundos]
+                properties:
+                  alcance: { type: string, enum: [USUARIO, BARBERIA] }
+                  reiniciaEn: { type: string, format: date-time, description: Medianoche siguiente de la barbería, con su desplazamiento }
+                  reintentarEnSegundos: { type: integer, minimum: 1 }
 
     ErrorNoDisponible:
+      description: El formato único de error; la alternativa manual va en detalles[0]
       allOf:
         - { $ref: "#/components/schemas/Error" }
         - type: object
-          required: [alternativa]
           properties:
-            alternativa: { $ref: "#/components/schemas/Alternativa" }
+            detalles:
+              type: array
+              minItems: 1
+              maxItems: 1
+              items:
+                type: object
+                required: [alternativa]
+                properties:
+                  alternativa: { $ref: "#/components/schemas/Alternativa" }
 
     Alternativa:
       type: object
