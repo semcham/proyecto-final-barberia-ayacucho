@@ -1,14 +1,16 @@
 # Data Model: Indicadores y datos personales (007)
 
-Una migración por historia, para que cada una se construya y se cierre sola. Los números son provisionales:
-se fijan al implementar, en el orden en que se hagan.
+Una migración por fase, para que cada una se construya y se cierre sola. **Sin números fijos:** cada migración
+toma el **número siguiente libre al implementarla**, porque el migrador (`backend/src/shared/persistence/migrate.ts`)
+no admite migraciones fuera de orden y las fases 2c y 3 pueden hacerse en cualquier orden o recortarse (análisis
+H2). La última aplicada antes de 007 es `0031_asistente`.
 
-| Historia | Migración (provisional) | Objetos |
+| Historia | Migración (nombre; el número se fija al implementar) | Objetos |
 |---|---|---|
-| US1 | `0032_solicitudes_datos` | `data_subject_request` con RLS |
-| US2 (2b, barberías por estado) | `0033_auditoria_indicadores` | acción `ADMIN_INDICADORES_CONSULTADOS` en `platform_audit_log`; nada más (usa columnas que el rol de la plataforma ya lee) |
-| US2 (2c, se recorta con el corte) | `0034_vistas_de_conteo` | vistas `platform_appointment_counts` y `platform_membership_counts`, su propiedad y sus permisos (el rol `barberias_conteos` va en `db/init`) |
-| US3 | `0035_intentos_con_hash` | `login_attempt.ip` → `login_attempt.ip_hash` |
+| US1 | `NNNN_solicitudes_datos` | `data_subject_request` con RLS |
+| US2 (2b, barberías por estado) | `NNNN_auditoria_indicadores` | acción `ADMIN_INDICADORES_CONSULTADOS` en `platform_audit_log`; nada más (usa columnas que el rol de la plataforma ya lee) |
+| US2 (2c, se recorta con el corte) | `NNNN_vistas_de_conteo` | vistas `platform_appointment_counts` y `platform_membership_counts`, su propiedad y sus permisos (el rol `barberias_conteos` va en `db/init`) |
+| US3 | `NNNN_intentos_con_hash` | `login_attempt.ip` → `login_attempt.ip_hash` |
 
 ## 1. `data_subject_request` (US1, M01 `solicitudes-datos`)
 
@@ -81,6 +83,11 @@ Su **dueño** es `barberias_conteos`: `NOLOGIN NOBYPASSRLS NOINHERIT`, creado en
 | `platform_appointment_counts` | `month date`, `status varchar`, `appointments integer` | `appointment` agrupado por `date_trunc('month', created_at AT TIME ZONE 'America/Lima')` y `status`, solo los últimos 12 meses |
 | `platform_membership_counts` | `kind varchar`, `users integer` | `membership` con `status = 'ACTIVA'`, agrupado en `PERSONAL` (`PROPIETARIO` o `BARBERO`) o `CLIENTE` |
 
+**Concesión a `barberias_owner`:** `GRANT barberias_conteos TO barberias_owner WITH INHERIT FALSE, SET TRUE`
+(PostgreSQL 16), en `db/init/01-roles.sql` y en el paso manual de un volumen existente. `SET TRUE` permite asignar
+la propiedad de las vistas; `INHERIT FALSE` impide que el dueño de las tablas, que inicia sesión, herede las
+políticas del rol (research R02). **Ningún rol con inicio de sesión hereda `barberias_conteos`.**
+
 **Permisos:**
 
 - `barberias_conteos`:
@@ -90,20 +97,23 @@ Su **dueño** es `barberias_conteos`: `NOLOGIN NOBYPASSRLS NOINHERIT`, creado en
   - Nada más: ninguna otra tabla ni columna, y ningún `INSERT`, `UPDATE` ni `DELETE`.
 - `barberias_plataforma`: `SELECT` sobre las **dos vistas**, y ningún permiso nuevo sobre ninguna tabla.
 
-**Auditoría del acceso** (2b, también con el corte): `0033` amplía el `CHECK` de `platform_audit_log.action`
-con `ADMIN_INDICADORES_CONSULTADOS`. No es un permiso.
+**Auditoría del acceso** (2b, también con el corte): la migración `auditoria_indicadores` amplía el `CHECK` de
+`platform_audit_log.action` con `ADMIN_INDICADORES_CONSULTADOS`. No es un permiso.
 
-**Con el corte** (solo barberías por estado): no hay rol, vistas ni cambio de permisos; `0034` no existe.
+**Con el corte** (solo barberías por estado): no hay rol, vistas ni cambio de permisos; la migración
+`vistas_de_conteo` no existe.
 
 ## 3. Lecturas de los indicadores (US2)
 
 | Indicador | Módulo y archivo | Lectura | Rol |
 |---|---|---|---|
-| Barberías por estado y activas | M03 `suscripciones/infrastructure/plataforma/barberias-por-estado.ts` | `tenant.status` × `subscription.status`, columnas ya concedidas (0016) | `barberias_plataforma` |
-| Citas por mes y estado | M02 `citas/infrastructure/plataforma/conteo-citas.ts` | `platform_appointment_counts` | `barberias_plataforma` |
-| Usuarios por tipo | M01 `identidad/infrastructure/plataforma/conteo-usuarios.ts` | `platform_membership_counts` | `barberias_plataforma` |
+| Barberías por estado y activas | M03 `suscripciones/infrastructure/plataforma/barberias-por-estado-indicador.ts` | `tenant.status` × `subscription.status`, columnas ya concedidas (0016) | `barberias_plataforma` |
+| Citas por mes y estado | M02 `citas/infrastructure/plataforma/citas-por-mes-indicador.ts` | `platform_appointment_counts` | `barberias_plataforma` |
+| Usuarios por tipo | M01 `identidad/infrastructure/plataforma/usuarios-por-tipo-indicador.ts` | `platform_membership_counts` | `barberias_plataforma` |
 
-Cada fuente implementa `FuenteDeIndicador` de M06 y la registra el host. El resultado es solo de números
+Cada fuente implementa `FuenteDeIndicador` de M06 y la registra el host. **Convención:** toda fuente se llama
+`*-indicador.ts` y vive en `infrastructure/plataforma/` de su módulo; la regla `indicadores-solo-por-registro`
+de PR14 usa ese patrón. El resultado es solo de números
 (sin ids ni nombres), con `calculadoEn`.
 
 ## 4. `login_attempt` (US3, M01 `identidad`)
@@ -123,5 +133,5 @@ Cada fuente implementa `FuenteDeIndicador` de M06 y la registra el host. El resu
   (`0.0.0.0`) también se deriva.
 - Configuración nueva: `INTENTOS_SAL_IP`, secreto obligatorio de al menos 16 caracteres, distinto de
   `ENLACES_SAL_IP`. Lleva un valor **solo de desarrollo** en `.env.example` y en `docker-compose.yml` (como
-  `ENLACES_SAL_IP`) y otro en las pruebas (`test/helpers/entorno.ts`). El `.env` local del responsable no se toca:
-  la añade él a mano.
+  `ENLACES_SAL_IP`) y otro en las pruebas (`test/helpers/entorno.ts`). El valor de cualquier otro entorno va fuera
+  del repositorio (FR-020). El `.env` local del responsable no se toca: la añade él a mano.

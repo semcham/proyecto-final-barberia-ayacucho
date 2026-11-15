@@ -10,9 +10,20 @@ marcan "no construido".
 - El entorno de 005 funcionando con Docker Compose (`docker compose up -d` en `tecnologia/plataforma-barberias/`).
 - Las migraciones de 007 que se hayan construido, aplicadas por `preparar-backend`.
 - **US2 (vistas):** el rol `barberias_conteos` creado. En una base nueva lo crea `db/init/01-roles.sql`; en un
-  volumen anterior a 007, se crea a mano una vez como superusuario, igual que los roles de 002 y 003 (README de
-  la plataforma).
-- **US3:** `INTENTOS_SAL_IP` en el `.env` (Compose da un valor solo de desarrollo si falta).
+  volumen anterior a 007, se crea a mano una vez como superusuario, igual que los roles de 002 y 003, con el bloque
+  SQL del README de la plataforma (incluye `GRANT barberias_conteos TO barberias_owner WITH INHERIT FALSE, SET
+  TRUE`). Comprobación, antes de recrear las réplicas:
+
+  ```sql
+  SELECT rolname, rolcanlogin, rolbypassrls FROM pg_roles WHERE rolname = 'barberias_conteos';   -- una fila: f, f
+  SELECT r.rolname, m.inherit_option, m.set_option
+    FROM pg_auth_members m JOIN pg_roles g ON g.oid = m.roleid JOIN pg_roles r ON r.oid = m.member
+   WHERE g.rolname = 'barberias_conteos';                                                      -- solo barberias_owner: f, t
+  ```
+- **US3:** `INTENTOS_SAL_IP`. **El responsable la añade a mano a su `.env` local** (el agente no lo lee ni lo
+  cambia); con Compose, si falta, se usa el valor solo de desarrollo de `docker-compose.yml`. Sin ella, fuera de
+  Compose no arrancan ni el backend ni los scripts que construyen `Configuracion` (por ejemplo,
+  `npm run plataforma:crear-admin`).
 - Dos barberías de prueba, cada una con su propietario, un barbero con usuario y un cliente con cuenta; citas en
   varios meses y en varios estados; y el administrador de la plataforma con su segundo factor.
 
@@ -66,7 +77,9 @@ Esperado: todo en verde.
 - Con el token de A, ninguna solicitud de B se lee, cambia ni crea (`aislamiento-007`, `rls`).
 - `barberias_plataforma` no puede hacer `SELECT id FROM appointment`, `FROM membership` ni `FROM customer_profile`.
   Sí puede leer las dos vistas, si se construyeron (`lectura-plataforma`).
-- `barberias_conteos` no puede iniciar sesión ni escribir.
+- `barberias_conteos` no puede iniciar sesión ni escribir, y ningún rol con inicio de sesión lo hereda.
+- `barberias_app` y `barberias_publico` no pueden leer las vistas.
+- `barberias_owner`, con el tenant de A fijado, sigue viendo solo las citas y membresías de A.
 
 ## 4. Revisión manual de la interfaz (del responsable)
 

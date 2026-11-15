@@ -22,6 +22,13 @@ ADR-031, el backlog y el código de M01, M02, M03 y M06. Formato: decisión, raz
   - Con el registro de M06, cada módulo cuenta sus tablas y nadie lee las tablas de otro (principio I).
   - M06 solo recoge resultados, sin reglas.
   - No cambia la matriz ni ninguna regla de módulos.
+  - **Convención de las fuentes (análisis M7):** cada fuente vive en `infrastructure/plataforma/` de su módulo,
+    con el nombre `*-indicador.ts`, y solo `host/indicadores.ts` la importa (regla
+    `indicadores-solo-por-registro`). Aunque se exporte en el `index.ts` de su módulo, otro módulo no puede
+    importarla.
+  - **Registro como nota de ADR (análisis M8):** el patrón queda escrito en una nota propia de ADR-031, que se
+    aplica en la fase 2b sin depender de la enmienda ni del corte de 2c (borrador 4 de
+    [contracts/enmienda-y-adr.md](contracts/enmienda-y-adr.md)).
 - **Alternativas descartadas:**
   - **Un controlador en el host que llame a los tres módulos:** saca lógica de aplicación a la raíz de
     composición, y la auditoría de M01 quedaría fuera de su módulo.
@@ -52,8 +59,8 @@ ADR-031, el backlog y el código de M01, M02, M03 y M06. Formato: decisión, raz
   - Un dueño propio sin inicio de sesión y sin `BYPASSRLS`, con permiso solo sobre las columnas que cuentan,
     deja la lectura entre barberías en un único objeto que **ya entrega números**.
   - Las vistas agregan más de lo que pidió la aclaración: no exponen ni la barbería. Así no se puede filtrar
-    por una barbería (FR-013), y el texto de la enmienda lo permite ("como máximo barbería, fecha, estado y
-    tipo").
+    por una barbería (FR-013), y el texto de la enmienda lo exige ("sin ninguna columna de barbería ni de
+    persona").
 - **Alternativas descartadas:**
   - **Permisos por columna sobre las tablas para `barberias_plataforma`:** contradice la aclaración.
   - **Una función `SECURITY DEFINER` con `barberias_auth`:** ese rol tiene `BYPASSRLS`.
@@ -61,9 +68,16 @@ ADR-031, el backlog y el código de M01, M02, M03 y M06. Formato: decisión, raz
     elegida.
   - **Vistas con `tenant_id`:** permitirían filtrar por barbería.
 - **Consecuencia:** el rol se crea en `db/init/01-roles.sql`, porque las migraciones corren con
-  `barberias_owner`, que no puede crear roles. A `barberias_owner` se le da `GRANT barberias_conteos` para
-  poder asignar la propiedad de las vistas, como se hizo con `barberias_auth` (ADR-015). En una base que ya
-  existía, el rol se crea a mano una vez, como los demás roles (README de la plataforma).
+  `barberias_owner`, que no puede crear roles. En una base que ya existía, el rol se crea a mano una vez, como
+  los demás roles (README de la plataforma).
+- **Cómo se le concede a `barberias_owner` (análisis H1):**
+  - con `GRANT barberias_conteos TO barberias_owner WITH INHERIT FALSE, SET TRUE` (PostgreSQL 16);
+  - `SET TRUE` es lo que hace falta para asignarle la propiedad de las vistas (`ALTER VIEW … OWNER TO`);
+  - `INHERIT FALSE` evita que el dueño de las tablas, que **sí** inicia sesión, herede las políticas
+    `FOR SELECT TO barberias_conteos USING (true)`. Sin eso, `barberias_owner` leería todas las filas de
+    `appointment` y `membership` de todas las barberías, aunque hoy tiene RLS forzada;
+  - **ningún rol con inicio de sesión** recibe `barberias_conteos` con herencia. Lo comprueba
+    `lectura-plataforma` (permisos exactos, el dueño con tenant fijado solo ve su barbería).
 
 ## R03. Punto de corte de US2
 
@@ -144,7 +158,9 @@ ADR-031, el backlog y el código de M01, M02, M03 y M06. Formato: decisión, raz
 ## R09. Intentos de inicio de sesión con el origen derivado (US3)
 
 - **Decisión:**
-  - **Sal nueva** `INTENTOS_SAL_IP` (secreto de al menos 16 caracteres, distinta de `ENLACES_SAL_IP`). El
+  - **Sal nueva** `INTENTOS_SAL_IP` (secreto de al menos 16 caracteres, distinta de `ENLACES_SAL_IP`). Fuera del
+    entorno de desarrollo, su valor va fuera del repositorio; el repositorio solo lleva valores de desarrollo
+    (FR-020). El
     origen se guarda como `ip_hash = SHA-256(sal ‖ ip)`, en el adaptador de infraestructura, igual que
     `KyselyIntentosEnlaceRepository`.
   - El puerto `IntentosRepository` y sus llamadores (el ingreso, `IntentosAdmin`) no cambian: siguen pasando
@@ -185,8 +201,9 @@ ADR-031, el backlog y el código de M01, M02, M03 y M06. Formato: decisión, raz
   - **Reglas de dependency-cruiser:**
     - se amplía `lectura-plataforma-confinada` con `catalogo-citas/citas/infrastructure/plataforma/`, para la
       fuente de citas de M02;
-    - regla nueva **`indicadores-solo-por-registro`**: solo `host/indicadores.ts` importa las fuentes de
-      indicadores de los módulos;
+    - regla nueva **`indicadores-solo-por-registro`**: los archivos `src/modules/**/infrastructure/plataforma/*-indicador.ts`
+      solo los importa `host/indicadores.ts` (y el `index.ts` de su propio módulo, para exportarlos), y
+      `shared/indicadores/` no importa ningún módulo;
     - regla nueva **`solicitudes-datos-sin-plataforma`**: el submódulo `solicitudes-datos` no importa
       `shared/lectura-plataforma.ts` ni nada de `infrastructure/plataforma/`, y ningún controlador
       `@Plataforma()` importa ese submódulo. Así el administrador nunca llega a las solicitudes.

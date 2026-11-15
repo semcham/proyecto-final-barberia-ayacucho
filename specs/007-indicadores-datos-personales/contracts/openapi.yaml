@@ -6,7 +6,10 @@ info:
     Rutas nuevas de M01 (research R06 y R10). Las de solicitudes toman la barbería solo del token (principio
     III) y nunca devuelven datos de otra barbería. La de indicadores es @Plataforma(): solo el administrador con
     su token, que no lleva barbería, y solo devuelve números. Errores con el formato único
-    { codigo, mensaje, detalles }.
+    { codigo, mensaje, detalles }. Validación (análisis M3): lo que valida el DTO (campos desconocidos, tipo
+    desconocido, largos excedidos, motivo o respuesta fuera de largo) responde 400 VALIDACION, como en todo el
+    proyecto; las reglas del dominio (rectificación sin detalle, atender sin respuesta, rechazar sin motivo)
+    responden 422 VALIDACION con el campo en detalles[0].
 servers:
   - url: /api/v1
 security:
@@ -24,13 +27,13 @@ paths:
             schema: { $ref: "#/components/schemas/NuevaSolicitud" }
       responses:
         "201": { description: Registrada, content: { application/json: { schema: { $ref: "#/components/schemas/Solicitud" } } } }
-        "400": { description: "VALIDACION (cuerpo con campos desconocidos, como tenant o barbería)" }
+        "400": { description: "VALIDACION del DTO: campos desconocidos (como tenant o barbería), tipo desconocido o detalle de más de 500 caracteres" }
         "401": { description: Sin sesión, o con el token de la plataforma }
         "403": { description: ACCESO_DENEGADO (propietario) }
         "409":
           description: SOLICITUD_ABIERTA (ya hay una abierta del mismo tipo); el id de la existente va en detalles[0].solicitudId
           content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
-        "422": { description: "VALIDACION (tipo desconocido, rectificación sin detalle, más de 500 caracteres)" }
+        "422": { description: "VALIDACION del dominio: rectificación sin detalle" }
     get:
       tags: [Solicitudes]
       summary: Bandeja del propietario con las solicitudes de su barbería (por defecto, las abiertas)
@@ -68,10 +71,11 @@ paths:
                   properties: { clienteId: { type: string, format: uuid } }
       responses:
         "201": { description: Registrada, con onBehalf = true, content: { application/json: { schema: { $ref: "#/components/schemas/Solicitud" } } } }
+        "400": { description: "VALIDACION del DTO (como en POST /datos-personales/solicitudes)" }
         "403": { description: ACCESO_DENEGADO (barbero o cliente) }
         "404": { description: CLIENTE_NO_ENCONTRADO (no existe en esta barbería) }
         "409": { description: SOLICITUD_ABIERTA }
-        "422": { description: VALIDACION }
+        "422": { description: "VALIDACION del dominio: rectificación sin detalle" }
 
   /datos-personales/solicitudes/{id}/atencion:
     post:
@@ -103,10 +107,11 @@ paths:
                 motivo: { type: string, minLength: 5, maxLength: 300, description: Obligatorio con RECHAZADA }
       responses:
         "200": { description: Cerrada, content: { application/json: { schema: { $ref: "#/components/schemas/SolicitudEnBandeja" } } } }
+        "400": { description: "VALIDACION del DTO: resultado desconocido, campos desconocidos, respuesta o motivo fuera de largo" }
         "403": { description: ACCESO_DENEGADO }
         "404": { description: SOLICITUD_NO_ENCONTRADA }
         "409": { description: SOLICITUD_CERRADA }
-        "422": { description: VALIDACION (sin respuesta o sin motivo, o fuera de largo) }
+        "422": { description: "VALIDACION del dominio: ATENDIDA sin respuesta o RECHAZADA sin motivo" }
 
   /plataforma/indicadores:
     get:

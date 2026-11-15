@@ -4,7 +4,7 @@
 
 **Created**: 2026-11-15
 
-**Status**: Draft
+**Status**: Aclarada (2026-11-15), con plan y tareas; sin código. La fase 2c depende de la enmienda 1.7.0 del principio III.
 
 **Input**: User description: "Funcionalidad 007 "Indicadores y datos personales" (módulos M06 y M01). Versión MÍNIMA para la entrega del 18 de noviembre; alcance cortable por historia. US1 (P1) RF32: registro y seguimiento de solicitudes de acceso, rectificación y eliminación de datos personales, con estado y registro, atendidas A MANO por la barbería o el administrador según corresponda, sin exportación automática; quién crea, quién atiende y qué ve cada rol sale de los roles y el aislamiento existentes. US2 (P1) RF31: indicadores agregados de uso para el administrador de la plataforma (barberías activas, citas por mes, usuarios), sin datos personales de clientes, con el rol de lectura de la plataforma (ADR-031), nunca BYPASSRLS. US3 (P3, la primera que se recorta): login_attempt con hash de la IP con sal, como action_link_attempt, con su migración. Condiciones: constitución, aislamiento, matriz de permisos, auditoría, no cambiar otras funcionalidades; lo no construido se documenta como no construido."
 
@@ -20,7 +20,7 @@
 
 ### Session 2026-11-15
 
-- Q: ¿De dónde salen los conteos de citas y usuarios del administrador, si el rol de lectura de la plataforma no tiene permisos sobre esas tablas (FR-012)? → A: Opción A acotada: vistas de **solo conteo**, con columnas sin datos personales (barbería, fecha y estado de la cita; tipo de membresía); el rol de lectura de la plataforma lee **solo esas vistas** y no recibe ningún permiso sobre las tablas de citas ni de usuarios. Requiere una enmienda acotada del principio III y de ADR-031, más una prueba de permisos exactos. **Criterio de corte:** si la enmienda se complica, se recorta a la opción C (solo barberías por estado) y las citas por mes y los usuarios quedan como no construidos.
+- Q: ¿De dónde salen los conteos de citas y usuarios del administrador, si el rol de lectura de la plataforma no tiene permisos sobre esas tablas (FR-012)? → A: Opción A acotada: vistas de **solo conteo**, con columnas sin datos personales (barbería, fecha y estado de la cita; tipo de membresía; el plan y el borrador de la enmienda las dejan todavía más estrictas: ya agregadas y **sin ninguna columna de barbería ni de persona**, ver FR-012); el rol de lectura de la plataforma lee **solo esas vistas** y no recibe ningún permiso sobre las tablas de citas ni de usuarios. Requiere una enmienda acotada del principio III y de ADR-031, más una prueba de permisos exactos. **Criterio de corte:** si la enmienda se complica, se recorta a la opción C (solo barberías por estado) y las citas por mes y los usuarios quedan como no construidos.
 - Q: ¿Quién atiende las solicitudes del propietario sobre su propia cuenta (FR-005)? → A: Opción C: **quedan fuera de 007** y se documentan como no construidas, porque atenderlas exigiría que el administrador toque datos de una barbería, lo que choca con el aislamiento. Los **clientes y los barberos** registran solicitudes sobre sus propios datos, y las atiende el **propietario de su barbería**.
 - Q: ¿Qué hace el sistema al atender una eliminación (FR-008)? → A: Opción A: **solo registra la respuesta**; el borrado se hace a mano con lo que ya existe. La anonimización del perfil queda como **evolución futura, no construida**.
 - Q: ¿Se confirman el barbero como solicitante, el plazo interno y que la auditoría de HU26 queda fuera? → A: Sí: el barbero puede registrar solicitudes; el plazo interno es de **10 días hábiles**, pendiente de validar contra el plazo legal; ver la auditoría (HU26) queda **fuera de 007**.
@@ -81,7 +81,7 @@ Hoy, cada intento fallido de inicio de sesión (del personal, de los clientes y 
 1. **Given** el sistema migrado, **When** se registra un intento fallido, **Then** la fila guarda el origen derivado con la sal y nunca la IP en claro.
 2. **Given** filas anteriores a la migración con la IP en claro, **When** se migra, **Then** ya no queda ninguna IP legible (se derivan con la sal o se descartan, porque solo valen 24 h).
 3. **Given** el límite de intentos vigente, **When** se superan los intentos desde un mismo origen, **Then** el bloqueo y su mensaje son los mismos de antes, para el personal, los clientes y el administrador.
-4. **Given** la sal, **When** se configura, **Then** es un secreto del servidor, fuera del repositorio, y nunca aparece en registros.
+4. **Given** la sal, **When** se configura, **Then** fuera del entorno de desarrollo es un secreto que no está en el repositorio (el repositorio solo lleva valores de desarrollo), y nunca aparece en registros, errores ni auditoría.
 
 ---
 
@@ -93,7 +93,7 @@ Hoy, cada intento fallido de inicio de sesión (del personal, de los clientes y 
 - **Plazo vencido:** una solicitud abierta más allá de su plazo interno se marca como vencida en la bandeja de quien atiende; no se cierra sola.
 - **Eliminación con obligaciones de conservación:** la respuesta debe decir qué se conserva y por qué (por ejemplo, la evidencia del consentimiento, la auditoría o los datos de pagos de la suscripción).
 - **Solicitud del propietario sobre sus propios datos:** no construida en 007 (FR-005); si la pide, se le indica que no está disponible en esta versión.
-- **Solicitud de un barbero que deja de ser personal:** la solicitud ya registrada sigue visible para el propietario y conserva su estado; el barbero desactivado ya no puede entrar a verla (asunción).
+- **Solicitud de un barbero que deja de ser personal:** la solicitud ya registrada sigue visible para el propietario y conserva su estado; el barbero desactivado ya no puede entrar a verla. **Asunción sin prueba propia:** sale del comportamiento existente de la desactivación de usuarios (001), que ya impide su ingreso.
 - **Enmienda no aprobada a tiempo:** se aplica el criterio de corte de FR-012 (solo barberías por estado), y las citas por mes y los usuarios se documentan como no construidos.
 - **Indicadores sin datos:** una plataforma sin citas en un mes muestra ese mes en cero, no un error.
 - **Indicadores y barberías suspendidas:** se cuentan en su estado; sus citas y usuarios cuentan igual en los totales.
@@ -120,7 +120,7 @@ Hoy, cada intento fallido de inicio de sesión (del personal, de los clientes y 
 
 **US2 · Indicadores de la plataforma (RF31)**
 
-- **FR-012**: El administrador de la plataforma MUST poder ver tres indicadores agregados de todas las barberías: barberías por estado de suscripción (y el total de activas), citas registradas por mes (últimos 12 meses) y usuarios (personal y clientes). Las barberías por estado ya salen de lo que su rol de lectura puede leer hoy. Las **citas por mes** y los **usuarios** MUST salir de **vistas de solo conteo** con columnas sin datos personales: de cada cita, solo la barbería, la fecha y el estado; de cada membresía, solo la barbería y su tipo (personal o cliente). El rol de lectura de la plataforma MUST poder leer **solo esas vistas** y MUST NOT recibir ningún permiso sobre las tablas de citas, clientes ni usuarios. Esto requiere una **enmienda acotada del principio III** de la constitución y de **ADR-031**, aprobadas antes de implementar (principio XI), y una **prueba de permisos exactos** (PR09, `lectura-plataforma`) que falle si el rol puede leer algo más. **Criterio de corte:** si la enmienda no se aprueba a tiempo o se complica, US2 se recorta a **solo las barberías por estado**, y las citas por mes y los usuarios se documentan como no construidos (desviación en esta spec y en la trazabilidad).
+- **FR-012**: El administrador de la plataforma MUST poder ver tres indicadores agregados de todas las barberías: barberías por estado de suscripción (y el total de activas), citas registradas por mes (últimos 12 meses) y usuarios (personal y clientes). Las barberías por estado ya salen de lo que su rol de lectura puede leer hoy. Las **citas por mes** y los **usuarios** MUST salir de **vistas de solo conteo ya agregadas**, sin ninguna columna de barbería ni de persona: las citas, agrupadas por mes de registro y estado; las membresías activas, agrupadas por tipo (personal o cliente). El rol de lectura de la plataforma MUST poder leer **solo esas vistas** y MUST NOT recibir ningún permiso sobre las tablas de citas, clientes ni usuarios. Esto requiere una **enmienda acotada del principio III** de la constitución y de **ADR-031**, aprobadas antes de implementar (principio XI), y una **prueba de permisos exactos** (PR09, `lectura-plataforma`) que falle si el rol puede leer algo más. **Criterio de corte:** si la enmienda no se aprueba a tiempo o se complica, US2 se recorta a **solo las barberías por estado**, y las citas por mes y los usuarios se documentan como no construidos (desviación en esta spec y en la trazabilidad).
 - **FR-013**: Los indicadores MUST NOT contener nombres, correos, teléfonos ni identificadores de personas, ni datos de una barbería concreta más allá de los conteos por estado. Un conteo MUST NOT poder filtrarse por una sola barbería ni por una persona.
 - **FR-014**: Solo el administrador de la plataforma, con su sesión y segundo factor, MUST poder ver los indicadores; cualquier token de barbería MUST recibir el rechazo de las rutas de la plataforma, como hoy.
 - **FR-015**: Calcular los indicadores MUST NOT escribir datos de negocio ni usar un rol que omita RLS. Cada consulta MUST quedar en la auditoría del acceso del administrador.
@@ -131,11 +131,11 @@ Hoy, cada intento fallido de inicio de sesión (del personal, de los clientes y 
 - **FR-017**: Los intentos fallidos de inicio de sesión (personal, clientes y administrador) MUST guardar el origen solo como un valor derivado con una **sal secreta** del servidor, como los intentos de los enlaces (004); MUST NOT guardar la IP en claro.
 - **FR-018**: El límite de intentos MUST comportarse igual que antes para todos los ingresos (mismos umbrales, mismo bloqueo, mismo mensaje, mismo borrado de los fallos tras un ingreso correcto y la misma limpieza de las filas de más de 24 h).
 - **FR-019**: La migración MUST dejar sin ninguna IP legible las filas existentes (derivándolas o descartándolas; duran 24 h) y MUST NOT dejar el límite apagado durante el cambio.
-- **FR-020**: La sal MUST ser un secreto de configuración fuera del repositorio y MUST NOT aparecer en registros, errores ni auditoría.
+- **FR-020**: El valor de la sal de cualquier entorno distinto del de desarrollo MUST ir fuera del repositorio; el repositorio solo lleva valores de desarrollo (en `.env.example`, en `docker-compose.yml` y en las pruebas). La sal MUST NOT aparecer en registros, errores ni auditoría.
 
 **Comunes**
 
-- **FR-021**: Ninguna historia MUST cambiar el comportamiento de otra funcionalidad: las rutas, pantallas y pruebas existentes de 001 a 008 siguen igual. Las vistas de conteo de FR-012 solo suman permisos de lectura al rol de la plataforma sobre ellas; no cambian las tablas ni sus permisos.
+- **FR-021**: Ninguna historia MUST cambiar el comportamiento de otra funcionalidad: las rutas y pantallas de 001 a 008 siguen haciendo lo mismo (US3 cambia cómo se guarda el origen, no el límite). Las pruebas existentes se **amplían sin quitar ninguna aserción**, salvo la de permisos de tabla de `lectura-plataforma` en la fase 2c, que pasa de "ningún permiso de tabla" a "exactamente las dos vistas". Las vistas de conteo de FR-012 solo suman permisos de lectura al rol de la plataforma sobre ellas; no cambian las tablas ni sus permisos para los demás roles.
 - **FR-022**: Las rutas nuevas MUST sumarse a la matriz de permisos por rol con su prueba celda por celda (PR08), y las tablas nuevas de barbería MUST tener RLS y su prueba de aislamiento (PR09).
 - **FR-023**: Lo que no se construya MUST documentarse como "no construido" en esta especificación y en la trazabilidad, sin presentarlo como implementado.
 
@@ -144,7 +144,7 @@ Hoy, cada intento fallido de inicio de sesión (del personal, de los clientes y 
 - **Solicitud sobre datos personales**: de una persona (cliente o barbero) en una barbería; tipo (acceso, rectificación, eliminación), estado, fechas, plazo interno, quién la registró (el titular o la barbería en su nombre), el detalle pedido, la respuesta y, si se rechaza, el motivo. Es un dato de la barbería, aislado por barbería.
 - **Cambio de estado de la solicitud**: quién y cuándo pasó una solicitud de un estado a otro; alimenta la auditoría, sin el texto.
 - **Indicador de la plataforma**: un conteo agregado (barberías por estado, citas por mes, usuarios por tipo) con su momento de cálculo; no se guarda ningún dato de personas.
-- **Vista de solo conteo**: una lectura con las únicas columnas que necesitan los conteos (de la cita: barbería, fecha y estado; de la membresía: barbería y tipo), sin nombres, contactos ni identificadores de personas; es lo único de citas y usuarios que puede leer el rol de la plataforma.
+- **Vista de solo conteo**: una lectura que ya entrega números agregados (citas por mes de registro y estado; membresías activas por tipo), sin ninguna columna de barbería ni de persona; es lo único de citas y usuarios que puede leer el rol de la plataforma.
 - **Intento de inicio de sesión** (existente, se modifica en US3): el correo como hash, el origen como valor derivado con sal (antes, la IP) y la fecha.
 
 ## Success Criteria _(mandatory)_

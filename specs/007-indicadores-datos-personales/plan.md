@@ -123,22 +123,32 @@ contradicción con la constitución en lo que se construye sin la enmienda.**
 **Re-check después del diseño (Fase 1):** igual. Además:
 
 - el diseño no da permisos de tabla al rol de la plataforma;
-- el rol dueño de las vistas no puede conectarse ni omitir RLS;
+- el rol dueño de las vistas no puede conectarse ni omitir RLS, y ningún rol con inicio de sesión hereda sus
+  políticas (se concede a `barberias_owner` sin herencia);
 - el administrador no llega a las solicitudes (regla `solicitudes-datos-sin-plataforma`).
 
 ## Fases (una fase = un commit; cada historia se cierra sola)
 
 | Fase | Contenido | Depende de | Se puede recortar |
 | ---- | --------- | ---------- | ----------------- |
-| **1 · US1** | Pruebas primero; migración `data_subject_request` con RLS; dominio (estados y días hábiles); casos de uso (registrar, registrar en nombre, mis solicitudes, bandeja, iniciar, cerrar); rutas y operaciones de M01; auditoría sin texto; pantallas "Mis datos" (cliente y barbero) y bandeja del propietario; reglas de PR14 | nada | No (P1) |
-| **2a · US2, enmienda** | Revisión por el responsable de los borradores de la enmienda 1.7.0 y de ADR-031; si se aprueban, aplicarlos a la constitución, al plan-template y al documento de ADR. **Punto de corte:** si no se aprueban a tiempo o se complican, se salta 2c y US2 se cierra con 2b | nada | — (es una decisión) |
-| **2b · US2, barberías por estado** | Registro de indicadores en M06; fuente de M03 con columnas ya concedidas; caso de uso y ruta `@Plataforma()` en M01; acción `ADMIN_INDICADORES_CONSULTADOS`; pantalla "Indicadores" | nada (no necesita la enmienda) | No: es el mínimo de US2 |
-| **2c · US2, citas y usuarios** | Rol `barberias_conteos`; dos vistas; fuentes de M02 y M01; ampliación de `lectura-plataforma` (permisos exactos) y de la regla `lectura-plataforma-confinada` | 2a aprobada y 2b | **Sí: es el corte** |
-| **3 · US3** | Pruebas primero; `INTENTOS_SAL_IP`; adaptador con `ip_hash`; migración que borra las filas y cambia la columna; aclaración PATCH del principio III; ampliación de `limite-intentos` y `segundo-factor` | nada | **Sí: primera en recortarse** |
-| **4 · Cierre** | Documentación (lista abajo), guía rápida y suite completa | las fases construidas | No |
+| **1 · US1** | Pruebas primero; migración `data_subject_request` con RLS; dominio (estados y días hábiles); casos de uso (registrar, registrar en nombre, mis solicitudes, bandeja, iniciar, cerrar); rutas y operaciones de M01; auditoría sin texto; pantallas "Mis datos" (cliente y barbero) y bandeja del propietario; reglas de PR14; **sus documentos** | nada | No (P1) |
+| **2a · US2, enmienda** | Revisión por el responsable de los borradores; si se aprueban, aplicarlos a la constitución, al plan-template y al documento de ADR, y actualizar en el mismo commit `seguridad-y-privacidad.md`, `multi-tenancy-y-datos.md` y la trazabilidad, con las vistas como **"aprobadas, por construir en 2c"**. **Punto de corte:** si no se aprueban a tiempo o se complican, se salta 2c, US2 se cierra con 2b y la desviación se registra en esos mismos documentos | nada | — (es una decisión) |
+| **2b · US2, barberías por estado** | Registro de indicadores en M06; fuente de M03 con columnas ya concedidas; caso de uso y ruta `@Plataforma()` en M01; acción `ADMIN_INDICADORES_CONSULTADOS`; pantalla "Indicadores"; **nota de ADR-031 sobre el registro** (no depende de la enmienda); **sus documentos** | nada (no necesita la enmienda) | No: es el mínimo de US2 |
+| **2c · US2, citas y usuarios** | Rol `barberias_conteos` (concedido a `barberias_owner` sin herencia); dos vistas; fuentes de M02 y M01; ampliación de `lectura-plataforma` (permisos exactos) y de la regla `lectura-plataforma-confinada`; **sus documentos**, que pasan las vistas de "por construir" a "construidas" | 2a aprobada y 2b | **Sí: es el corte** |
+| **3 · US3** | Pruebas primero; `INTENTOS_SAL_IP`; adaptador con `ip_hash`; migración que borra las filas y cambia la columna; aclaración PATCH del principio III; ampliación de `limite-intentos` y `segundo-factor`; **sus documentos** | nada | **Sí: primera en recortarse** |
+| **4 · Cierre** | Solo **estados y totales** en los documentos (lista abajo), guía rápida y suite completa | las fases construidas | No |
 
 Si se recorta algo, se registra como desviación en `spec.md` y en la fila de 007 de `docs/trazabilidad.md`
 (FR-023).
+
+**Documentos en el mismo cambio (principio XI, análisis C1):** cada fase actualiza en su propio commit los
+documentos que su cambio afecta: la constitución, el ADR, `seguridad-y-privacidad.md`, `multi-tenancy-y-datos.md`,
+`api-rest.md`, los componentes y su parte de la trazabilidad. Así, si una fase se corta, ninguna anterior deja
+documentos a medias. La fase 4 solo cambia estados ("planificado" → "implementado" o "parcial"), los totales de
+pruebas y tareas, y el recorrido de la guía rápida.
+
+**Migraciones sin número fijo (análisis H2):** cada una toma el número siguiente libre al implementarla, porque
+el migrador no admite migraciones fuera de orden y 2c y 3 pueden hacerse en cualquier orden.
 
 ## Project Structure
 
@@ -154,23 +164,24 @@ specs/007-indicadores-datos-personales/
 ├── contracts/
 │   ├── openapi.yaml     # rutas de solicitudes e indicadores
 │   ├── rbac.md          # matriz rol × ruta y operaciones nuevas de M01
-│   └── enmienda-y-adr.md  # BORRADORES: enmienda 1.7.0, revisión de ADR-031 y PATCH de US3
+│   └── enmienda-y-adr.md  # BORRADORES: enmienda 1.7.0, revisión de ADR-031, nota del registro y PATCH de US3
 ├── checklists/requirements.md
-└── tasks.md             # /speckit-tasks (todavía no)
+└── tasks.md             # /speckit-tasks
 ```
 
 ### Source Code (repository root)
 
 ```text
 tecnologia/plataforma-barberias/
-├── db/init/01-roles.sql                         # US2 (2c): rol barberias_conteos (NOLOGIN NOBYPASSRLS NOINHERIT)
-├── docker-compose.yml, .env.example             # US3: INTENTOS_SAL_IP (vacía en .env.example; valor de desarrollo en Compose)
+├── db/init/01-roles.sql                         # US2 (2c): rol barberias_conteos (NOLOGIN NOBYPASSRLS NOINHERIT),
+│                                                #   concedido a barberias_owner WITH INHERIT FALSE, SET TRUE
+├── docker-compose.yml, .env.example             # US3: INTENTOS_SAL_IP (valor solo de desarrollo en los dos)
 ├── backend/
-│   ├── migrations/
-│   │   ├── 0032_solicitudes_datos.ts            # US1 (números provisionales)
-│   │   ├── 0033_auditoria_indicadores.ts        # US2 (2b): acción ADMIN_INDICADORES_CONSULTADOS
-│   │   ├── 0034_vistas_de_conteo.ts             # US2 (2c, se recorta con el corte): vistas, propiedad y permisos
-│   │   └── 0035_intentos_con_hash.ts            # US3
+│   ├── migrations/                              # sin número fijo: cada una toma el siguiente libre al implementarla
+│   │   ├── NNNN_solicitudes_datos.ts            # US1
+│   │   ├── NNNN_auditoria_indicadores.ts        # US2 (2b): acción ADMIN_INDICADORES_CONSULTADOS
+│   │   ├── NNNN_vistas_de_conteo.ts             # US2 (2c, se recorta con el corte): vistas, propiedad y permisos
+│   │   └── NNNN_intentos_con_hash.ts            # US3
 │   ├── src/
 │   │   ├── host/indicadores.ts                  # US2: registra las fuentes en el registro de M06
 │   │   ├── shared/indicadores/                  # US2: RegistroDeIndicadores y FuenteDeIndicador (M06, sin reglas)
@@ -180,11 +191,12 @@ tecnologia/plataforma-barberias/
 │   │       │   ├── solicitudes-datos/           # US1: domain/ application/ infrastructure/ presentation/
 │   │       │   ├── identidad/application/plataforma/consultar-indicadores.ts   # US2
 │   │       │   ├── identidad/presentation/indicadores-plataforma.controller.ts # US2: @Plataforma()
-│   │       │   ├── identidad/infrastructure/plataforma/conteo-usuarios.ts     # US2 (2c)
+│   │       │   ├── identidad/infrastructure/plataforma/usuarios-por-tipo-indicador.ts  # US2 (2c)
 │   │       │   ├── identidad/infrastructure/kysely-intentos-repository.ts     # US3: ip_hash
 │   │       │   └── identidad/domain/permisos.ts                               # US1: 4 operaciones nuevas
-│   │       ├── catalogo-citas/citas/infrastructure/plataforma/conteo-citas.ts  # US2 (2c)
-│   │       └── suscripciones-pagos/suscripciones/infrastructure/plataforma/barberias-por-estado.ts  # US2 (2b)
+│   │       ├── catalogo-citas/citas/infrastructure/plataforma/citas-por-mes-indicador.ts  # US2 (2c)
+│   │       └── suscripciones-pagos/suscripciones/infrastructure/plataforma/barberias-por-estado-indicador.ts  # US2 (2b)
+│   │       # Convención de las fuentes: infrastructure/plataforma/*-indicador.ts (regla indicadores-solo-por-registro)
 │   ├── .dependency-cruiser.cjs                  # reglas nuevas y ampliada (abajo)
 │   └── test/
 │       ├── unit/solicitudes-datos/              # estados, días hábiles, validación
@@ -218,7 +230,7 @@ El único cambio de comportamiento previsto es el de US3, que mantiene iguales e
 | Regla | Qué comprueba | Fase |
 | ----- | ------------- | ---- |
 | `lectura-plataforma-confinada` (**ampliada**) | Suma `catalogo-citas/citas/infrastructure/plataforma/` a las carpetas que pueden importar `shared/lectura-plataforma.ts` | 2c |
-| `indicadores-solo-por-registro` (**nueva**) | Las fuentes de indicadores de los módulos solo las importa `host/indicadores.ts`; M06 `shared/indicadores/` no importa módulos | 2b |
+| `indicadores-solo-por-registro` (**nueva**) | Los archivos `src/modules/**/infrastructure/plataforma/*-indicador.ts` solo los importa `host/indicadores.ts` (y el `index.ts` de su propio módulo); M06 `shared/indicadores/` no importa módulos | 2b |
 | `solicitudes-datos-sin-plataforma` (**nueva**) | `acceso-barberias/solicitudes-datos/` no importa `shared/lectura-plataforma.ts`; ningún `*-plataforma.controller.ts` ni carpeta `plataforma/` importa `solicitudes-datos/` | 1 |
 
 ## Pruebas por historia (primero, deben fallar)
@@ -235,16 +247,20 @@ El único cambio de comportamiento previsto es el de US3, que mantiene iguales e
   - `auditoria`: las cuatro acciones, sin el texto (con un texto marcador que no debe aparecer en `audit_log` ni
     en los registros capturados);
   - `aislamiento-007` y `rls`;
-  - `rbac-007` (7 rutas × 5 columnas);
-  - contrato contra `openapi.yaml`;
+  - `rbac-007` (7 rutas × 5 columnas), con una lista de filas implementadas, como `rbac-005`;
+  - contrato contra `openapi.yaml` (400 de validación del DTO y 422 de las reglas del dominio);
   - frontend: las tres pantallas, mensajes en `aria-live` y estado vacío.
 - **US2:**
   - `indicadores-plataforma`: conteos exactos sobre lo sembrado; ningún id, nombre, correo ni teléfono en el
-    cuerpo; 401 con un token de barbería; una fila `ADMIN_INDICADORES_CONSULTADOS`; meses en cero;
+    cuerpo; 401 con un token de barbería; una fila `ADMIN_INDICADORES_CONSULTADOS`; meses en cero; ≤ 3 s en 2b
+    **y en 2c**, con el volumen de `escalado`; el borde del mes con `created_at` sembrado a propósito;
   - `lectura-plataforma` (2c):
     - la lista exacta suma solo las dos vistas;
     - `SELECT id FROM appointment` y `FROM membership` siguen denegados;
     - `barberias_conteos` es `NOLOGIN NOBYPASSRLS`, no es dueño de tablas y no tiene permisos de escritura;
+    - `barberias_app` y `barberias_publico` no leen las vistas;
+    - `barberias_owner`, con tenant fijado, solo ve su barbería, y ningún rol con inicio de sesión hereda
+      `barberias_conteos`;
   - contrato;
   - frontend.
 - **US3:**
@@ -254,36 +270,34 @@ El único cambio de comportamiento previsto es el de US3, que mantiene iguales e
     - ninguna fila con una IP legible (`ip` ya no existe y `ip_hash` no es la IP);
   - `segundo-factor`: el administrador, igual;
   - prueba de la migración: las filas viejas no quedan;
-  - `Configuracion`: rechaza la sal corta o igual a la de los enlaces.
+  - `Configuracion`: rechaza la sal corta o igual a la de los enlaces;
+  - la sal no aparece en los registros capturados ni en la auditoría (marcador, como en `registro-asistente`).
 
-## Documentos de `docs/` que se actualizan al cerrar (fase 4)
+## Documentos de `docs/` y en qué fase se actualizan
 
-Solo lo construido pasa a "implementado"; lo recortado o fuera de alcance se dice como no construido.
+Cada fase actualiza **en su commit** lo que su cambio afecta (principio XI). La fase 4 solo cambia estados y
+totales. Solo lo construido pasa a "implementado"; lo recortado o fuera de alcance se dice como no construido.
 
-| Documento | Qué cambia |
-| --------- | ---------- |
-| `docs/trazabilidad.md` | Fila de 007 en §4 (estado, pruebas, totales, desviaciones), HU26 y HU27 en §1, tabla §4.8 de componentes de 007, §2 (M06 indicadores, M01) y §3 (estado de PR18 y PR21) |
-| `docs/01-analisis-de-sistema/03-requisitos-funcionales.md` | RF31 y RF32 (estado; RF32 "parcial": sin las solicitudes del propietario) y el resumen (hoy 33, 1 parcial y 1 planificado) |
-| `docs/01-analisis-de-sistema/02-historias-del-usuario.md` | HU26 (sigue parcial: sin la vista de la auditoría) y HU27 (parcial: sin el propietario) |
-| `docs/01-analisis-de-sistema/07-decisiones-arquitectonicas.md` | Revisión de ADR-031 (si se aprobó) |
-| `docs/01-analisis-de-sistema/08-escenarios-atributos-calidad.md` | EQ-18 (solicitudes con seguimiento), EQ-13 y EQ-12 (US3) |
-| `docs/01-analisis-de-sistema/01-actores.md` | Fila de M06 indicadores y de las solicitudes por actor |
-| `docs/02-arquitectura-software/componentes-arquitectonicos.md` | M01 (`solicitudes-datos`), M06 (registro de indicadores) y estados |
-| `docs/02-arquitectura-software/multi-tenancy-y-datos.md` | `data_subject_request`, el rol `barberias_conteos`, las vistas, la excepción de la plataforma y §7 (eliminación: a mano; anonimización como evolución) |
-| `docs/02-arquitectura-software/seguridad-y-privacidad.md` | Matriz rol × operación, §5 (derechos ARCO "implementado en parte") y amenazas |
-| `docs/02-arquitectura-software/api-rest.md` | Rutas de solicitudes y de indicadores |
-| `docs/02-arquitectura-software/estilo-arquitectonico.md` | Registro de indicadores en M06 y regla 6 (el host registra las fuentes) |
-| `docs/04-modelo-c4/` (niveles 1 a 3) | Indicadores para el administrador y M01/M06 (texto; imágenes por regenerar) |
-| `docs/05-gestion/02-backlog-y-sprints.md` | Fila de 007 y líneas de corte aplicadas |
-| `docs/05-gestion/04-pruebas.md` | PR18 y PR13 ampliadas, PR21 sigue planificada, §2.4 y una §2.8 de 007 |
-| `docs/05-gestion/06-mvp-y-evolucion.md` | Evoluciones: solicitudes del propietario, anonimización, oposición y vista de la auditoría |
-| `README.md` y `tecnologia/plataforma-barberias/README.md` | 007, migraciones, `INTENTOS_SAL_IP`, el rol nuevo y su paso manual |
-| `specs/003-suscripciones-pagos/contracts/restricciones-estado.md` | Nota en §1: las solicitudes de datos valen en todos los estados (sin cambiar ninguna regla) |
+| Documento | Fase 1 (US1) | Fase 2a | Fase 2b | Fase 2c | Fase 3 (US3) | Fase 4 (estados y totales) |
+| --------- | ------------ | ------- | ------- | ------- | ------------ | -------------------------- |
+| `docs/trazabilidad.md` | Fila de 007 y §4.8 (componentes de US1) | Enmienda y revisión de ADR-031 en la fila de 007 ("aprobadas, por construir"), o el corte como desviación | §4.8 (registro y barberías por estado) | §4.8 (vistas) y la fila, "construidas" | §4.8 (intentos) | Estado de la fila, HU26 y HU27 en §1, PR18 y PR21 en §3, totales |
+| `docs/01-analisis-de-sistema/07-decisiones-arquitectonicas.md` | — | Revisión de ADR-031 (o nada, si hay corte) | Nota de ADR-031 sobre el registro de indicadores | Estado de la revisión: implementada | — | — |
+| `.specify/memory/constitution.md` y `plan-template.md` | — | Enmienda 1.7.0 (si se aprobó) | — | — | Aclaración PATCH | — |
+| `docs/02-arquitectura-software/multi-tenancy-y-datos.md` | `data_subject_request` y §7 (eliminación a mano; anonimización como evolución) | La excepción de la plataforma con los conteos ("aprobada, por construir"), o nada | — | El rol `barberias_conteos` y las vistas, "construidas" | `login_attempt` con `ip_hash` | — |
+| `docs/02-arquitectura-software/seguridad-y-privacidad.md` | Matriz rol × operación y §5 (derechos ARCO "implementado en parte") | Amenazas y excepción de la plataforma ("aprobada, por construir"), o nada | Matriz (indicadores) | Amenazas, "construidas" | Amenazas (origen derivado) | — |
+| `docs/02-arquitectura-software/api-rest.md` | Rutas de solicitudes | — | Ruta de indicadores | — | — | — |
+| `docs/02-arquitectura-software/componentes-arquitectonicos.md` y `estilo-arquitectonico.md` | M01 `solicitudes-datos` | — | M06 registro de indicadores y la regla 6 del host | — | — | Estados |
+| `docs/01-analisis-de-sistema/03-requisitos-funcionales.md`, `02-historias-del-usuario.md` y `01-actores.md` | — | — | — | — | — | RF31 y RF32 (RF32 "parcial"), HU26 y HU27, actores, el resumen |
+| `docs/01-analisis-de-sistema/08-escenarios-atributos-calidad.md` | — | — | — | — | — | EQ-18, EQ-13 y EQ-12 con su evidencia |
+| `docs/04-modelo-c4/` (niveles 1 a 3) | — | — | — | — | — | Estados en el texto; imágenes por regenerar |
+| `docs/05-gestion/02-backlog-y-sprints.md`, `04-pruebas.md` y `06-mvp-y-evolucion.md` | — | — | — | — | — | Fila de 007, cortes aplicados, §2.4 y §2.8 de pruebas, evoluciones |
+| `README.md` y `tecnologia/plataforma-barberias/README.md` | Pantallas de US1 | — | Pantalla de indicadores | El rol y su paso manual | `INTENTOS_SAL_IP` y su efecto en los scripts | Totales |
+| `specs/003-suscripciones-pagos/contracts/restricciones-estado.md` | Nota en §1: las solicitudes valen en todos los estados | — | — | — | — | — |
 
 ## Complexity Tracking
 
 | Violation | Why Needed | Simpler Alternative Rejected Because |
 | --------- | ---------- | ------------------------------------ |
-| Rol de base nuevo `barberias_conteos` (dueño de las vistas), solo en 2c | Con `FORCE ROW LEVEL SECURITY`, una vista corre con las políticas de su dueño: la de `barberias_owner` vería cero filas, y con `security_invoker` el rol de la plataforma necesitaría permisos sobre las tablas, lo que la aclaración prohíbe | Permisos por columna sobre las tablas (prohibido por la aclaración); función de `barberias_auth` (tiene `BYPASSRLS`); contar barbería por barbería (no es la opción elegida) |
+| Rol de base nuevo `barberias_conteos` (dueño de las vistas), solo en 2c, concedido a `barberias_owner` con `WITH INHERIT FALSE, SET TRUE` | Con `FORCE ROW LEVEL SECURITY`, una vista corre con las políticas de su dueño: la de `barberias_owner` vería cero filas, y con `security_invoker` el rol de la plataforma necesitaría permisos sobre las tablas, lo que la aclaración prohíbe. Sin herencia, el dueño de las tablas (que inicia sesión) no recibe las políticas del rol | Permisos por columna sobre las tablas (prohibido por la aclaración); función de `barberias_auth` (tiene `BYPASSRLS`); contar barbería por barbería (no es la opción elegida) |
 | Enmienda MINOR 1.7.0 del principio III, solo en 2c | El texto actual impide que el administrador vea citas y usuarios; los conteos agregados de RF31 necesitan una excepción acotada | El corte "solo barberías por estado" no la necesita y queda como plan B |
 | Registro de indicadores en M06 conectado por el host | La matriz no deja que un módulo llame a M01, M02 y M03 a la vez | Ampliar la matriz (cambio mayor), o poner la lógica en el host |
