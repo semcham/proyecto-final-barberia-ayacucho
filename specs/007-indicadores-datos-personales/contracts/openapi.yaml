@@ -1,0 +1,204 @@
+openapi: 3.1.0
+info:
+  title: Plataforma de barberías · 007 Indicadores y datos personales
+  version: 0.1.0
+  description: >
+    Rutas nuevas de M01 (research R06 y R10). Las de solicitudes toman la barbería solo del token (principio
+    III) y nunca devuelven datos de otra barbería. La de indicadores es @Plataforma(): solo el administrador con
+    su token, que no lleva barbería, y solo devuelve números. Errores con el formato único
+    { codigo, mensaje, detalles }.
+servers:
+  - url: /api/v1
+security:
+  - barberia: []
+
+paths:
+  /datos-personales/solicitudes:
+    post:
+      tags: [Solicitudes]
+      summary: El cliente o el barbero registra una solicitud sobre sus propios datos en la barbería del token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/NuevaSolicitud" }
+      responses:
+        "201": { description: Registrada, content: { application/json: { schema: { $ref: "#/components/schemas/Solicitud" } } } }
+        "400": { description: "VALIDACION (cuerpo con campos desconocidos, como tenant o barbería)" }
+        "401": { description: Sin sesión, o con el token de la plataforma }
+        "403": { description: ACCESO_DENEGADO (propietario) }
+        "409":
+          description: SOLICITUD_ABIERTA (ya hay una abierta del mismo tipo); el id de la existente va en detalles[0].solicitudId
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "422": { description: "VALIDACION (tipo desconocido, rectificación sin detalle, más de 500 caracteres)" }
+    get:
+      tags: [Solicitudes]
+      summary: Bandeja del propietario con las solicitudes de su barbería (por defecto, las abiertas)
+      parameters:
+        - { name: estado, in: query, required: false, schema: { type: string, enum: [ABIERTAS, RECIBIDA, EN_ATENCION, ATENDIDA, RECHAZADA] } }
+      responses:
+        "200":
+          description: Solicitudes de la barbería, de la más antigua a la más reciente, con su titular
+          content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/SolicitudEnBandeja" } } } }
+        "401": { description: Sin sesión }
+        "403": { description: ACCESO_DENEGADO (barbero o cliente) }
+
+  /datos-personales/solicitudes/mias:
+    get:
+      tags: [Solicitudes]
+      summary: Las solicitudes del titular de la sesión en esta barbería
+      responses:
+        "200": { description: Sus solicitudes, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Solicitud" } } } } }
+        "401": { description: Sin sesión }
+        "403": { description: ACCESO_DENEGADO (propietario) }
+
+  /datos-personales/solicitudes/en-nombre:
+    post:
+      tags: [Solicitudes]
+      summary: El propietario registra una solicitud en nombre de un cliente de su barbería (por ejemplo, presencial)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - { $ref: "#/components/schemas/NuevaSolicitud" }
+                - type: object
+                  required: [clienteId]
+                  properties: { clienteId: { type: string, format: uuid } }
+      responses:
+        "201": { description: Registrada, con onBehalf = true, content: { application/json: { schema: { $ref: "#/components/schemas/Solicitud" } } } }
+        "403": { description: ACCESO_DENEGADO (barbero o cliente) }
+        "404": { description: CLIENTE_NO_ENCONTRADO (no existe en esta barbería) }
+        "409": { description: SOLICITUD_ABIERTA }
+        "422": { description: VALIDACION }
+
+  /datos-personales/solicitudes/{id}/atencion:
+    post:
+      tags: [Solicitudes]
+      summary: El propietario pasa una solicitud recibida a "en atención"
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: En atención, content: { application/json: { schema: { $ref: "#/components/schemas/SolicitudEnBandeja" } } } }
+        "403": { description: ACCESO_DENEGADO }
+        "404": { description: SOLICITUD_NO_ENCONTRADA (también la de otra barbería) }
+        "409": { description: "SOLICITUD_CERRADA, o ya en atención" }
+
+  /datos-personales/solicitudes/{id}/cierre:
+    post:
+      tags: [Solicitudes]
+      summary: El propietario la atiende (con respuesta) o la rechaza (con motivo). El sistema no borra ni exporta nada
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [resultado]
+              additionalProperties: false
+              properties:
+                resultado: { type: string, enum: [ATENDIDA, RECHAZADA] }
+                respuesta: { type: string, minLength: 1, maxLength: 1000, description: "Obligatoria con ATENDIDA: qué se hizo a mano y qué se conserva por obligación" }
+                motivo: { type: string, minLength: 5, maxLength: 300, description: Obligatorio con RECHAZADA }
+      responses:
+        "200": { description: Cerrada, content: { application/json: { schema: { $ref: "#/components/schemas/SolicitudEnBandeja" } } } }
+        "403": { description: ACCESO_DENEGADO }
+        "404": { description: SOLICITUD_NO_ENCONTRADA }
+        "409": { description: SOLICITUD_CERRADA }
+        "422": { description: VALIDACION (sin respuesta o sin motivo, o fuera de largo) }
+
+  /plataforma/indicadores:
+    get:
+      tags: [Plataforma]
+      summary: "Indicadores agregados de todas las barberías (US2). @Plataforma(): solo el administrador. Solo números"
+      security: [{ plataforma: [] }]
+      responses:
+        "200": { description: Indicadores, content: { application/json: { schema: { $ref: "#/components/schemas/Indicadores" } } } }
+        "401": { description: "Sin sesión de la plataforma, o con un token de barbería" }
+
+components:
+  securitySchemes:
+    barberia: { type: http, scheme: bearer, bearerFormat: JWT }
+    plataforma: { type: http, scheme: bearer, bearerFormat: JWT, description: Token de la plataforma (aud "plataforma", sin tid) }
+
+  schemas:
+    Error:
+      type: object
+      required: [codigo, mensaje, detalles]
+      properties:
+        codigo: { type: string }
+        mensaje: { type: string }
+        detalles: { type: array, items: { type: object } }
+
+    NuevaSolicitud:
+      type: object
+      required: [tipo]
+      additionalProperties: false
+      properties:
+        tipo: { type: string, enum: [ACCESO, RECTIFICACION, ELIMINACION] }
+        detalle: { type: string, maxLength: 500, description: Obligatorio en RECTIFICACION (qué dato y cómo corregirlo) }
+
+    Solicitud:
+      type: object
+      required: [id, tipo, estado, recibidaEn, venceEl, vencida, enNombre]
+      properties:
+        id: { type: string, format: uuid }
+        tipo: { type: string, enum: [ACCESO, RECTIFICACION, ELIMINACION] }
+        estado: { type: string, enum: [RECIBIDA, EN_ATENCION, ATENDIDA, RECHAZADA] }
+        detalle: { type: [string, "null"] }
+        respuesta: { type: [string, "null"] }
+        motivo: { type: [string, "null"] }
+        recibidaEn: { type: string, format: date-time }
+        venceEl: { type: string, format: date, description: "Plazo interno: 10 días hábiles (por validar contra el plazo legal)" }
+        vencida: { type: boolean, description: Abierta y con el plazo pasado; no se cierra sola }
+        enAtencionDesde: { type: [string, "null"], format: date-time }
+        cerradaEn: { type: [string, "null"], format: date-time }
+        enNombre: { type: boolean, description: La registró el propietario por el titular }
+
+    SolicitudEnBandeja:
+      allOf:
+        - { $ref: "#/components/schemas/Solicitud" }
+        - type: object
+          required: [titular]
+          properties:
+            titular:
+              type: object
+              required: [tipo, nombre]
+              description: El titular dentro de la barbería (el propietario ya ve a sus clientes y barberos)
+              properties:
+                tipo: { type: string, enum: [CLIENTE, BARBERO] }
+                nombre: { type: string }
+
+    Indicadores:
+      type: object
+      required: [calculadoEn, barberias]
+      description: Solo conteos de todas las barberías; ningún id, nombre, correo ni teléfono. Con el corte de US2, solo barberias
+      properties:
+        calculadoEn: { type: string, format: date-time }
+        barberias:
+          type: object
+          required: [activas, porEstadoDeSuscripcion, suspendidas]
+          properties:
+            activas: { type: integer, description: "No suspendidas, con la suscripción en TRIAL, ACTIVE o PAST_DUE" }
+            suspendidas: { type: integer }
+            porEstadoDeSuscripcion:
+              type: array
+              items: { type: object, required: [estado, barberias], properties: { estado: { type: string }, barberias: { type: integer } } }
+        citasPorMes:
+          type: array
+          description: Los últimos 12 meses en America/Lima; un mes sin citas va en cero. Falta si se aplicó el corte
+          items:
+            type: object
+            required: [mes, total, porEstado]
+            properties:
+              mes: { type: string, pattern: "^\\d{4}-\\d{2}$" }
+              total: { type: integer }
+              porEstado: { type: array, items: { type: object, required: [estado, citas], properties: { estado: { type: string }, citas: { type: integer } } } }
+        usuarios:
+          type: object
+          description: Membresías activas por tipo. Falta si se aplicó el corte
+          required: [personal, clientes]
+          properties:
+            personal: { type: integer }
+            clientes: { type: integer }
