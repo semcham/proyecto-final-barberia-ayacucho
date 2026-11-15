@@ -122,5 +122,6 @@ Cada fuente implementa `FuenteDeIndicador` de M06 y la registra el host. El resu
 - El administrador sigue usando la misma tabla con su clave `plataforma:<correo>`, y su IP desconocida
   (`0.0.0.0`) también se deriva.
 - Configuración nueva: `INTENTOS_SAL_IP`, secreto obligatorio de al menos 16 caracteres, distinto de
-  `ENLACES_SAL_IP`. Va en `.env.example` vacía y con un valor de desarrollo en `docker-compose.yml` y en las
-  pruebas.
+  `ENLACES_SAL_IP`. Lleva un valor **solo de desarrollo** en `.env.example` y en `docker-compose.yml` (como
+  `ENLACES_SAL_IP`) y otro en las pruebas (`test/helpers/entorno.ts`). El `.env` local del responsable no se toca:
+  la añade él a mano.
