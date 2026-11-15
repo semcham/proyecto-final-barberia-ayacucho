@@ -4,7 +4,7 @@
 
 **Created**: 2026-11-14
 
-**Status**: Draft
+**Status**: Implemented (fases 1 a 4, 2026-11-14 y 2026-11-15; con el proveedor de IA falso; revisiones manuales y mediciones en Docker Compose pendientes del responsable)
 
 **Input**: User description: "Funcionalidad 005 "Asistente de IA y reportes" (módulo M04). Versión MÍNIMA para la entrega del 18 de noviembre; alcance cortable por historia. US1 (P1) RF27: asistente del CLIENTE que consulta servicios, precios y disponibilidad de una barbería; solo lectura, solo con casos de uso del backend (M04 depende de M02/M03 solo por su API pública), sin reservar, sin datos de otros clientes, sin salirse de la barbería. US2 (P1) RF29: reportes por período para el propietario, en tablas, sin gráficos: citas, servicios más solicitados y actividad; no requiere IA. US3 (P3, la primera que se recorta) RF28: asistente del PROPIETARIO con pocas herramientas (resumen de citas y servicios más pedidos), solo con datos autorizados. Condiciones: proveedor de IA detrás de un puerto (OpenRouter solo en desarrollo; la llave nunca en el repositorio); proveedor falso en pruebas; cuotas por usuario y por barbería; defensa ante inyección de instrucciones con un conjunto adversarial mínimo (PR19); respuestas apoyadas en datos de las herramientas, nunca inventados; errores claros si el proveedor no responde; sin datos personales de terceros en respuestas ni registros. Respetar la constitución y no cambiar código de otras funcionalidades."
 
@@ -182,4 +182,21 @@ afectado (por ejemplo, FR-023 sin la tabla por día de la semana, FR-017 sin la 
 de 6 intervenciones de las aclaraciones, o FR-027 y FR-028 si se recorta US3), la fecha y el motivo. Cada
 desviación también va en la fila de 005 de `docs/trazabilidad.md`.
 
-- Ninguna por ahora (2026-11-14): no hay código.
+- **Recortes: ninguno** (2026-11-15, cierre de la fase 4): no se aplicó ningún recorte. US1, US2 y US3 se construyeron
+  completas, con PR19 en sus 12 casos y los dos modos (y además con los dos roles), la tabla por día de la semana, la
+  intención `barberos` y el contexto de 6 intervenciones.
+- **Desviación respecto de la documentación general (2026-11-15):** la matriz rol × operación de
+  [seguridad y privacidad §2](../../docs/02-arquitectura-software/seguridad-y-privacidad.md) preveía que el **barbero**
+  viera un resumen de los reportes (✓\*). Esta especificación ([contracts/rbac.md](contracts/rbac.md), `VER_REPORTES`
+  solo del propietario) y lo construido le dan **403** en `GET /reportes` (PR08, `rbac-005`). Se corrigió la matriz
+  general para que diga lo construido; un resumen para el barbero queda fuera del alcance de 005.
+- **Diferencias con el diseño, sin cambio de alcance** (registradas también en ADR-027, ADR-028 y la fila de 005 de
+  la trazabilidad):
+  - las cifras del asistente del propietario salen del **mismo cálculo** que los reportes (`CifrasDelPeriodo`), no
+    de una llamada a `ConsultarReportes`: ese caso de uso abre su propia transacción, lee la barbería (lo que no se
+    puede dentro del tramo 3) y audita `REPORTES_CONSULTADOS`. Las cifras son las mismas, y lo comprueba
+    `asistente-propietario`;
+  - la llamada al proveedor termina, a más tardar, 2,1 s después de recibir la pregunta, aunque
+    `IA_TIEMPO_LIMITE_MS` sea 2,5 s: se reservan 900 ms para cumplir los 3 s de SC-003 con 10 preguntas a la vez;
+  - al propietario, la acción no permitida le dice "Puedes hacerlo desde la Agenda." y no le ofrece Mis citas, que
+    es del cliente.

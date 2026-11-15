@@ -9,10 +9,10 @@ Flujo interno común: **Controlador → Caso de uso → Entidad → Repositorio 
 | `citas` (M02)         | Implementado (002)                        | 1         |
 | `suscripciones` (M03) | Implementado (001 y 003)                  | 2 y 5     |
 | `pagos` (M03)         | Implementado (003), con pasarela simulada | 3         |
-| `asistente` (M04)     | **Planificado** (005)                     | 4         |
-| M05 Notificaciones    | **Planificado** (004)                     | 7         |
+| `asistente` y `reportes` (M04) | Implementado (005), con el proveedor de IA falso; OpenRouter solo en desarrollo | 4 |
+| M05 Notificaciones    | Implementado (004)                        | 7         |
 
-Los nombres de las secciones 1, 2, 3 y 5 son clases reales de `backend/src/modules/`. Los de las secciones 4 y 7 son el **diseño propuesto**: todavía no hay código.
+Los nombres de todas las secciones son clases reales de `backend/src/modules/`.
 
 Convención de color de los diagramas: azul grisáceo = sistema propio; naranja = sistema externo; azul claro = datos; borde gris discontinuo = elemento definido que todavía no se usa.
 
@@ -287,24 +287,34 @@ La tarea corre cada `TAREAS_INTERVALO_MS` (5 min por defecto) en las dos réplic
 
 Evidencia: `backend/src/modules/suscripciones-pagos/pagos/application/conciliar-pagos.ts`, `backend/src/shared/tareas/ejecutor-tareas.ts`, `shared/persistence/tareas-postgres.ts`, `backend/src/host/tareas.ts`, `backend/migrations/0017_tareas.ts`; pruebas `backend/test/integration/pagos/conciliacion.spec.ts`, `tareas/ejecutor-postgres.spec.ts` y `test/unit/shared/ejecutor-tareas.spec.ts`.
 
-## 4. Submódulo `asistente` (M04 Asistente IA y reportes)
+## 4. Submódulos `asistente` y `reportes` (M04 Asistente IA y reportes)
 
-**Planificado (005). No hay código de este submódulo.** La tabla y el diagrama son el diseño propuesto ([ADR-008](../../01-analisis-de-sistema/07-decisiones-arquitectonicas.md)); los nombres se confirmarán en la especificación de 005.
+**Implementado (005)**, en `backend/src/modules/asistente-reportes/`, con tres submódulos: `reportes` (sin IA),
+`asistente` y `comun` (la matriz de permisos y la autorización). Decisiones: ADR-008 y ADR-012 (aceptadas en lo
+construido por 005), [ADR-027](../../01-analisis-de-sistema/07-decisiones-arquitectonicas.md#adr-027-proveedor-de-ia-openrouter-solo-en-desarrollo-y-política-de-datos)
+y ADR-028. El diseño propuesto antes de 005 (un `ConsultaIAAutorizada` que pedía al modelo redactar la respuesta)
+**no se construyó**: el modelo solo clasifica y el backend redacta con plantillas.
 
-| Elemento propuesto                                   | Capa                | Responsabilidad                                                                  |
-| ---------------------------------------------------- | ------------------- | -------------------------------------------------------------------------------- |
-| `AsistenteController`                                | Presentación        | Recibe el mensaje; la cuota se aplica antes                                      |
-| `ConsultaIAAutorizada`                               | Aplicación          | Orquesta: contexto → intención estructurada → herramienta cerrada → respuesta    |
-| `HerramientaIA` (interfaz)                           | Aplicación          | `nombre`, `rolesPermitidos`, `esSensible`, `ejecutar(params, contexto)`          |
-| Herramientas (consultar servicios y horarios libres) | Aplicación          | Llaman a casos de uso existentes de M02 (`ConsultarHorarios`, `ListarServicios`) |
-| `AIProvider`                                         | Aplicación (puerto) | `interpretar(mensaje, herramientasPermitidas)`, `redactarRespuesta(resultados)`  |
-| Adaptador del proveedor y simulador                  | Infraestructura     | Proveedor de IA sin elegir                                                       |
+| Elemento                                                   | Capa                          | Responsabilidad                                                                                                                       |
+| ---------------------------------------------------------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `AsistenteController`, `ReportesController`                | Presentación                  | `POST /asistente/mensajes` (operación de ruta `USAR_ASISTENTE`) y `GET /reportes` (`VER_REPORTES`); el DTO no valida el largo, para que la pregunta inválida quede registrada |
+| `PreguntarAlAsistente`                                     | Aplicación                    | Exige la operación del rol, valida la entrada, y corre los **tres tramos**: cuota (transacción corta), proveedor (fuera de toda transacción, con tiempo límite, un reintento y el `Interruptor`) y herramienta, registro y auditoría (otra transacción) |
+| `ConsultarReportes`                                        | Aplicación                    | Exige `VER_REPORTES`, valida el período, lee la zona de la barbería antes de la transacción, calcula las tres tablas y audita `REPORTES_CONSULTADOS` |
+| `CifrasDelPeriodo`                                         | Aplicación (`reportes`)       | El cálculo de las cifras de un período, **compartido** por `ConsultarReportes` y por las herramientas del propietario; corre en la transacción de quien llama, sin auditar |
+| `validarIntencion`, `HERRAMIENTAS_POR_ROL`                 | Dominio                       | El esquema cerrado de intenciones y argumentos, y las herramientas de cada rol; lo demás es `fuera_de_alcance` o `accion_no_permitida` |
+| `plantillas`, `argumentos`, `entrada`, `politica-cuota`, `Periodo` | Dominio                | Plantillas de respuesta con los datos de la herramienta; resolución del servicio, el barbero y la fecha en la barbería; validación de la pregunta; día y reinicio de la cuota; período de hasta 366 días |
+| `AIProvider`, `CuotasDelAsistente`, `RegistroDePreguntas`  | Aplicación (puertos)          | `interpretar(solicitud, señal)`; sumar y devolver la cuota; registrar la pregunta sin texto                                          |
+| `ProveedorIAFalso`, `ProveedorIAOpenRouter`, `ProveedorIANinguno` | Infraestructura        | El falso (pruebas, CI y Compose), OpenRouter (solo desarrollo) y "ninguno" (siempre no disponible); los elige `asistente-reportes.module.ts` según `IA_PROVEEDOR` |
+| `KyselyCuotasDelAsistente`, `KyselyRegistroDePreguntas`    | Infraestructura               | `assistant_quota` (suma atómica condicionada al límite) y `assistant_question`, con RLS                                             |
 
-### 4.1 Secuencia del asistente (planificada)
+Las herramientas leen por `CatalogoCitasApi` de M02 (servicios activos, barberos que ofrecen un servicio, horarios
+libres y conteos de citas) y por `SuscripcionesApi.estadoOperativo` de M03 (si la barbería acepta reservas).
 
-![Secuencia del asistente de IA (planificada)](../../../img/secuencia-asistente-ia.png)
+### 4.1 Secuencia del asistente
 
-_Figura 6. Secuencia propuesta del asistente de IA (planificado, 005)._
+![Secuencia del asistente de IA](../../../img/secuencia-asistente-ia.png)
+
+_Figura 6. Secuencia del asistente de IA (implementado, 005). **La imagen está por regenerar**: todavía muestra el diseño propuesto antes de 005, con el modelo redactando la respuesta._
 
 <details>
 <summary>Código fuente del diagrama (Mermaid)</summary>
@@ -312,30 +322,35 @@ _Figura 6. Secuencia propuesta del asistente de IA (planificado, 005)._
 ```mermaid
 sequenceDiagram
     autonumber
-    actor U as Usuario
-    participant API as Backend: ConsultaIAAutorizada
+    actor U as Usuario (cliente o propietario)
+    participant API as Backend: PreguntarAlAsistente
+    participant BD as PostgreSQL (RLS)
     participant IA as Proveedor de IA
-    participant M02 as Casos de uso de M02
-    U->>API: mensaje en lenguaje natural (token)
-    API->>API: cuota y herramientas permitidas para el rol
-    API->>IA: mensaje + herramientas, sin secretos
+    participant H as Herramienta del rol (CatalogoCitasApi o CifrasDelPeriodo)
+    U->>API: pregunta y contexto (token)
+    API->>API: permiso del rol y validación de la entrada
+    API->>BD: tramo 1: sumar las cuotas del usuario y de la barbería (confirma)
+    API->>IA: tramo 2, sin transacción: pregunta, contexto, fecha, zona e intenciones del rol
     alt proveedor disponible
-        IA-->>API: intención estructurada
-        API->>M02: herramienta cerrada con los permisos del usuario
-        M02-->>API: datos reales
-        API->>IA: redactar respuesta
-        IA-->>API: texto
-        API-->>U: respuesta con datos del backend
-    else proveedor caído
-        API-->>U: aviso y enlace a la reserva manual
+        IA-->>API: intención y argumentos (solo JSON)
+        API->>API: validar contra el esquema cerrado del rol
+        API->>H: tramo 3: lectura con la barbería del token
+        H-->>API: datos
+        API->>BD: registrar la pregunta sin texto y auditar
+        API-->>U: respuesta compuesta con plantillas y esos datos
+    else proveedor caído, lento o circuito abierto
+        API->>BD: tramo 3: devolver la cuota, registrar y auditar
+        API-->>U: 503 en ≤ 3 s con la alternativa manual (Reservar o las tablas)
     end
 ```
 
 </details>
 
-Leyenda: todo este diagrama está **planificado**. Reglas propuestas: la IA nunca recibe SQL ni acceso a la base; la disponibilidad siempre viene del cálculo de M02; una reserva solo se confirma con `ReservarCita` tras confirmación explícita del usuario.
+Leyenda: todo implementado. La IA nunca recibe el catálogo, datos de clientes ni acceso a la base; la disponibilidad
+y las cifras salen siempre del backend; el texto del modelo no llega al usuario; el asistente no reserva ni cambia
+nada (ofrece ir a Reservar con los datos elegidos).
 
-Evidencia: solo diseño, sin código. Decisión en ADR-008 (Propuesto) y requisitos RF27 y RF28.
+Evidencia: `backend/src/modules/asistente-reportes/` (`asistente/`, `reportes/`, `comun/`), `backend/migrations/0031_asistente.ts`; pruebas `backend/test/integration/asistente/`, `test/integration/reportes/`, `test/unit/asistente/`, `test/unit/reportes/` y `test/contract/` (`asistente`, `reportes`, `rbac-005`, `ai-provider-*`).
 
 ## 5. Clases del submódulo `suscripciones` (resumen)
 
@@ -394,7 +409,7 @@ Evidencia: `backend/src/modules/suscripciones-pagos/suscripciones/domain/suscrip
 
 ## 6. Módulos no críticos
 
-`identidad`, `barberias`, `clientes` y `catalogo` siguen el mismo flujo con casos de uso delgados (ver la simplificación proporcional en [enfoque](../../02-arquitectura-software/enfoque-arquitectonico.md#6-justificación-honesta-frente-al-criterio-de-la-guía)). El submódulo `reportes` (M04) está planificado.
+`identidad`, `barberias`, `clientes` y `catalogo` siguen el mismo flujo con casos de uso delgados (ver la simplificación proporcional en [enfoque](../../02-arquitectura-software/enfoque-arquitectonico.md#6-justificación-honesta-frente-al-criterio-de-la-guía)). El submódulo `reportes` (M04, implementado en 005) también: su caso de uso `ConsultarReportes` y su cálculo `CifrasDelPeriodo` están en la sección 4.
 
 ## 7. M05 Notificaciones
 

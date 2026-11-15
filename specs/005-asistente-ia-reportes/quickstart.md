@@ -19,9 +19,29 @@ desarrollo, con datos de prueba, nunca con datos reales de clientes (ADR-027).
   Para cambiar un valor de la demostración, se pone en el `.env` (por ejemplo, `IA_CUOTA_USUARIO_DIA=3`) y se
   recrean las réplicas con `docker compose up -d`.
 - Para el paso opcional con OpenRouter, **fuera de Compose**: las réplicas de Compose corren con
-  `NODE_ENV: production` y la guardia de ADR-027 no deja arrancar con OpenRouter. Se usa `npm run start:dev` en
-  `backend/`, con `IA_PROVEEDOR=openrouter`, `IA_OPENROUTER_LLAVE` e `IA_OPENROUTER_MODELO` en el `.env` local,
-  que no está en git, y la base de Compose.
+  `NODE_ENV: production` y la guardia de ADR-027 no deja arrancar con OpenRouter. El backend se compila y se
+  arranca a mano con el `.env` local (`npm run start:dev` **no sirve**: es `nest start --watch` y no carga el
+  `.env`). En `tecnologia/plataforma-barberias/`, con `IA_PROVEEDOR=openrouter`, `IA_OPENROUTER_LLAVE` e
+  `IA_OPENROUTER_MODELO` en el `.env` local, que no está en git:
+
+  ```powershell
+  docker compose up -d db redis        # solo la base y Redis de Compose (no las réplicas ni Nginx: liberan el puerto 3000)
+  cd backend
+  npx tsx --env-file=../.env src/shared/persistence/migrate.ts   # si la base no tiene la migración 0031
+  npm run build
+  node --env-file=../.env dist/src/main.js                       # API en http://localhost:3000
+  ```
+
+  El `.env` tiene que traer **todas** las variables obligatorias (claves JWT, `PAGOS_LLAVE_SECRETA`,
+  `PAGOS_SECRETO_FIRMA`, `PLATAFORMA_LLAVE_TOTP`, `ENLACES_*`, `WHATSAPP_TOKEN`, `CORREO_REMITENTE`…): dentro de
+  Compose, `docker-compose.yml` completa las que faltan con valores de desarrollo; fuera de Compose, nadie. La
+  pasarela, Mailpit y el WhatsApp simulados no hacen falta para arrancar (sus fallos no bloquean nada); con
+  `TAREAS_ACTIVAS=false` las tareas programadas no intentan llamarlos.
+
+  **`NODE_ENV` no debe ser `production`:** el `.env.example` no lo define y el backend solo lo usa para esa guardia,
+  así que basta con no definirlo (o con `NODE_ENV=development`). Si la consola lo tiene en `production`, se borra
+  antes con `Remove-Item Env:NODE_ENV`. Para usar la interfaz, en `frontend/`:
+  `$env:VITE_API_PROXY = 'http://localhost:3000'; npm run dev`.
 
 ## 1. Pruebas automáticas
 
@@ -54,7 +74,7 @@ Esperado: todo en verde. Entre esas pruebas están:
 | 7 | Hace preguntas hasta pasar la cuota (con `IA_CUOTA_USUARIO_DIA=3` para la demostración) | La cuarta responde "alcanzaste el límite de hoy", con la hora de reinicio y el enlace a Reservar; recargar o volver a iniciar sesión no la reinicia | |
 | 8 | Poner `IA_FALSO_MODO=caido` en el `.env` y recrear las réplicas con `docker compose up -d` (después, volver a `normal`) | "El asistente no está disponible ahora" en ≤ 3 s, con el enlace a Reservar; los reportes siguen funcionando | |
 | 9 | El propietario pregunta en la pestaña "Preguntar" de `/app/reportes` (US3): "¿cuántas citas tuve el mes pasado?" y "¿cuál fue el servicio más pedido?" | Las cifras coinciden con las tablas del paso 1 | |
-| 10 | (Opcional, desarrollo, **fuera de Compose**) Con `npm run start:dev` y OpenRouter (ver §0): las preguntas de los pasos 4, 5 y 9 | Mismas respuestas y mismos datos que con el falso; ninguna cifra distinta | |
+| 10 | (Opcional, desarrollo, **fuera de Compose**) Con el backend arrancado con `node --env-file=../.env dist/src/main.js` y OpenRouter (ver §0): las preguntas de los pasos 4, 5 y 9 | Mismas respuestas y mismos datos que con el falso; ninguna cifra distinta | |
 | 11 | Revisar `assistant_question` y los registros de las réplicas (`docker compose logs`) | Una fila por pregunta con la intención y el resultado, **sin el texto**; los registros no tienen la llave ni el contenido | |
 
 ## 3. Comprobaciones de aislamiento (PR09)

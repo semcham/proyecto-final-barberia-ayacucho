@@ -84,7 +84,7 @@ Los errores 429 y 503 usan el formato de siempre, `{ codigo, mensaje, detalles }
 | `resumen_citas`                   | "Del {desde} al {hasta} tuviste {total} citas: {completadas} completadas, {canceladas} canceladas …"    |
 | `servicios_mas_pedidos`           | "Del {desde} al {hasta}, el servicio más pedido fue {1.º} con {n} citas …"                              |
 | `SIN_DATOS` (no hay herramienta)  | "No tengo ese dato. Puedes consultarlo directamente con la barbería."                                   |
-| `ACCION_NO_PERMITIDA`             | "No puedo reservar ni cambiar citas. Puedes hacerlo en Reservar o en Mis citas."                        |
+| `ACCION_NO_PERMITIDA`             | "No puedo reservar ni cambiar citas. Puedes hacerlo en Reservar o en Mis citas." (al propietario, en la fase 4: "… Puedes hacerlo desde la Agenda.", sin la sugerencia de Mis citas) |
 | `FUERA_DE_ALCANCE`                | "Solo puedo ayudarte con los servicios, los barberos y los horarios de {barbería}." (o, para el propietario, "con el resumen de citas y los servicios más pedidos de tu barbería") |
 
 Las cifras y las horas solo salen de `datos`, nunca de la respuesta del modelo (FR-001, SC-001).

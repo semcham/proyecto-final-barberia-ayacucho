@@ -139,7 +139,7 @@ description: "Tareas de la funcionalidad 005: asistente de IA y reportes"
   - `IA_PROVEEDOR: ${IA_PROVEEDOR:-falso}`;
   - `IA_CUOTA_USUARIO_DIA: ${IA_CUOTA_USUARIO_DIA:-20}` e `IA_CUOTA_BARBERIA_DIA: ${IA_CUOTA_BARBERIA_DIA:-200}`;
   - `IA_FALSO_MODO: ${IA_FALSO_MODO:-normal}`;
-  - un comentario: OpenRouter no se usa en Compose, porque las réplicas corren con `NODE_ENV: production` y la guardia de ADR-027 lo impide. La prueba real se hace con `npm run start:dev` y el `.env` local.
+  - un comentario: OpenRouter no se usa en Compose, porque las réplicas corren con `NODE_ENV: production` y la guardia de ADR-027 lo impide. La prueba real se hace con el backend compilado y arrancado con `node --env-file=../.env dist/src/main.js` (corregido en la fase 5: `npm run start:dev` no carga el `.env`).
 
   Comprobar que `docker compose config` es válido y que el resto de los servicios no cambia.
 - [ ] T013 Cierre de fase 1: suite completa del backend (incluido `npm run test:arch`), del frontend y CI en verde (`.github/workflows/plataforma-barberias.yml`). Commit: `feat(005): base del asistente y reportes (fase 1)`
@@ -340,7 +340,7 @@ description: "Tareas de la funcionalidad 005: asistente de IA y reportes"
 - [X] T044 [P] [US1] Crear `asistente/infrastructure/proveedor-ia-openrouter.ts`, **solo para desarrollo** (ADR-027; FR-015):
   - usa `fetch` nativo con `AbortSignal.timeout`, una sola llamada con esquema JSON y las instrucciones de contracts/asistente.md §4;
   - la llave sale de `IA_OPENROUTER_LLAVE` y nunca va a un registro;
-  - la guardia de T006 impide arrancar con `NODE_ENV=production`, así que solo se usa fuera de Compose (`npm run start:dev` con el `.env` local);
+  - la guardia de T006 impide arrancar con `NODE_ENV=production`, así que solo se usa fuera de Compose: `npm run build` y `node --env-file=../.env dist/src/main.js` en `backend/`, con la base y Redis de Compose (`docker compose up -d db redis`) y sin `NODE_ENV=production` (corregido en la fase 5: `npm run start:dev` es `nest start --watch` y no carga el `.env`);
   - no se agrega ninguna dependencia a `package.json`.
 - [X] T045 [P] [US1] Crear la pantalla del asistente:
   - `frontend/src/api/asistente.ts`;
@@ -349,7 +349,7 @@ description: "Tareas de la funcionalidad 005: asistente de IA y reportes"
   - el cliente no tiene un menú global: el enlace "Preguntar al asistente" se suma en `frontend/src/pages/cliente/MisCitas.tsx` y en `frontend/src/pages/publico/CatalogoPublico.tsx`, visible solo con sesión de CLIENTE en esa barbería. No se cambia nada más de esas pantallas (T039).
 - [ ] T046 [US1] **Del responsable:**
   - revisar `/asistente` y el enlace en Mis citas y en el catálogo a 360 px y en escritorio, en los temas claro y oscuro, solo con teclado, con lector de pantalla en la región de respuestas y con axe DevTools (0 errores graves);
-  - hacer la **prueba con OpenRouter real fuera de Compose** (quickstart §2, paso 10): `npm run start:dev` en `backend/`, con `IA_PROVEEDOR=openrouter` y la llave solo en el `.env` local. Anotar la latencia medida y si las intenciones salieron bien;
+  - hacer la **prueba con OpenRouter real fuera de Compose** (quickstart §0 y §2, paso 10): con `docker compose up -d db redis`, y en `backend/` `npm run build` y `node --env-file=../.env dist/src/main.js`, sin `NODE_ENV=production`, con `IA_PROVEEDOR=openrouter` y la llave solo en el `.env` local (corregido en la fase 5: `npm run start:dev` no carga el `.env`). Anotar la latencia medida y si las intenciones salieron bien;
   - medir en Compose el tiempo de "no disponible" con `IA_FALSO_MODO=caido` (SC-003).
 - [ ] T047 [US1] Cierre de fase 3: suite completa del backend (incluido `npm run test:arch`), del frontend y CI en verde. La CI corre con `IA_PROVEEDOR=falso` y sin llave. Commit: `feat(005): asistente del cliente (fase 3, US1)`
 
@@ -411,15 +411,16 @@ description: "Tareas de la funcionalidad 005: asistente de IA y reportes"
 **Purpose**: dejar la documentación con el estado real de 005. **Solo lo construido pasa de "planificado" a "implementado"**, como en la fase 7 de 008. Si la fase 4 se recortó, RF28 y HU23 quedan como "planificado" y se dice por qué. Cada recorte se registra como desviación en `spec.md` y en la fila de 005 de `docs/trazabilidad.md`.
 
 - [ ] T057 Recorrer `specs/005-asistente-ia-reportes/quickstart.md` §1 a §3 con Docker Compose y el proveedor falso, y anotar cada resultado medido. El paso 10 (OpenRouter, fuera de Compose) y los de §4 quedan como "pendiente del responsable" si no los hizo.
-- [ ] T058 [P] Actualizar `docs/trazabilidad.md`:
+  - **Pendiente** (fase 5, 2026-11-15): no se recorrió con Docker Compose, porque esta fase se limitó a documentos y a comprobaciones de documentos. La §1 (pruebas automáticas) está cubierta por la corrida completa de la fase 4 ([pruebas §2.4](../../docs/05-gestion/04-pruebas.md)); faltan los pasos 1 a 9 y 11 de la §2 y la §3 con Compose, el paso 10 con OpenRouter (T046) y la §4 (T024, T046, T055).
+- [X] T058 [P] Actualizar `docs/trazabilidad.md`:
   - en §4, la fila de 005: estado, pruebas PR06, PR08, PR09, PR14, PR19 y PR20, los totales medidos y las desviaciones por recorte, si las hubo;
   - HU22, HU23 y HU24 en §1;
   - una tabla §4.7 de componentes de 005 con su evidencia;
   - §5 si se tocó algún diagrama.
-- [ ] T059 [P] Actualizar `docs/05-gestion/04-pruebas.md` y `docs/01-analisis-de-sistema/08-escenarios-atributos-calidad.md`:
+- [X] T059 [P] Actualizar `docs/05-gestion/04-pruebas.md` y `docs/01-analisis-de-sistema/08-escenarios-atributos-calidad.md`:
   - en `04-pruebas.md`: PR19 con los 12 casos × 2 modos y su resultado, PR06 de la IA con el tiempo medido, PR20 del puerto de IA (OpenRouter omitida en CI), §2.4 con los totales de la última corrida y una §2.7 de 005;
   - en `08-escenarios-atributos-calidad.md`: los escenarios del asistente y los reportes (EQ-06, EQ-12 y EQ-19), con la evidencia.
-- [ ] T060 [P] Cambiar "planificado" por "implementado" **solo en lo construido** en:
+- [X] T060 [P] Cambiar "planificado" por "implementado" **solo en lo construido** en:
   - `docs/01-analisis-de-sistema/03-requisitos-funcionales.md`: RF27, RF28, RF29 y el resumen;
   - `docs/01-analisis-de-sistema/02-historias-del-usuario.md`: HU22, HU23 y HU24;
   - `docs/01-analisis-de-sistema/07-decisiones-arquitectonicas.md`:
@@ -430,14 +431,14 @@ description: "Tareas de la funcionalidad 005: asistente de IA y reportes"
   - `docs/02-arquitectura-software/componentes-arquitectonicos.md`: M04 y la interfaz `CatalogoCitasApi` de M02;
   - `docs/02-arquitectura-software/multi-tenancy-y-datos.md`: `assistant_quota` y `assistant_question`;
   - `docs/03-diseño-de-software/diseño-interno/diseño-interno-de-modulos.md`: M04.
-- [ ] T061 [P] Actualizar tres documentos de arquitectura:
+- [X] T061 [P] Actualizar tres documentos de arquitectura:
   - `docs/02-arquitectura-software/api-rest.md`:
     - **reemplazar `GET /reportes/citas` por `GET /reportes`**, con sus tres tablas;
     - agregar `POST /asistente/mensajes` con 422, 429 y 503;
     - corregir la nota de M04: las herramientas son lecturas de `CatalogoCitasApi` y de los reportes con la barbería y el rol del usuario, no "las mismas operaciones de arriba";
   - `docs/02-arquitectura-software/seguridad-y-privacidad.md`: las filas RBAC de M04, la llave solo en el `.env` local, lo que se envía al proveedor, el registro sin texto y PR19;
   - `docs/02-arquitectura-software/tecnologias.md`: OpenRouter solo en desarrollo y ninguna dependencia nueva.
-- [ ] T062 [P] Actualizar `tecnologia/plataforma-barberias/README.md` (funcionalidad 005, migración `0031`, pantallas `/asistente` y `/app/reportes`, variables `IA_*` con la llave fuera del repositorio, `IA_FALSO_MODO` en Compose y la prueba con OpenRouter solo con `npm run start:dev`) y el `README.md` raíz si cambia algún total.
+- [X] T062 [P] Actualizar `tecnologia/plataforma-barberias/README.md` (funcionalidad 005, migración `0031`, pantallas `/asistente` y `/app/reportes`, variables `IA_*` con la llave fuera del repositorio, `IA_FALSO_MODO` en Compose y la prueba con OpenRouter fuera de Compose, con `node --env-file=../.env dist/src/main.js`; corregido en la fase 5, porque `npm run start:dev` no carga el `.env`) y el `README.md` raíz si cambia algún total.
 - [ ] T063 **Del responsable:** confirmar las revisiones manuales y las mediciones de T024, T046 y T055 antes de marcarlas:
   - 360 px, escritorio, temas claro y oscuro, teclado y axe DevTools;
   - la prueba con OpenRouter real, fuera de Compose;

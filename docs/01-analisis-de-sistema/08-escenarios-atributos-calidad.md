@@ -164,7 +164,7 @@ Un escenario de atributo de calidad es una descripción **concreta y medible** d
 | **Respuesta esperada**  | Se reintenta con espera; el circuito se abre y se muestra una alternativa (flujo manual de reserva; "pago pendiente de confirmación"; la notificación por WhatsApp se reenvía por correo)                                                                               |
 | **Medida**              | Circuito abierto tras 5 fallos en 60 s; mensaje alternativo en ≤ 3 s; el resto de la plataforma sigue operando; la reserva no se deshace por un fallo de envío; ≥ 95 % de las citas con una notificación entregada por algún canal en ≤ 5 min _(propuesta por validar)_ |
 | **Verificación**        | PR06: simulador de proveedor con errores y latencias                                                                                                                                                                                                                    |
-| **Estado**              | Parcial: medido para pagos (PR06, 003) y para correo y WhatsApp (PR06, 004) contra Mailpit y los simuladores; IA planificada (005)                                                                                                                                      |
+| **Estado**              | Parcial: medido para pagos (PR06, 003), para correo y WhatsApp (PR06, 004) contra Mailpit y los simuladores, y para la IA (PR06, 005) con el proveedor falso; no medido contra proveedores reales                                                                      |
 
 **Ficha de medición**
 
@@ -175,9 +175,9 @@ Un escenario de atributo de calidad es una descripción **concreta y medible** d
 | **Preparación**           | Simulador de pagos en modo caído, lento o colgado                                                                                                                                                                        |
 | **Configuración**         | Tiempo límite de 2 s (`PAGOS_TIEMPO_LIMITE_MS`); el interruptor abre tras 5 fallos en 60 s, durante 30 s                                                                                                                 |
 | **Métrica y umbral**      | Circuito abierto tras 5 fallos en 60 s; mensaje alternativo en ≤ 3 s; el resto sigue operando; la reserva no se deshace por un fallo de envío; ≥ 95 % de las citas con notificación entregada por algún canal en ≤ 5 min |
-| **Comando**               | Usado: `npm run test:int -- proveedor-caido` (`backend/test/integration/pagos/proveedor-caido.spec.ts`). Mensajería (004): `npm run test:int -- correo-caido respaldo-whatsapp simulador-whatsapp salida-eventos-dos-instancias`, y `npm run demo:avisos` con Docker Compose. IA: por definir (005) |
+| **Comando**               | Usado: `npm run test:int -- proveedor-caido` (`backend/test/integration/pagos/proveedor-caido.spec.ts`). Mensajería (004): `npm run test:int -- correo-caido respaldo-whatsapp simulador-whatsapp salida-eventos-dos-instancias`, y `npm run demo:avisos` con Docker Compose. IA (005): `npm run test:int -- degradacion-asistente` (proveedor falso en modo `caido`, `lento`, `error` e `invalido`; tiempo límite efectivo de 2,1 s desde la solicitud) |
 | **Evidencia**             | Salida de la CI; totales en [04-pruebas](../05-gestion/04-pruebas.md) §2.4                                                                                                                                               |
-| **Estado**                | **Parcial.** Pagos: Usada (503 en ≤ 3 s con la transferencia como alternativa, y las reservas siguen). Mensajería: Usada (004, 2026-11-12) contra Mailpit y el simulador de WhatsApp: con el correo detenido, las operaciones de la cita responden igual y sin conexiones SMTP; 5 fallos abren el circuito; WhatsApp caído o con 3 fallos → el aviso sale una vez por correo; de la reserva a la aceptación del canal, p95 de 14,5 s en 100 citas (meta ≤ 5 min); con Compose, una reprogramación con Mailpit detenido respondió 200 en 1 310 ms. No medido contra proveedores reales. IA (005): Planificada |
+| **Estado**                | **Parcial.** Pagos: Usada (503 en ≤ 3 s con la transferencia como alternativa, y las reservas siguen). Mensajería: Usada (004, 2026-11-12) contra Mailpit y el simulador de WhatsApp: con el correo detenido, las operaciones de la cita responden igual y sin conexiones SMTP; 5 fallos abren el circuito; WhatsApp caído o con 3 fallos → el aviso sale una vez por correo; de la reserva a la aceptación del canal, p95 de 14,5 s en 100 citas (meta ≤ 5 min); con Compose, una reprogramación con Mailpit detenido respondió 200 en 1 310 ms. No medido contra proveedores reales. **IA (005): Usada** (2026-11-15, última corrida completa) con el proveedor falso: caído, lento, con error 500, con 429 que no se recupera o con respuesta rota → 503 `ASISTENTE_NO_DISPONIBLE` con la alternativa manual en 174–2 537 ms (cliente) y 130–2 282 ms (propietario), con la cuota devuelta; 10 preguntas a la vez con el proveedor lento, todas en ≤ 2 675 ms y 2,7 s en total (ninguna espera a otra); tras 5 fallos el circuito se abre y el 503 llega sin llamar al proveedor; los reportes y el catálogo responden igual. **SC-003 en Docker Compose: pendiente del responsable** |
 
 ## EQ-07. Seguridad: Autenticación
 
@@ -245,7 +245,7 @@ Un escenario de atributo de calidad es una descripción **concreta y medible** d
 | **Respuesta esperada**  | Ningún dato de B es visible o modificable; se rechaza o devuelve vacío                                                                   |
 | **Medida**              | 0 filtraciones en la suite de pruebas de fuga sobre todos los endpoints; el `tenant_id` se toma solo del token _(propuesta por validar)_ |
 | **Verificación**        | PR09: pruebas automáticas de fuga (incluye consultas sin filtro para comprobar que RLS bloquea)                                          |
-| **Estado**              | Prueba en verde en local (PR09, 001 a 003 y 006)                                                                                         |
+| **Estado**              | Prueba en verde en local (PR09, 001 a 006 y 008)                                                                                         |
 
 **Ficha de medición**
 
@@ -257,8 +257,8 @@ Un escenario de atributo de calidad es una descripción **concreta y medible** d
 | **Configuración**         | Cada endpoint protegido con el token de otra barbería; consultas sin filtro para comprobar que RLS bloquea                                                                                                                             |
 | **Métrica y umbral**      | 0 filtraciones; el `tenant_id` sale solo del token                                                                                                                                                                                     |
 | **Comando**               | `npm run test:int -- aislamiento canarios`                                                                                                                                                                                             |
-| **Evidencia**             | `backend/test/integration/aislamiento/` (entre ellas `rls.spec.ts`, `aislamiento-tenant.spec.ts`, `aislamiento-pagos.spec.ts`, `aislamiento-cache.spec.ts` y `lectura-plataforma.spec.ts`) y `pagos/canarios.spec.ts`; salida de la CI |
-| **Estado**                | **Usada.** En verde (PR09, 001 a 003 y 006)                                                                                                                                                                                            |
+| **Evidencia**             | `backend/test/integration/aislamiento/` (entre ellas `rls.spec.ts`, `aislamiento-tenant.spec.ts`, `aislamiento-pagos.spec.ts`, `aislamiento-cache.spec.ts` y `lectura-plataforma.spec.ts`) y `pagos/canarios.spec.ts`; de 005, `aislamiento/aislamiento-005.spec.ts` (`assistant_quota` y `assistant_question` con RLS), `reportes/aislamiento-reportes.spec.ts` y `asistente/aislamiento-asistente.spec.ts`; salida de la CI |
+| **Estado**                | **Usada.** En verde (PR09, 001 a 006 y 008). En 005: con el token de A, los reportes y el asistente (del cliente y del propietario) solo devuelven datos de A, aunque la pregunta, el cuerpo o una cabecera nombren a B; un campo de barbería en el cuerpo del asistente responde 400; la cuota de A no cambia la de B |
 
 ## EQ-10. Seguridad: Validación de entradas
 
@@ -326,7 +326,7 @@ Un escenario de atributo de calidad es una descripción **concreta y medible** d
 | **Respuesta esperada**  | Se responde 429 y se aplica espera creciente                                                                                     |
 | **Medida**              | El intento 6 y siguientes se rechazan; el uso normal no se ve afectado _(propuesta por validar)_                                 |
 | **Verificación**        | PR12: prueba de limitación                                                                                                       |
-| **Estado**              | Prueba en verde en local (PR12, 001); el límite del asistente de IA está planificado (005)                                       |
+| **Estado**              | Prueba en verde en local (PR12, 001 y 006); el límite del asistente de IA, con cuotas diarias, en verde (005)                    |
 
 **Ficha de medición**
 
@@ -339,7 +339,7 @@ Un escenario de atributo de calidad es una descripción **concreta y medible** d
 | **Métrica y umbral**      | El intento 6 y siguientes se rechazan; el uso normal no se ve afectado                                               |
 | **Comando**               | `npm run test:int -- limite-intentos limite-compartido`                                                              |
 | **Evidencia**             | `backend/test/integration/identidad/limite-intentos.spec.ts` y `escalado/limite-compartido.spec.ts`; salida de la CI |
-| **Estado**                | **Usada.** En verde (PR12, 001 y 006). El límite del asistente de IA: Planificado (005)                              |
+| **Estado**                | **Usada.** En verde (PR12, 001 y 006). **El límite del asistente de IA (005): usado.** No es un límite por minuto, sino cuotas diarias de 20 preguntas por usuario y 200 por barbería, iguales para todos los planes y reiniciadas a la medianoche de la barbería: la siguiente responde 429 `CUOTA_ASISTENTE_AGOTADA` con `Retry-After`; con dos instancias a la vez nunca se pasa del límite; cerrar sesión no la reinicia (`npm run test:int -- cuotas-asistente`, en verde). El límite general por IP de 006 también protege la ruta |
 
 ## EQ-13. Seguridad: Auditoría
 
@@ -515,20 +515,20 @@ Un escenario de atributo de calidad es una descripción **concreta y medible** d
 | **Respuesta esperada**  | El asistente rechaza o ignora; solo accede a datos del tenant y rol autenticados, con el mínimo necesario                            |
 | **Medida**              | 0 fugas en el conjunto de pruebas adversariales; 0 secretos en los prompts; 100 % de consultas registradas _(propuesta por validar)_ |
 | **Verificación**        | PR19: pruebas adversariales y revisión de prompts y registros                                                                        |
-| **Estado**              | Por medir                                                                                                                            |
+| **Estado**              | Prueba en verde en local (PR19, 005), con el proveedor falso                                                                         |
 
 **Ficha de medición**
 
 | Campo                     | Detalle                                                                                                |
 | ------------------------- | ------------------------------------------------------------------------------------------------------ |
-| **Herramienta y versión** | Jest + Testcontainers (la principal del atributo), con un proveedor de IA simulado: por definir en 005 |
-| **Entorno**               | Pruebas                                                                                                |
-| **Preparación**           | Dos barberías con datos y un conjunto de instrucciones adversariales: por definir                      |
-| **Configuración**         | Por definir                                                                                            |
+| **Herramienta y versión** | Jest 29.7.0 + Testcontainers 12.2.1, con el proveedor de IA falso (`ProveedorIAFalso`) en dos modos: normal (clasifica como un modelo correcto) y `guion` (devuelve lo que pediría un modelo ya engañado) |
+| **Entorno**               | Pruebas (local y CI), sin red ni llave                                                                 |
+| **Preparación**           | Dos barberías con datos; un servicio con instrucciones en su nombre; otro cliente con una cita; los 12 casos de [contracts/asistente.md §5 de 005](../../specs/005-asistente-ia-reportes/contracts/asistente.md) |
+| **Configuración**         | Cada caso en los dos modos y con los dos roles (cliente y propietario): 48 corridas                    |
 | **Métrica y umbral**      | 0 fugas en el conjunto adversarial; 0 secretos en los prompts; 100 % de consultas registradas          |
-| **Comando**               | Por definir                                                                                            |
-| **Evidencia**             | Por definir                                                                                            |
-| **Estado**                | **Planificada** (M04 no existe todavía; 005)                                                           |
+| **Comando**               | `npm run test:int -- pr19-adversarial registro-asistente asistente-propietario`                        |
+| **Evidencia**             | `backend/test/integration/asistente/pr19-adversarial.spec.ts`, `registro-asistente.spec.ts` y `asistente-propietario.spec.ts`; [pruebas §2.7](../05-gestion/04-pruebas.md) |
+| **Estado**                | **Usada.** En verde (2026-11-15): en las 48 corridas, el resultado esperado; 0 datos de otra barbería o de otros clientes; 0 escrituras; 0 texto del modelo en la respuesta; el proveedor no recibió el catálogo, nombres de clientes ni la barbería; cada pregunta registrada sin su texto. Ni el texto ni la llave aparecen en la base, la auditoría ni los registros de la aplicación. **No probado contra un modelo real** (la prueba con OpenRouter es del responsable): la garantía no depende de que el modelo obedezca, porque el modelo solo clasifica |
 
 ## EQ-20. Interoperabilidad: Integración mediante puertos
 
@@ -537,7 +537,7 @@ Un escenario de atributo de calidad es una descripción **concreta y medible** d
 | **Atributo de calidad** | Mantenibilidad e interoperabilidad: interoperabilidad (AC04)                                                            |
 | **Fuente**              | Equipo de desarrollo                                                                                                    |
 | **Estímulo**            | Se sustituye un adaptador por una implementación simulada o por otro proveedor                                          |
-| **Artefacto**           | Puertos `PaymentGateway` y `NotificationChannel` (implementados); `AIProvider` (planificado)                            |
+| **Artefacto**           | Puertos `PaymentGateway`, `NotificationChannel` y `AIProvider` (implementados)                                          |
 | **Entorno / condición** | Pruebas                                                                                                                 |
 | **Respuesta esperada**  | Los casos de uso funcionan igual con cualquier implementación que cumpla el contrato                                    |
 | **Medida**              | Misma suite de contrato en verde con el adaptador real (entorno de pruebas) y con el simulado _(propuesta por validar)_ |
@@ -555,7 +555,7 @@ Un escenario de atributo de calidad es una descripción **concreta y medible** d
 | **Métrica y umbral**      | Misma suite en verde con el adaptador real (ambiente de pruebas) y con el simulado                                                                     |
 | **Comando**               | `npm run test:int -- gateway-simulado gateway-sandbox`                                                                                                 |
 | **Evidencia**             | `backend/test/integration/pagos/gateway-simulado.spec.ts` y `gateway-sandbox.spec.ts`; salida de la CI                                                 |
-| **Estado**                | **Parcial.** En verde contra el simulador; contra el ambiente del proveedor, omitida sin credenciales (R15). Mensajería (004): la suite `notification-channel.contract.ts` en verde con `canal-correo` (Mailpit) y `canal-whatsapp` (simulador); `canal-sandbox`, omitida sin las variables `SMTP_SANDBOX_*`. IA: Planificada (005) |
+| **Estado**                | **Parcial.** En verde contra el simulador; contra el ambiente del proveedor, omitida sin credenciales (R15). Mensajería (004): la suite `notification-channel.contract.ts` en verde con `canal-correo` (Mailpit) y `canal-whatsapp` (simulador); `canal-sandbox`, omitida sin las variables `SMTP_SANDBOX_*`. IA (005): la suite `ai-provider.contract.ts` en verde con el falso (`ai-provider-falso`) y con un servidor que imita la API de OpenRouter (`ai-provider-openrouter-simulado`); contra OpenRouter real (`ai-provider-openrouter`), omitida sin `IA_OPENROUTER_LLAVE` |
 
 ## EQ-21. Observabilidad: Diagnóstico de una solicitud fallida
 

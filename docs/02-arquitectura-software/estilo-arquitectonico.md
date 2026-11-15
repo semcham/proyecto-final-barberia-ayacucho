@@ -17,7 +17,7 @@ Cinco módulos de negocio y un núcleo compartido. Se agrupó por **cohesión fu
 | M01 | Acceso y barberías                 | `identidad`, `barberias`, `clientes`    | Cuentas, autenticación, tokens, roles, administrador de la plataforma con segundo factor; alta y estado de la barbería; cuenta del cliente y consentimiento | RF01–RF06, RF33       | Implementado (001, 002, 003 y 004); RF32 planificado (007)  |
 | M02 | Catálogo y citas                   | `catalogo`, `citas`                     | Servicios, barberos, horario de atención y disponibilidad; horarios libres, reserva, reprogramación, cancelación, estados, agenda, historial y acciones por enlace; la cita pendiente de su adelanto y su vencimiento | RF07–RF17, RF34, RF35 | Implementado (002, 004, 006 y 008)                    |
 | M03 | Suscripciones y pagos              | `suscripciones`, `pagos`, `plataforma`, `adelantos` | Planes, prueba gratuita, estados y restricciones; pago con pasarela simulada, transferencia, notificación firmada y conciliación; operaciones del administrador; adelanto de reserva por QR de la barbería, sin recibir el dinero | RF18–RF26, RF35 | Implementado (001, 003 y 008), con pasarela simulada |
-| M04 | Asistente IA y reportes            | `asistente`, `reportes` (previstos)     | Asistente con herramientas cerradas; reportes por período                                                                                              | RF27–RF29             | Planificado (005)                                          |
+| M04 | Asistente IA y reportes            | `reportes`, `asistente`, `comun`        | Asistente con herramientas cerradas de solo lectura (el modelo solo clasifica); reportes por período en tablas, sin IA                                  | RF27–RF29             | Implementado (005), con el proveedor de IA falso           |
 | M05 | Notificaciones                     | —                                       | Correos y mensajes de WhatsApp al cliente, recordatorio, avisos de suscripción al propietario y avisos del adelanto                                      | RF30, RF33, RF34, RF35 | Implementado (004), con WhatsApp simulado                  |
 | M06 | Núcleo compartido                  | carpetas de `shared/`                   | Tenant, transacción con RLS, auditoría, caché, límites, reloj y zona horaria, tareas programadas, resiliencia, bus de eventos y enlaces firmados        | RF31 (auditoría)      | Parcial: indicadores (007) planificados                    |
 > **Por qué seis y no diez.** Un módulo por cada capacidad aislada aumenta las interfaces, las pruebas de frontera y la coordinación, algo que un equipo pequeño no necesita en el MVP (RC06, RC14). Las capacidades que cambian juntas (por ejemplo, catálogo y citas; suscripciones y pagos) se agrupan. La separación fina se mantiene dentro del módulo como submódulos con su propio puerto, de modo que el sistema sigue siendo escalable: un submódulo puede convertirse en módulo, o en servicio, sin cambiar su contrato.
@@ -32,7 +32,7 @@ _Figura 1. Vista general de la arquitectura: monolito modular con cuatro capas._
 
 Fuente editable: img/monolito-capas-estilo.svg.
 
-Leyenda: borde punteado = límite de módulo; borde discontinuo con relleno = planificado, sin código todavía (M04 y M05); flecha verde = uso entre módulos por su interfaz pública; flecha morada = la infraestructura implementa los puertos de la aplicación.
+Leyenda: borde punteado = límite de módulo; borde discontinuo con relleno = planificado, sin código todavía (en la figura, M04 y M05; **la figura es anterior a 004 y 005** y está por regenerar: hoy los dos están implementados); flecha verde = uso entre módulos por su interfaz pública; flecha morada = la infraestructura implementa los puertos de la aplicación.
 
 ## 3. Dependencias permitidas
 
@@ -61,7 +61,7 @@ Un módulo **solo** puede depender de otro a través de su **interfaz pública**
 6. La **raíz de composición** (`host/`) es el único lugar autorizado para ensamblar módulos. Su `AuthGuard` valida el token con `ValidarSolicitud` de M01 (que también comprueba el estado de la barbería), `host/tareas.ts` registra las tareas programadas (de M02, M03, M05 y M06) y `host/eventos.ts` conecta cada tipo de evento con su manejador de M05. La política de suscripción la aplica cada caso de uso de escritura llamando a `SuscripcionesApi.exigirOperacion`.
 7. Entre submódulos del **mismo** módulo se permite llamar a su interfaz interna; hacia otro módulo, solo a su interfaz pública (`index`).
 
-Las dependencias que existen hoy son las de la matriz: M02 → M01 (nota ¹), M01 y M02 → M03 (`exigirOperacion` y, desde 008, `AdelantosApi`, siempre por la interfaz pública de M03), los módulos de negocio → M06 y, desde 004, M02 y M03 → M05 **por eventos** del bus de M06 (regla 4) y **M05 → M01, implementada y solo de lectura** (nota ²). M04 es la única planificada. No hay dependencias hacia M02 desde M01 ni desde M03, ni llamadas de M01 a M05: el grafo no tiene ciclos.
+Las dependencias que existen hoy son las de la matriz: M02 → M01 (nota ¹), M01 y M02 → M03 (`exigirOperacion` y, desde 008, `AdelantosApi`, siempre por la interfaz pública de M03), los módulos de negocio → M06 y, desde 004, M02 y M03 → M05 **por eventos** del bus de M06 (regla 4) y **M05 → M01, implementada y solo de lectura** (nota ²). Desde 005, **M04 → M02** (`CatalogoCitasApi`) y **M04 → M03** (`SuscripcionesApi`), solo de lectura, y nadie llama a M04 (reglas `matriz-m04` y `nadie-llama-a-m04` de PR14). No hay dependencias hacia M02 desde M01 ni desde M03, ni llamadas de M01 a M05: el grafo no tiene ciclos.
 
 Evidencia: importaciones entre `backend/src/modules/*/index.ts` (por ejemplo, `catalogo-citas/citas/application/reservar-cita.ts` importa `BarberiasApi`, `ClientesApi` y `SuscripcionesApi`); `host/auth.guard.ts`, `host/tareas.ts`; reglas en `backend/.dependency-cruiser.cjs`; prueba `backend/test/architecture/reglas.spec.ts` (PR14).
 
@@ -85,9 +85,9 @@ backend/src/
         domain/               entidades, objetos de valor, reglas
         infrastructure/       repositorios PostgreSQL, adaptadores
       index.ts
-    suscripciones-pagos/      (M03)  suscripciones/, pagos/ y plataforma/
+    suscripciones-pagos/      (M03)  suscripciones/, pagos/, plataforma/ y adelantos/
+    asistente-reportes/       (M04)  reportes/, asistente/ y comun/ (005)
     notificaciones/           (M05)  application/, domain/, infrastructure/ (sin rutas propias)
-                              (M04: sin carpeta todavía; planificado)
   shared/                     núcleo compartido (M06): audit, cache, clock, config, enlaces,
                               eventos, http, limites, persistence, resiliencia, tareas, tenant,
                               tiempo

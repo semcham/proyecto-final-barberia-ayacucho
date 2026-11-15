@@ -1,6 +1,6 @@
 # Tecnologías
 
-Principio: **no se elige por popularidad**, sino por criterios (costo, curva de aprendizaje, gratuidad, integración con IA, mantenibilidad, compatibilidad con SaaS y con el estilo). Las versiones exactas están fijadas en los `package.json` de `tecnologia/plataforma-barberias/` (sección 5). Estado: el stack de la funcionalidad 001 está **implementado y probado en local** (backend, frontend y PostgreSQL); desde la 006, también **Redis y Nginx en local** con Docker Compose (sección 5.3); desde la 003, **los pagos con una pasarela simulada** detrás del puerto `PaymentGateway`, la transferencia con comprobante y el segundo factor del administrador (sección 5.4); desde la 004, **el correo por SMTP contra Mailpit y el WhatsApp simulado** detrás de `NotificationChannel` (sección 5.7). AWS y los proveedores reales de pagos, IA, correo y WhatsApp siguen **planificados**.
+Principio: **no se elige por popularidad**, sino por criterios (costo, curva de aprendizaje, gratuidad, integración con IA, mantenibilidad, compatibilidad con SaaS y con el estilo). Las versiones exactas están fijadas en los `package.json` de `tecnologia/plataforma-barberias/` (sección 5). Estado: el stack de la funcionalidad 001 está **implementado y probado en local** (backend, frontend y PostgreSQL); desde la 006, también **Redis y Nginx en local** con Docker Compose (sección 5.3); desde la 003, **los pagos con una pasarela simulada** detrás del puerto `PaymentGateway`, la transferencia con comprobante y el segundo factor del administrador (sección 5.4); desde la 004, **el correo por SMTP contra Mailpit y el WhatsApp simulado** detrás de `NotificationChannel` (sección 5.7); desde la 005, **el asistente de IA con un proveedor falso** en pruebas y en Docker Compose, y OpenRouter solo en desarrollo, sin dependencias nuevas (sección 5.9). AWS y los proveedores reales de pagos, IA (de producción), correo y WhatsApp siguen **planificados**.
 
 ## 1. Criterios de evaluación
 
@@ -251,3 +251,19 @@ es el script `gen:api` del frontend, que suma el contrato de 008 (`src/api/schem
 | Código de la reserva                       | 6 caracteres de un alfabeto sin ambigüedades, con `node:crypto` (`randomBytes`); único en la barbería                                                   | research R07     |
 | Vencimiento                                | La tarea `vencer-adelantos` en el ejecutor existente (cada 60 s, con el candado de PostgreSQL) y la lectura de la plataforma ya existente                  | ADR-024          |
 | Avisos                                     | El bus, la salida transaccional y `NotificationChannel` de 004 (correo con `nodemailer` y Mailpit; WhatsApp simulado)                                     | ADR-025, ADR-026 |
+
+### 5.9 Funcionalidad 005 (asistente de IA y reportes)
+
+Fuente: `specs/005-asistente-ia-reportes/research.md`. Decisiones: ADR-027 (proveedor de IA: OpenRouter solo en
+desarrollo) y ADR-028 (contrato del asistente). **Sin dependencias nuevas** ni cambios en los `package-lock.json`
+(comprobado con `git diff` de los `package.json` y `package-lock.json` del backend y del frontend entre el inicio de
+005 y su fase 4): el único cambio es el script `gen:api` del frontend, que suma el contrato de 005
+(`src/api/schema-005.d.ts`).
+
+| Necesidad                                  | Cómo se resolvió                                                                                                                                         | Decisión         |
+| ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- |
+| Modelo de lenguaje para clasificar la pregunta | **OpenRouter, solo en desarrollo** (servicio externo, no una librería): `fetch` nativo de Node.js 22 con `AbortSignal.timeout`, una llamada con esquema JSON, sin SDK. El servidor no arranca con `IA_PROVEEDOR=openrouter` y `NODE_ENV=production`; el proveedor de producción está **por decidir** | ADR-027          |
+| Pruebas y CI sin red ni llave              | `ProveedorIAFalso`, propio y determinista, con modos de prueba (`caido`, `lento`, `error`, `invalido`, `guion`) y de demostración (`IA_FALSO_MODO`)     | ADR-027          |
+| Tiempo límite, reintento y circuito        | `AbortSignal.timeout`, un reintento y el `Interruptor` de M06 ya existente (5 fallos en 60 s, pausa de 30 s)                                             | ADR-012          |
+| Cuotas compartidas entre réplicas          | PostgreSQL (`INSERT … ON CONFLICT DO UPDATE … WHERE used < límite`), sin Redis                                                                          | ADR-028          |
+| Reportes por período                       | Consultas de agregación de Kysely sobre `appointment`, con la zona horaria de la barbería (`ZonaHoraria` de M06); sin librerías de gráficos               | research de 005  |

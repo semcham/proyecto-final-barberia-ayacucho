@@ -2,7 +2,7 @@
 
 Decisiones: [ADR-003](../01-analisis-de-sistema/07-decisiones-arquitectonicas.md#adr-003-estrategia-multi-tenant), [ADR-004](../01-analisis-de-sistema/07-decisiones-arquitectonicas.md#adr-004-postgresql-como-base-principal), [ADR-009](../01-analisis-de-sistema/07-decisiones-arquitectonicas.md#adr-009-prevención-de-reservas-duplicadas) y [ADR-010](../01-analisis-de-sistema/07-decisiones-arquitectonicas.md#adr-010-autenticación-autorización-y-aislamiento-de-datos). Drivers: DA01, DA02, DA09, DA11.
 
-> Los fragmentos SQL **resumen** las migraciones reales de `backend/migrations/` (funcionalidades 001, 002 y 003, migraciones 0001 a 0020, y 008, migraciones 0028 a 0030, en §3.3); el texto exacto está en esos archivos. Las tablas de 004 (migraciones 0021 a 0027) están en el [modelo de datos de 004](../../specs/004-notificaciones-reprogramacion/data-model.md), todavía no resumidas aquí. Todo lo de este documento está implementado y probado en local, salvo lo marcado _(planificado)_.
+> Los fragmentos SQL **resumen** las migraciones reales de `backend/migrations/` (funcionalidades 001, 002 y 003, migraciones 0001 a 0020, 008, migraciones 0028 a 0030, en §3.3, y 005, migración 0031, en §3.4); el texto exacto está en esos archivos. Las tablas de 004 (migraciones 0021 a 0027) están en el [modelo de datos de 004](../../specs/004-notificaciones-reprogramacion/data-model.md), todavía no resumidas aquí. Todo lo de este documento está implementado y probado en local, salvo lo marcado _(planificado)_.
 
 ## 1. Comparación de estrategias
 
@@ -545,7 +545,7 @@ _Notas._ `tenant`, `plan` y `role` son tablas globales. `tenant` tiene RLS con `
 | EstadoCita                 | `appointment.status`                  | Lista controlada: PENDIENTE, CONFIRMADA, COMPLETADA, NO_ASISTIO, CANCELADA (restricción `CHECK`)                                              |
 | HistorialCita              | `appointment_status_history`          | Una fila por cambio de estado (incluida la creación), con quién y cuándo; inmutable                                                           |
 | Suscripción                | `plan` + `subscription`               | Estados TRIAL, ACTIVE, PAST_DUE, EXPIRED, CANCELLED, SUSPENDED; planes TRIAL (14 días, 0004), BASICO (S/ 49) y PRO (S/ 89) (0014)            |
-| ConversaciónIA / MensajeIA | _(planificado, 005)_                  | Sin tablas todavía; se definirán en la especificación de 005                                                                                  |
+| ConversaciónIA / MensajeIA | `assistant_question` (005)            | **No se guarda la conversación** (la interfaz la tiene solo en memoria): cada pregunta deja una fila de metadatos sin el texto; las cuotas van en `assistant_quota` (§3.4) |
 | Auditoría                  | `audit_log`                           | Acciones sensibles                                                                                                                            |
 | Pago de la suscripción     | `payment` + `subscription_period`     | Cada intento de pago y cada período pagado (003); el comprobante en `payment_receipt` y `payment_receipt_file`                                |
 
@@ -592,6 +592,20 @@ por su QR, y la plataforma solo registra el comprobante y el estado.
 técnicas** (`id`, `tenant_id`, `status`, `due_at`, `review_limit_at`), para que la tarea `vencer-adelantos`
 encuentre los candidatos de todas las barberías; nada de las otras tres tablas ni el número de operación. Cada
 candidato se procesa después con su tenant y RLS (`lectura-plataforma` compara los permisos con esa lista exacta).
+
+### 3.4 Tablas de la funcionalidad 005 (M04, asistente)
+
+Detalle completo en el [modelo de datos de 005](../../specs/005-asistente-ia-reportes/data-model.md) (migración
+`0031`). Las dos son de barbería, con `rlsPorTenant()`. Los reportes no tienen tablas: se calculan sobre
+`appointment` por `CatalogoCitasApi` de M02.
+
+| Tabla                | Tenant y RLS                      | Restricciones clave                                                                                                                                                                                                         |
+| -------------------- | --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `assistant_quota`    | Sí                                | Clave `(tenant_id, scope, subject_id, day)`, con `scope` USUARIO o BARBERIA y `day` en la fecha local de la barbería; la de la barbería tiene como sujeto a la propia barbería (`CHECK`); `used >= 0`. La suma es atómica (`INSERT … ON CONFLICT DO UPDATE … WHERE used < límite`), compartida entre réplicas; los límites no se guardan, salen de la configuración. La aplicación puede `SELECT`, `INSERT` y `UPDATE (used, updated_at)`, sin `DELETE` |
+| `assistant_question` | Sí                                | Quién, el rol (CLIENTE o PROPIETARIO), cuándo, la intención y el resultado (listas cerradas con `CHECK`), la duración y los tokens. **No tiene columnas para el texto** de la pregunta, de la respuesta ni para los argumentos. La aplicación solo `SELECT` e `INSERT` |
+
+Ningún otro rol de base (`barberias_auth`, `barberias_publico`, `barberias_plataforma`) tiene permisos sobre ellas.
+PR09: `aislamiento-005` y `rls` (en verde).
 
 ## 4. Claves, restricciones e índices
 
@@ -664,4 +678,4 @@ Con 200 solicitudes simultáneas por el mismo horario, **exactamente una** inser
 1. Optimizar índices y consultas.
 2. Particionar tablas grandes (`appointment`, `audit_log`) por tiempo.
 3. Mover un tenant grande a un **esquema** o a una **base dedicada** (hoy fuera del alcance); los repositorios ya filtran por tenant, por lo que los casos de uso no cambian.
-4. Réplica de lectura para reportes (M04, planificado).
+4. Réplica de lectura para los reportes de M04 (los reportes están implementados en 005; la réplica, planificada).

@@ -137,8 +137,10 @@ código ya construido de M02 y M03.
   - Con `IA_PROVEEDOR=openrouter` y `NODE_ENV=production`, el servidor **no arranca**: OpenRouter es solo de
     desarrollo (ADR-027). `.env.example` lleva las variables sin valor.
   - **Docker Compose** corre las réplicas con `NODE_ENV: production` y suma `IA_PROVEEDOR` (por defecto `falso`),
-    las cuotas e `IA_FALSO_MODO`. Por eso la prueba con OpenRouter real se hace **fuera de Compose**, con
-    `npm run start:dev` y el `.env` local.
+    las cuotas e `IA_FALSO_MODO`. Por eso la prueba con OpenRouter real se hace **fuera de Compose**: con
+    `docker compose up -d db redis`, el backend compilado (`npm run build`) y arrancado con
+    `node --env-file=../.env dist/src/main.js`, sin `NODE_ENV=production` (corregido en la fase 5: `npm run start:dev`
+    es `nest start --watch` y no carga el `.env`).
 - **Resiliencia (ADR-012):**
   - tiempo límite por llamada `IA_TIEMPO_LIMITE_MS`, con `AbortSignal.timeout`. Además, la llamada termina a más tardar
     2,1 s después de que empieza el caso de uso: se reservan 900 ms para el guardia, la cuota y el tramo 3. Con

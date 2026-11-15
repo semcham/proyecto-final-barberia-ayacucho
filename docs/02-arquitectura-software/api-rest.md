@@ -1,6 +1,6 @@
 # Diseño de la API REST
 
-Contrato entre la aplicación web y el backend (cuarto punto del enfoque SDD). Las rutas de M01, M02, M03 y de salud están **implementadas** (funcionalidades 001, 002, 003, 004 y 006). Las filas marcadas _(planificado)_ no existen en el código: son el diseño de 005 y 007 y se confirmarán al especificarlas. Complemento de la documentación núcleo.
+Contrato entre la aplicación web y el backend (cuarto punto del enfoque SDD). Las rutas de M01, M02, M03, M04 y de salud están **implementadas** (funcionalidades 001, 002, 003, 004, 005, 006 y 008). Las filas marcadas _(planificado)_ no existen en el código: son el diseño de 007 y se confirmarán al especificarlo. Complemento de la documentación núcleo.
 
 ## 1. Convenciones
 
@@ -115,10 +115,15 @@ cliente paga con el QR de Yape o Plin de la barbería y el propietario verifica 
 
 ### M04 Asistente IA y reportes, indicadores y salud
 
+Las dos rutas de M04 están implementadas en la funcionalidad 005
+([contrato](../../specs/005-asistente-ia-reportes/contracts/openapi.yaml),
+[matriz de permisos](../../specs/005-asistente-ia-reportes/contracts/rbac.md),
+[contrato del asistente](../../specs/005-asistente-ia-reportes/contracts/asistente.md)).
+
 | Método y ruta                       | Propósito                                                                     | RF         | Roles    |
 | ----------------------------------- | ----------------------------------------------------------------------------- | ---------- | -------- |
-| `POST /asistente/mensajes` _(planificado, 005)_ | Consulta al asistente (herramientas cerradas)                     | RF27, RF28 | CLI, PRO |
-| `GET /reportes/citas?desde=&hasta=` _(planificado, 005)_ | Reporte por período                                      | RF29       | PRO      |
+| `POST /asistente/mensajes`          | Una pregunta al asistente (hasta 500 caracteres y 6 intervenciones de contexto). El cliente consulta servicios, barberos y horarios libres; el propietario, el resumen de citas y los servicios más pedidos de un período. Solo lee: la respuesta sale de plantillas con los datos de la herramienta | RF27, RF28 | CLI, PRO |
+| `GET /reportes?desde=&hasta=`       | Tres tablas del período (fechas locales de la barbería, ambas incluidas, hasta 366 días): citas por estado (con las cancelaciones tardías), los 10 servicios más solicitados y la actividad (por barbero, por día de la semana, cancelaciones tardías y no asistencias). Solo conteos, sin IA | RF29       | PRO      |
 | Indicadores agregados de uso _(planificado, 007; ruta por definir bajo `/plataforma`)_ | —                          | RF31       | ADM      |
 | `GET /salud`                        | Vida: la instancia responde y PostgreSQL acepta consultas                     | RC         | PUB      |
 | `GET /salud/listo`                  | Listo para recibir tráfico: base accesible y al día con las migraciones (006) | RC         | PUB      |
@@ -142,8 +147,11 @@ Las notificaciones (M05, implementadas en 004) no exponen endpoints propios: se 
 - **Comprobantes (003, ADR-023):** solo se sirven con una sesión con permiso, como adjunto con `Cache-Control: no-store` y `X-Content-Type-Options: nosniff`. El tipo se verifica por los bytes, no por el nombre. Nginx admite 6 MB solo en la ruta de subida (16 KB en el resto).
 - **Reprogramar y enlaces (004):** la reprogramación usa la misma restricción de exclusión que la reserva (`409` `HORARIO_NO_DISPONIBLE`); el cliente con menos antelación que la mínima de cancelación recibe `422` `SIN_ANTELACION_PARA_REPROGRAMAR` (el propietario sí puede). Una acción por enlace se aplica una sola vez, aunque llegue a las dos réplicas a la vez; un intento fallido de reprogramar no consume el enlace.
 - **Adelanto de reserva (008, ADR-033):** con el adelanto activo, `POST /citas` del cliente crea la cita `PENDIENTE` con su adelanto (`422` `SIN_TIEMPO_PARA_ADELANTO` si el plazo no cabe antes del inicio menos 30 min). Un número de operación ya registrado en la barbería responde `409` `NUMERO_OPERACION_REPETIDO`; un segundo registro sin revisar, `409` `PAGO_YA_REGISTRADO`; pasada la hora límite, `422` `ADELANTO_VENCIDO`. Confirmar sin pago, `409` `SIN_PAGO_REGISTRADO`; un adelanto ya resuelto, `409` `ADELANTO_RESUELTO`; marcar devuelto fuera de "por devolver", `409` `ADELANTO_NO_POR_DEVOLVER`. En una cita con adelanto, aprobarla por `POST /citas/{id}/estado` y que el cliente la reprograme mientras está pendiente responden `409` `ADELANTO_PENDIENTE`. El QR y la captura se sirven como los comprobantes de 003 (sin URL pública, `no-store`), y nunca aparecen el número de operación ni los archivos en la auditoría, los registros ni los eventos.
+- **Asistente (005, ADR-027 y ADR-028):** la ruta exige la operación `USAR_ASISTENTE` (el barbero recibe `403` en el guardia) y el caso de uso exige la del rol (`USAR_ASISTENTE_CLIENTE` o `USAR_ASISTENTE_PROPIETARIO`). Una pregunta vacía, de más de 500 caracteres o con más de 6 intervenciones de contexto responde `422` `VALIDACION` sin consumir cuota; un campo de barbería o de tenant en el cuerpo, `400` `VALIDACION`. Con la cuota del usuario o de la barbería agotada, `429` `CUOTA_ASISTENTE_AGOTADA` con `Retry-After` y, en `detalles[0]`, `alcance`, `reiniciaEn` y `reintentarEnSegundos`. Con el proveedor de IA caído, lento, con error o con el circuito abierto, `503` `ASISTENTE_NO_DISPONIBLE` en 3 s o menos, con la alternativa manual en `detalles[0].alternativa` (`RESERVAR` para el cliente, `REPORTES` para el propietario). Una pregunta que la herramienta del rol no cubre responde `200` con el resultado `FUERA_DE_ALCANCE`, `ACCION_NO_PERMITIDA` o `SIN_DATOS`.
+- **Reportes (005):** un período mal formado, con `desde` posterior a `hasta` o de más de 366 días responde `422` `VALIDACION` con el campo en `detalles[0]`. Un período sin citas responde `200` con las tablas en cero.
 - **Canal de aviso (004):** elegir WhatsApp sin aceptar el texto vigente responde `422` `CONSENTIMIENTO_REQUERIDO`; un número inválido, `422` `VALIDACION`. Cualquier campo de barbería en el cuerpo responde `400`.
 - El contrato completo de cada funcionalidad está en `specs/<funcionalidad>/contracts/openapi.yaml`; esta tabla es el resumen.
 
-Evidencia: controladores en `backend/src/modules/*/*/presentation/*.controller.ts` y `backend/src/host/salud.controller.ts`; pruebas de contrato en `backend/test/contract/` (`auth`, `usuarios`, `registro-barberia`, `clientes`, `catalogo`, `citas`, `agenda`, `publico`, `suscripcion`, `enlaces`, `canal-correo`, `canal-whatsapp`) y matrices `rbac.spec.ts`, `rbac-002.spec.ts`, `rbac-003.spec.ts` y `rbac-004.spec.ts`.
-- _(Planificado, 005)_ El asistente nunca devolverá datos de otro tenant; sus herramientas serán las mismas operaciones de arriba con el rol del usuario.
+Evidencia: controladores en `backend/src/modules/*/*/presentation/*.controller.ts` y `backend/src/host/salud.controller.ts`; pruebas de contrato en `backend/test/contract/` (`auth`, `usuarios`, `registro-barberia`, `clientes`, `catalogo`, `citas`, `agenda`, `publico`, `suscripcion`, `enlaces`, `canal-correo`, `canal-whatsapp`) y matrices `rbac.spec.ts`, `rbac-002.spec.ts`, `rbac-003.spec.ts`, `rbac-004.spec.ts`, `rbac-008.spec.ts` y `rbac-005.spec.ts`; de 005, `asistente.contract.spec.ts` y `reportes.contract.spec.ts`.
+
+- **Nota de M04 (005):** el asistente no llama a las rutas de arriba. Sus herramientas son **lecturas** dentro del backend, con la barbería y el rol del token: las del cliente leen el catálogo y los horarios libres por `CatalogoCitasApi` de M02 (y si la barbería acepta reservas, por `SuscripcionesApi` de M03); las del propietario leen las cifras de los reportes de M04 con el mismo cálculo que `GET /reportes` (`CifrasDelPeriodo`). Nunca devuelve datos de otra barbería ni nombres, teléfonos o correos de clientes (PR09 y PR19).

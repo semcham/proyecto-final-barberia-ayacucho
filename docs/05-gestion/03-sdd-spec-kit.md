@@ -52,8 +52,10 @@ specs/
   002-catalogo-citas-cliente/         implementada
   003-suscripciones-pagos/            implementada (pasarela simulada)
   004-notificaciones-reprogramacion/  implementada (correo con Mailpit, WhatsApp simulado)
+  005-asistente-ia-reportes/          implementada (proveedor de IA falso; OpenRouter solo en desarrollo)
   006-escalado-cache-balanceo/        implementada
-  (005 y 007: planificadas, sin carpeta todavía)
+  008-adelanto-reserva-qr/            implementada (verificación manual del pago)
+  (007: planificada, sin carpeta todavía)
 docs/                                 análisis, arquitectura, diseño, C4, gestión (ADR en 07-decisiones)
 tecnologia/plataforma-barberias/      backend/ y frontend/: la aplicación
 ```
@@ -95,7 +97,7 @@ Spec Kit es un conjunto de herramientas de código abierto para desarrollo guiad
 | 13  | Diseño de API                | [api-rest](../02-arquitectura-software/api-rest.md)                                                                                       |
 | 14  | Estilo y componentes         | [estilo](../02-arquitectura-software/estilo-arquitectonico.md), [componentes](../02-arquitectura-software/componentes-arquitectonicos.md) |
 | 15  | Seguridad y privacidad       | [seguridad-y-privacidad](../02-arquitectura-software/seguridad-y-privacidad.md)                                                           |
-| 16  | IA con herramientas cerradas | Especificaciones de ejemplo IA-001 e IA-002 (sección 6; planificadas, 005)                                                                |
+| 16  | IA con herramientas cerradas | Especificaciones de ejemplo IA-001 e IA-002 (sección 6, anteriores a 005); lo construido, en [specs/005](../../specs/005-asistente-ia-reportes/spec.md) |
 | 17  | Diseño interno               | [diseño interno](../03-diseño-de-software/diseño-interno/)                                                                                |
 | 18  | Modelo C4                    | [modelo C4](../04-modelo-c4/)                                                                                                             |
 | 19  | Despliegue                   | [despliegue-y-escalabilidad](../02-arquitectura-software/despliegue-y-escalabilidad.md)                                                   |
@@ -121,7 +123,9 @@ Son ejemplos cortos para la exposición. Las especificaciones completas son los 
 
 Fuera de alcance: cobro de la cita (los pagos son solo de la suscripción). Verificación: `backend/test/integration/citas/reservar.spec.ts`, `concurrencia-reservas.spec.ts` (PR16), `suscripciones/restricciones-estado.spec.ts` y `aislamiento/aislamiento-tenant.spec.ts`. Estado: **implementado** (002 y 003; especificación completa en `specs/002-catalogo-citas-cliente/spec.md`).
 
-### IA-001 Interpretar una solicitud de reserva (RF27) · planificado (005)
+### IA-001 Interpretar una solicitud de reserva (RF27) · ejemplo anterior a 005
+
+> **Implementado de otra forma en 005** ([especificación](../../specs/005-asistente-ia-reportes/spec.md), ADR-028): las intenciones del cliente son `servicios`, `barberos` y `horarios_libres`; no hay `proponer_reserva`: el asistente ofrece ir a Reservar con los datos elegidos y la reserva la confirma el cliente allí. El registro va en `assistant_question`, sin texto. Esta ficha queda como el ejemplo de especificación con que se enseñó el método.
 
 | Elemento                | Descripción                                                                                                        |
 | ----------------------- | ------------------------------------------------------------------------------------------------------------------ |
@@ -134,7 +138,9 @@ Fuera de alcance: cobro de la cita (los pagos son solo de la suscripción). Veri
 | Registro                | Intención, herramienta y resultado, sin datos sensibles innecesarios (tablas por definir en 005)                   |
 | Verificación            | Entradas ambiguas, intento de inyección de instrucciones y proveedor caído                                         |
 
-### IA-002 Consulta administrativa (RF28) · planificado (005)
+### IA-002 Consulta administrativa (RF28) · ejemplo anterior a 005
+
+> **Implementado en 005** con las herramientas `resumen_citas` y `servicios_mas_pedidos`, con las mismas cifras que los reportes (`CifrasDelPeriodo`); si el asistente no está disponible, ofrece las tablas de los reportes. Un barbero o un cliente no accede a reportes (403).
 
 | Elemento                | Descripción                                                                                 |
 | ----------------------- | ------------------------------------------------------------------------------------------- |

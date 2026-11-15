@@ -43,7 +43,7 @@ flowchart LR
 
 Leyenda: blanco = persona; azul grisáceo = sistema propio; naranja = sistema externo; azul claro = datos. Flecha discontinua = relación planificada. Correo y WhatsApp se agrupan en una caja para que el diagrama se lea de un vistazo; son dos servicios distintos (EXT-03 y EXT-04).
 
-Evidencia: actores en [01-actores](../01-analisis-de-sistema/01-actores.md); rutas en `backend/src/modules/*/*/presentation/*.controller.ts`; pasarela simulada en `backend/simulador-pagos/` y `docker-compose.yml` (servicio `pasarela-simulada`); correo por SMTP contra Mailpit y WhatsApp simulado en `backend/src/modules/notificaciones/`, `backend/simulador-whatsapp/` y los servicios `mailpit` y `whatsapp-simulado` (004). No hay código de IA ni proveedores reales de correo o WhatsApp.
+Evidencia: actores en [01-actores](../01-analisis-de-sistema/01-actores.md); rutas en `backend/src/modules/*/*/presentation/*.controller.ts`; pasarela simulada en `backend/simulador-pagos/` y `docker-compose.yml` (servicio `pasarela-simulada`); correo por SMTP contra Mailpit y WhatsApp simulado en `backend/src/modules/notificaciones/`, `backend/simulador-whatsapp/` y los servicios `mailpit` y `whatsapp-simulado` (004). IA (005): el puerto `AIProvider` y sus adaptadores en `backend/src/modules/asistente-reportes/asistente/infrastructure/` (falso, OpenRouter solo en desarrollo y "ninguno"). No hay proveedores reales de IA de producción, de correo ni de WhatsApp.
 
 ## Leyenda común de todos los diagramas
 
@@ -77,12 +77,12 @@ En algunos diagramas se usa además rojo para una solicitud rechazada. Los diagr
 | Elemento                        | Tipo            | Origen (requisito)                                              | Estado                                                |
 | ------------------------------- | --------------- | --------------------------------------------------------------- | ----------------------------------------------------- |
 | Administrador de la plataforma  | Persona         | HU01, HU19, HU26 / RF02, RF22, RF31                             | Implementado (003); indicadores (RF31) planificados    |
-| Propietario de barbería         | Persona         | HU02–HU04, HU17, HU18, HU23, HU24 / RF01, RF06, RF20, RF29      | Implementado (001–003); reportes e IA planificados     |
+| Propietario de barbería         | Persona         | HU02–HU04, HU17, HU18, HU23, HU24 / RF01, RF06, RF20, RF29      | Implementado (001–005 y 008); reportes e IA en 005     |
 | Barbero                         | Persona         | HU09, HU14 / RF09, RF15, RF16                                   | Implementado (002)                                     |
-| Cliente                         | Persona         | HU06, HU10–HU13, HU22, HU25 / RF05, RF11–RF14, RF27, RF30, RF33 | Implementado (002); reprogramar, avisos e IA planificados |
-| Plataforma SaaS                 | Sistema         | Todos los RF                                                    | Implementado en local: 30 RF, 1 parcial y 4 planificados |
+| Cliente                         | Persona         | HU06, HU10–HU13, HU22, HU25 / RF05, RF11–RF14, RF27, RF30, RF33 | Implementado (002, 004 y 005): reprogramar y avisos (004), asistente de IA (005) |
+| Plataforma SaaS                 | Sistema         | Todos los RF                                                    | Implementado en local: 33 RF, 1 parcial y 1 planificado |
 | Proveedor de pagos              | Sistema externo | RF23–RF26, RC05, ADR-007, ADR-022                               | **Simulado** (pasarela simulada); proveedor real planificado (candidato: Culqi, sin contratar) |
-| Proveedor de IA                 | Sistema externo | RF27, RF28, RC11, ADR-008                                       | Planificado (sin elegir)                              |
+| Proveedor de IA                 | Sistema externo | RF27, RF28, RC11, ADR-008, ADR-027                              | En pruebas y Compose, un proveedor **falso** (sin red); OpenRouter solo en desarrollo; producción planificada (sin elegir) |
 | Servicio de correo              | Sistema externo | RF30, HU25                                                      | Integrado por SMTP (004), probado con Mailpit; proveedor de producción sin elegir |
 | Servicio de mensajería WhatsApp | Sistema externo | RF30, RF33, HU25, ADR-013                                       | Integrado con un simulador (004); proveedor real sin elegir (solo si es viable) |
 

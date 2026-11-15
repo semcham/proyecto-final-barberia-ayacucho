@@ -11,21 +11,24 @@ funcionalidades:
   contra Mailpit y WhatsApp simulado: ningún proveedor real);
 - [006 · Escalabilidad: balanceador Nginx, dos réplicas y Redis](../../specs/006-escalado-cache-balanceo/spec.md);
 - [008 · Adelanto de reserva con QR](../../specs/008-adelanto-reserva-qr/spec.md) (QR de Yape o Plin de la barbería con verificación
-  manual del propietario: la plataforma no recibe el dinero).
+  manual del propietario: la plataforma no recibe el dinero);
+- [005 · Asistente de IA y reportes](../../specs/005-asistente-ia-reportes/spec.md) (el asistente usa el proveedor de IA
+  **falso** en las pruebas y en Docker Compose; OpenRouter solo en desarrollo, fuera de Compose).
 
 Las guías completas (requisitos, escenarios manuales, criterios de cierre y registro de ejecuciones) están en
 [quickstart de 001](../../specs/001-registro-acceso-barberia/quickstart.md),
 [quickstart de 002](../../specs/002-catalogo-citas-cliente/quickstart.md),
 [quickstart de 003](../../specs/003-suscripciones-pagos/quickstart.md),
 [quickstart de 004](../../specs/004-notificaciones-reprogramacion/quickstart.md),
-[quickstart de 006](../../specs/006-escalado-cache-balanceo/quickstart.md) y
-[quickstart de 008](../../specs/008-adelanto-reserva-qr/quickstart.md). Este archivo es el resumen.
+[quickstart de 006](../../specs/006-escalado-cache-balanceo/quickstart.md),
+[quickstart de 008](../../specs/008-adelanto-reserva-qr/quickstart.md) y
+[quickstart de 005](../../specs/005-asistente-ia-reportes/quickstart.md). Este archivo es el resumen.
 
 ## Contenido
 
 | Carpeta o archivo          | Qué es                                                                                                                                 |
 | -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| `backend/`                 | API REST en NestJS 11: módulos M01, M02, M03, M05 y M06, 4 capas, PostgreSQL 16 con RLS (Kysely)                                       |
+| `backend/`                 | API REST en NestJS 11: módulos M01 a M06, 4 capas, PostgreSQL 16 con RLS (Kysely)                                                      |
 | `backend/simulador-pagos/` | Simulador de la pasarela de pagos (servicio `pasarela-simulada`, ADR-022); fuera del monolito                                          |
 | `backend/simulador-whatsapp/` | Simulador de WhatsApp (servicio `whatsapp-simulado`, ADR-026); fuera del monolito                                                   |
 | `frontend/`                | Aplicación web en React 19 + Vite 6 con sistema de diseño propio y Radix UI (ADR-014, ADR-016)                                         |
@@ -302,13 +305,71 @@ Son los mismos pasos que ejecuta el CI ([`.github/workflows/plataforma-barberias
 - **Pendientes del responsable:** las revisiones manuales de interfaz, SC-001 y SC-002 con cronómetro y el
   recorrido de la [guía rápida de 008](../../specs/008-adelanto-reserva-qr/quickstart.md) con Docker Compose.
 
+## Funcionalidad 005: asistente de IA y reportes
+
+- **Decisiones:** ADR-027 (proveedor de IA: OpenRouter solo en desarrollo) y ADR-028 (contrato del asistente:
+  intención estructurada, cuotas y defensa ante inyección); ADR-008 y ADR-012, aceptados solo en lo construido.
+  Contratos: [openapi de 005](../../specs/005-asistente-ia-reportes/contracts/openapi.yaml),
+  [rbac de 005](../../specs/005-asistente-ia-reportes/contracts/rbac.md) y
+  [contrato del asistente](../../specs/005-asistente-ia-reportes/contracts/asistente.md).
+- **Cómo funciona el asistente:** el modelo de IA **solo clasifica** la pregunta en una intención cerrada de su rol;
+  el backend ejecuta la herramienta (solo lecturas, dentro de la barbería del token) y compone la respuesta con
+  plantillas y esos datos. El texto del modelo nunca llega al usuario. **No reserva ni cambia nada:** ofrece ir a
+  Reservar con el servicio, el barbero y la hora elegidos. La conversación vive solo en el navegador (sin historial
+  en el servidor) y se envían como mucho las últimas 6 intervenciones.
+- **Migración `0031`:** `assistant_quota` (cuotas por usuario y por barbería y por día local de la barbería, con
+  suma atómica) y `assistant_question` (una fila por pregunta, **sin el texto**), las dos con RLS.
+- **Código:** el módulo M04 (`backend/src/modules/asistente-reportes/`, submódulos `reportes`, `asistente` y
+  `comun`), que lee M02 solo por `CatalogoCitasApi` y M03 por `SuscripcionesApi`. Los reportes no usan IA.
+- **Pantallas nuevas:** el asistente del cliente (`/asistente`, con el enlace "Preguntar al asistente" en Mis citas y
+  en el catálogo de su barbería) y los reportes del propietario (`/app/reportes`), con las pestañas **Tablas** (citas
+  por estado, servicios más solicitados y actividad, sin gráficos) y **Preguntar** (resumen de citas y servicios más
+  pedidos, con las mismas cifras que las tablas).
+- **Variables nuevas** (`.env.example`):
+  - `IA_PROVEEDOR`: `falso` (pruebas, CI y Docker Compose), `openrouter` (**solo desarrollo**) o `ninguno` (el valor
+    si falta: el asistente responde "no disponible" y los reportes siguen igual);
+  - `IA_OPENROUTER_LLAVE`, `IA_OPENROUTER_MODELO` e `IA_OPENROUTER_URL_BASE` (por defecto
+    `https://openrouter.ai/api/v1`). **La llave nunca entra al repositorio:** va solo en tu `.env` local, que no está
+    en git; `.env.example` y `docker-compose.yml` la llevan vacía, y no aparece en los registros;
+  - `IA_TIEMPO_LIMITE_MS` (2500, de 500 a 2800; la llamada termina igual a más tardar 2,1 s después de la pregunta,
+    para responder siempre en 3 s);
+  - `IA_CUOTA_USUARIO_DIA` (20) e `IA_CUOTA_BARBERIA_DIA` (200), fijas e iguales para todos los planes y reiniciadas a
+    la medianoche de la barbería;
+  - `IA_FALSO_MODO` (`normal`, `caido` o `lento`), solo con el proveedor falso.
+- **Probar con el proveedor falso (Docker Compose):** es el de siempre en Compose (`IA_PROVEEDOR=falso`,
+  `IA_FALSO_MODO=normal`). Para ver la degradación, pon `IA_FALSO_MODO=caido` en `.env` y recrea las réplicas con
+  `docker compose up -d` (después, vuelve a `normal`); para la cuota, baja `IA_CUOTA_USUARIO_DIA` (por ejemplo, a 3).
+  Las pruebas automáticas fijan el falso solas: no necesitan red ni llave.
+- **Probar con OpenRouter (solo desarrollo, fuera de Compose):** las réplicas de Compose corren con
+  `NODE_ENV: production` y el servidor **no arranca** con `IA_PROVEEDOR=openrouter` en producción. Se compila y se
+  arranca el backend a mano, como en "Ejecutar sin Docker" (`npm run start:dev` **no** sirve: es
+  `nest start --watch` y no carga el `.env`), con la base y Redis de Compose:
+
+  ```powershell
+  # En tu .env local (no en git): IA_PROVEEDOR=openrouter, IA_OPENROUTER_LLAVE=<tu llave> e IA_OPENROUTER_MODELO=<modelo>
+  docker compose up -d db redis      # sin las réplicas ni Nginx, que usan el puerto 3000
+  cd backend
+  npm run build
+  node --env-file=../.env dist/src/main.js
+  ```
+
+  `NODE_ENV` no debe ser `production`: el `.env.example` no lo define y el backend solo lo usa para esa guardia, así
+  que basta con no definirlo (o `NODE_ENV=development`). El `.env` tiene que traer todas las variables obligatorias:
+  fuera de Compose, `docker-compose.yml` no completa las que falten. Usa solo datos de prueba, nunca datos reales de clientes (ADR-027). La suite del puerto contra OpenRouter real
+  (`ai-provider-openrouter`) se omite si `IA_OPENROUTER_LLAVE` no está en la consola.
+- **Limitaciones:** el proveedor de IA de producción está **por decidir**; las cuotas no dependen del plan
+  (evolución futura); no hay métricas por proveedor.
+- **Pendientes del responsable:** las revisiones manuales de interfaz, la prueba con OpenRouter real, SC-003 y SC-005
+  medidos en Docker Compose y el recorrido de la [guía rápida de 005](../../specs/005-asistente-ia-reportes/quickstart.md).
+
 ## Referencias
 
 - Plan técnico: [plan de 001](../../specs/001-registro-acceso-barberia/plan.md),
   [plan de 002](../../specs/002-catalogo-citas-cliente/plan.md),
   [plan de 003](../../specs/003-suscripciones-pagos/plan.md),
-  [plan de 004](../../specs/004-notificaciones-reprogramacion/plan.md) y
-  [plan de 008](../../specs/008-adelanto-reserva-qr/plan.md) · contratos:
+  [plan de 004](../../specs/004-notificaciones-reprogramacion/plan.md),
+  [plan de 008](../../specs/008-adelanto-reserva-qr/plan.md) y
+  [plan de 005](../../specs/005-asistente-ia-reportes/plan.md) · contratos:
   [openapi de 001](../../specs/001-registro-acceso-barberia/contracts/openapi.yaml),
   [openapi de 002](../../specs/002-catalogo-citas-cliente/contracts/openapi.yaml),
   [openapi de 003](../../specs/003-suscripciones-pagos/contracts/openapi.yaml),
@@ -324,7 +385,8 @@ Son los mismos pasos que ejecuta el CI ([`.github/workflows/plataforma-barberias
   gracia en la renovación, cuenta de cliente en varias barberías y lecturas públicas por enlace), y
   ADR-029 y ADR-030 (caché compartida y balanceo local, funcionalidad 006), ADR-022 a ADR-024 y ADR-031
   (pagos, comprobantes, tareas programadas y administrador de la plataforma, funcionalidad 003), y ADR-013,
-  ADR-025, ADR-026 y ADR-032 (notificaciones, eventos, canales y enlaces de acción, funcionalidad 004), y ADR-033
-  (adelanto de reserva por QR de la barbería, funcionalidad 008).
+  ADR-025, ADR-026 y ADR-032 (notificaciones, eventos, canales y enlaces de acción, funcionalidad 004), ADR-033
+  (adelanto de reserva por QR de la barbería, funcionalidad 008), y ADR-027 y ADR-028 (proveedor de IA y contrato
+  del asistente, funcionalidad 005).
 - Librerías, versiones, licencias y mediciones: [tecnologias.md](../../docs/02-arquitectura-software/tecnologias.md).
 - Imágenes de marca (formato, peso máximo, licencia y autoría): [frontend/public/img/README.md](frontend/public/img/README.md).

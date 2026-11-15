@@ -46,7 +46,7 @@ flowchart TB
 
 </details>
 
-Leyenda: azul grisáceo = sistema propio; azul claro = datos; naranja = sistema externo. Los proveedores de IA, correo y WhatsApp (planificados, 004 y 005) se omiten para que el diagrama se lea de un vistazo; están en el [C4 nivel 1](../04-modelo-c4/Nivel1-DiagramadeContextodelSistema.md).
+Leyenda: azul grisáceo = sistema propio; azul claro = datos; naranja = sistema externo. Los proveedores de IA, correo y WhatsApp (en local: el proveedor de IA falso u OpenRouter en desarrollo, 005; Mailpit y el WhatsApp simulado, 004) se omiten para que el diagrama se lea de un vistazo; están en el [C4 nivel 1](../04-modelo-c4/Nivel1-DiagramadeContextodelSistema.md).
 
 Evidencia: decisión [ADR-006](../01-analisis-de-sistema/07-decisiones-arquitectonicas.md#adr-006-balanceador-de-carga-y-escalado-horizontal) (Propuesto); equivalencias local ↔ nube en [ADR-030](../01-analisis-de-sistema/07-decisiones-arquitectonicas.md#adr-030-balanceo-local-con-nginx-como-representación-de-adr-006). No hay código de despliegue en la nube.
 ## 2. Implementación inicial frente a arquitectura objetivo

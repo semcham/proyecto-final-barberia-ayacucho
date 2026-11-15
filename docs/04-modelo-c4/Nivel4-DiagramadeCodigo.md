@@ -113,6 +113,6 @@ Evidencia: `backend/src/modules/suscripciones-pagos/pagos/application/` (`inicia
 ## 3. Notas
 
 - Los nombres de los dos diagramas son los del código. Los controladores tienen más rutas de las que se ven aquí (ver [API REST](../02-arquitectura-software/api-rest.md)).
-- La IA (`AIProvider`, planificada en 005) seguirá el mismo patrón de puerto y adaptador: ver [diseño interno, sección 4](../03-diseño-de-software/diseño-interno/diseño-interno-de-modulos.md#4-submódulo-asistente-m04-asistente-ia-y-reportes).
+- La IA (`AIProvider`, implementada en 005) sigue el mismo patrón de puerto y adaptador, con el proveedor falso, OpenRouter (solo desarrollo) y "ninguno": ver [diseño interno, sección 4](../03-diseño-de-software/diseño-interno/diseño-interno-de-modulos.md#4-submódulos-asistente-y-reportes-m04-asistente-ia-y-reportes).
 
 **Anterior:** [Nivel 3](Nivel3-Diagrama-de-Componentes.md).

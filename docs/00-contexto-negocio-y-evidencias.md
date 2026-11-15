@@ -68,7 +68,7 @@ La gestión manual de citas, horarios, servicios y clientes provoca (hipótesis)
 
 **Dentro del alcance (documentación y diseño):** los seis módulos descritos en [estilo-arquitectonico.md](02-arquitectura-software/estilo-arquitectonico.md); notificación al cliente de la fecha y hora de su cita por **correo electrónico y por WhatsApp** (según su preferencia y consentimiento); diagramas C4 niveles 1 a 4; ADR; plan Scrum/SDD; pruebas y riesgos.
 
-**Implementado hoy** (en local, con pruebas): funcionalidades 001, 002, 003 y 006, es decir, los módulos M01, M02 y M03 y parte de M06. **Planificado:** M04 (asistente de IA y reportes, funcionalidad 005), M05 (notificaciones, 004) e indicadores y solicitudes de datos (007). El estado de cada componente está en la [trazabilidad](trazabilidad.md).
+**Implementado hoy** (en local, con pruebas): funcionalidades 001, 002, 003, 004, 005, 006 y 008, es decir, los módulos M01 a M05 y parte de M06 (el asistente de IA, con un proveedor falso en las pruebas y en Docker Compose; el correo contra Mailpit y el WhatsApp simulado). **Planificado:** indicadores y solicitudes de datos (007). El estado de cada componente está en la [trazabilidad](trazabilidad.md).
 
 **Fuera del alcance (evolución futura):**
 

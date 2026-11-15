@@ -94,7 +94,7 @@ La regla se verifica con la prueba de arquitectura PR14.
 | Idea central        | Puertos y adaptadores alrededor del núcleo                                  | Capas concéntricas con regla de dependencia    |
 | Qué comparten       | Dominio independiente; infraestructura intercambiable                       | Ídem                                           |
 | Diferencia práctica | Enfatiza el borde (entradas y salidas)                                      | Nombra explícitamente casos de uso y entidades |
-| Uso aquí            | Los **puertos y adaptadores** se usan para pagos y repositorios (y se usarán para IA y correo, planificados) | Es el enfoque principal |
+| Uso aquí            | Los **puertos y adaptadores** se usan para pagos, repositorios, correo y WhatsApp (004) e IA (005) | Es el enfoque principal |
 
 ## 6. Justificación honesta frente al criterio de la guía
 
@@ -103,13 +103,13 @@ La Guía 03 recomienda Clean Architecture para sistemas con reglas de negocio co
 | Criterio de la guía                      | Aplicación en la plataforma                                                        |
 | ---------------------------------------- | ---------------------------------------------------------------------------------- |
 | Reglas de negocio complejas              | **Sí:** reservas sin solape, estados de cita y suscripción, restricciones por plan |
-| Integraciones externas cambiantes        | **Sí:** pagos (hoy simulado); IA y correo (planificados)                           |
+| Integraciones externas cambiantes        | **Sí:** pagos (hoy simulado), correo y WhatsApp (004; WhatsApp simulado) e IA (005; falso en pruebas, OpenRouter solo en desarrollo) |
 | Necesidad de pruebas sin infraestructura | **Sí:** dominio probado sin base de datos                                          |
 | Equipo pequeño y MVP                     | **Riesgo:** exceso de ceremonia                                                    |
 
 **Qué se simplifica (decisión del equipo):**
 
-- En módulos de CRUD simple (catálogo; reportes y notificaciones, planificados), el caso de uso puede ser una clase delgada que llama al repositorio.
+- En módulos de CRUD simple (catálogo; los reportes de 005), el caso de uso puede ser una clase delgada que llama a una interfaz de lectura (`ConsultarReportes` lee por `CatalogoCitasApi`).
 - Los **puertos se crean solo donde hay riesgo de cambio o de fallo**: hoy `PaymentGateway`, `AlmacenComprobantes`, `CitaRepository`, `TokenSigner`, `PasswordHasher`, `SegundoFactor` y `CacheCompartida` (M06); se agregarán `AIProvider` (005) y `NotificationChannel` (004).
 - Sin mapeos innecesarios: entidades de dominio y DTO se separan solo en los módulos críticos (M02 citas, M03 suscripciones y pagos; M04 asistente cuando se construya).
 - El código se construye en `tecnologia/plataforma-barberias/`; la regla de dependencia se verifica con una prueba de arquitectura (PR14).
