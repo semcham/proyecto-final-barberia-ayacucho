@@ -28,6 +28,11 @@ export class AutorizacionAsistenteReportes {
 
   async exigir(actor: ActorDeBarberia, operacion: OperacionAsistenteReportes): Promise<void> {
     if (PermisosAsistenteReportes.permite(actor.rol, operacion)) return;
+    await this.denegar(actor, operacion);
+  }
+
+  /** Deniega y audita aunque la matriz lo permita (p. ej. un rol sin herramientas todavía, fase 3 de 005). */
+  async denegar(actor: ActorDeBarberia, operacion: OperacionAsistenteReportes): Promise<never> {
     await this.auditoria.registrarEnTransaccionPropia(
       {
         accion: 'ACCESO_DENEGADO_ROL',

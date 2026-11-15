@@ -218,39 +218,39 @@ description: "Tareas de la funcionalidad 005: asistente de IA y reportes"
 
 ### Pruebas de US1 (escribir primero, deben fallar) ⚠️
 
-- [ ] T026 [P] [US1] Crear `backend/test/unit/asistente/intencion.spec.ts` (FR-001, FR-003, FR-006; contracts/asistente.md §2):
+- [X] T026 [P] [US1] Crear `backend/test/unit/asistente/intencion.spec.ts` (FR-001, FR-003, FR-006; contracts/asistente.md §2):
   - el esquema es cerrado: una intención fuera de la lista → `fuera_de_alcance`;
   - los argumentos que no están en el esquema se descartan y llevan a `fuera_de_alcance`;
   - un campo de texto del modelo se ignora;
   - cada rol tiene su lista de herramientas: el cliente solo `servicios`, `barberos` y `horarios_libres`;
   - una intención de otro rol → `fuera_de_alcance`.
-- [ ] T027 [P] [US1] Crear `backend/test/unit/asistente/resolver-argumentos.spec.ts` (FR-014, FR-017):
+- [X] T027 [P] [US1] Crear `backend/test/unit/asistente/resolver-argumentos.spec.ts` (FR-014, FR-017):
   - "hoy", "mañana" y los días de la semana se resuelven en la zona horaria de la barbería, también cerca de la medianoche de Lima;
   - una fecha inválida, como `2026-13-45`, → `SIN_DATOS` con la explicación;
   - el servicio y el barbero se buscan solo en el catálogo de la barbería, por nombre sin tildes ni mayúsculas;
   - si hay más de uno, se piden las opciones;
   - una fecha pasada → mensaje claro.
-- [ ] T028 [P] [US1] Crear `backend/test/unit/asistente/plantillas.spec.ts` (FR-001, FR-014, FR-018; contracts/asistente.md §3):
+- [X] T028 [P] [US1] Crear `backend/test/unit/asistente/plantillas.spec.ts` (FR-001, FR-014, FR-018; contracts/asistente.md §3):
   - cada plantilla muestra solo los datos que recibe y dice la fecha exacta usada;
   - el enlace es `/b/{slug}/reservar?servicio=&barbero=&inicio=`, y no aparece si la barbería no acepta reservas (`SuscripcionesApi.estadoOperativo`);
   - sin datos, la respuesta es "no tengo ese dato" y ofrece el flujo manual.
-- [ ] T029 [P] [US1] Crear `backend/test/unit/asistente/politica-cuota.spec.ts` (FR-007; research R08):
+- [X] T029 [P] [US1] Crear `backend/test/unit/asistente/politica-cuota.spec.ts` (FR-007; research R08):
   - `day` es la fecha local de la barbería;
   - `reiniciaEn` es la próxima medianoche local;
   - `Retry-After` va en segundos;
   - los límites salen de la configuración.
-- [ ] T030 [P] [US1] Crear `backend/test/unit/asistente/entrada.spec.ts` para `asistente/domain/entrada.ts`, la validación que corre **dentro del caso de uso** (FR-012, FR-013; contracts/asistente.md §1):
+- [X] T030 [P] [US1] Crear `backend/test/unit/asistente/entrada.spec.ts` para `asistente/domain/entrada.ts`, la validación que corre **dentro del caso de uso** (FR-012, FR-013; contracts/asistente.md §1):
   - una pregunta vacía, solo con espacios o de más de 500 caracteres → `VALIDACION`;
   - un contexto de más de 6 intervenciones → `VALIDACION` (no se recorta en silencio);
   - cada intervención tiene `de` en `USUARIO` o `ASISTENTE` y `texto` de hasta 500 caracteres; otro valor → `VALIDACION`.
-- [ ] T031 [P] [US1] Crear `backend/test/integration/asistente/asistente-cliente.spec.ts` con el proveedor falso en modo normal (US1-1 a US1-5; FR-001, FR-013, FR-017, FR-018; SC-001, SC-008):
+- [X] T031 [P] [US1] Crear `backend/test/integration/asistente/asistente-cliente.spec.ts` con el proveedor falso en modo normal (US1-1 a US1-5; FR-001, FR-013, FR-017, FR-018; SC-001, SC-008):
   - los precios, duraciones, barberos y horas de las respuestas son el **100 %** iguales a los de `CatalogoCitasApi` y `ConsultarHorarios` para esa consulta;
   - los horarios salen con **una sola pregunta**;
   - aparece el enlace a Reservar con los datos elegidos;
   - con la suscripción VENCIDA, el asistente sigue respondiendo con los datos del catálogo y los horarios (lecturas sin restricción en 003), pero **no** ofrece el enlace a Reservar (`aceptaReservas = false`, FR-018; caso de borde de spec.md);
   - una pregunta vacía, de 501 caracteres o con 7 intervenciones de contexto → 422 `VALIDACION` sin consumir cuota;
   - el conteo de citas es igual antes y después.
-- [ ] T032 [P] [US1] Crear `backend/test/integration/asistente/pr19-adversarial.spec.ts` con los **12 casos** de [contracts/asistente.md §5](contracts/asistente.md), cada uno en los modos **normal** y **`guion`**: 24 corridas (PR19; FR-001, FR-003–FR-006, FR-009, FR-011; SC-002). En cada corrida se comprueban:
+- [X] T032 [P] [US1] Crear `backend/test/integration/asistente/pr19-adversarial.spec.ts` con los **12 casos** de [contracts/asistente.md §5](contracts/asistente.md), cada uno en los modos **normal** y **`guion`**: 24 corridas (PR19; FR-001, FR-003–FR-006, FR-009, FR-011; SC-002). En cada corrida se comprueban:
   - el resultado esperado;
   - 0 datos de otra barbería o de otros clientes;
   - 0 escrituras: los conteos de citas, adelantos, usuarios y catálogo no cambian;
@@ -259,7 +259,7 @@ description: "Tareas de la funcionalidad 005: asistente de IA y reportes"
   - `assistant_question` sin texto.
 
   En esta fase, el caso 9 (propietario) espera 403, porque US3 todavía no existe. La fase 4 lo cambia por su resultado final.
-- [ ] T033 [P] [US1] Crear `backend/test/integration/asistente/cuotas-asistente.spec.ts`, con los límites bajados por configuración (FR-007; SC-004):
+- [X] T033 [P] [US1] Crear `backend/test/integration/asistente/cuotas-asistente.spec.ts`, con los límites bajados por configuración (FR-007; SC-004):
   - al llegar al límite por usuario, la siguiente → 429 `CUOTA_ASISTENTE_AGOTADA` con `Retry-After`, y `alcance`, `reiniciaEn` y `reintentarEnSegundos` en `detalles[0]`;
   - lo mismo con el límite por barbería y dos clientes;
   - **dos instancias de la aplicación** reciben a la vez más preguntas que la cuota: nunca se pasa del límite y 0 × 5xx;
@@ -268,7 +268,7 @@ description: "Tareas de la funcionalidad 005: asistente de IA y reportes"
   - la unidad se devuelve si el proveedor falla;
   - cerrar sesión no reinicia la cuota;
   - a la medianoche local, con el reloj controlado, se reinicia.
-- [ ] T034 [P] [US1] Crear `backend/test/integration/asistente/degradacion-asistente.spec.ts` (PR06; FR-008, FR-026; SC-003; research R11). Casos:
+- [X] T034 [P] [US1] Crear `backend/test/integration/asistente/degradacion-asistente.spec.ts` (PR06; FR-008, FR-026; SC-003; research R11). Casos:
   - con el falso en `caido`, `lento` (mayor que el tiempo límite), `error(500)`, `error(429)` (un reintento dentro del presupuesto) e `invalido`;
   - con el interruptor de M06 abierto tras 5 fallas en 60 s;
   - **10 preguntas simultáneas de la misma barbería** con el falso en `lento`: ninguna espera a otra (la llamada al proveedor va fuera de toda transacción y no retiene la fila de la cuota), cada una responde en ≤ 3 s y al final el `used` de la barbería vuelve al valor inicial.
@@ -277,16 +277,16 @@ description: "Tareas de la funcionalidad 005: asistente de IA y reportes"
   - 503 `ASISTENTE_NO_DISPONIBLE`, con `alternativa` en `detalles[0]`, en **≤ 3 s** medidos desde la solicitud;
   - la unidad de cuota se devuelve en su propia transacción corta;
   - durante la falla, `GET /reportes` y el catálogo público responden igual.
-- [ ] T035 [P] [US1] Crear `backend/test/integration/asistente/registro-asistente.spec.ts` (FR-010, FR-029; SC-007):
+- [X] T035 [P] [US1] Crear `backend/test/integration/asistente/registro-asistente.spec.ts` (FR-010, FR-029; SC-007):
   - cada pregunta deja una fila en `assistant_question` con el usuario, el rol, la intención, el resultado, la duración y los tokens. Se prueba cada uno de los siete resultados de data-model §2: `RESPONDIDA`, `SIN_DATOS`, `FUERA_DE_ALCANCE`, `ACCION_NO_PERMITIDA`, `CUOTA_AGOTADA`, `PROVEEDOR_NO_DISPONIBLE` e `INVALIDA`;
   - una pregunta de 501 caracteres queda como `INVALIDA`, sin consumir cuota (la valida el caso de uso, no el DTO);
   - la auditoría tiene `ASISTENTE_CONSULTADO` con `asistente:<rol>;<resultado>`;
   - una pregunta con un texto marcador no deja ese texto en la tabla, la auditoría ni los registros capturados de la aplicación;
   - la llave de prueba tampoco aparece en ninguno de ellos.
-- [ ] T036 [P] [US1] Crear `backend/test/integration/asistente/aislamiento-asistente.spec.ts` con dos barberías sembradas, con nombres de servicio y de barbero distintos (PR09; FR-004; SC-006). Con el token de un cliente de A:
+- [X] T036 [P] [US1] Crear `backend/test/integration/asistente/aislamiento-asistente.spec.ts` con dos barberías sembradas, con nombres de servicio y de barbero distintos (PR09; FR-004; SC-006). Con el token de un cliente de A:
   - ninguna respuesta trae datos de B, aunque el mensaje nombre a B o el cuerpo traiga un `tenant`;
   - la cuota de A no cambia la de B.
-- [ ] T037 [P] [US1] Ampliar `backend/test/contract/rbac-005.spec.ts` con `POST /asistente/mensajes` (PR08, PR20; FR-003, FR-015, FR-016; contracts/rbac.md):
+- [X] T037 [P] [US1] Ampliar `backend/test/contract/rbac-005.spec.ts` con `POST /asistente/mensajes` (PR08, PR20; FR-003, FR-015, FR-016; contracts/rbac.md):
   - la ruta exige `USAR_ASISTENTE`: CLIENTE de la barbería → 200; BARBERO → 403 en el guardia;
   - PROPIETARIO → pasa el guardia, y el caso de uso responde 403 hasta la fase 4;
   - sin sesión y con el token de plataforma → 401.
@@ -294,7 +294,7 @@ description: "Tareas de la funcionalidad 005: asistente de IA y reportes"
   Además:
   - crear `backend/test/contract/asistente.contract.spec.ts` contra contracts/openapi.yaml, con 200, 422, 429 (`ErrorCuota`, datos en `detalles[0]`) y 503 (`ErrorNoDisponible`, `alternativa` en `detalles[0]`). Los cuerpos tienen solo `codigo`, `mensaje` y `detalles`, como todos los errores;
   - crear `backend/test/contract/ai-provider-openrouter.contract.spec.ts`, que corre la suite de T005 contra OpenRouter y **se omite sin `IA_OPENROUTER_LLAVE`**, como `gateway-sandbox` en 003.
-- [ ] T038 [P] [US1] Crear `frontend/test/asistente.spec.tsx` (US1; FR-007, FR-008, FR-012, FR-013, FR-018; constitución, accesibilidad):
+- [X] T038 [P] [US1] Crear `frontend/test/asistente.spec.tsx` (US1; FR-007, FR-008, FR-012, FR-013, FR-018; constitución, accesibilidad):
   - enviar una pregunta y ver la respuesta en una región `aria-live`;
   - un contador de 500 caracteres;
   - una pregunta vacía no se envía;
@@ -303,14 +303,14 @@ description: "Tareas de la funcionalidad 005: asistente de IA y reportes"
   - el enlace de horarios lleva a Reservar con los parámetros;
   - al recargar, la conversación empieza de nuevo;
   - solo el CLIENTE con sesión ve `/asistente`.
-- [ ] T039 [P] [US1] Crear `frontend/test/enlace-asistente.spec.tsx` (FR-016, FR-030):
+- [X] T039 [P] [US1] Crear `frontend/test/enlace-asistente.spec.tsx` (FR-016, FR-030):
   - "Preguntar al asistente" aparece en `MisCitas.tsx` y en `CatalogoPublico.tsx` solo con sesión de CLIENTE en esa barbería;
   - no aparece para un visitante sin sesión, un PROPIETARIO ni un BARBERO;
   - el resto de esas dos pantallas no cambia: sus pruebas existentes (`frontend/test/`) pasan sin tocarlas, y la prueba nueva comprueba que, sin sesión de cliente, el contenido es el mismo que antes del enlace.
 
 ### Implementación de US1
 
-- [ ] T040 [US1] Crear el dominio de `asistente/domain/`: `intencion.ts`, `herramientas.ts`, `plantillas.ts`, `politica-cuota.ts`, `entrada.ts` y `errores.ts`.
+- [X] T040 [US1] Crear el dominio de `asistente/domain/`: `intencion.ts`, `herramientas.ts`, `plantillas.ts`, `politica-cuota.ts`, `entrada.ts` y `errores.ts`.
   - `intencion.ts`: el esquema cerrado de contracts/asistente.md §2;
   - `herramientas.ts`: la lista por rol;
   - `plantillas.ts`: las plantillas de §3;
@@ -320,10 +320,10 @@ description: "Tareas de la funcionalidad 005: asistente de IA y reportes"
     - `AsistenteNoDisponible` (503): `detalles[0]` con `alternativa`.
 
   En `backend/src/host/error.filter.ts` solo se suman `CUOTA_ASISTENTE_AGOTADA: 429` y `ASISTENTE_NO_DISPONIBLE: 503` en `ESTADO_POR_CODIGO`. El cuerpo sigue siendo `{codigo, mensaje, detalles}`.
-- [ ] T041 [P] [US1] Crear los puertos `asistente/application/ports/cuotas.ts` y `ports/registro.ts`, y sus adaptadores (research R08):
+- [X] T041 [P] [US1] Crear los puertos `asistente/application/ports/cuotas.ts` y `ports/registro.ts`, y sus adaptadores (research R08):
   - `asistente/infrastructure/kysely-cuotas.ts`: `INSERT … ON CONFLICT DO UPDATE SET used = used + 1 WHERE used < limite RETURNING` para los dos ámbitos en la misma transacción, y `devolver`;
   - `asistente/infrastructure/kysely-registro.ts`: inserta sin texto.
-- [ ] T042 [US1] Crear `asistente/application/preguntar-al-asistente.ts` con el flujo de contracts/asistente.md §1 y sus **tres tramos** (FR-001–FR-014; research R08):
+- [X] T042 [US1] Crear `asistente/application/preguntar-al-asistente.ts` con el flujo de contracts/asistente.md §1 y sus **tres tramos** (FR-001–FR-014; research R08):
   1. exigir la operación del rol (`USAR_ASISTENTE_CLIENTE` o `USAR_ASISTENTE_PROPIETARIO`) y validar la entrada con `entrada.ts`. Si no es válida → registro `INVALIDA` en una transacción propia y 422, sin cuota;
   2. **tramo 1:** una transacción corta con el tenant del token que lee la zona horaria y suma las dos cuotas, y **confirma**. Si alguna está agotada, se revierte, se registra `CUOTA_AGOTADA` en una transacción propia (`ejecutarAparte`) y se responde 429;
   3. **tramo 2, fuera de toda transacción:** `AIProvider.interpretar` con el tiempo límite, un reintento ante 429 o 5xx dentro del presupuesto de 3 s y el `Interruptor` de M06;
@@ -332,17 +332,17 @@ description: "Tareas de la funcionalidad 005: asistente de IA y reportes"
      - si falló: devolver la unidad de cuota, registrar `PROVEEDOR_NO_DISPONIBLE`, auditar y responder 503.
 
   Al proveedor solo le envía la pregunta, el contexto mínimo, la fecha y la zona horaria, nunca el catálogo ni los resultados de las herramientas.
-- [ ] T043 [US1] Crear `asistente/presentation/asistente.controller.ts` con `POST /asistente/mensajes`, según contracts/openapi.yaml:
+- [X] T043 [US1] Crear `asistente/presentation/asistente.controller.ts` con `POST /asistente/mensajes`, según contracts/openapi.yaml:
   - la ruta lleva `@RequiereOperacion('USAR_ASISTENTE')`; el permiso por rol lo exige el caso de uso (T042);
   - el DTO no valida el largo ni la cantidad de intervenciones, para que la pregunta inválida llegue al caso de uso y quede registrada como `INVALIDA`;
   - en `m04/asistente-reportes.module.ts`, enlazar el `AIProvider` según `IA_PROVEEDOR` (`falso`, `openrouter` o `ninguno`);
   - el caso de uso responde 403 al PROPIETARIO hasta la fase 4.
-- [ ] T044 [P] [US1] Crear `asistente/infrastructure/proveedor-ia-openrouter.ts`, **solo para desarrollo** (ADR-027; FR-015):
+- [X] T044 [P] [US1] Crear `asistente/infrastructure/proveedor-ia-openrouter.ts`, **solo para desarrollo** (ADR-027; FR-015):
   - usa `fetch` nativo con `AbortSignal.timeout`, una sola llamada con esquema JSON y las instrucciones de contracts/asistente.md §4;
   - la llave sale de `IA_OPENROUTER_LLAVE` y nunca va a un registro;
   - la guardia de T006 impide arrancar con `NODE_ENV=production`, así que solo se usa fuera de Compose (`npm run start:dev` con el `.env` local);
   - no se agrega ninguna dependencia a `package.json`.
-- [ ] T045 [P] [US1] Crear la pantalla del asistente:
+- [X] T045 [P] [US1] Crear la pantalla del asistente:
   - `frontend/src/api/asistente.ts`;
   - `frontend/src/pages/cliente/Asistente.tsx` (con su `.module.css` y tokens de tema), con la conversación solo en memoria y como máximo 6 intervenciones enviadas;
   - la ruta `/asistente` para CLIENTE en `frontend/src/routes.tsx`;

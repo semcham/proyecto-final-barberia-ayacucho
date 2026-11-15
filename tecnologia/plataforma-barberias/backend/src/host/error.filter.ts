@@ -21,6 +21,10 @@ export const ESTADO_POR_CODIGO: Record<string, number> = {
   CORREO_NO_DISPONIBLE: 409,
   OPERACION_NO_PERMITIDA: 422,
   DEMASIADOS_INTENTOS: 429,
+  // 005 (contracts/openapi.yaml): cuota del asistente agotada y proveedor de IA no disponible. Los datos van en
+  // detalles[0]; Retry-After sale de detalles[0].reintentarEnSegundos, como en el resto.
+  CUOTA_ASISTENTE_AGOTADA: 429,
+  ASISTENTE_NO_DISPONIBLE: 503,
   // Funcionalidad 002 (specs/002-catalogo-citas-cliente/contracts/openapi.yaml, T034).
   BARBERIA_NO_DISPONIBLE: 404,
   CONFLICTO_CON_CITAS: 409,

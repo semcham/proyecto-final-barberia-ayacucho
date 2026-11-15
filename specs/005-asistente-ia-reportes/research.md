@@ -140,7 +140,10 @@ código ya construido de M02 y M03.
     las cuotas e `IA_FALSO_MODO`. Por eso la prueba con OpenRouter real se hace **fuera de Compose**, con
     `npm run start:dev` y el `.env` local.
 - **Resiliencia (ADR-012):**
-  - tiempo límite por llamada `IA_TIEMPO_LIMITE_MS`, con `AbortSignal.timeout`;
+  - tiempo límite por llamada `IA_TIEMPO_LIMITE_MS`, con `AbortSignal.timeout`. Además, la llamada termina a más tardar
+    2,1 s después de que empieza el caso de uso: se reservan 900 ms para el guardia, la cuota y el tramo 3. Con
+    10 preguntas a la vez de la misma barbería, ese trabajo llegó a unos 600 ms (fase 3, T034); con 2,7 s de
+    presupuesto para el proveedor, las respuestas tardaron hasta 3,3 s;
   - **un reintento** solo ante 429 o 5xx inmediatos, y solo si queda tiempo dentro de un presupuesto total de
     3 s (la interpretación no tiene efectos, así que reintentar es seguro);
   - el `Interruptor` de M06 se abre tras 5 fallos en 60 s, con pausa de 30 s;

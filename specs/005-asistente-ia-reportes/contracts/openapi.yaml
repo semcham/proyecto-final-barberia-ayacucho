@@ -153,6 +153,7 @@ components:
           type: object
           properties:
             tipo: { type: string, enum: [RESERVAR, MIS_CITAS, REPORTES, CONTACTAR_BARBERIA] }
+            enlace: { type: string, description: "Con RESERVAR: /b/{slug}/reservar con el servicio elegido" }
         cuota:
           type: object
           required: [restantesUsuario, restantesBarberia, reiniciaEn]
@@ -204,6 +205,7 @@ components:
             properties:
               inicio: { type: string, format: date-time }
               barberos: { type: array, items: { type: object, required: [barberoId, nombre], properties: { barberoId: { type: string }, nombre: { type: string } } } }
+              enlace: { type: string, description: "Ir a Reservar con todo elegido (/b/{slug}/reservar?servicio=&barbero=&inicio=); falta si la barbería no acepta reservas (FR-018)" }
 
     DatosResumenCitas:
       type: object

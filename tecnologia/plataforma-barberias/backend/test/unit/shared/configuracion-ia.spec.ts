@@ -28,6 +28,7 @@ const VARIABLES_IA = [
   'IA_PROVEEDOR',
   'IA_OPENROUTER_LLAVE',
   'IA_OPENROUTER_MODELO',
+  'IA_OPENROUTER_URL_BASE',
   'IA_TIEMPO_LIMITE_MS',
   'IA_CUOTA_USUARIO_DIA',
   'IA_CUOTA_BARBERIA_DIA',
@@ -117,6 +118,14 @@ describe('Configuracion: proveedor de IA (ADR-027)', () => {
       expect(ia.proveedor).toBe('openrouter');
       expect(ia.openrouter?.modelo).toBe('proveedor/modelo-de-prueba');
       expect(ia.openrouter?.llave).toBe(LLAVE);
+      expect(ia.openrouter?.urlBase).toBe('https://openrouter.ai/api/v1');
+    });
+
+    it('IA_OPENROUTER_URL_BASE cambia la URL (p. ej. un servidor simulado), sin la barra final', () => {
+      process.env.IA_OPENROUTER_URL_BASE = 'http://127.0.0.1:4010/api/v1/';
+      expect(new Configuracion().ia.openrouter?.urlBase).toBe('http://127.0.0.1:4010/api/v1');
+      process.env.IA_OPENROUTER_URL_BASE = 'ftp://openrouter.ai';
+      expect(() => new Configuracion()).toThrow(/IA_OPENROUTER_URL_BASE/);
     });
 
     it('con NODE_ENV=production NO arranca, y el mensaje no trae la llave', () => {

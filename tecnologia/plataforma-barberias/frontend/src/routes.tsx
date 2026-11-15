@@ -39,6 +39,8 @@ const Adelanto = lazy(() => import('./pages/panel/Adelanto'));
 const AdelantosPorRevisar = lazy(() => import('./pages/panel/AdelantosPorRevisar'));
 // 005 (T023): reportes del propietario.
 const Reportes = lazy(() => import('./pages/panel/Reportes'));
+// 005 (T045): asistente del cliente.
+const Asistente = lazy(() => import('./pages/cliente/Asistente'));
 // Funcionalidad 008 (T033): el cliente paga el adelanto de su cita.
 const PagarAdelanto = lazy(() => import('./pages/cliente/PagarAdelanto'));
 const ReservarProtegida = lazy(() =>
@@ -149,6 +151,14 @@ export function RutasApp() {
             element={
               <RutaProtegida roles={['CLIENTE']}>
                 <PagarAdelanto />
+              </RutaProtegida>
+            }
+          />
+          <Route
+            path="/asistente"
+            element={
+              <RutaProtegida roles={['CLIENTE']}>
+                <Asistente />
               </RutaProtegida>
             }
           />

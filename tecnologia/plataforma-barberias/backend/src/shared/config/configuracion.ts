@@ -196,6 +196,8 @@ export type ModoDemostracionIA = (typeof MODOS_FALSO)[number];
 /** Configuración de OpenRouter (solo desarrollo, ADR-027). La llave es no enumerable: no sale en JSON ni inspect. */
 export interface ConfiguracionOpenRouter {
   modelo: string;
+  /** API de chat de OpenRouter; otra URL sirve para probar el adaptador contra un servidor simulado. */
+  urlBase: string;
   readonly llave: string;
 }
 
@@ -241,7 +243,13 @@ function leerIa(): ConfiguracionIA {
     );
   }
   const llave = requerida('IA_OPENROUTER_LLAVE').trim();
-  const openrouter = { modelo: requerida('IA_OPENROUTER_MODELO').trim() } as ConfiguracionOpenRouter;
+  const openrouter = {
+    modelo: requerida('IA_OPENROUTER_MODELO').trim(),
+    urlBase: urlHttp(
+      'IA_OPENROUTER_URL_BASE',
+      opcional('IA_OPENROUTER_URL_BASE') ?? 'https://openrouter.ai/api/v1',
+    ),
+  } as ConfiguracionOpenRouter;
   Object.defineProperty(openrouter, 'llave', { value: llave, enumerable: false, writable: false });
   return { ...ia, openrouter };
 }

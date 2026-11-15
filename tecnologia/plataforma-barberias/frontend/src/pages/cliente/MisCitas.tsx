@@ -118,6 +118,10 @@ export default function MisCitas() {
           <Link to="/mis-avisos" className={clasesBoton({ variante: 'secundario' })}>
             Cómo recibo mis avisos
           </Link>
+          {/* 005 (T045): el asistente del cliente; esta pantalla ya es solo del cliente con sesión. */}
+          <Link to="/asistente" className={clasesBoton({ variante: 'secundario' })}>
+            Preguntar al asistente
+          </Link>
         </div>
       )}
 

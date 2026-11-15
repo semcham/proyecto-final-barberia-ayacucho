@@ -41,8 +41,16 @@ type CodigoError008 =
   | 'ADELANTO_NO_POR_DEVOLVER'
   | 'QR_REQUERIDO'
   | 'ADELANTO_PENDIENTE';
+/** Códigos de la funcionalidad 005 (specs/005-asistente-ia-reportes/contracts/openapi.yaml). */
+type CodigoError005 = 'CUOTA_ASISTENTE_AGOTADA' | 'ASISTENTE_NO_DISPONIBLE';
 export type CodigoError =
-  CuerpoError['codigo'] | CodigoError002 | CodigoError006 | CodigoError003 | CodigoError004 | CodigoError008;
+  | CuerpoError['codigo']
+  | CodigoError002
+  | CodigoError006
+  | CodigoError003
+  | CodigoError004
+  | CodigoError005
+  | CodigoError008;
 
 const BASE = '/api/v1';
 

@@ -36,6 +36,10 @@ process.env.CORREO_REMITENTE = 'no-responder@barberias.local';
 process.env.WHATSAPP_PROVEEDOR = 'simulado';
 process.env.WHATSAPP_URL_BASE = 'http://127.0.0.1:9';
 process.env.WHATSAPP_TOKEN = 'whatsapp_token_pruebas';
+// 005 (ADR-027): todas las pruebas usan el proveedor de IA FALSO (sin red ni llave), como la CI. La única que habla
+// con OpenRouter real es ai-provider-openrouter.contract.spec.ts, y solo si IA_OPENROUTER_LLAVE está en la consola de
+// quien la corre (las pruebas no leen el .env); sin ella, se omite.
+process.env.IA_PROVEEDOR = 'falso';
 process.env.JWT_PRIVATE_KEY = privateKey.export({ type: 'pkcs8', format: 'pem' }).toString();
 process.env.JWT_PUBLIC_KEYS = JSON.stringify({
   [KID_PRUEBAS]: publicKey.export({ type: 'spki', format: 'pem' }).toString(),

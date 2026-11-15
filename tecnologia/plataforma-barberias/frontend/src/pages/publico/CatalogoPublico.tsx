@@ -145,6 +145,15 @@ function ContenidoCatalogo({ catalogo, slug }: { catalogo: Catalogo; slug: strin
         </ul>
       </section>
 
+      {/* 005 (T045): el asistente, solo para el cliente con sesión en ESTA barbería. Nada más cambia en la página. */}
+      {esCliente && usuario?.barberia.slug === slug && (
+        <p>
+          <Link to="/asistente" className={clasesBoton({ variante: 'secundario', tamano: 'sm' })}>
+            Preguntar al asistente
+          </Link>
+        </p>
+      )}
+
       {aviso && <Alerta>{aviso}</Alerta>}
 
       <div className={estilos.columnas}>

@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { type AppDePrueba, crearApp } from '../helpers/app';
 import { filasDe, sembrarUsuario } from '../helpers/fixtures';
+import { preguntar } from '../helpers/asistente';
 import { pedirReportes } from '../helpers/reportes';
 import { barberiaParaReservar } from '../helpers/reservas';
 import { sesionCliente, tokenPara, tokenPlataformaPara } from '../helpers/sesiones';
@@ -94,9 +95,22 @@ const IMPLEMENTADAS: Caso[] = [
     exito: 200,
     ejecutar: (p, t) => pedirReportes(p, t, { desde: '2026-11-01', hasta: '2026-11-30' }),
   },
+  // Fase 3 (US1): el asistente del cliente. El barbero no pasa el guardia (USAR_ASISTENTE).
+  {
+    fila: 'POST /asistente/mensajes',
+    exito: 200,
+    ejecutar: (p, t) => preguntar(p, t, '¿Qué servicios tienen?'),
+  },
 ];
 
-function esperado(columna: Columna, simbolo: string, exito: number): number {
+/**
+ * Celdas ✓ del contrato que todavía no existen: el asistente del propietario es US3 (fase 4). Hasta entonces el
+ * propietario pasa el guardia y el caso de uso responde 403, auditado (contracts/rbac.md: "403 del caso de uso").
+ */
+const PENDIENTES_DE_LA_FASE_4: Record<string, Columna[]> = { 'POST /asistente/mensajes': ['PROPIETARIO'] };
+
+function esperado(columna: Columna, simbolo: string, exito: number, fila: string): number {
+  if (simbolo === '✓' && PENDIENTES_DE_LA_FASE_4[fila]?.includes(columna)) return 403;
   if (simbolo === '✓') return exito;
   if (simbolo !== '✗') throw new Error(`Símbolo desconocido en rbac.md: "${simbolo}"`);
   return columna === 'ANONIMO' || columna === 'PLATAFORMA' ? 401 : 403;
@@ -135,7 +149,7 @@ describe('PR08 · Matriz de permisos de 005 (contracts/rbac.md)', () => {
 
   it.each(casos)('%s · %s', async (_fila, columna, caso) => {
     const simbolo = (MATRIZ.get(caso.fila) as Record<Columna, string>)[columna];
-    const estado = esperado(columna, simbolo, caso.exito);
+    const estado = esperado(columna, simbolo, caso.exito, caso.fila);
     const s = await crearEscenario();
     const respuesta = await caso.ejecutar(prueba, s.tokens[columna]);
     expect({ celda: simbolo, estado: respuesta.status }).toEqual({ celda: simbolo, estado });
@@ -145,7 +159,7 @@ describe('PR08 · Matriz de permisos de 005 (contracts/rbac.md)', () => {
       );
       expect(denegaciones).toHaveLength(1);
       expect(denegaciones[0]).toMatchObject({
-        actor_id: s.actores[columna as 'BARBERO' | 'CLIENTE'],
+        actor_id: s.actores[columna as 'PROPIETARIO' | 'BARBERO' | 'CLIENTE'],
         result: 'DENEGADO',
       });
     }

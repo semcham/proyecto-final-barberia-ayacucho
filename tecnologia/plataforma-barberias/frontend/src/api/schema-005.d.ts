@@ -210,6 +210,8 @@ export interface components {
       sugerencia?: {
         /** @enum {string} */
         tipo?: 'RESERVAR' | 'MIS_CITAS' | 'REPORTES' | 'CONTACTAR_BARBERIA';
+        /** @description Con RESERVAR: /b/{slug}/reservar con el servicio elegido */
+        enlace?: string;
       };
       cuota: {
         restantesUsuario: number;
@@ -263,6 +265,8 @@ export interface components {
           barberoId: string;
           nombre: string;
         }[];
+        /** @description Ir a Reservar con todo elegido (/b/{slug}/reservar?servicio=&barbero=&inicio=); falta si la barbería no acepta reservas (FR-018) */
+        enlace?: string;
       }[];
     };
     DatosResumenCitas: {

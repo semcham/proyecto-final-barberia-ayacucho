@@ -4,13 +4,11 @@
 // plantillas. Los adaptadores (falso, OpenRouter y ninguno) están en infrastructure/; solo el módulo los enlaza
 // (regla ia-solo-por-puerto de PR14).
 
-export type RolDelAsistente = 'CLIENTE' | 'PROPIETARIO';
+import type { IntervencionPrevia } from '../../domain/entrada';
+import type { RolDelAsistente } from '../../domain/herramientas';
 
-/** Una intervención previa de la conversación abierta (el servidor no guarda historial, FR-012). */
-export interface IntervencionPrevia {
-  de: 'USUARIO' | 'ASISTENTE';
-  texto: string;
-}
+export type { IntervencionPrevia } from '../../domain/entrada';
+export type { RolDelAsistente } from '../../domain/herramientas';
 
 /** Lo único que se envía al proveedor (FR-011, ADR-027 §3). */
 export interface SolicitudDeInterpretacion {
