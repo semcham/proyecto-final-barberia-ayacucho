@@ -12,10 +12,11 @@ import {
   ZonaHoraria,
 } from '../../../../shared';
 import { type ActorDeBarberia, AutorizacionAsistenteReportes } from '../../comun/application/autorizacion';
+import { CifrasDelPeriodo, Periodo, PeriodoInvalido } from '../../reportes';
 import { resolverPorNombre, validarFechaDeHorarios } from '../domain/argumentos';
 import { type Entrada, EntradaInvalida, validarEntrada } from '../domain/entrada';
 import { AsistenteNoDisponible, CuotaAsistenteAgotada } from '../domain/errores';
-import { intencionesPermitidas, type RolDelAsistente, tieneAsistente } from '../domain/herramientas';
+import { intencionesPermitidas, type RolDelAsistente } from '../domain/herramientas';
 import { type IntencionValidada, validarIntencion } from '../domain/intencion';
 import {
   type ContextoDeLaRespuesta,
@@ -23,7 +24,9 @@ import {
   plantillaBarberos,
   plantillaFueraDeAlcance,
   plantillaHorarios,
+  plantillaResumenCitas,
   plantillaServicios,
+  plantillaServiciosMasPedidos,
   plantillaSinDatos,
   type RespuestaCompuesta,
 } from '../domain/plantillas';
@@ -72,6 +75,7 @@ export class PreguntarAlAsistente {
   constructor(
     private readonly autorizacion: AutorizacionAsistenteReportes,
     private readonly catalogoCitas: CatalogoCitasApi,
+    private readonly cifras: CifrasDelPeriodo,
     private readonly suscripciones: SuscripcionesApi,
     private readonly proveedor: AIProvider,
     private readonly cuotas: CuotasDelAsistente,
@@ -88,14 +92,13 @@ export class PreguntarAlAsistente {
     const inicio = Date.now();
     const tenantId = TenantId.de(actor.tenantId);
 
-    // El permiso del rol (el guardia ya exigió USAR_ASISTENTE). El barbero no tiene asistente; el propietario, tampoco
-    // hasta la fase 4 (US3): sin herramientas, 403 auditado.
+    // El permiso del rol (el guardia ya exigió USAR_ASISTENTE y el barbero no lo pasa). Cada rol, con sus herramientas
+    // y solo con ellas (FR-003): el cliente las suyas (US1) y el propietario las suyas (US3).
     const rol: RolDelAsistente = actor.rol === 'PROPIETARIO' ? 'PROPIETARIO' : 'CLIENTE';
     await this.autorizacion.exigir(
       actor,
       rol === 'CLIENTE' ? 'USAR_ASISTENTE_CLIENTE' : 'USAR_ASISTENTE_PROPIETARIO',
     );
-    if (!tieneAsistente(rol)) await this.autorizacion.denegar(actor, 'USAR_ASISTENTE_PROPIETARIO');
 
     let entrada: Entrada;
     try {
@@ -151,7 +154,7 @@ export class PreguntarAlAsistente {
         return null;
       }
       const validada = validarIntencion(rol, interpretacion);
-      const compuesta = await this.responder(rol, validada, barberia, tenantId, momento.dia);
+      const compuesta = await this.responder(rol, validada, barberia, zona, tenantId, momento.dia);
       await this.registrar(actor, rol, validada.tipo, compuesta.resultado, inicio, interpretacion);
       return compuesta;
     });
@@ -201,6 +204,7 @@ export class PreguntarAlAsistente {
     rol: RolDelAsistente,
     validada: IntencionValidada,
     barberia: ContextoDeLaBarberia,
+    zona: ZonaHoraria,
     tenantId: TenantId,
     hoy: string,
   ): Promise<RespuestaCompuesta> {
@@ -213,7 +217,7 @@ export class PreguntarAlAsistente {
       case 'fuera_de_alcance':
         return plantillaFueraDeAlcance(ctx, rol);
       case 'accion_no_permitida':
-        return plantillaAccionNoPermitida(ctx);
+        return plantillaAccionNoPermitida(ctx, rol);
       case 'servicios':
         return plantillaServicios(ctx, await this.catalogoCitas.serviciosActivos());
       case 'barberos': {
@@ -227,11 +231,35 @@ export class PreguntarAlAsistente {
       }
       case 'horarios_libres':
         return this.horarios(ctx, validada, tenantId, hoy);
-      // Herramientas del propietario (fase 4, US3): el esquema todavía no se las da a ningún rol.
+      // Herramientas del propietario (US3): validarIntencion solo las deja pasar con ese rol.
       case 'resumen_citas':
       case 'servicios_mas_pedidos':
-        return plantillaFueraDeAlcance(ctx, rol);
+        return this.reporte(ctx, validada, zona);
     }
+  }
+
+  /**
+   * Las cifras del propietario (FR-027, FR-028): las MISMAS de GET /reportes, porque salen del mismo cálculo
+   * (CifrasDelPeriodo), en esta transacción con el tenant del token. Solo conteos: ningún dato de clientes. El período
+   * lo valida la misma regla de los reportes (a lo sumo 366 días); si no vale, se explica sin cifras.
+   */
+  private async reporte(
+    ctx: ContextoDeLaRespuesta,
+    validada: Extract<IntencionValidada, { tipo: 'resumen_citas' | 'servicios_mas_pedidos' }>,
+    zona: ZonaHoraria,
+  ): Promise<RespuestaCompuesta> {
+    if (!validada.desde || !validada.hasta) return plantillaSinDatos(ctx, { tipo: 'falta_periodo' });
+    let periodo: Periodo;
+    try {
+      periodo = Periodo.crear(validada.desde, validada.hasta);
+    } catch (error) {
+      if (!(error instanceof PeriodoInvalido)) throw error;
+      return plantillaSinDatos(ctx, { tipo: 'periodo_invalido', problema: error.problema });
+    }
+    const delReporte = this.cifras.periodoDelReporte(periodo, zona);
+    return validada.tipo === 'resumen_citas'
+      ? plantillaResumenCitas(delReporte, await this.cifras.citasPorEstado(periodo, zona))
+      : plantillaServiciosMasPedidos(delReporte, await this.cifras.serviciosMasSolicitados(periodo, zona));
   }
 
   /** El servicio pedido, resuelto SOLO entre los activos de la barbería del token; o la respuesta SIN_DATOS. */

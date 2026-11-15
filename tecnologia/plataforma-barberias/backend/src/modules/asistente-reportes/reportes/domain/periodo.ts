@@ -7,7 +7,8 @@ import { ErrorDeAplicacion, FechaInvalida, FechaLocal } from '../../../../shared
 export const MAXIMO_DIAS_DEL_PERIODO = 366;
 
 type Campo = 'desde' | 'hasta';
-type Problema = 'obligatorio' | 'formato' | 'posterior_a_hasta' | 'maximo_366_dias';
+export type ProblemaDelPeriodo = 'obligatorio' | 'formato' | 'posterior_a_hasta' | 'maximo_366_dias';
+type Problema = ProblemaDelPeriodo;
 
 const NOMBRE: Record<Campo, string> = { desde: 'de inicio', hasta: 'de fin' };
 
@@ -24,7 +25,10 @@ export class PeriodoInvalido extends ErrorDeAplicacion {
   /** El contrato de GET /reportes pide 422 (el código VALIDACION es 400 en el resto de las rutas). */
   readonly estadoHttp = 422;
 
-  constructor(campo: Campo, problema: Problema) {
+  constructor(
+    campo: Campo,
+    readonly problema: Problema,
+  ) {
     super(MENSAJE[problema](campo), [{ campo, problema }]);
   }
 }

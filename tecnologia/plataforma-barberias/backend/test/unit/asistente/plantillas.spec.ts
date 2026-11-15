@@ -4,7 +4,9 @@ import {
   plantillaBarberos,
   plantillaFueraDeAlcance,
   plantillaHorarios,
+  plantillaResumenCitas,
   plantillaServicios,
+  plantillaServiciosMasPedidos,
   plantillaSinDatos,
 } from '../../../src/modules/asistente-reportes/asistente/domain/plantillas';
 import { FechaLocal } from '../../../src/shared';
@@ -183,5 +185,98 @@ describe('Sin datos, acciones no permitidas y fuera de alcance', () => {
       resultado: 'FUERA_DE_ALCANCE',
       texto: 'Solo puedo ayudarte con los servicios, los barberos y los horarios de Barbería Huamanga.',
     });
+  });
+
+  it('T052 · al propietario: fuera de alcance con sus dos herramientas; la acción no permitida, sin Mis citas', () => {
+    expect(plantillaFueraDeAlcance(CTX, 'PROPIETARIO').texto).toBe(
+      'Solo puedo ayudarte con el resumen de citas y los servicios más pedidos de tu barbería.',
+    );
+    expect(plantillaAccionNoPermitida(CTX, 'PROPIETARIO')).toEqual({
+      resultado: 'ACCION_NO_PERMITIDA',
+      texto: 'No puedo reservar ni cambiar citas. Puedes hacerlo desde la Agenda.',
+    });
+  });
+});
+
+// T052 de 005 · Las plantillas del propietario (US3; FR-027, FR-028; contracts/asistente.md §3): solo conteos, con el
+// período exacto usado, y las cifras tal cual las da el cálculo de los reportes.
+describe('Plantillas del propietario (T052)', () => {
+  const PERIODO = { desde: '2026-11-01', hasta: '2026-11-14', zonaHoraria: 'America/Lima' };
+  const CITAS = {
+    total: 12,
+    pendientes: 1,
+    confirmadas: 2,
+    completadas: 6,
+    noAsistio: 1,
+    canceladas: 2,
+    canceladasTardias: 1,
+  };
+
+  it('resumen de citas: el período exacto y cada conteo, con los mismos datos', () => {
+    const r = plantillaResumenCitas(PERIODO, CITAS);
+    expect(r.resultado).toBe('RESPONDIDA');
+    expect(r.texto).toBe(
+      'Del 1 de noviembre de 2026 al 14 de noviembre de 2026 tuviste 12 citas: 6 completadas, 2 confirmadas, ' +
+        '1 pendiente, 1 sin asistencia y 2 canceladas (1 tardía).',
+    );
+    expect(r.datos).toEqual({ tipo: 'RESUMEN_CITAS', periodo: PERIODO, citas: CITAS });
+  });
+
+  it('resumen sin citas: lo dice, con los conteos en cero', () => {
+    const cero = {
+      ...CITAS,
+      total: 0,
+      pendientes: 0,
+      confirmadas: 0,
+      completadas: 0,
+      noAsistio: 0,
+      canceladas: 0,
+      canceladasTardias: 0,
+    };
+    const r = plantillaResumenCitas(PERIODO, cero);
+    expect(r.resultado).toBe('RESPONDIDA');
+    expect(r.texto).toBe('Del 1 de noviembre de 2026 al 14 de noviembre de 2026 no tuviste citas.');
+    expect(r.datos).toEqual({ tipo: 'RESUMEN_CITAS', periodo: PERIODO, citas: cero });
+  });
+
+  it('un solo día se dice una vez', () => {
+    const r = plantillaResumenCitas({ ...PERIODO, desde: '2026-11-14' }, { ...CITAS, total: 1 });
+    expect(r.texto).toMatch(/^El 14 de noviembre de 2026 tuviste 1 cita:/);
+  });
+
+  it('servicios más pedidos: el primero con sus citas y los siguientes, con los mismos datos', () => {
+    const servicios = [
+      { nombre: 'Barba', citas: 5 },
+      { nombre: 'Corte clásico', citas: 3 },
+      { nombre: 'Tinte', citas: 1 },
+    ];
+    const r = plantillaServiciosMasPedidos(PERIODO, servicios);
+    expect(r.resultado).toBe('RESPONDIDA');
+    expect(r.texto).toBe(
+      'Del 1 de noviembre de 2026 al 14 de noviembre de 2026, el servicio más pedido fue Barba con 5 citas. ' +
+        'Le siguen: Corte clásico (3) y Tinte (1).',
+    );
+    expect(r.datos).toEqual({ tipo: 'SERVICIOS_MAS_PEDIDOS', periodo: PERIODO, servicios });
+  });
+
+  it('servicios más pedidos sin citas: lo dice, sin inventar ninguno', () => {
+    const r = plantillaServiciosMasPedidos(PERIODO, []);
+    expect(r.texto).toBe(
+      'Del 1 de noviembre de 2026 al 14 de noviembre de 2026 no hubo citas de ningún servicio.',
+    );
+    expect(r.datos).toEqual({ tipo: 'SERVICIOS_MAS_PEDIDOS', periodo: PERIODO, servicios: [] });
+  });
+
+  it.each([
+    [{ tipo: 'falta_periodo' } as const, /período/],
+    [{ tipo: 'periodo_invalido', problema: 'maximo_366_dias' } as const, /366 días/],
+    [{ tipo: 'periodo_invalido', problema: 'posterior_a_hasta' } as const, /inicio/],
+    [{ tipo: 'periodo_invalido', problema: 'formato' } as const, /fecha válida/],
+  ])('%j → SIN_DATOS con la explicación y la alternativa de las tablas', (motivo, texto) => {
+    const r = plantillaSinDatos(CTX, motivo);
+    expect(r.resultado).toBe('SIN_DATOS');
+    expect(r.texto).toMatch(texto);
+    expect(r.datos).toBeUndefined();
+    expect(r.sugerencia).toEqual({ tipo: 'REPORTES' });
   });
 });

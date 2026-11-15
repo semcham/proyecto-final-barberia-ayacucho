@@ -88,7 +88,7 @@ interface Caso {
   ejecutar: (prueba: AppDePrueba, token: string | null) => Promise<{ status: number }>;
 }
 
-/** Filas implementadas (fase 2: los reportes; la fase 3 suma POST /asistente/mensajes). */
+/** Filas implementadas (fase 2: los reportes; la fase 3 suma POST /asistente/mensajes; la fase 4, su propietario). */
 const IMPLEMENTADAS: Caso[] = [
   {
     fila: 'GET /reportes',
@@ -103,14 +103,9 @@ const IMPLEMENTADAS: Caso[] = [
   },
 ];
 
-/**
- * Celdas ✓ del contrato que todavía no existen: el asistente del propietario es US3 (fase 4). Hasta entonces el
- * propietario pasa el guardia y el caso de uso responde 403, auditado (contracts/rbac.md: "403 del caso de uso").
- */
-const PENDIENTES_DE_LA_FASE_4: Record<string, Columna[]> = { 'POST /asistente/mensajes': ['PROPIETARIO'] };
-
-function esperado(columna: Columna, simbolo: string, exito: number, fila: string): number {
-  if (simbolo === '✓' && PENDIENTES_DE_LA_FASE_4[fila]?.includes(columna)) return 403;
+// Fase 4 (US3): el propietario ya tiene su asistente; su celda ✓ de POST /asistente/mensajes es 200, como la del
+// cliente (cada uno con sus herramientas, contracts/rbac.md "Herramientas por rol").
+function esperado(columna: Columna, simbolo: string, exito: number): number {
   if (simbolo === '✓') return exito;
   if (simbolo !== '✗') throw new Error(`Símbolo desconocido en rbac.md: "${simbolo}"`);
   return columna === 'ANONIMO' || columna === 'PLATAFORMA' ? 401 : 403;
@@ -149,7 +144,7 @@ describe('PR08 · Matriz de permisos de 005 (contracts/rbac.md)', () => {
 
   it.each(casos)('%s · %s', async (_fila, columna, caso) => {
     const simbolo = (MATRIZ.get(caso.fila) as Record<Columna, string>)[columna];
-    const estado = esperado(columna, simbolo, caso.exito, caso.fila);
+    const estado = esperado(columna, simbolo, caso.exito);
     const s = await crearEscenario();
     const respuesta = await caso.ejecutar(prueba, s.tokens[columna]);
     expect({ celda: simbolo, estado: respuesta.status }).toEqual({ celda: simbolo, estado });

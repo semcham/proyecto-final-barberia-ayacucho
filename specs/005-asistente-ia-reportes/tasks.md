@@ -365,32 +365,41 @@ description: "Tareas de la funcionalidad 005: asistente de IA y reportes"
 
 ### Pruebas de US3 (escribir primero, deben fallar) ⚠️
 
-- [ ] T048 [P] [US3] Crear `backend/test/integration/asistente/asistente-propietario.spec.ts` con el falso en modo normal (US3-1 a US3-4; FR-027, FR-028; SC-008):
+- [X] T048 [P] [US3] Crear `backend/test/integration/asistente/asistente-propietario.spec.ts` con el falso en modo normal (US3-1 a US3-4; FR-027, FR-028; SC-008):
   - `resumen_citas` y `servicios_mas_pedidos` dan **exactamente** las cifras de `GET /reportes` para el mismo período, con una sola pregunta;
   - "este mes" y "la semana pasada" se resuelven en la zona horaria y la respuesta dice el período usado;
   - más de 366 días → mensaje claro;
   - ninguna respuesta trae nombres, teléfonos ni correos de clientes;
   - las intenciones del cliente pedidas por el propietario → `fuera_de_alcance`.
-- [ ] T049 [P] [US3] Ampliar `backend/test/integration/asistente/pr19-adversarial.spec.ts` (PR19; FR-009, FR-028):
+- [X] T049 [P] [US3] Ampliar `backend/test/integration/asistente/pr19-adversarial.spec.ts` (PR19; FR-009, FR-028):
   - el caso 9 pasa de 403 a su resultado final de contracts/asistente.md §5: argumento descartado, `FUERA_DE_ALCANCE`, ningún nombre ni correo, en los dos modos;
   - los casos 1, 8 y 12 siguen dando `FUERA_DE_ALCANCE` para el CLIENTE.
-- [ ] T050 [P] [US3] Ampliar `backend/test/contract/rbac-005.spec.ts` y `backend/test/integration/asistente/cuotas-asistente.spec.ts` (PR08; FR-003, FR-007, FR-027):
+  - Hecho: además, cada uno de los 12 casos se corre con los dos roles en los dos modos (48 corridas).
+- [X] T050 [P] [US3] Ampliar `backend/test/contract/rbac-005.spec.ts` y `backend/test/integration/asistente/cuotas-asistente.spec.ts` (PR08; FR-003, FR-007, FR-027):
   - el PROPIETARIO → 200 en `POST /asistente/mensajes`, y el BARBERO sigue en 403;
   - las preguntas del propietario cuentan en su cuota de usuario y en la de la barbería.
-- [ ] T051 [P] [US3] Crear `frontend/test/reportes-preguntar.spec.tsx`. La pestaña "Preguntar" de `/app/reportes`:
+  - Hecho: además, casos del propietario en `degradacion-asistente.spec.ts` (503 con las tablas en ≤ 3 s), `registro-asistente.spec.ts` (los siete resultados, sin texto) y `aislamiento-asistente.spec.ts` (solo las citas de su barbería).
+- [X] T051 [P] [US3] Crear `frontend/test/reportes-preguntar.spec.tsx`. La pestaña "Preguntar" de `/app/reportes`:
   - envía la pregunta y muestra la respuesta en `aria-live`;
   - muestra los mensajes de cuota y de "no disponible", con la alternativa de las tablas;
   - las tablas siguen funcionando si el asistente falla.
+  - Hecho en `frontend/test/pages/reportes-preguntar.spec.tsx`, junto a las demás pruebas de pantallas.
 
 ### Implementación de US3
 
-- [ ] T052 [US3] Agregar `resumen_citas` y `servicios_mas_pedidos` (FR-027, FR-028):
+- [X] T052 [US3] Agregar `resumen_citas` y `servicios_mas_pedidos` (FR-027, FR-028):
   - al esquema de `asistente/domain/intencion.ts`, a la lista del PROPIETARIO en `herramientas.ts` y a sus plantillas en `plantillas.ts`;
   - las herramientas llaman a `ConsultarReportes`, el mismo caso de uso de la fase 2, a través de la interfaz que exponga el submódulo `reportes` dentro de M04;
   - quitar el 403 del PROPIETARIO en `asistente/application/preguntar-al-asistente.ts`. El controlador y el guardia no cambian.
-- [ ] T053 [P] [US3] Agregar la pestaña "Preguntar" a `frontend/src/pages/panel/Reportes.tsx`, reutilizando la conversación de `Asistente.tsx` como componente compartido en `frontend/src/components/app/`.
-- [ ] T054 [US3] Comprobar que `reportes-sin-ia` sigue en verde: el asistente usa `reportes/`, pero `reportes/` no importa nada de `asistente/`.
-- [ ] T055 [US3] **Del responsable:** revisar la pestaña "Preguntar" a 360 px y en escritorio, en los temas claro y oscuro, solo con teclado y con axe DevTools (0 errores graves).
+  - Hecho: el cálculo de `ConsultarReportes` pasó a `reportes/application/cifras-del-periodo.ts` (`CifrasDelPeriodo`), que usan los dos, expuesto en `reportes/index.ts`. El asistente no llama a `ConsultarReportes` entero porque abre su propia transacción, lee la barbería (lo que no se puede dentro del tramo 3) y audita `REPORTES_CONSULTADOS`.
+- [X] T053 [P] [US3] Agregar la pestaña "Preguntar" a `frontend/src/pages/panel/Reportes.tsx`, reutilizando la conversación de `Asistente.tsx` como componente compartido en `frontend/src/components/app/`.
+- [X] T054 [US3] Comprobar que `reportes-sin-ia` sigue en verde: el asistente usa `reportes/`, pero `reportes/` no importa nada de `asistente/`.
+- [ ] T055 [US3] **Del responsable:** revisar la pestaña "Preguntar" a 360 px y en escritorio, en los temas claro y oscuro, solo con teclado y con axe DevTools (0 errores graves). Pendiente:
+  - la pestaña "Preguntar" de `/app/reportes` a 360 px y en escritorio;
+  - los temas claro y oscuro;
+  - solo con teclado (flechas entre pestañas, enviar, "Ver las tablas");
+  - axe DevTools con 0 errores graves;
+  - de paso, que `/asistente` del cliente se vea igual que antes (usa el mismo componente de conversación).
 - [ ] T056 [US3] Cierre de fase 4: suite completa del backend (incluido `npm run test:arch`), del frontend y CI en verde. Commit: `feat(005): asistente del propietario (fase 4, US3)`
 
 **Checkpoint**: RF28 con las mismas cifras que RF29 y PR19 completo con el caso 9 final.

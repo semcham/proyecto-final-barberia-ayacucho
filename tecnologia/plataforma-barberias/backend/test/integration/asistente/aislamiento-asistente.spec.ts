@@ -7,6 +7,8 @@ import {
   preguntar,
   usoDeCuota,
 } from '../../helpers/asistente';
+import { sembrarCitaDeReporte } from '../../helpers/reportes';
+import { fechaEnDias, horaLima } from '../../helpers/reservas';
 import { cerrarPools } from '../../helpers/test-db';
 
 // T036 de 005 · PR09, FR-004 y SC-006: con el token de un cliente de A, ninguna respuesta del asistente trae datos de
@@ -87,6 +89,40 @@ describe('T036 · Aislamiento del asistente entre barberías (PR09)', () => {
     expect(body.codigo).toBe('VALIDACION');
     expect(body.texto).toBeUndefined();
     sinNadaDeB(body);
+  });
+
+  it('T050 · el propietario de A solo cuenta las citas de A (las de B, del mismo período, no aparecen)', async () => {
+    const hoy = fechaEnDias(0);
+    for (const servicio of ['Exclusivo B Corte clásico', 'Exclusivo B Barba']) {
+      await sembrarCitaDeReporte({
+        tenantId: b.tenantId,
+        barberoId: b.luis,
+        servicioId: b.corte,
+        clienteId: b.cliente.clienteId,
+        inicio: horaLima(hoy, '07:00'),
+        estado: 'COMPLETADA',
+        servicio,
+      });
+    }
+    await sembrarCitaDeReporte({
+      tenantId: a.tenantId,
+      barberoId: a.luis,
+      servicioId: a.corte,
+      clienteId: a.cliente.clienteId,
+      inicio: horaLima(hoy, '07:00'),
+      estado: 'COMPLETADA',
+    });
+    const resumen = (await preguntar(prueba, a.propietario, 'resumen de citas de hoy').expect(200)).body;
+    expect(resumen.datos.citas).toMatchObject({ total: 1, completadas: 1 });
+    sinNadaDeB(resumen);
+    const servicios = (
+      await preguntar(prueba, a.propietario, '¿qué servicios piden más esta semana?').expect(200)
+    ).body;
+    expect(servicios.datos.servicios).toEqual([{ nombre: 'Corte clásico', citas: 1 }]);
+    sinNadaDeB(servicios);
+    // Y al revés: el propietario de B ve solo las dos suyas.
+    const deB = (await preguntar(prueba, b.propietario, 'resumen de citas de hoy').expect(200)).body;
+    expect(deB.datos.citas.total).toBe(2);
   });
 
   it('la cuota de A no cambia la de B', async () => {

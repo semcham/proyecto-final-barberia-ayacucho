@@ -1,4 +1,10 @@
-import type { FechaLocal } from '../../../../shared/nucleo';
+import { FechaLocal } from '../../../../shared/nucleo';
+import type { ProblemaDelPeriodo } from '../../reportes/domain/periodo';
+import type {
+  CitasPorEstado,
+  PeriodoDelReporte,
+  ServicioMasSolicitado,
+} from '../../reportes/domain/reportes';
 import type { RolDelAsistente } from './herramientas';
 
 // T040 de 005 · Las plantillas de respuesta (contracts/asistente.md §3, ADR-028). La respuesta la compone el backend
@@ -45,7 +51,10 @@ export type DatosDeLaRespuesta =
       servicio: { servicioId: string; nombre: string };
       fecha: string;
       horas: HoraDeLaRespuesta[];
-    };
+    }
+  // Del propietario (US3): solo conteos, del mismo cálculo que GET /reportes (FR-027, FR-028).
+  | { tipo: 'RESUMEN_CITAS'; periodo: PeriodoDelReporte; citas: CitasPorEstado }
+  | { tipo: 'SERVICIOS_MAS_PEDIDOS'; periodo: PeriodoDelReporte; servicios: ServicioMasSolicitado[] };
 
 export interface Sugerencia {
   tipo: 'RESERVAR' | 'MIS_CITAS' | 'REPORTES' | 'CONTACTAR_BARBERIA';
@@ -162,7 +171,81 @@ export function plantillaHorarios(
   };
 }
 
+/** "1 de noviembre de 2026": una fecha local YYYY-MM-DD del período, sin el día de la semana. */
+function fechaDelPeriodo(valor: string): string {
+  const fecha = FechaLocal.de(valor);
+  return new Intl.DateTimeFormat('es-PE', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC',
+  }).format(new Date(Date.UTC(fecha.anio, fecha.mes - 1, fecha.dia)));
+}
+
+/** "Del 1 de noviembre de 2026 al 14 de noviembre de 2026" (o "El 14 de noviembre de 2026" si es un solo día). */
+function elPeriodo(periodo: PeriodoDelReporte): string {
+  return periodo.desde === periodo.hasta
+    ? `El ${fechaDelPeriodo(periodo.desde)}`
+    : `Del ${fechaDelPeriodo(periodo.desde)} al ${fechaDelPeriodo(periodo.hasta)}`;
+}
+
+const cuenta = (n: number, singular: string, plural: string) => `${n} ${n === 1 ? singular : plural}`;
+
+/** El resumen de citas del propietario: el período exacto y los conteos tal cual los da el reporte. */
+export function plantillaResumenCitas(periodo: PeriodoDelReporte, citas: CitasPorEstado): RespuestaCompuesta {
+  const datos: DatosDeLaRespuesta = { tipo: 'RESUMEN_CITAS', periodo, citas };
+  if (citas.total === 0) {
+    return { resultado: 'RESPONDIDA', texto: `${elPeriodo(periodo)} no tuviste citas.`, datos };
+  }
+  const partes = [
+    cuenta(citas.completadas, 'completada', 'completadas'),
+    cuenta(citas.confirmadas, 'confirmada', 'confirmadas'),
+    cuenta(citas.pendientes, 'pendiente', 'pendientes'),
+    `${citas.noAsistio} sin asistencia`,
+    `${cuenta(citas.canceladas, 'cancelada', 'canceladas')} (${cuenta(citas.canceladasTardias, 'tardía', 'tardías')})`,
+  ];
+  return {
+    resultado: 'RESPONDIDA',
+    texto: `${elPeriodo(periodo)} tuviste ${cuenta(citas.total, 'cita', 'citas')}: ${enumerar(partes)}.`,
+    datos,
+  };
+}
+
+/** Los servicios más pedidos del propietario: el primero con sus citas y los que le siguen, del reporte. */
+export function plantillaServiciosMasPedidos(
+  periodo: PeriodoDelReporte,
+  servicios: ServicioMasSolicitado[],
+): RespuestaCompuesta {
+  const datos: DatosDeLaRespuesta = { tipo: 'SERVICIOS_MAS_PEDIDOS', periodo, servicios };
+  const [primero, ...siguientes] = servicios;
+  if (!primero) {
+    return {
+      resultado: 'RESPONDIDA',
+      texto: `${elPeriodo(periodo)} no hubo citas de ningún servicio.`,
+      datos,
+    };
+  }
+  const resto =
+    siguientes.length > 0
+      ? ` Le siguen: ${enumerar(siguientes.map((s) => `${s.nombre} (${s.citas})`))}.`
+      : '';
+  return {
+    resultado: 'RESPONDIDA',
+    texto: `${elPeriodo(periodo)}, el servicio más pedido fue ${primero.nombre} con ${cuenta(primero.citas, 'cita', 'citas')}.${resto}`,
+    datos,
+  };
+}
+
+const PROBLEMA_DEL_PERIODO: Record<ProblemaDelPeriodo, string> = {
+  obligatorio: '¿De qué período? Por ejemplo "este mes" o "la semana pasada".',
+  formato: 'Las fechas del período no son una fecha válida. Prueba con "este mes" o "la semana pasada".',
+  posterior_a_hasta: 'La fecha de inicio del período debe ser anterior o igual a la de fin.',
+  maximo_366_dias: 'Puedo resumir como máximo 366 días. Pide un período más corto, por ejemplo "este mes".',
+};
+
 export type MotivoSinDatos =
+  | { tipo: 'falta_periodo' }
+  | { tipo: 'periodo_invalido'; problema: ProblemaDelPeriodo }
   | { tipo: 'sin_herramienta' }
   | { tipo: 'fecha_invalida'; valor: string }
   | { tipo: 'fecha_pasada'; fecha: FechaLocal }
@@ -176,7 +259,17 @@ export type MotivoSinDatos =
 
 export function plantillaSinDatos(ctx: ContextoDeLaRespuesta, motivo: MotivoSinDatos): RespuestaCompuesta {
   const sinDatos = (texto: string): RespuestaCompuesta => ({ resultado: 'SIN_DATOS', texto });
+  // Al propietario se le ofrecen las tablas de los reportes, que aceptan cualquier período válido.
+  const conLasTablas = (texto: string): RespuestaCompuesta => ({
+    resultado: 'SIN_DATOS',
+    texto,
+    sugerencia: { tipo: 'REPORTES' },
+  });
   switch (motivo.tipo) {
+    case 'falta_periodo':
+      return conLasTablas(PROBLEMA_DEL_PERIODO.obligatorio);
+    case 'periodo_invalido':
+      return conLasTablas(PROBLEMA_DEL_PERIODO[motivo.problema]);
     case 'sin_herramienta':
       return {
         resultado: 'SIN_DATOS',
@@ -216,7 +309,17 @@ export function plantillaSinDatos(ctx: ContextoDeLaRespuesta, motivo: MotivoSinD
   }
 }
 
-export function plantillaAccionNoPermitida(_ctx: ContextoDeLaRespuesta): RespuestaCompuesta {
+export function plantillaAccionNoPermitida(
+  _ctx: ContextoDeLaRespuesta,
+  rol: RolDelAsistente = 'CLIENTE',
+): RespuestaCompuesta {
+  // El propietario no tiene Reservar ni Mis citas: cambia las citas desde la Agenda.
+  if (rol === 'PROPIETARIO') {
+    return {
+      resultado: 'ACCION_NO_PERMITIDA',
+      texto: 'No puedo reservar ni cambiar citas. Puedes hacerlo desde la Agenda.',
+    };
+  }
   return {
     resultado: 'ACCION_NO_PERMITIDA',
     texto: 'No puedo reservar ni cambiar citas. Puedes hacerlo en Reservar o en Mis citas.',

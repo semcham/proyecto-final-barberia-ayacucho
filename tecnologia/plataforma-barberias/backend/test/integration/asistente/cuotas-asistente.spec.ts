@@ -104,6 +104,36 @@ describe('T033 · Cuotas del asistente (FR-007, SC-004)', () => {
     expect(resultados).toEqual(['RESPONDIDA', 'RESPONDIDA', 'RESPONDIDA', 'CUOTA_AGOTADA']);
   });
 
+  it('T050 · el propietario tiene la misma cuota de usuario y suma en la de su barbería', async () => {
+    const b = await barberiaDelAsistente();
+    const propietarioId = b.e.barberia.propietarioId;
+    const resumen = '¿Cuántas citas tuve este mes?';
+    for (let i = 0; i < 3; i++) {
+      expect((await preguntar(prueba, b.propietario, resumen).expect(200)).body.resultado).toBe('RESPONDIDA');
+    }
+    const agotada = await preguntar(prueba, b.propietario, resumen).expect(429);
+    expect(agotada.body.detalles[0].alcance).toBe('USUARIO');
+    expect(Number(agotada.headers['retry-after'])).toBe(agotada.body.detalles[0].reintentarEnSegundos);
+    expect(await usoDeCuota(b.tenantId, 'USUARIO', propietarioId)).toBe(3);
+    // Las 3 del propietario cuentan en la barbería: al cliente le quedan 2 y la tercera choca con la de la barbería.
+    for (let i = 0; i < 2; i++) await preguntar(prueba, b.cliente.token, 'precios').expect(200);
+    const delCliente = await preguntar(prueba, b.cliente.token, 'precios').expect(429);
+    expect(delCliente.body.detalles[0].alcance).toBe('BARBERIA');
+    expect(await usoDeCuota(b.tenantId, 'BARBERIA', b.tenantId)).toBe(5);
+    expect(
+      (await preguntasDe(b.tenantId)).filter((p) => p.role === 'PROPIETARIO').map((p) => p.result),
+    ).toEqual(['RESPONDIDA', 'RESPONDIDA', 'RESPONDIDA', 'CUOTA_AGOTADA']);
+  });
+
+  it('T050 · si el proveedor falla con el propietario, su unidad también se devuelve', async () => {
+    const b = await barberiaDelAsistente();
+    falsoDe(prueba).fijarModo({ tipo: 'caido' });
+    const caido = await preguntar(prueba, b.propietario, '¿Cuántas citas tuve este mes?').expect(503);
+    expect(caido.body.detalles[0]).toMatchObject({ alternativa: { tipo: 'REPORTES' } });
+    expect(await usoDeCuota(b.tenantId, 'USUARIO', b.e.barberia.propietarioId)).toBe(0);
+    expect(await usoDeCuota(b.tenantId, 'BARBERIA', b.tenantId)).toBe(0);
+  });
+
   it('si el proveedor falla, la unidad se devuelve', async () => {
     const b = await barberiaDelAsistente();
     falsoDe(prueba).fijarModo({ tipo: 'caido' });

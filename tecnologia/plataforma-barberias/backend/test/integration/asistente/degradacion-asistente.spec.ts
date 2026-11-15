@@ -73,6 +73,62 @@ describe('T034 · Degradación del asistente en 3 s o menos (PR06)', () => {
     console.info('PR06 · asistente no disponible', { modo: modo.tipo, ms });
   });
 
+  it.each<[string, ModoFalso]>([
+    ['caído', { tipo: 'caido' }],
+    ['lento (más que el tiempo límite de 2,5 s)', { tipo: 'lento', ms: 10_000 }],
+    ['con error 500 (reintenta una vez y falla)', { tipo: 'error', estado: 500 }],
+  ])(
+    'T050 · propietario, proveedor %s → 503 con las tablas como alternativa en ≤ 3 s y la cuota devuelta',
+    async (_caso, modo) => {
+      falsoDe(prueba).fijarModo(modo);
+      const propietarioId = b.e.barberia.propietarioId;
+      const { ms, valor: respuesta } = await medir(() =>
+        preguntar(prueba, b.propietario, '¿Cuántas citas tuve este mes?'),
+      );
+      expect(respuesta.status).toBe(503);
+      expect(respuesta.body).toEqual({
+        codigo: 'ASISTENTE_NO_DISPONIBLE',
+        mensaje: expect.stringMatching(/no está disponible/),
+        detalles: [{ alternativa: { tipo: 'REPORTES' } }],
+      });
+      expect(erroresDeContrato005('/asistente/mensajes', 'post', 503, respuesta.body)).toEqual([]);
+      expect(ms).toBeLessThanOrEqual(LIMITE_MS);
+      expect(await usoDeCuota(b.tenantId, 'USUARIO', propietarioId)).toBe(0);
+      expect(await usoDeCuota(b.tenantId, 'BARBERIA', b.tenantId)).toBe(0);
+      expect((await preguntasDe(b.tenantId)).at(-1)).toMatchObject({
+        role: 'PROPIETARIO',
+        result: 'PROVEEDOR_NO_DISPONIBLE',
+      });
+      // Las tablas, la alternativa, responden igual durante la falla (FR-026).
+      await pedirReportes(prueba, b.propietario, { desde: '2026-11-01', hasta: '2026-11-30' }).expect(200);
+      console.info('PR06 · asistente del propietario no disponible', { modo: modo.tipo, ms });
+    },
+  );
+
+  it('T050 · 5 preguntas del propietario y 5 del cliente a la vez con el proveedor lento: ninguna espera a otra', async () => {
+    falsoDe(prueba).fijarModo({ tipo: 'lento', ms: 10_000 });
+    const inicio = performance.now();
+    const tiempos = await Promise.all(
+      Array.from({ length: 10 }, async (_, i) => {
+        const { ms, valor } = await medir(() =>
+          i % 2 === 0
+            ? preguntar(prueba, b.propietario, '¿Cuántas citas tuve este mes?')
+            : preguntar(prueba, b.cliente.token, 'precios'),
+        );
+        expect(valor.status).toBe(503);
+        return ms;
+      }),
+    );
+    const total = Math.round(performance.now() - inicio);
+    console.info('PR06 · 10 preguntas simultáneas (propietario y cliente), proveedor lento', {
+      tiemposMs: tiempos,
+      totalMs: total,
+    });
+    for (const ms of tiempos) expect(ms).toBeLessThanOrEqual(LIMITE_MS);
+    expect(total).toBeLessThanOrEqual(LIMITE_MS + 500);
+    expect(await usoDeCuota(b.tenantId, 'BARBERIA', b.tenantId)).toBe(0);
+  });
+
   it('un 429 que se recupera al reintentar: un solo reintento dentro del presupuesto, y responde', async () => {
     const falso = falsoDe(prueba);
     falso.fijarModo({ tipo: 'error', estado: 429, veces: 1 });

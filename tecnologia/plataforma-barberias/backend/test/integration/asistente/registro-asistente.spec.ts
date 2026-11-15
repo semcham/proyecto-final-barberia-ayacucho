@@ -95,6 +95,56 @@ describe('T035 · Registro de preguntas sin texto y auditoría (FR-010, FR-029, 
     expect(JSON.stringify(await filasDe('audit_log', b.tenantId))).not.toContain(MARCADOR);
   });
 
+  it('T050 · las preguntas del propietario se registran igual: con su rol, la intención y el resultado; sin texto', async () => {
+    const b = await barberiaDelAsistente();
+    const falso = falsoDe(prueba);
+    const t = b.propietario;
+    const propietarioId = b.e.barberia.propietarioId;
+    await preguntar(prueba, t, `¿Cuántas citas tuve este mes? ${MARCADOR}`).expect(200); // RESPONDIDA
+    falso.fijarModo({
+      tipo: 'guion',
+      respuesta: { intencion: 'resumen_citas', argumentos: { desde: '2024-01-01', hasta: '2026-11-14' } },
+    });
+    await preguntar(prueba, t, `resumen de tres años ${MARCADOR}`).expect(200); // SIN_DATOS (más de 366 días)
+    falso.restaurar();
+    await preguntar(prueba, t, `¿Hay horario mañana para un corte? ${MARCADOR}`).expect(200); // FUERA_DE_ALCANCE
+    await preguntar(prueba, t, `Cancela la cita de las 10 ${MARCADOR}`).expect(200); // ACCION_NO_PERMITIDA
+    await preguntar(prueba, t, `${MARCADOR} ${'x'.repeat(501)}`).expect(422); // INVALIDA (sin cuota)
+    falso.fijarModo({ tipo: 'caido' });
+    await preguntar(prueba, t, `¿Cuántas citas tuve este mes? ${MARCADOR}`).expect(503); // PROVEEDOR_NO_DISPONIBLE
+    falso.restaurar();
+    for (let i = 0; i < 2; i++) await preguntar(prueba, t, `resumen de citas de hoy ${MARCADOR}`).expect(200);
+    await preguntar(prueba, t, `resumen de citas de hoy ${MARCADOR}`).expect(429); // CUOTA_AGOTADA
+
+    const preguntas = await preguntasDe(b.tenantId);
+    expect(preguntas.map((p) => [p.result, p.intent])).toEqual([
+      ['RESPONDIDA', 'resumen_citas'],
+      ['SIN_DATOS', 'resumen_citas'],
+      ['FUERA_DE_ALCANCE', 'fuera_de_alcance'],
+      ['ACCION_NO_PERMITIDA', 'accion_no_permitida'],
+      ['INVALIDA', null],
+      ['PROVEEDOR_NO_DISPONIBLE', null],
+      ['RESPONDIDA', 'resumen_citas'],
+      ['RESPONDIDA', 'resumen_citas'],
+      ['CUOTA_AGOTADA', null],
+    ]);
+    for (const p of preguntas) {
+      expect(p).toMatchObject({ tenant_id: b.tenantId, user_id: propietarioId, role: 'PROPIETARIO' });
+    }
+    expect(JSON.stringify(preguntas)).not.toContain(MARCADOR);
+    const auditoria = (await filasDe('audit_log', b.tenantId)).filter(
+      (f) => f.action === 'ASISTENTE_CONSULTADO',
+    );
+    expect(auditoria.map((f) => f.resource)).toEqual(
+      preguntas.map((p) => `asistente:PROPIETARIO;${p.result as string}`),
+    );
+    // El asistente no deja REPORTES_CONSULTADOS: esa auditoría es de GET /reportes.
+    expect(
+      (await filasDe('audit_log', b.tenantId)).filter((f) => f.action === 'REPORTES_CONSULTADOS'),
+    ).toEqual([]);
+    expect(JSON.stringify(await filasDe('audit_log', b.tenantId))).not.toContain(MARCADOR);
+  });
+
   it('ni el texto ni la llave aparecen en los registros de la aplicación', () => {
     const registros = salida.join('');
     expect(registros).not.toContain(MARCADOR);

@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { type KeyboardEvent, useEffect, useId, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { ApiError } from '../../api/client';
 import {
@@ -8,6 +8,7 @@ import {
   type PeriodoDeReportes,
   type ReportesDelPeriodo,
 } from '../../api/reportes';
+import { Conversacion } from '../../components/app/Conversacion';
 import { EncabezadoPagina } from '../../components/app/EncabezadoPagina';
 import { Alerta, Boton, Campo, EstadoVacio } from '../../components/ui';
 import { fechaIsoDeBarberia } from '../../hora-barberia';
@@ -20,6 +21,17 @@ import tablas from './Reportes.module.css';
 // locales de la barbería (por defecto, el mes en curso) y se ven tres reportes en tablas, sin gráficos: citas por
 // estado, servicios más solicitados y actividad. Las reglas del período (orden, 366 días) las valida el servidor: su
 // mensaje se muestra junto al campo y se anuncia. No depende del asistente de IA (FR-026).
+//
+// T053 de 005 (US3, FR-027 y FR-028): dos pestañas, "Tablas" (la de siempre) y "Preguntar", donde el propietario
+// consulta el resumen de citas y los servicios más pedidos en lenguaje natural, con la conversación compartida con el
+// asistente del cliente. Las dos quedan montadas (la oculta, con `hidden`): cambiar de pestaña no borra la
+// conversación ni el período elegido. Si el asistente no responde, la alternativa es volver a las tablas.
+
+const PESTANAS = [
+  { valor: 'tablas', etiqueta: 'Tablas' },
+  { valor: 'preguntar', etiqueta: 'Preguntar' },
+] as const;
+type Pestana = (typeof PESTANAS)[number]['valor'];
 
 const DIAS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 
@@ -52,6 +64,108 @@ function errorDeCampo(error: unknown): { campo: CampoPeriodo; mensaje: string } 
 }
 
 export default function Reportes() {
+  const idBase = useId();
+  const [pestana, setPestana] = useState<Pestana>('tablas');
+  const botones = useRef<(HTMLButtonElement | null)[]>([]);
+
+  const elegir = (valor: Pestana, enfocar = false) => {
+    setPestana(valor);
+    if (enfocar) botones.current[PESTANAS.findIndex((p) => p.valor === valor)]?.focus();
+  };
+  // Patrón de pestañas (WAI-ARIA APG): flechas, Inicio y Fin mueven el foco y eligen la pestaña.
+  const alTeclear = (evento: KeyboardEvent<HTMLButtonElement>, indice: number) => {
+    const destino =
+      evento.key === 'ArrowRight'
+        ? (indice + 1) % PESTANAS.length
+        : evento.key === 'ArrowLeft'
+          ? (indice - 1 + PESTANAS.length) % PESTANAS.length
+          : evento.key === 'Home'
+            ? 0
+            : evento.key === 'End'
+              ? PESTANAS.length - 1
+              : null;
+    if (destino === null) return;
+    evento.preventDefault();
+    elegir(PESTANAS[destino].valor, true);
+  };
+
+  return (
+    <>
+      <EncabezadoPagina
+        migas={[{ etiqueta: 'Inicio', a: '/app' }, { etiqueta: 'Reportes' }]}
+        titulo="Reportes"
+        descripcion="Las citas de tu barbería en un período: por estado, los servicios más solicitados y la actividad de cada barbero. Solo conteos, sin datos de tus clientes. Las fechas son las de tu barbería. En Preguntar puedes consultarlas con tus propias palabras."
+      />
+      <div role="tablist" aria-label="Reportes" className={estilos.acciones}>
+        {PESTANAS.map((p, indice) => {
+          const elegida = p.valor === pestana;
+          return (
+            <Boton
+              key={p.valor}
+              ref={(boton: HTMLButtonElement | null) => {
+                botones.current[indice] = boton;
+              }}
+              type="button"
+              role="tab"
+              id={`${idBase}-pestana-${p.valor}`}
+              aria-selected={elegida}
+              aria-controls={`${idBase}-panel-${p.valor}`}
+              tabIndex={elegida ? 0 : -1}
+              variante={elegida ? 'primario' : 'secundario'}
+              tamano="sm"
+              onClick={() => elegir(p.valor)}
+              onKeyDown={(evento) => alTeclear(evento, indice)}
+            >
+              {p.etiqueta}
+            </Boton>
+          );
+        })}
+      </div>
+      {PESTANAS.map((p) => (
+        <div
+          key={p.valor}
+          role="tabpanel"
+          id={`${idBase}-panel-${p.valor}`}
+          aria-labelledby={`${idBase}-pestana-${p.valor}`}
+          hidden={p.valor !== pestana}
+          tabIndex={0}
+          className={tablas.panel}
+        >
+          {p.valor === 'tablas' ? (
+            <Tablas />
+          ) : (
+            <>
+              <p className={estilos.aviso}>
+                Pregúntame por el resumen de citas o los servicios más pedidos de un período, por ejemplo
+                «¿cuántas citas tuve este mes?». Las cifras son las mismas de las tablas, sin datos de tus
+                clientes. No reservo ni cambio citas.
+              </p>
+              <Conversacion
+                ejemplo="Por ejemplo: ¿cuál fue el servicio más pedido la semana pasada?"
+                alternativa={{
+                  tipo: 'REPORTES',
+                  contenido: (
+                    <Boton
+                      type="button"
+                      variante="secundario"
+                      tamano="sm"
+                      onClick={() => elegir('tablas', true)}
+                    >
+                      Ver las tablas
+                    </Boton>
+                  ),
+                }}
+              />
+            </>
+          )}
+        </div>
+      ))}
+    </>
+  );
+}
+
+/** La pestaña "Tablas" (fase 2, US2): el período y los tres reportes. */
+function Tablas() {
   const zona = useZonaBarberia();
   const [periodo, setPeriodo] = useState<PeriodoDeReportes>(() => mesEnCurso(zona));
   const {
@@ -82,11 +196,6 @@ export default function Reportes() {
 
   return (
     <>
-      <EncabezadoPagina
-        migas={[{ etiqueta: 'Inicio', a: '/app' }, { etiqueta: 'Reportes' }]}
-        titulo="Reportes"
-        descripcion="Las citas de tu barbería en un período: por estado, los servicios más solicitados y la actividad de cada barbero. Solo conteos, sin datos de tus clientes. Las fechas son las de tu barbería."
-      />
       <form className={estilos.formulario} onSubmit={handleSubmit(enviar)} noValidate aria-label="Período">
         <div className={estilos.fila}>
           <Campo

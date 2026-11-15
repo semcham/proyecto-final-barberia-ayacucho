@@ -1,6 +1,6 @@
 // T040 de 005 · Las intenciones del esquema cerrado (contracts/asistente.md §2) y las herramientas CERRADAS de cada rol
-// (contracts/rbac.md de 005, FR-003): un rol no puede usar las del otro aunque el modelo las pida. El propietario no
-// tiene ninguna hasta la fase 4 (US3): sin herramientas, el caso de uso le responde 403.
+// (contracts/rbac.md de 005, FR-003): un rol no puede usar las del otro aunque el modelo las pida. Desde la fase 4
+// (US3) el propietario tiene las suyas: el resumen de citas y los servicios más pedidos (FR-027).
 
 export type RolDelAsistente = 'CLIENTE' | 'PROPIETARIO';
 
@@ -14,7 +14,7 @@ export type Intencion = IntencionDeHerramienta | (typeof INTENCIONES_GENERICAS)[
 
 export const HERRAMIENTAS_POR_ROL: Readonly<Record<RolDelAsistente, readonly IntencionDeHerramienta[]>> = {
   CLIENTE: [...INTENCIONES_DEL_CLIENTE],
-  PROPIETARIO: [],
+  PROPIETARIO: [...INTENCIONES_DEL_PROPIETARIO],
 };
 
 /** Lo que se le dice al modelo que puede elegir: las herramientas del rol y las dos genéricas. */

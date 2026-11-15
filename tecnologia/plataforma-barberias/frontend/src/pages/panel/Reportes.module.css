@@ -1,6 +1,18 @@
 /* Reportes del propietario (/app/reportes, 005): tablas de datos legibles a 360 px y en escritorio, con los tokens
    de tema (claro y oscuro). Sin gráficos (FR-024). */
 
+/* Cada pestaña (Tablas y Preguntar), separada de la fila de pestañas. */
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-5);
+  margin-top: var(--espacio-5);
+}
+
+.panel[hidden] {
+  display: none;
+}
+
 .reportes {
   display: flex;
   flex-direction: column;

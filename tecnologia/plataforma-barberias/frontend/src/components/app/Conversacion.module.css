@@ -1,0 +1,83 @@
+/* La conversación con el asistente (005), compartida por el del cliente (/asistente) y la pestaña "Preguntar" de los
+   reportes del propietario: cómoda a 360 px, con los tokens de tema (claro y oscuro). */
+
+.conversacion {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-3);
+  min-height: 8rem;
+  padding: var(--espacio-4);
+  border: 1px solid var(--color-borde);
+  border-radius: 0.75rem;
+  background: var(--color-superficie-hundida);
+}
+
+.usuario,
+.asistente {
+  max-width: 85%;
+  padding: var(--espacio-3) var(--espacio-4);
+  border-radius: 0.75rem;
+  overflow-wrap: anywhere;
+}
+
+.usuario p,
+.asistente p {
+  margin: 0;
+}
+
+.usuario {
+  align-self: flex-end;
+  background: var(--color-acento-suave);
+  color: var(--color-texto);
+}
+
+.asistente {
+  align-self: flex-start;
+  border: 1px solid var(--color-borde);
+  background: var(--color-superficie);
+  color: var(--color-texto);
+}
+
+.horas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--espacio-2);
+  margin: var(--espacio-3) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.vacio {
+  margin: 0;
+  color: var(--color-texto-suave);
+}
+
+.aviso {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--espacio-3);
+}
+
+.formulario {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-3);
+}
+
+.formulario textarea {
+  resize: vertical;
+  min-height: 5rem;
+}
+
+.acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--espacio-3);
+}
+
+.contenedor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-5);
+}

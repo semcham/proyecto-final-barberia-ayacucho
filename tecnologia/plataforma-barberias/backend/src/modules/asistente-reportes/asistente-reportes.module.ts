@@ -13,6 +13,7 @@ import { ProveedorIANinguno } from './asistente/infrastructure/proveedor-ia-ning
 import { ProveedorIAOpenRouter } from './asistente/infrastructure/proveedor-ia-openrouter';
 import { AsistenteController } from './asistente/presentation/asistente.controller';
 import { AutorizacionAsistenteReportes } from './comun/application/autorizacion';
+import { CifrasDelPeriodo } from './reportes/application/cifras-del-periodo';
 import { ConsultarReportes } from './reportes/application/consultar-reportes';
 import { ReportesController } from './reportes/presentation/reportes.controller';
 
@@ -41,12 +42,14 @@ export function crearProveedorDeIA(configuracion: Configuracion): AIProvider {
  *
  * - Fase 2 (US2): GET /reportes, sin el proveedor de IA (FR-026).
  * - Fase 3 (US1): POST /asistente/mensajes, el asistente del cliente.
+ * - Fase 4 (US3): el asistente del propietario, con las cifras de CifrasDelPeriodo (las mismas de GET /reportes).
  */
 @Module({
   imports: [CatalogoCitasModule, SuscripcionesPagosModule],
   controllers: [ReportesController, AsistenteController],
   providers: [
     AutorizacionAsistenteReportes,
+    CifrasDelPeriodo,
     ConsultarReportes,
     PreguntarAlAsistente,
     { provide: CuotasDelAsistente, useClass: KyselyCuotasDelAsistente },

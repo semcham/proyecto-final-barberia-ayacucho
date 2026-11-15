@@ -26,9 +26,15 @@ describe('Herramientas por rol (contracts/rbac.md de 005)', () => {
     expect(tieneAsistente('CLIENTE')).toBe(true);
   });
 
-  it('el propietario todavía no tiene herramientas (US3 es la fase 4): no tiene asistente', () => {
-    expect(HERRAMIENTAS_POR_ROL.PROPIETARIO).toEqual([]);
-    expect(tieneAsistente('PROPIETARIO')).toBe(false);
+  it('T052 · el propietario tiene exactamente resumen_citas y servicios_mas_pedidos', () => {
+    expect(HERRAMIENTAS_POR_ROL.PROPIETARIO).toEqual(['resumen_citas', 'servicios_mas_pedidos']);
+    expect(intencionesPermitidas('PROPIETARIO')).toEqual([
+      'resumen_citas',
+      'servicios_mas_pedidos',
+      'fuera_de_alcance',
+      'accion_no_permitida',
+    ]);
+    expect(tieneAsistente('PROPIETARIO')).toBe(true);
   });
 });
 
@@ -108,8 +114,33 @@ describe('validarIntencion: esquema cerrado (T026)', () => {
     expect(deCliente('fuera_de_alcance')).toEqual({ tipo: 'fuera_de_alcance' });
   });
 
-  it('el propietario, sin herramientas en esta fase, solo puede quedar fuera de alcance', () => {
-    expect(validarIntencion('PROPIETARIO', { intencion: 'servicios', argumentos: {} })).toEqual({
+  it.each([
+    ['servicios', {}],
+    ['barberos', { servicio: 'corte' }],
+    ['horarios_libres', { servicio: 'corte', fecha: '2026-11-15' }],
+  ])('el propietario pide %s (del cliente) → fuera_de_alcance', (intencion, argumentos) => {
+    expect(validarIntencion('PROPIETARIO', { intencion, argumentos })).toEqual({ tipo: 'fuera_de_alcance' });
+  });
+
+  it.each(['resumen_citas', 'servicios_mas_pedidos'] as const)(
+    'el propietario: %s con desde y hasta',
+    (tipo) => {
+      expect(
+        validarIntencion('PROPIETARIO', {
+          intencion: tipo,
+          argumentos: { desde: '2026-11-01', hasta: '2026-11-14' },
+        }),
+      ).toEqual({ tipo, desde: '2026-11-01', hasta: '2026-11-14' });
+    },
+  );
+
+  it.each([
+    ['incluir clientes', { desde: '2026-11-01', hasta: '2026-11-14', incluir: 'clientes' }],
+    ['un cliente', { desde: '2026-11-01', cliente: 'Rocío' }],
+    ['otra barbería', { desde: '2026-11-01', barberia: 'otra' }],
+    ['una fecha con otro formato', { desde: '01/11/2026', hasta: '2026-11-14' }],
+  ])('el propietario con %s → fuera_de_alcance (PR19, caso 9)', (_caso, argumentos) => {
+    expect(validarIntencion('PROPIETARIO', { intencion: 'servicios_mas_pedidos', argumentos })).toEqual({
       tipo: 'fuera_de_alcance',
     });
   });
