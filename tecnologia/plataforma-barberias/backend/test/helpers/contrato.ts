@@ -57,6 +57,18 @@ const CONTRATOS = {
     'contracts',
     'openapi.yaml',
   ),
+  '005': join(
+    __dirname,
+    '..',
+    '..',
+    '..',
+    '..',
+    '..',
+    'specs',
+    '005-asistente-ia-reportes',
+    'contracts',
+    'openapi.yaml',
+  ),
   '008': join(
     __dirname,
     '..',
@@ -197,6 +209,16 @@ export function erroresDeEsquema008(nombre: string, cuerpo: unknown): string[] {
   return validar(cuerpo)
     ? []
     : (validar.errors ?? []).map((error) => `${error.instancePath || '/'} ${error.message ?? ''}`.trim());
+}
+
+/** Igual que `erroresDeContrato`, contra el contrato de la funcionalidad 005 (asistente de IA y reportes). */
+export function erroresDeContrato005(
+  ruta: string,
+  metodo: string,
+  estado: number,
+  cuerpo: unknown,
+): string[] {
+  return erroresDeContrato(ruta, metodo, estado, cuerpo, '005');
 }
 
 /** Igual que `erroresDeContrato`, contra el contrato de la funcionalidad 008 (adelanto de reserva con QR). */

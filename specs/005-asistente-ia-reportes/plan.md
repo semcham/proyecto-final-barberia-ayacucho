@@ -188,13 +188,15 @@ tecnologia/plataforma-barberias/
 │   │       └── asistente-reportes/            # M04 (nuevo)
 │   │           ├── index.ts                   # AsistenteReportesModule y PermisosAsistenteReportes
 │   │           ├── asistente-reportes.module.ts
+│   │           ├── comun/                     # (fase 2) matriz PermisosAsistenteReportes, AccesoDenegado y la autorización: la usan
+│   │           │                              # los dos submódulos, y reportes/ no puede importar asistente/ (reportes-sin-ia)
 │   │           ├── reportes/
 │   │           │   ├── domain/                # Periodo (366 días), forma de los reportes
 │   │           │   ├── application/           # ConsultarReportes
 │   │           │   ├── infrastructure/        # (ninguna: lee por CatalogoCitasApi)
 │   │           │   └── presentation/          # GET /reportes
 │   │           └── asistente/
-│   │               ├── domain/                # Intencion (esquema), Herramientas por rol, Plantillas, PoliticaCuota, Entrada, Permisos
+│   │               ├── domain/                # Intencion (esquema), Herramientas por rol, Plantillas, PoliticaCuota, Entrada
 │   │               ├── application/           # PreguntarAlAsistente (tres tramos), ports/ai-provider.ts, ports/cuotas, ports/registro
 │   │               ├── infrastructure/        # proveedor-ia-falso, proveedor-ia-openrouter, proveedor-ia-ninguno, kysely-cuotas, kysely-registro
 │   │               └── presentation/          # POST /asistente/mensajes (operación de ruta USAR_ASISTENTE)

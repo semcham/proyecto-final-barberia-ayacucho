@@ -9,6 +9,9 @@
  * - VER_REPORTES: GET /reportes, solo el propietario.
  *
  * El barbero no tiene ninguna. El administrador de la plataforma no tiene token de barbería (ADR-031).
+ *
+ * Vive en el submódulo `comun` (005, fase 2) porque la usan los dos submódulos: `reportes` no puede importar nada de
+ * `asistente` (regla reportes-sin-ia de PR14).
  */
 
 /** Roles con membresía en una barbería (los mismos códigos que M01; aquí sin depender de M01). */

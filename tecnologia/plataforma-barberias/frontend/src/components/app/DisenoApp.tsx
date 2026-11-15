@@ -32,6 +32,8 @@ const DESTINOS: Destino[] = [
   { a: '/app/usuarios', etiqueta: 'Usuarios', icono: 'usuarios', roles: ['PROPIETARIO'] },
   // Funcionalidad 003 (T051).
   { a: '/app/suscripcion', etiqueta: 'Suscripción', icono: 'dinero', roles: ['PROPIETARIO'] },
+  // Funcionalidad 005 (T023): reportes del período, solo para el propietario.
+  { a: '/app/reportes', etiqueta: 'Reportes', icono: 'grafico', roles: ['PROPIETARIO'] },
 ];
 
 // Secciones anunciadas que aún no existen; el bloque "Próximamente" solo se muestra si hay alguna.

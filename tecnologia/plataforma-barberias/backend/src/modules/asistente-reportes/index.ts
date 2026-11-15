@@ -5,4 +5,4 @@ export {
   PermisosAsistenteReportes,
   OPERACIONES_ASISTENTE_REPORTES,
   type OperacionAsistenteReportes,
-} from './asistente/domain/permisos';
+} from './comun/domain/permisos';

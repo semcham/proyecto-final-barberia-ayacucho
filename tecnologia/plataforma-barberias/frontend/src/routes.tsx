@@ -37,6 +37,8 @@ const Suscripcion = lazy(() => import('./pages/panel/Suscripcion'));
 const Adelanto = lazy(() => import('./pages/panel/Adelanto'));
 // Funcionalidad 008 (T045): la bandeja de pagos de adelanto por revisar.
 const AdelantosPorRevisar = lazy(() => import('./pages/panel/AdelantosPorRevisar'));
+// 005 (T023): reportes del propietario.
+const Reportes = lazy(() => import('./pages/panel/Reportes'));
 // Funcionalidad 008 (T033): el cliente paga el adelanto de su cita.
 const PagarAdelanto = lazy(() => import('./pages/cliente/PagarAdelanto'));
 const ReservarProtegida = lazy(() =>
@@ -196,6 +198,14 @@ export function RutasApp() {
               element={
                 <RutaProtegida roles={['PROPIETARIO']}>
                   <AdelantosPorRevisar />
+                </RutaProtegida>
+              }
+            />
+            <Route
+              path="reportes"
+              element={
+                <RutaProtegida roles={['PROPIETARIO']}>
+                  <Reportes />
                 </RutaProtegida>
               }
             />

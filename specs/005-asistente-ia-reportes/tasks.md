@@ -156,12 +156,12 @@ description: "Tareas de la funcionalidad 005: asistente de IA y reportes"
 
 ### Pruebas de US2 (escribir primero, deben fallar) ⚠️
 
-- [ ] T014 [P] [US2] Crear `backend/test/unit/reportes/periodo.spec.ts` (FR-020; data-model):
+- [X] T014 [P] [US2] Crear `backend/test/unit/reportes/periodo.spec.ts` (FR-020; data-model):
   - `desde` y `hasta` son fechas locales inclusivas;
   - hasta 366 días se acepta y 367 se rechaza;
   - `desde > hasta` y las fechas inválidas se rechazan con el campo a corregir;
   - el período se convierte a instantes con `ZonaHoraria` de M06: desde el inicio del día `desde` hasta el inicio del día siguiente a `hasta`, en America/Lima.
-- [ ] T015 [P] [US2] Crear `backend/test/integration/reportes/reportes.spec.ts` sobre un conjunto de citas sembradas (US2-1 a US2-5; FR-020–FR-024, FR-026; SC-005):
+- [X] T015 [P] [US2] Crear `backend/test/integration/reportes/reportes.spec.ts` sobre un conjunto de citas sembradas (US2-1 a US2-5; FR-020–FR-024, FR-026; SC-005):
   - citas: el total y el desglose por estado, con cuántas canceladas fueron tardías;
   - servicios más solicitados: ordenados de más a menos citas no canceladas, hasta 10, con el nombre que tenía la cita al reservarse (`service_name`, FR-022), aunque el servicio se haya renombrado después, y desempate por nombre;
   - actividad: citas por barbero y por día de la semana, cancelaciones tardías y no asistencias;
@@ -171,15 +171,15 @@ description: "Tareas de la funcionalidad 005: asistente de IA y reportes"
   - un período sin citas → 200 con las tablas en cero, no un error (US2-6);
   - con la suscripción VENCIDA responde igual, porque las lecturas no se restringen en ningún estado (contracts/restricciones-estado.md de 003; caso de borde de spec.md);
   - con `IA_PROVEEDOR=ninguno` responde igual.
-- [ ] T016 [P] [US2] Crear `backend/test/integration/reportes/aislamiento-reportes.spec.ts` con dos barberías sembradas. Con el token de A, aunque la solicitud traiga un `tenant`, un slug o una cabecera de B, las cifras son solo las de A (PR09; FR-025; SC-006).
-- [ ] T017 [P] [US2] Crear `backend/test/contract/rbac-005.spec.ts` con las filas de `GET /reportes` de [contracts/rbac.md](contracts/rbac.md) y `backend/test/contract/reportes.contract.spec.ts` contra [contracts/openapi.yaml](contracts/openapi.yaml) (PR08; FR-019):
+- [X] T016 [P] [US2] Crear `backend/test/integration/reportes/aislamiento-reportes.spec.ts` con dos barberías sembradas. Con el token de A, aunque la solicitud traiga un `tenant`, un slug o una cabecera de B, las cifras son solo las de A (PR09; FR-025; SC-006).
+- [X] T017 [P] [US2] Crear `backend/test/contract/rbac-005.spec.ts` con las filas de `GET /reportes` de [contracts/rbac.md](contracts/rbac.md) y `backend/test/contract/reportes.contract.spec.ts` contra [contracts/openapi.yaml](contracts/openapi.yaml) (PR08; FR-019):
   - PROPIETARIO → 200;
   - BARBERO y CLIENTE → 403;
   - sin sesión → 401;
   - el token de plataforma → 401 (rbac.md, ADR-031).
-- [ ] T018 [P] [US2] Crear `backend/test/integration/reportes/reportes-auditoria.spec.ts`. Cada consulta deja `REPORTES_CONSULTADOS` con el actor y `reportes:<desde>..<hasta>`, y nada más (FR-029).
-- [ ] T019 [P] [US2] Crear `backend/test/integration/escalado/reportes-periodo.spec.ts`. El reporte de un mes con el volumen sembrado de research responde en ≤ 2 s, y el de 366 días también responde (SC-005). Si solo falla por tiempo, se repite sola, como las demás de `escalado`.
-- [ ] T020 [P] [US2] Crear `frontend/test/reportes.spec.tsx` (US2; FR-020, FR-024; constitución, accesibilidad):
+- [X] T018 [P] [US2] Crear `backend/test/integration/reportes/reportes-auditoria.spec.ts`. Cada consulta deja `REPORTES_CONSULTADOS` con el actor y `reportes:<desde>..<hasta>`, y nada más (FR-029).
+- [X] T019 [P] [US2] Crear `backend/test/integration/escalado/reportes-periodo.spec.ts`. El reporte de un mes con el volumen sembrado de research responde en ≤ 2 s, y el de 366 días también responde (SC-005). Si solo falla por tiempo, se repite sola, como las demás de `escalado`.
+- [X] T020 [P] [US2] Crear `frontend/test/reportes.spec.tsx` (US2; FR-020, FR-024; constitución, accesibilidad):
   - el período se elige con dos fechas etiquetadas, y por defecto es el mes en curso;
   - se ven las tres tablas, con encabezados y sin gráficos;
   - el error de período muestra el mensaje junto al campo, anunciado con `aria-live`;
@@ -188,11 +188,11 @@ description: "Tareas de la funcionalidad 005: asistente de IA y reportes"
 
 ### Implementación de US2
 
-- [ ] T021 [US2] Crear el dominio y la aplicación de los reportes (FR-020–FR-026):
+- [X] T021 [US2] Crear el dominio y la aplicación de los reportes (FR-020–FR-026):
   - `reportes/domain/periodo.ts` y `reportes/domain/reportes.ts` (la forma de las tres tablas);
   - `reportes/application/consultar-reportes.ts`, que lee solo por `CatalogoCitasApi`, dentro de `UnitOfWork.ejecutar(tenant, …)`, y deja `REPORTES_CONSULTADOS`.
-- [ ] T022 [US2] Crear `reportes/presentation/reportes.controller.ts` con `GET /reportes?desde=&hasta=` y el permiso `VER_REPORTES`, según contracts/openapi.yaml, y registrarlo en `m04/asistente-reportes.module.ts`.
-- [ ] T023 [P] [US2] Crear la pantalla de reportes:
+- [X] T022 [US2] Crear `reportes/presentation/reportes.controller.ts` con `GET /reportes?desde=&hasta=` y el permiso `VER_REPORTES`, según contracts/openapi.yaml, y registrarlo en `m04/asistente-reportes.module.ts`.
+- [X] T023 [P] [US2] Crear la pantalla de reportes:
   - `frontend/src/api/reportes.ts`;
   - `frontend/src/pages/panel/Reportes.tsx` (con su `.module.css` y tokens de tema);
   - la ruta `/app/reportes` en `frontend/src/routes.tsx`;
