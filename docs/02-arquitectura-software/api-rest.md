@@ -1,6 +1,6 @@
 # Diseño de la API REST
 
-Contrato entre la aplicación web y el backend (cuarto punto del enfoque SDD). Las rutas de M01, M02, M03, M04 y de salud están **implementadas** (funcionalidades 001, 002, 003, 004, 005, 006 y 008). Las filas marcadas _(planificado)_ no existen en el código: son el diseño de 007 y se confirmarán al especificarlo. Complemento de la documentación núcleo.
+Contrato entre la aplicación web y el backend (cuarto punto del enfoque SDD). Las rutas de M01, M02, M03, M04 y de salud están **implementadas** (funcionalidades 001, 002, 003, 004, 005, 006 y 008). Las rutas de solicitudes sobre datos personales de 007 (fase 1, US1) también están implementadas, con su contrato en `specs/007-indicadores-datos-personales/contracts/openapi.yaml`. Las filas marcadas _(planificado)_ no existen en el código: son el diseño del resto de 007 (indicadores). Complemento de la documentación núcleo.
 
 ## 1. Convenciones
 
@@ -43,7 +43,12 @@ Roles: **ADM** administrador de la plataforma · **PRO** propietario · **BAR** 
 | `PUT/DELETE /plataforma/barberias/{id}/suspension` | Suspender (con motivo) o reactivar la barbería (003, US5)                                          | RF02       | ADM               |
 | `GET/PUT /clientes/yo/aviso`                       | Ver y elegir el canal de aviso (correo o WhatsApp con consentimiento) en la barbería del token (004) | RF33       | CLI               |
 | `DELETE /clientes/yo/aviso/consentimiento-whatsapp` | Retirar el consentimiento de WhatsApp; el canal vuelve a correo (004)                             | RF33       | CLI               |
-| `POST /clientes/yo/solicitudes-datos` _(planificado, 007)_ | Pedir acceso, rectificación o eliminación                                                | RF32       | CLI               |
+| `POST /datos-personales/solicitudes`               | Pedir acceso, rectificación (con el detalle) o eliminación de los propios datos en la barbería del token (007). Una abierta por tipo: otra → 409 `SOLICITUD_ABIERTA` con el id de la existente | RF32 | CLI, BAR |
+| `GET /datos-personales/solicitudes/mias`           | Las solicitudes propias, con estado, plazo (10 días hábiles) y respuesta (007)                      | RF32       | CLI, BAR          |
+| `GET /datos-personales/solicitudes?estado=`        | Bandeja de la barbería con el titular, el plazo y si está vencida; por defecto, las abiertas (007)  | RF32       | PRO               |
+| `POST /datos-personales/solicitudes/en-nombre`     | Registrar una solicitud por un cliente de la barbería que la pidió por otro medio (007)             | RF32       | PRO               |
+| `POST /datos-personales/solicitudes/{id}/atencion` | Pasarla a "en atención" (007)                                                                       | RF32       | PRO               |
+| `POST /datos-personales/solicitudes/{id}/cierre`   | Atenderla con la respuesta (qué se hizo a mano) o rechazarla con el motivo; el sistema no borra ni exporta nada (007) | RF32 | PRO      |
 
 ### M02 Catálogo y citas
 

@@ -74,7 +74,13 @@ describe('Autorizacion.exigir', () => {
 
   // 004 (fase 5): GESTIONAR_CANAL_AVISO es solo del CLIENTE (su propio canal de aviso), como cambiar de barbería.
   it('el PROPIETARIO puede todas las operaciones protegidas (salvo las solo de cliente) sin denegaciones', async () => {
-    const soloDeCliente = ['CAMBIAR_BARBERIA', 'GESTIONAR_CANAL_AVISO'];
+    // 007: el titular registra y ve sus propias solicitudes; el propietario sobre su propia cuenta queda fuera (FR-005).
+    const soloDeCliente = [
+      'CAMBIAR_BARBERIA',
+      'GESTIONAR_CANAL_AVISO',
+      'REGISTRAR_SOLICITUD_DATOS',
+      'VER_MIS_SOLICITUDES_DATOS',
+    ];
     for (const operacion of OPERACIONES.filter((op) => !soloDeCliente.includes(op))) {
       await expect(autorizacion.exigir(actor('PROPIETARIO'), operacion)).resolves.toBeUndefined();
     }
@@ -141,9 +147,16 @@ describe('La matriz Permisos coincide con contracts/rbac.md', () => {
     ];
     // La de 004 (canal de aviso) se compara con contracts/rbac.md de 004 en test/contract/rbac-004.spec.ts.
     const DE_004 = ['GESTIONAR_CANAL_AVISO'];
+    // Las de 007 (solicitudes sobre datos personales) se comparan con su rbac.md en test/contract/rbac-007.spec.ts.
+    const DE_007 = [
+      'REGISTRAR_SOLICITUD_DATOS',
+      'VER_MIS_SOLICITUDES_DATOS',
+      'ATENDER_SOLICITUDES_DATOS',
+      'REGISTRAR_SOLICITUD_DATOS_EN_NOMBRE',
+    ];
     const cubiertas = OPERACIONES_POR_FILA.flatMap(([, operaciones]) => operaciones).sort();
     expect(cubiertas).toEqual(
-      OPERACIONES.filter((op) => !DE_002.includes(op) && !DE_004.includes(op)).sort(),
+      OPERACIONES.filter((op) => !DE_002.includes(op) && !DE_004.includes(op) && !DE_007.includes(op)).sort(),
     );
   });
 

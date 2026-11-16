@@ -92,6 +92,27 @@ module.exports = {
       to: { path: '(^|/)src/shared/lectura-plataforma\\.ts$' },
     },
     {
+      name: 'solicitudes-datos-sin-plataforma',
+      comment:
+        'El administrador de la plataforma nunca llega a las solicitudes sobre datos personales (007, FR-006, ' +
+        'research R10): el submódulo acceso-barberias/solicitudes-datos/ no usa el rol de lectura de la plataforma ' +
+        '(shared/lectura-plataforma.ts, ADR-031).',
+      severity: 'error',
+      from: { path: '(^|/)src/modules/acceso-barberias/solicitudes-datos/' },
+      to: { path: '(^|/)src/shared/lectura-plataforma\\.ts$' },
+    },
+    {
+      name: 'solicitudes-datos-sin-plataforma',
+      comment:
+        'Ninguna ruta de la plataforma (*-plataforma.controller.ts) ni carpeta plataforma/ importa el submódulo de ' +
+        'solicitudes sobre datos personales (007, FR-006).',
+      severity: 'error',
+      from: {
+        path: ['(^|/)src/modules/.+-plataforma\\.controller\\.ts$', '(^|/)src/modules/.+/plataforma/'],
+      },
+      to: { path: '(^|/)src/modules/acceso-barberias/solicitudes-datos/' },
+    },
+    {
       name: 'pasarela-solo-por-puerto',
       comment:
         'Solo pagos/infrastructure/ de M03 importa los adaptadores de la pasarela; el resto usa el puerto ' +

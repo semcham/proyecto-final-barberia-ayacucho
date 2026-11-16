@@ -67,7 +67,13 @@ export type AccionAuditada =
   // Funcionalidad 005 (research R09 y R13, FR-029): recurso `asistente:<rol>;<resultado>` y
   // `reportes:<desde>..<hasta>`. Nunca el texto de la pregunta ni de la respuesta.
   | 'ASISTENTE_CONSULTADO'
-  | 'REPORTES_CONSULTADOS';
+  | 'REPORTES_CONSULTADOS'
+  // Funcionalidad 007 (FR-009, data-model §1): recurso `solicitud_datos:<id>;<tipo>`. Nunca el detalle, la
+  // respuesta ni el motivo.
+  | 'SOLICITUD_DATOS_REGISTRADA'
+  | 'SOLICITUD_DATOS_EN_ATENCION'
+  | 'SOLICITUD_DATOS_ATENDIDA'
+  | 'SOLICITUD_DATOS_RECHAZADA';
 
 export interface EntradaAuditoria {
   accion: AccionAuditada;

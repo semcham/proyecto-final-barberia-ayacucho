@@ -20,10 +20,12 @@ import {
   TABLAS_005_CON_BARBERIA,
   TABLAS_008_CON_BARBERIA,
 } from '../../helpers/fixtures';
+import { sembrarSolicitudDatos, TABLAS_007_CON_BARBERIA } from '../../helpers/solicitudes-datos';
 import { cerrarPools, poolDe } from '../../helpers/test-db';
 
 // T090 · PR09 a nivel de base: RLS forzada en toda tabla con tenant_id, sin fugas entre barberías.
 // T013 (funcionalidad 002): tablas del catálogo, clientes y citas, y RLS de edición en tenant.
+// T004 de 007: data_subject_request (una fila por barbería y su política tenant_isolation).
 
 const DIA_MS = 24 * 60 * 60 * 1000;
 
@@ -158,6 +160,8 @@ describe('PR09 · RLS en la base de datos', () => {
       });
       // 005 (T001): una fila en cada tabla nueva del asistente.
       await sembrarFilas005({ tenantId, usuarioId: barberia.propietarioId });
+      // 007 (T004): una solicitud sobre datos personales del cliente.
+      await sembrarSolicitudDatos({ tenantId, registradaPor: usuarioClienteId as string, clienteId });
     }
 
     const seed = poolDe('seed');
@@ -288,6 +292,29 @@ describe('PR09 · RLS en la base de datos', () => {
         [[...TABLAS_005_CON_BARBERIA]],
       );
       expect(rows.map((f) => f.tabla)).toEqual([...TABLAS_005_CON_BARBERIA].sort());
+      for (const fila of rows) {
+        expect(fila.usando).toContain("current_setting('app.tenant_id'");
+        expect(fila.comprobando).toContain("current_setting('app.tenant_id'");
+      }
+    });
+  });
+
+  // T004 de 007 · Principio III: las solicitudes sobre datos personales son datos de la barbería, con tenant_id,
+  // RLS activada y forzada y la política tenant_isolation.
+  describe('tablas de 007', () => {
+    it('data_subject_request tiene tenant_id y RLS activada y forzada', () => {
+      expect(TABLAS_007_CON_BARBERIA.filter((tabla) => !tablasConTenant.includes(tabla))).toEqual([]);
+      expect(TABLAS_007_CON_BARBERIA.filter((tabla) => !tablasConRls.includes(tabla))).toEqual([]);
+    });
+
+    it('tiene la política tenant_isolation con el tenant de la transacción', async () => {
+      const { rows } = await poolDe('seed').query<{ tabla: string; usando: string; comprobando: string }>(
+        `SELECT tablename AS tabla, qual AS usando, with_check AS comprobando FROM pg_policies
+          WHERE schemaname = 'public' AND policyname = 'tenant_isolation' AND tablename = ANY($1)
+          ORDER BY tablename`,
+        [[...TABLAS_007_CON_BARBERIA]],
+      );
+      expect(rows.map((f) => f.tabla)).toEqual([...TABLAS_007_CON_BARBERIA]);
       for (const fila of rows) {
         expect(fila.usando).toContain("current_setting('app.tenant_id'");
         expect(fila.comprobando).toContain("current_setting('app.tenant_id'");

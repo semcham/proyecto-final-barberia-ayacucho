@@ -43,6 +43,13 @@ type CodigoError008 =
   | 'ADELANTO_PENDIENTE';
 /** Códigos de la funcionalidad 005 (specs/005-asistente-ia-reportes/contracts/openapi.yaml). */
 type CodigoError005 = 'CUOTA_ASISTENTE_AGOTADA' | 'ASISTENTE_NO_DISPONIBLE';
+/** Códigos de la funcionalidad 007 (specs/007-indicadores-datos-personales/contracts/openapi.yaml). */
+type CodigoError007 =
+  | 'SOLICITUD_ABIERTA'
+  | 'SOLICITUD_CERRADA'
+  | 'SOLICITUD_YA_EN_ATENCION'
+  | 'SOLICITUD_NO_ENCONTRADA'
+  | 'CLIENTE_NO_ENCONTRADO';
 export type CodigoError =
   | CuerpoError['codigo']
   | CodigoError002
@@ -50,6 +57,7 @@ export type CodigoError =
   | CodigoError003
   | CodigoError004
   | CodigoError005
+  | CodigoError007
   | CodigoError008;
 
 const BASE = '/api/v1';

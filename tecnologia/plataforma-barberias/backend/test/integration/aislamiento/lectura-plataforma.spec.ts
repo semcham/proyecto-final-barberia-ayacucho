@@ -453,6 +453,29 @@ describe('PR09 · Lectura de la plataforma (ADR-031, constitución 1.3.1)', () =
     });
   });
 
+  // T004 de 007 · FR-006 y data-model §1 de 007: el administrador de la plataforma no llega a las solicitudes sobre
+  // datos personales, ni por su rol de lectura ni por el de autenticación.
+  describe('5d. Tablas de 007', () => {
+    it.each([
+      ['SELECT id FROM data_subject_request'],
+      ['SELECT tenant_id FROM data_subject_request'],
+      ['SELECT * FROM data_subject_request'],
+    ])('%s → permiso denegado', async (consulta) => {
+      await expect(comoPlataforma((c) => c.query(consulta))).rejects.toThrow(/permission denied/);
+    });
+
+    it('barberias_plataforma y barberias_auth no tienen ningún permiso sobre data_subject_request', async () => {
+      const { rows } = await poolDe('seed').query(
+        `SELECT grantee, table_name, privilege_type FROM information_schema.table_privileges
+          WHERE grantee IN ('barberias_plataforma', 'barberias_auth') AND table_name = 'data_subject_request'
+         UNION ALL
+         SELECT grantee, table_name, privilege_type FROM information_schema.column_privileges
+          WHERE grantee IN ('barberias_plataforma', 'barberias_auth') AND table_name = 'data_subject_request'`,
+      );
+      expect(rows).toEqual([]);
+    });
+  });
+
   describe('6. barberias_app sobre las tablas de la plataforma (constitución 1.3.1)', () => {
     async function privilegiosDeTabla(tabla: string): Promise<string[]> {
       const { rows } = await poolDe('seed').query<{ privilegio: string }>(

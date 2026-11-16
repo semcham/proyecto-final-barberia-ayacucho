@@ -72,6 +72,13 @@ export const ESTADO_POR_CODIGO: Record<string, number> = {
   SIN_TIEMPO_PARA_ADELANTO: 422,
   ADELANTO_VENCIDO: 422,
   QR_REQUERIDO: 422,
+  // Funcionalidad 007 (specs/007-indicadores-datos-personales/contracts/openapi.yaml, T010). Las reglas del dominio
+  // (VALIDACION) fijan su propio 422.
+  SOLICITUD_ABIERTA: 409,
+  SOLICITUD_CERRADA: 409,
+  SOLICITUD_YA_EN_ATENCION: 409,
+  SOLICITUD_NO_ENCONTRADA: 404,
+  CLIENTE_NO_ENCONTRADO: 404,
 };
 
 function desdeHttp(estado: number): CuerpoError {

@@ -81,6 +81,19 @@ const CONTRATOS = {
     'contracts',
     'openapi.yaml',
   ),
+  // 007 (T005): solicitudes sobre datos personales e indicadores de la plataforma.
+  '007': join(
+    __dirname,
+    '..',
+    '..',
+    '..',
+    '..',
+    '..',
+    'specs',
+    '007-indicadores-datos-personales',
+    'contracts',
+    'openapi.yaml',
+  ),
 } as const;
 
 type Contrato = keyof typeof CONTRATOS;
@@ -219,6 +232,33 @@ export function erroresDeContrato005(
   cuerpo: unknown,
 ): string[] {
   return erroresDeContrato(ruta, metodo, estado, cuerpo, '005');
+}
+
+/** Igual que `erroresDeContrato`, contra el contrato de la funcionalidad 007 (indicadores y datos personales). */
+export function erroresDeContrato007(
+  ruta: string,
+  metodo: string,
+  estado: number,
+  cuerpo: unknown,
+): string[] {
+  return erroresDeContrato(ruta, metodo, estado, cuerpo, '007');
+}
+
+/**
+ * Errores de `cuerpo` frente a un esquema con nombre del contrato de 007 (p. ej. `Error`): las respuestas 400 y 422
+ * de 007 no repiten el esquema del error en cada ruta, pero usan el formato único { codigo, mensaje, detalles }.
+ */
+export function erroresDeEsquema007(nombre: string, cuerpo: unknown): string[] {
+  const { ajv, compilados } = validadorDe('007');
+  const clave = `esquema ${nombre}`;
+  let validar = compilados.get(clave);
+  if (!validar) {
+    validar = ajv.compile({ $ref: `openapi#/components/schemas/${nombre}` });
+    compilados.set(clave, validar);
+  }
+  return validar(cuerpo)
+    ? []
+    : (validar.errors ?? []).map((error) => `${error.instancePath || '/'} ${error.message ?? ''}`.trim());
 }
 
 /** Igual que `erroresDeContrato`, contra el contrato de la funcionalidad 008 (adelanto de reserva con QR). */

@@ -85,12 +85,25 @@ describe('Permisos', () => {
   it('el propietario puede todas las operaciones protegidas salvo las solo de cliente', () => {
     const negadas = OPERACIONES.filter((operacion) => !Permisos.permite('PROPIETARIO', operacion));
     // 004 (US4): el canal de aviso es del propio cliente.
-    expect(negadas).toEqual(['CAMBIAR_BARBERIA', 'GESTIONAR_CANAL_AVISO']);
+    // 007 (FR-005): el propietario no registra ni ve solicitudes sobre su propia cuenta.
+    expect(negadas).toEqual([
+      'CAMBIAR_BARBERIA',
+      'GESTIONAR_CANAL_AVISO',
+      'REGISTRAR_SOLICITUD_DATOS',
+      'VER_MIS_SOLICITUDES_DATOS',
+    ]);
   });
 
   it('el barbero solo ve su usuario y su barbería y cierra su sesión', () => {
     const permitidas = OPERACIONES.filter((operacion) => Permisos.permite('BARBERO', operacion));
-    expect(permitidas).toEqual(['VER_USUARIO_ACTUAL', 'CERRAR_SESION', 'VER_BARBERIA']);
+    // 007 (FR-002): además registra y ve sus propias solicitudes sobre datos personales.
+    expect(permitidas).toEqual([
+      'VER_USUARIO_ACTUAL',
+      'CERRAR_SESION',
+      'VER_BARBERIA',
+      'REGISTRAR_SOLICITUD_DATOS',
+      'VER_MIS_SOLICITUDES_DATOS',
+    ]);
   });
 
   it('el cliente solo ve su usuario, cierra su sesión, cambia de barbería y elige su canal de aviso', () => {
@@ -100,6 +113,9 @@ describe('Permisos', () => {
       'CERRAR_SESION',
       'CAMBIAR_BARBERIA',
       'GESTIONAR_CANAL_AVISO',
+      // 007 (FR-001): registra y ve sus propias solicitudes sobre datos personales.
+      'REGISTRAR_SOLICITUD_DATOS',
+      'VER_MIS_SOLICITUDES_DATOS',
     ]);
   });
 });

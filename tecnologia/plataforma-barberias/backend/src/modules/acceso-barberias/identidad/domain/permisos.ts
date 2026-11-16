@@ -23,6 +23,11 @@ export const OPERACIONES = [
   // Funcionalidad 004 (specs/004-notificaciones-reprogramacion/contracts/rbac.md): canal de aviso y consentimiento
   // de WhatsApp del propio cliente.
   'GESTIONAR_CANAL_AVISO',
+  // Funcionalidad 007 (specs/007-indicadores-datos-personales/contracts/rbac.md): solicitudes sobre datos personales.
+  'REGISTRAR_SOLICITUD_DATOS',
+  'VER_MIS_SOLICITUDES_DATOS',
+  'ATENDER_SOLICITUDES_DATOS',
+  'REGISTRAR_SOLICITUD_DATOS_EN_NOMBRE',
 ] as const;
 export type Operacion = (typeof OPERACIONES)[number];
 
@@ -42,6 +47,12 @@ const MATRIZ: Readonly<Record<Operacion, readonly CodigoRol[]>> = {
   BUSCAR_CLIENTES: ['PROPIETARIO'],
   REGISTRAR_CLIENTE_PRESENCIAL: ['PROPIETARIO'],
   GESTIONAR_CANAL_AVISO: ['CLIENTE'],
+  // 007: el cliente y el barbero registran sobre sus propios datos y ven las suyas; el propietario atiende y registra
+  // en nombre de un cliente. El propietario sobre su propia cuenta queda fuera de 007 (FR-005).
+  REGISTRAR_SOLICITUD_DATOS: ['BARBERO', 'CLIENTE'],
+  VER_MIS_SOLICITUDES_DATOS: ['BARBERO', 'CLIENTE'],
+  ATENDER_SOLICITUDES_DATOS: ['PROPIETARIO'],
+  REGISTRAR_SOLICITUD_DATOS_EN_NOMBRE: ['PROPIETARIO'],
 };
 
 /** Regla de dominio pura de autorización por rol (R22). La aplican el caso de uso y el guard HTTP. */

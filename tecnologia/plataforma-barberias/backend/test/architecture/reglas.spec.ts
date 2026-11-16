@@ -68,6 +68,8 @@ describe('Reglas de arquitectura (PR14)', () => {
       'nadie-llama-a-m04',
       'ia-solo-por-puerto',
       'reportes-sin-ia',
+      // Funcionalidad 007 (T006).
+      'solicitudes-datos-sin-plataforma',
     ])('%s', (regla) => {
       expect(salida).toContain(regla);
     });
@@ -141,6 +143,18 @@ describe('Reglas de arquitectura (PR14)', () => {
       // Usos permitidos: M02 y M03 por su index, y el módulo de M04 enlaza el adaptador con el puerto.
       expect(lineas.some((l) => l.includes('usa-catalogo-citas-api.ts'))).toBe(false);
       expect(lineas.some((l) => l.includes('asistente-reportes.module.ts'))).toBe(false);
+    });
+
+    // T006 de 007 · FR-006: el administrador de la plataforma nunca llega a las solicitudes sobre datos personales.
+    // El submódulo no usa el rol de lectura de la plataforma, y ninguna ruta ni carpeta de la plataforma lo importa.
+    it('cada violación de 007 se atribuye a su archivo del fixture, y el uso permitido no se señala', () => {
+      const lineas = salida.split(/\r?\n/);
+      const enLinea = (regla: string, archivo: string) =>
+        lineas.some((linea) => linea.includes(regla) && linea.includes(archivo));
+      expect(enLinea('solicitudes-datos-sin-plataforma', 'solicitudes-con-plataforma.ts')).toBe(true);
+      expect(enLinea('solicitudes-datos-sin-plataforma', 'solicitudes-plataforma.controller.ts')).toBe(true);
+      expect(enLinea('solicitudes-datos-sin-plataforma', 'plataforma/usa-solicitudes.ts')).toBe(true);
+      expect(lineas.some((l) => l.includes('solicitudes-datos-permitido.controller.ts'))).toBe(false);
     });
   });
 });

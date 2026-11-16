@@ -22,6 +22,11 @@ Las lecturas (catálogo, agenda, historial, citas, usuarios y suscripción) no s
 estado. Una barbería **suspendida por el administrador** (tenant `SUSPENDIDA`, FR-034) no llega a
 esta tabla: sus usuarios no pueden iniciar sesión (001).
 
+**Nota de 007 (sin cambiar ninguna regla):** las solicitudes sobre datos personales (registrar, ver las propias,
+atender y registrar en nombre de un cliente) valen en **todos** los estados de la suscripción, porque son un derecho
+del titular. Sus casos de uso no llaman a `exigirOperacion` y no tienen fila en las tablas de este documento
+(specs/007-indicadores-datos-personales/contracts/rbac.md).
+
 ## 2. Casos de uso que llaman a `SuscripcionesApi.exigirOperacion`
 
 | Caso de uso                                                | Módulo          | Acción                |

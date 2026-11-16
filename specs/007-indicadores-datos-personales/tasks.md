@@ -49,12 +49,12 @@ description: "Tareas de la funcionalidad 007: indicadores y datos personales"
 
 ### Pruebas de US1 (escribir primero, deben fallar) ⚠️
 
-- [ ] T001 [P] [US1] Crear `backend/test/unit/solicitudes-datos/solicitud-datos.spec.ts` (FR-004, FR-011; data-model §1):
+- [X] T001 [P] [US1] Crear `backend/test/unit/solicitudes-datos/solicitud-datos.spec.ts` (FR-004, FR-011; data-model §1):
   - transiciones `RECIBIDA → EN_ATENCION → ATENDIDA | RECHAZADA` y las directas desde `RECIBIDA`; desde un estado final → `SOLICITUD_CERRADA`;
   - plazo de 10 días hábiles (lunes a viernes) desde la fecha local: registrada un lunes, un viernes, un sábado, a fin de mes y a fin de año;
   - "vencida" cuando está abierta y `venceEl` es anterior a hoy;
   - reglas del dominio (422): rectificación sin detalle; `ATENDIDA` sin respuesta; `RECHAZADA` sin motivo.
-- [ ] T002 [P] [US1] Crear `backend/test/integration/solicitudes-datos/solicitudes-datos.spec.ts` (US1-1 a US1-9; FR-001 a FR-008, FR-010, FR-011; SC-001):
+- [X] T002 [P] [US1] Crear `backend/test/integration/solicitudes-datos/solicitudes-datos.spec.ts` (US1-1 a US1-9; FR-001 a FR-008, FR-010, FR-011; SC-001):
   - el cliente con sesión y el barbero registran sobre sus propios datos (201, `RECIBIDA`, `venceEl` correcto);
   - el propietario registra una en nombre de un cliente presencial (`enNombre = true`); con un cliente de otra barbería → 404;
   - "mías" devuelve solo las del titular; la de otra persona por id → 404;
@@ -69,22 +69,22 @@ description: "Tareas de la funcionalidad 007: indicadores y datos personales"
   - el sistema no borra ni exporta nada al atender una eliminación: los conteos de clientes, citas y usuarios no cambian.
 
   El borde "barbero que deja de ser personal" es una **asunción sin prueba propia** (spec, casos de borde): sale de la desactivación de usuarios de 001.
-- [ ] T003 [P] [US1] Crear `backend/test/integration/solicitudes-datos/solicitudes-datos-auditoria.spec.ts` (FR-009; SC-001):
+- [X] T003 [P] [US1] Crear `backend/test/integration/solicitudes-datos/solicitudes-datos-auditoria.spec.ts` (FR-009; SC-001):
   - las cuatro acciones (`SOLICITUD_DATOS_REGISTRADA`, `_EN_ATENCION`, `_ATENDIDA`, `_RECHAZADA`), cada una con el actor y el recurso `solicitud_datos:<id>;<tipo>`;
   - un texto marcador en el detalle, la respuesta y el motivo **no** aparece en `audit_log` ni en los registros capturados de la aplicación (patrón de `registro-asistente` de 005).
-- [ ] T004 [P] [US1] Crear `backend/test/integration/aislamiento/aislamiento-007.spec.ts` con el patrón de `aislamiento-005.spec.ts` (PR09; FR-010; SC-002):
+- [X] T004 [P] [US1] Crear `backend/test/integration/aislamiento/aislamiento-007.spec.ts` con el patrón de `aislamiento-005.spec.ts` (PR09; FR-010; SC-002):
   - con el tenant de A no se lee, cambia ni inserta (`WITH CHECK`) una fila de B en `data_subject_request`;
   - agregar `data_subject_request` a la lista de `backend/test/integration/aislamiento/rls.spec.ts`;
   - en `backend/test/integration/aislamiento/lectura-plataforma.spec.ts`: `barberias_plataforma` y `barberias_auth` no tienen ningún permiso sobre `data_subject_request` (solo se suman aserciones).
-- [ ] T005 [P] [US1] Crear `backend/test/contract/rbac-007.spec.ts`, que lee [contracts/rbac.md](contracts/rbac.md) y ejecuta cada celda (PR08; FR-006):
+- [X] T005 [P] [US1] Crear `backend/test/contract/rbac-007.spec.ts`, que lee [contracts/rbac.md](contracts/rbac.md) y ejecuta cada celda (PR08; FR-006):
   - usa una **lista de filas implementadas**, como `rbac-005`: en la fase 1, las seis filas de solicitudes × 5 columnas; la fila de indicadores se suma en la fase 2b (T029);
   - comprueba que cada fila implementada existe en el contrato.
 
   Crear también `backend/test/contract/solicitudes-datos.contract.spec.ts` contra [contracts/openapi.yaml](contracts/openapi.yaml): 201, 200, 400, 409 (con `detalles[0].solicitudId`) y 422, con el formato `{codigo, mensaje, detalles}`.
-- [ ] T006 [P] [US1] Prueba de la regla nueva **`solicitudes-datos-sin-plataforma`** de PR14:
+- [X] T006 [P] [US1] Prueba de la regla nueva **`solicitudes-datos-sin-plataforma`** de PR14:
   - en `backend/test/architecture/fixture/src/modules/acceso-barberias/`, dos archivos que la violan: uno en `solicitudes-datos/` que importa `shared/lectura-plataforma.ts`, y un `*-plataforma.controller.ts` que importa `solicitudes-datos/`;
   - en `backend/test/architecture/reglas.spec.ts`: la regla detecta las dos violaciones del fixture y el código real no tiene ninguna.
-- [ ] T007 [P] [US1] Crear `frontend/test/pages/mis-datos.spec.tsx` y `frontend/test/pages/solicitudes-datos.spec.tsx` (Vitest + MSW; constitución, accesibilidad):
+- [X] T007 [P] [US1] Crear `frontend/test/pages/mis-datos.spec.tsx` y `frontend/test/pages/solicitudes-datos.spec.tsx` (Vitest + MSW; constitución, accesibilidad):
   - el cliente (`/mis-datos`) y el barbero (`/app/mis-datos`) registran una solicitud y ven su lista con el estado, el plazo y la respuesta; la rectificación sin detalle muestra el error junto al campo; el 409 muestra la existente; estado vacío;
   - el propietario (`/app/solicitudes-datos`) ve la bandeja, filtra por estado, inicia, atiende con respuesta o rechaza con motivo; los mensajes se anuncian en `aria-live`;
   - el propietario no ve "Mis datos", y el barbero y el cliente no ven la bandeja;
@@ -92,32 +92,32 @@ description: "Tareas de la funcionalidad 007: indicadores y datos personales"
 
 ### Implementación de US1
 
-- [ ] T008 [US1] Crear la migración `backend/migrations/NNNN_solicitudes_datos.ts`, con el número siguiente libre, según data-model §1:
+- [X] T008 [US1] Crear la migración `backend/migrations/NNNN_solicitudes_datos.ts`, con el número siguiente libre, según data-model §1:
   - `data_subject_request` con sus `CHECK`, sus FK compuestas `(tenant_id, …)` y `rlsPorTenant()`;
   - el índice único parcial de una abierta por titular y tipo, y el índice de la bandeja;
   - para `barberias_app`: `SELECT`, `INSERT` y `UPDATE` solo de las columnas de la transición, sin `DELETE`;
   - sumar la tabla a `backend/src/shared/persistence/db-types.ts`.
-- [ ] T009 [US1] Crear el dominio en `sd/domain/`:
+- [X] T009 [US1] Crear el dominio en `sd/domain/`:
   - `solicitud-datos.ts` (entidad y transiciones);
   - `dias-habiles.ts` (10 días hábiles con `FechaLocal`, sin feriados);
   - `errores.ts` (`SolicitudAbierta` 409, `SolicitudCerrada` 409, `SolicitudNoEncontrada` 404, `ValidacionSolicitud` 422 con `estadoHttp = 422` y el campo en `detalles[0]`).
-- [ ] T010 [US1] Sumar las cuatro operaciones de [contracts/rbac.md](contracts/rbac.md) a la matriz de `m01/identidad/domain/permisos.ts` (`OPERACIONES` y `MATRIZ`) y las cuatro acciones de auditoría a `backend/src/shared/audit/audit-log.ts` (`AccionAuditada`). Sumar los códigos `SOLICITUD_ABIERTA`, `SOLICITUD_CERRADA` y `SOLICITUD_NO_ENCONTRADA` a `backend/src/host/error.filter.ts` (`ESTADO_POR_CODIGO`).
-- [ ] T011 [US1] Crear el puerto `sd/application/ports/solicitudes-repository.ts` y su adaptador `sd/infrastructure/kysely-solicitudes-repository.ts`:
+- [X] T010 [US1] Sumar las cuatro operaciones de [contracts/rbac.md](contracts/rbac.md) a la matriz de `m01/identidad/domain/permisos.ts` (`OPERACIONES` y `MATRIZ`) y las cuatro acciones de auditoría a `backend/src/shared/audit/audit-log.ts` (`AccionAuditada`). Sumar los códigos `SOLICITUD_ABIERTA`, `SOLICITUD_CERRADA` y `SOLICITUD_NO_ENCONTRADA` a `backend/src/host/error.filter.ts` (`ESTADO_POR_CODIGO`).
+- [X] T011 [US1] Crear el puerto `sd/application/ports/solicitudes-repository.ts` y su adaptador `sd/infrastructure/kysely-solicitudes-repository.ts`:
   - consultas siempre en la transacción con el tenant del token;
   - transiciones con `FOR UPDATE`;
   - el 409 de unicidad se traduce desde la violación del índice parcial (`23505`).
-- [ ] T012 [US1] Crear los casos de uso en `sd/application/`:
+- [X] T012 [US1] Crear los casos de uso en `sd/application/`:
   - `registrar-solicitud.ts` (cliente o barbero sobre sí mismo);
   - `registrar-en-nombre.ts` (propietario, por un cliente de su barbería);
   - `mis-solicitudes.ts`, `bandeja-solicitudes.ts`, `iniciar-atencion.ts` y `cerrar-solicitud.ts`.
 
   Cada uno exige su operación y audita en la misma transacción, sin texto. **Ninguno** llama a `SuscripcionesApi.exigirOperacion`, porque valen en todos los estados. La zona horaria sale de `BarberiasApi`, y el titular y su nombre, de `clientes` y de `identidad` (llamadas internas de M01).
-- [ ] T013 [US1] Crear `sd/presentation/solicitudes-datos.controller.ts` con las seis rutas de [contracts/openapi.yaml](contracts/openapi.yaml):
+- [X] T013 [US1] Crear `sd/presentation/solicitudes-datos.controller.ts` con las seis rutas de [contracts/openapi.yaml](contracts/openapi.yaml):
   - DTO que **rechaza con 400** `VALIDACION` los campos desconocidos (como `tenant` o `barberia`), el tipo o resultado desconocido y los largos excedidos (detalle de más de 500, respuesta de más de 1 000, motivo fuera de 5 a 300), igual que dice el contrato;
   - las reglas del dominio responden 422 (T009);
   - registrar el submódulo en `m01/acceso-barberias.module.ts`.
-- [ ] T014 [US1] Sumar la regla **`solicitudes-datos-sin-plataforma`** a `backend/.dependency-cruiser.cjs`, con el comentario de su origen (FR-006, research R10).
-- [ ] T015 [P] [US1] Crear las pantallas:
+- [X] T014 [US1] Sumar la regla **`solicitudes-datos-sin-plataforma`** a `backend/.dependency-cruiser.cjs`, con el comentario de su origen (FR-006, research R10).
+- [X] T015 [P] [US1] Crear las pantallas:
   - `frontend/src/api/solicitudes-datos.ts` (tipos generados con `gen:api`, que suma `specs/007-indicadores-datos-personales/contracts/openapi.yaml` → `src/api/schema-007.d.ts`);
   - `frontend/src/pages/cliente/MisDatos.tsx` y `frontend/src/pages/panel/MisDatos.tsx`;
   - `frontend/src/pages/panel/SolicitudesDatos.tsx`;
@@ -125,7 +125,7 @@ description: "Tareas de la funcionalidad 007: indicadores y datos personales"
   - el enlace "Mis datos" en `frontend/src/pages/cliente/MisCitas.tsx`, solo con sesión de cliente.
 
   Todo con sus `.module.css` y los tokens de tema.
-- [ ] T016 [US1] Actualizar **en este commit** los documentos de US1 (principio XI), sin cambiar todavía los estados de RF ni de HU (fase 4):
+- [X] T016 [US1] Actualizar **en este commit** los documentos de US1 (principio XI), sin cambiar todavía los estados de RF ni de HU (fase 4):
   - `docs/02-arquitectura-software/multi-tenancy-y-datos.md`: `data_subject_request` y §7 (eliminación a mano; anonimización como evolución, no construida);
   - `docs/02-arquitectura-software/seguridad-y-privacidad.md`: la matriz rol × operación con las cuatro operaciones y §5 (derechos ARCO "implementado en parte": sin el propietario ni la oposición);
   - `docs/02-arquitectura-software/api-rest.md`: las seis rutas;

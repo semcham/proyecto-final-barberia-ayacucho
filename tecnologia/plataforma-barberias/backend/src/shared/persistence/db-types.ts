@@ -636,6 +636,32 @@ export interface AssistantQuestionTable {
   tokens_out: ColumnType<number | null, number | null | undefined, never>;
 }
 
+/** 007 (migración 0032): solicitud sobre datos personales. Sin DELETE; UPDATE solo de la transición. */
+export interface DataSubjectRequestTable {
+  id: string;
+  tenant_id: string;
+  kind: ColumnType<
+    'ACCESO' | 'RECTIFICACION' | 'ELIMINACION',
+    'ACCESO' | 'RECTIFICACION' | 'ELIMINACION',
+    never
+  >;
+  subject_kind: ColumnType<'CLIENTE' | 'BARBERO', 'CLIENTE' | 'BARBERO', never>;
+  customer_id: ColumnType<string | null, string | null, never>;
+  staff_membership_id: ColumnType<string | null, string | null, never>;
+  status: 'RECIBIDA' | 'EN_ATENCION' | 'ATENDIDA' | 'RECHAZADA';
+  detail: ColumnType<string | null, string | null, never>;
+  response: string | null;
+  rejection_reason: string | null;
+  registered_by: ColumnType<string, string, never>;
+  on_behalf: ColumnType<boolean, boolean, never>;
+  received_at: ColumnType<Date, Date, never>;
+  /** Fecha local (`date`): se lee como texto YYYY-MM-DD. */
+  due_on: ColumnType<string, string, never>;
+  started_at: Date | null;
+  closed_at: Date | null;
+  closed_by: string | null;
+}
+
 export interface Database {
   tenant: TenantTable;
   role: RoleTable;
@@ -682,4 +708,5 @@ export interface Database {
   booking_deposit_payment: BookingDepositPaymentTable;
   assistant_quota: AssistantQuotaTable;
   assistant_question: AssistantQuestionTable;
+  data_subject_request: DataSubjectRequestTable;
 }

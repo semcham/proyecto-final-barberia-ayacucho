@@ -43,6 +43,10 @@ const Reportes = lazy(() => import('./pages/panel/Reportes'));
 const Asistente = lazy(() => import('./pages/cliente/Asistente'));
 // Funcionalidad 008 (T033): el cliente paga el adelanto de su cita.
 const PagarAdelanto = lazy(() => import('./pages/cliente/PagarAdelanto'));
+// Funcionalidad 007 (T015): solicitudes sobre datos personales del cliente, del barbero y bandeja del propietario.
+const MisDatos = lazy(() => import('./pages/cliente/MisDatos'));
+const MisDatosBarbero = lazy(() => import('./pages/panel/MisDatos'));
+const SolicitudesDatos = lazy(() => import('./pages/panel/SolicitudesDatos'));
 const ReservarProtegida = lazy(() =>
   import('./pages/publico/Reservar').then((m) => ({ default: m.ReservarProtegida })),
 );
@@ -171,6 +175,14 @@ export function RutasApp() {
             }
           />
           <Route
+            path="/mis-datos"
+            element={
+              <RutaProtegida roles={['CLIENTE']}>
+                <MisDatos />
+              </RutaProtegida>
+            }
+          />
+          <Route
             path="/app"
             element={
               <RutaProtegida roles={['PROPIETARIO', 'BARBERO']}>
@@ -216,6 +228,22 @@ export function RutasApp() {
               element={
                 <RutaProtegida roles={['PROPIETARIO']}>
                   <Reportes />
+                </RutaProtegida>
+              }
+            />
+            <Route
+              path="mis-datos"
+              element={
+                <RutaProtegida roles={['BARBERO']}>
+                  <MisDatosBarbero />
+                </RutaProtegida>
+              }
+            />
+            <Route
+              path="solicitudes-datos"
+              element={
+                <RutaProtegida roles={['PROPIETARIO']}>
+                  <SolicitudesDatos />
                 </RutaProtegida>
               }
             />

@@ -88,8 +88,18 @@ import {
 import { BarberiasPlataformaLectura } from './barberias/application/plataforma/ports/barberias-plataforma';
 import { BarberiasPlataformaKysely } from './barberias/infrastructure/plataforma/barberias-plataforma';
 import { BarberiasPlataformaController } from './barberias/presentation/barberias-plataforma.controller';
+import { BandejaSolicitudes } from './solicitudes-datos/application/bandeja-solicitudes';
+import { CerrarSolicitud } from './solicitudes-datos/application/cerrar-solicitud';
+import { ContextoSolicitudes } from './solicitudes-datos/application/comun';
+import { IniciarAtencion } from './solicitudes-datos/application/iniciar-atencion';
+import { MisSolicitudes } from './solicitudes-datos/application/mis-solicitudes';
+import { SolicitudesRepository } from './solicitudes-datos/application/ports/solicitudes-repository';
+import { RegistrarEnNombre } from './solicitudes-datos/application/registrar-en-nombre';
+import { RegistrarSolicitud, RegistroDeSolicitud } from './solicitudes-datos/application/registrar-solicitud';
+import { KyselySolicitudesRepository } from './solicitudes-datos/infrastructure/kysely-solicitudes-repository';
+import { SolicitudesDatosController } from './solicitudes-datos/presentation/solicitudes-datos.controller';
 
-/** M01 Acceso y barberías (submódulos identidad y barberias). */
+/** M01 Acceso y barberías (submódulos identidad, barberias, clientes y, desde 007, solicitudes-datos). */
 @Module({
   // M01 → M03 está permitido por la matriz de dependencias; solo se usa su interfaz pública.
   imports: [SuscripcionesPagosModule],
@@ -105,6 +115,8 @@ import { BarberiasPlataformaController } from './barberias/presentation/barberia
     PlataformaAuthController,
     // Administración de barberías por la plataforma (003, US5).
     BarberiasPlataformaController,
+    // Solicitudes sobre datos personales (007, US1).
+    SolicitudesDatosController,
   ],
   providers: [
     // Puertos → adaptadores
@@ -169,6 +181,16 @@ import { BarberiasPlataformaController } from './barberias/presentation/barberia
     ListarBarberiasPlataforma,
     SuspenderBarberia,
     ReactivarBarberia,
+    // Solicitudes sobre datos personales (007, US1; FR-001 a FR-011). Sin la política de la suscripción.
+    { provide: SolicitudesRepository, useClass: KyselySolicitudesRepository },
+    ContextoSolicitudes,
+    RegistroDeSolicitud,
+    RegistrarSolicitud,
+    RegistrarEnNombre,
+    MisSolicitudes,
+    BandejaSolicitudes,
+    IniciarAtencion,
+    CerrarSolicitud,
   ],
   exports: [ValidarSolicitud, ValidarSolicitudPlataforma, BarberiasApi, ClientesApi, PersonalApi],
 })

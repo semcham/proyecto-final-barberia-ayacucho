@@ -607,6 +607,19 @@ Detalle completo en el [modelo de datos de 005](../../specs/005-asistente-ia-rep
 Ningún otro rol de base (`barberias_auth`, `barberias_publico`, `barberias_plataforma`) tiene permisos sobre ellas.
 PR09: `aislamiento-005` y `rls` (en verde).
 
+### 3.5 Tablas de la funcionalidad 007 (M01, submódulo `solicitudes-datos`)
+
+Detalle completo en el [modelo de datos de 007](../../specs/007-indicadores-datos-personales/data-model.md) (migración
+`0032`). Es un dato de la barbería, con `rlsPorTenant()`.
+
+| Tabla                  | Tenant y RLS | Restricciones clave |
+| ---------------------- | ------------ | ------------------- |
+| `data_subject_request` | Sí           | Solicitud de acceso, rectificación o eliminación de un titular (cliente o barbero) sobre sus datos en **una** barbería. El titular va con claves foráneas compuestas `(tenant_id, customer_id)` o `(tenant_id, staff_membership_id)`, uno y solo uno (`CHECK`). Estados `RECIBIDA`, `EN_ATENCION`, `ATENDIDA` y `RECHAZADA`; la rectificación exige detalle, `ATENDIDA` exige respuesta y `RECHAZADA`, motivo de 5 a 300 (`CHECK`). **Una abierta por titular y tipo** (índice único parcial). Plazo interno `due_on` de 10 días hábiles. El texto (detalle, respuesta, motivo) solo vive aquí: la auditoría no lo copia. La aplicación puede `SELECT`, `INSERT` y `UPDATE` solo de las columnas de la transición, **sin `DELETE`** |
+
+Ningún otro rol de base (`barberias_auth`, `barberias_publico`, `barberias_plataforma`) tiene permisos sobre ella: el
+administrador de la plataforma nunca llega a las solicitudes (FR-006 de 007, regla de PR14
+`solicitudes-datos-sin-plataforma`). PR09: `aislamiento-007`, `rls` y `lectura-plataforma` (en verde).
+
 ## 4. Claves, restricciones e índices
 
 | Tabla                        | Clave primaria            | Claves foráneas                                                      | Restricciones                                                                                                                                                                                                                                                                 | Índices (propuestos)                                                  |
@@ -626,6 +639,7 @@ PR09: `aislamiento-005` y `rls` (en verde).
 | `provider_event`             | `event_id`                | —                                                                    | Clave primaria **(idempotencia)**; solo `INSERT … ON CONFLICT DO NOTHING`                                                                                                                                                                                                     | —                                                                     |
 | `appointment_status_history` | `id`                      | `tenant_id`, `appointment_id`                                        | Solo inserciones (sin actualizar ni borrar)                                                                                                                                                                                                                                   | `(tenant_id, appointment_id, changed_at)`                             |
 | `role`                       | `code`                    | —                                                                    | Catálogo global de solo lectura                                                                                                                                                                                                                                               | —                                                                     |
+| `data_subject_request` (007) | `id`                      | `(tenant_id, customer_id)`, `(tenant_id, staff_membership_id)`       | Un titular y solo uno; detalle, respuesta y motivo según el tipo y el estado (`CHECK`); **una abierta por titular y tipo** (`UNIQUE` parcial sobre los estados abiertos)                                                                                                     | `(tenant_id, status, due_on)` (bandeja)                               |
 
 **Integridad entre tenants.** Para que una cita no mezcle entidades de tenants distintos, las claves foráneas incluyen `tenant_id` (por ejemplo, `FOREIGN KEY (tenant_id, barber_id) REFERENCES barber (tenant_id, id)`), lo que requiere `UNIQUE (tenant_id, id)` en las tablas referenciadas.
 
@@ -670,7 +684,7 @@ Con 200 solicitudes simultáneas por el mismo horario, **exactamente una** inser
 | Recuperación                 | RPO ≤ 24 h, RTO ≤ 4 h (propuesta por validar, EQ-22); simulacro mensual                                            |
 | Respaldos y datos personales | Cifrados y con acceso restringido; retención definida                                                              |
 | Datos mínimos                | Solo nombre, correo, número de WhatsApp (si el cliente lo da y acepta) y datos de la cita                          |
-| Eliminación                  | _(planificado, 007)_ Anonimización de datos del cliente salvo obligaciones de conservación; atiende RF32           |
+| Eliminación                  | **A mano** (007, US1): el cliente o el barbero registra una solicitud de eliminación (`data_subject_request`) y el propietario la atiende con las pantallas que ya existen; el sistema solo registra su respuesta (qué se borró y qué se conserva por obligación, como el consentimiento o la auditoría) y **no borra ni anonimiza nada por su cuenta** (FR-008 de 007). La **anonimización del perfil** queda como evolución futura, **no construida** |
 | Crecimiento                  | Índices por `(tenant_id, ...)`; particionar `appointment` por fecha cuando supere un volumen a definir con pruebas |
 
 ## 8. Ruta de evolución para tenants grandes

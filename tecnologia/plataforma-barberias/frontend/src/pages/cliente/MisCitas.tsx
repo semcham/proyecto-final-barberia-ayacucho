@@ -122,6 +122,10 @@ export default function MisCitas() {
           <Link to="/asistente" className={clasesBoton({ variante: 'secundario' })}>
             Preguntar al asistente
           </Link>
+          {/* 007 (T015): solicitudes sobre sus datos personales; esta pantalla ya es solo del cliente con sesión. */}
+          <Link to="/mis-datos" className={clasesBoton({ variante: 'secundario' })}>
+            Mis datos
+          </Link>
         </div>
       )}
 

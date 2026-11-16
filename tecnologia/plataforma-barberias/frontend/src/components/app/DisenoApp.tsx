@@ -34,6 +34,9 @@ const DESTINOS: Destino[] = [
   { a: '/app/suscripcion', etiqueta: 'Suscripción', icono: 'dinero', roles: ['PROPIETARIO'] },
   // Funcionalidad 005 (T023): reportes del período, solo para el propietario.
   { a: '/app/reportes', etiqueta: 'Reportes', icono: 'grafico', roles: ['PROPIETARIO'] },
+  // Funcionalidad 007 (T015): solicitudes sobre datos personales. El barbero, las suyas; el propietario, la bandeja.
+  { a: '/app/solicitudes-datos', etiqueta: 'Solicitudes de datos', icono: 'escudo', roles: ['PROPIETARIO'] },
+  { a: '/app/mis-datos', etiqueta: 'Mis datos', icono: 'escudo', roles: ['BARBERO'] },
 ];
 
 // Secciones anunciadas que aún no existen; el bloque "Próximamente" solo se muestra si hay alguna.
