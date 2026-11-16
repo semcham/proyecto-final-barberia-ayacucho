@@ -1,6 +1,38 @@
 <!--
 Sync Impact Report
 ==================
+Version change: 1.6.0 → 1.7.0
+Bump rationale: MINOR. Se amplía de forma material la guía de la excepción "operaciones de la
+plataforma" del principio III: para los indicadores agregados de RF31, el rol de lectura de la
+plataforma puede leer vistas de solo conteo sobre citas y membresías, sin ninguna columna de barbería
+ni de persona, que pertenecen a un rol propio sin inicio de sesión ni BYPASSRLS y que ningún rol con
+inicio de sesión hereda. El rol de la plataforma sigue sin permisos sobre las tablas de citas, clientes
+y usuarios. No elimina ni redefine nada. Aprobada por el responsable el 2026-11-16 (fase 2a de la
+funcionalidad 007), junto con la revisión de ADR-031. Las vistas se construyen en la fase 2c de 007.
+
+Modified principles:
+  - III. Aislamiento por barbería, excepción "operaciones de la plataforma": conteos de uso (RF31) y
+    su razón.
+Added principles: ninguno
+Added sections: ninguna
+Removed sections: ninguna
+
+Templates requiring updates:
+  ✅ .specify/templates/plan-template.md — puerta III (vistas de solo conteo; versión 1.7.0)
+  ✅ .specify/templates/spec-template.md y tasks-template.md — revisados; sin cambios necesarios
+  ✅ docs/01-analisis-de-sistema/07-decisiones-arquitectonicas.md — revisión de ADR-031, aprobada
+  ✅ docs/02-arquitectura-software/multi-tenancy-y-datos.md y seguridad-y-privacidad.md — la
+     excepción, "aprobada, por construir en la fase 2c"
+  ✅ docs/trazabilidad.md — la enmienda y la revisión de ADR-031 en la fila de 007
+  ✅ docs/05-gestion/03-sdd-spec-kit.md — versión de la constitución
+  ✅ specs/001 a 006 y 008 — sin cambios: ninguna lee conteos de citas ni de membresías
+
+Follow-up TODOs: construir las vistas, el rol barberias_conteos y la prueba de permisos exactos
+(funcionalidad 007, fase 2c). La aclaración PATCH de login_attempt (aprobada el mismo día) se aplica
+cuando la fase 3 de 007 esté en verde, como dice su borrador: hoy login_attempt sigue guardando la IP
+en claro.
+
+--- Historial: informe de la versión 1.6.0 ---
 Version change: 1.5.0 → 1.6.0
 Bump rationale: MINOR. Se amplía la lista de datos mínimos que pueden llevar los mensajes del principio
 VII: los avisos del adelanto de reserva (principio V 1.5.0, ADR-033) pueden llevar el monto del
@@ -354,7 +386,17 @@ intercambiables.
   lectura y con permisos por columna sobre esas tablas. Cada escritura MUST afectar a una sola
   barbería, identificada por el administrador en la ruta, en una transacción con ese tenant fijado
   y con RLS, y MUST auditarse en esa barbería. MUST NOT ver ni modificar citas, clientes, catálogo
-  ni usuarios. Las notificaciones del proveedor de pagos y los trabajos en segundo plano MAY
+  ni usuarios. **Conteos de uso (RF31).** Para los indicadores agregados de la plataforma, el rol de
+  lectura de la plataforma MAY leer **vistas de solo conteo** sobre citas y membresías. Esas vistas
+  MUST entregar solo números agregados sin ninguna columna de barbería ni de persona (solo el mes y
+  el estado de la cita, y el tipo de membresía), MUST NOT permitir obtener una fila de una cita, de un
+  cliente ni de un usuario, y MUST pertenecer a un rol propio sin inicio de sesión y sin
+  `BYPASSRLS`, con `SELECT` solo sobre las columnas que cuentan y una política de lectura propia.
+  **Ningún rol con inicio de sesión MUST heredar ese rol** (se concede, si hace falta para asignar la
+  propiedad, sin herencia). El rol de lectura de la plataforma MUST NOT recibir permisos sobre las
+  tablas de citas, clientes ni usuarios, y los roles de la aplicación y de las lecturas públicas
+  MUST NOT leer esas vistas. Una prueba de permisos exactos MUST comprobar todo lo anterior. La
+  decisión se registra en ADR-031. Las notificaciones del proveedor de pagos y los trabajos en segundo plano MAY
   localizar el tenant con esa misma lectura, por una clave exacta, nunca con datos del cliente.
   Los trabajos en segundo plano MAY además **listar** los elementos pendientes de sus propias tablas
   leyendo solo columnas técnicas (identificador, `tenant_id`, estado y fechas), sin leer su
@@ -399,7 +441,10 @@ a ninguna, y porque los pagos confirmados por el proveedor y los vencimientos ll
 limita a metadatos de pago y estado, sin `BYPASSRLS`, y toda escritura sigue protegida por la RLS de
 la barbería afectada. La cuarta existe porque el recordatorio del día debe poder responderse desde el
 celular sin iniciar sesión (HU28), incluso por un cliente presencial sin cuenta; se limita a una
-cita, una acción y un uso, verifica la firma antes de leer nada y no omite RLS.
+cita, una acción y un uso, verifica la firma antes de leer nada y no omite RLS. La lectura de
+conteos existe porque RF31 pide indicadores de uso de todas las barberías y el administrador no
+pertenece a ninguna; se limita a números agregados, sin filas ni identificadores de personas, y no da
+al rol de la plataforma ningún permiso sobre las tablas.
 
 ### IV. Citas sin duplicados garantizadas por la base de datos
 
@@ -586,4 +631,4 @@ implementación. La excepción existe solo porque la plataforma de CI impone la 
   alternativa más simple descartada, y registrarse como ADR.
 - La guía de ejecución del proyecto está en `README.md` y en `docs/`.
 
-**Version**: 1.6.0 | **Ratified**: 2026-10-15 | **Last Amended**: 2026-11-12
+**Version**: 1.7.0 | **Ratified**: 2026-10-15 | **Last Amended**: 2026-11-16

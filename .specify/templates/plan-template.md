@@ -40,7 +40,7 @@
 
 _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
-Gates from `.specify/memory/constitution.md` (v1.6.0). Mark each ✅ / ❌ (justify ❌ in
+Gates from `.specify/memory/constitution.md` (v1.7.0). Mark each ✅ / ❌ (justify ❌ in
 Complexity Tracking and record an ADR):
 
 - [ ] **I. Six modules**: work fits in M01–M06 (no new module); cross-module calls only via
@@ -58,7 +58,11 @@ Complexity Tracking and record an ADR):
       tenant that never works on barbershop operations) reads across barbershops only through a
       read-only, column-level role without `BYPASSRLS`; each write targets one barbershop named in the
       route, with its tenant fixed, RLS and audit in that barbershop; never appointments, clients,
-      catalog or users; provider webhooks and background jobs may locate the tenant through that same
+      catalog or users, except usage counts for RF31: count-only views owned by a NOLOGIN
+      NOBYPASSRLS role (granted to no login role with inheritance), already aggregated with no
+      barbershop or person column; the platform role reads only those views and has no permission on
+      appointment, client or user tables; the app and public roles cannot read them; an exact-permissions
+      test proves it (amendment 1.7.0, ADR-031); provider webhooks and background jobs may locate the tenant through that same
       read by exact key, never from client input; background jobs may also list pending items of their
       own tables reading only technical columns (id, `tenant_id`, status, dates), never their content,
       and process each one with its tenant and RLS; only the named platform tables (`provider_event`,

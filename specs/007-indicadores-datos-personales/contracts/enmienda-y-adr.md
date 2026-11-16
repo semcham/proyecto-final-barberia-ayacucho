@@ -1,11 +1,16 @@
 # Borradores para revisión del responsable: enmienda de la constitución y revisión de ADR-031
 
-> **Estado: BORRADOR, no aplicado.** Cuatro textos: (1) enmienda 1.7.0, (2) revisión de ADR-031, (2b) nota de
-> ADR-031 sobre el registro de indicadores, que se aplica en la fase 2b sin depender de (1) ni de (2), y (3)
-> aclaración PATCH de US3. Nada de esto está en `.specify/memory/constitution.md` ni en
-> `docs/01-analisis-de-sistema/07-decisiones-arquitectonicas.md`. Se aplica solo con la aprobación del
-> responsable, como primera tarea de la fase de US2 (principio XI y Governance). Si no se aprueba, US2 se
-> construye con el **corte**: solo barberías por estado (research R03), y estos textos quedan sin aplicar.
+> **Estado (2026-11-16): aprobados por el responsable tal como están.**
+>
+> - **(1) Enmienda 1.7.0:** aplicada en `.specify/memory/constitution.md` y en la puerta III de
+>   `.specify/templates/plan-template.md` (fase 2a).
+> - **(2) Revisión de ADR-031:** aplicada en `docs/01-analisis-de-sistema/07-decisiones-arquitectonicas.md`, con
+>   las vistas "por construir en la fase 2c" (fase 2a).
+> - **(2b) Nota sobre el registro de indicadores:** se aplica en la fase 2b (T039).
+> - **(3) Aclaración PATCH de US3:** aprobada; se aplica en la fase 3 (T065), cuando US3 esté en verde, como dice
+>   su propio texto. Hasta entonces, `login_attempt` sigue guardando la IP en claro y el texto vigente es el cierto.
+>
+> **No hay corte:** las fases 2b, 2c y 3 se construyen. Abajo quedan los textos tal como se aprobaron.
 
 ## 1. Enmienda MINOR 1.7.0 del principio III (US2)
 

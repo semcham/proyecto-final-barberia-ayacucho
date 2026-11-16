@@ -4,7 +4,7 @@
 
 **Created**: 2026-11-15
 
-**Status**: Aclarada (2026-11-15), con plan y tareas; sin código. La fase 2c depende de la enmienda 1.7.0 del principio III.
+**Status**: En implementación. Fase 1 (US1) construida (2026-11-16). Fase 2a hecha (2026-11-16): la enmienda 1.7.0 del principio III y la revisión de ADR-031 están aprobadas y aplicadas, así que **no hay corte**: las fases 2b, 2c y 3 se construyen.
 
 **Input**: User description: "Funcionalidad 007 "Indicadores y datos personales" (módulos M06 y M01). Versión MÍNIMA para la entrega del 18 de noviembre; alcance cortable por historia. US1 (P1) RF32: registro y seguimiento de solicitudes de acceso, rectificación y eliminación de datos personales, con estado y registro, atendidas A MANO por la barbería o el administrador según corresponda, sin exportación automática; quién crea, quién atiende y qué ve cada rol sale de los roles y el aislamiento existentes. US2 (P1) RF31: indicadores agregados de uso para el administrador de la plataforma (barberías activas, citas por mes, usuarios), sin datos personales de clientes, con el rol de lectura de la plataforma (ADR-031), nunca BYPASSRLS. US3 (P3, la primera que se recorta): login_attempt con hash de la IP con sal, como action_link_attempt, con su migración. Condiciones: constitución, aislamiento, matriz de permisos, auditoría, no cambiar otras funcionalidades; lo no construido se documenta como no construido."
 
@@ -94,7 +94,7 @@ Hoy, cada intento fallido de inicio de sesión (del personal, de los clientes y 
 - **Eliminación con obligaciones de conservación:** la respuesta debe decir qué se conserva y por qué (por ejemplo, la evidencia del consentimiento, la auditoría o los datos de pagos de la suscripción).
 - **Solicitud del propietario sobre sus propios datos:** no construida en 007 (FR-005); si la pide, se le indica que no está disponible en esta versión.
 - **Solicitud de un barbero que deja de ser personal:** la solicitud ya registrada sigue visible para el propietario y conserva su estado; el barbero desactivado ya no puede entrar a verla. **Asunción sin prueba propia:** sale del comportamiento existente de la desactivación de usuarios (001), que ya impide su ingreso.
-- **Enmienda no aprobada a tiempo:** se aplica el criterio de corte de FR-012 (solo barberías por estado), y las citas por mes y los usuarios se documentan como no construidos.
+- **Enmienda no aprobada a tiempo:** se aplica el criterio de corte de FR-012 (solo barberías por estado), y las citas por mes y los usuarios se documentan como no construidos. **No aplica:** la enmienda se aprobó el 2026-11-16.
 - **Indicadores sin datos:** una plataforma sin citas en un mes muestra ese mes en cero, no un error.
 - **Indicadores y barberías suspendidas:** se cuentan en su estado; sus citas y usuarios cuentan igual en los totales.
 - **Texto de la solicitud con datos de terceros:** el texto libre se guarda como dato de la solicitud, con su aislamiento, y nunca se copia a la auditoría ni a los registros de la aplicación.
@@ -181,4 +181,5 @@ Aquí se registra cada recorte aplicado (por ejemplo, US3 completa, o las citas 
 - **Alcance decidido en la aclaración del 2026-11-15** (no es un recorte del código, porque todavía no hay código):
   las solicitudes del **propietario** sobre su propia cuenta quedan fuera de 007 (FR-005), y con ello HU27 queda
   "parcial"; la anonimización del perfil queda como evolución futura (FR-008); la auditoría de HU26, fuera de 007.
-- **Recortes:** ninguno por ahora (2026-11-15): no hay código. El primero previsto es el criterio de corte de FR-012.
+- **Recortes:** ninguno. El 2026-11-16 el responsable aprobó la enmienda 1.7.0, la revisión de ADR-031 y la aclaración
+  PATCH de US3: el criterio de corte de FR-012 **no se aplica**, y las fases 2b, 2c y 3 se construyen.

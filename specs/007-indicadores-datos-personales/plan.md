@@ -76,7 +76,8 @@ Decisiones y alternativas en [research.md](research.md); modelo en [data-model.m
 
 _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
-Gates de `.specify/memory/constitution.md` (v1.6.0):
+Gates de `.specify/memory/constitution.md` (v1.6.0 al planificar; desde la fase 2a, el 2026-11-16, rige la v1.7.0, que
+resuelve la condición de III):
 
 - [x] **I. Seis módulos:** no hay módulo nuevo.
   - US1 es el submódulo `solicitudes-datos` de M01.
@@ -139,7 +140,9 @@ contradicción con la constitución en lo que se construye sin la enmienda.**
 | **4 · Cierre** | Solo **estados y totales** en los documentos (lista abajo), guía rápida y suite completa | las fases construidas | No |
 
 Si se recorta algo, se registra como desviación en `spec.md` y en la fila de 007 de `docs/trazabilidad.md`
-(FR-023).
+(FR-023). **Decisión del 2026-11-16 (fase 2a):** el responsable aprobó la enmienda 1.7.0, la revisión de ADR-031 y
+la aclaración PATCH de US3, así que **no hay corte**: las fases 2b, 2c y 3 se construyen. La columna "Se puede
+recortar" queda como el plan de contingencia original.
 
 **Documentos en el mismo cambio (principio XI, análisis C1):** cada fase actualiza en su propio commit los
 documentos que su cambio afecta: la constitución, el ADR, `seguridad-y-privacidad.md`, `multi-tenancy-y-datos.md`,

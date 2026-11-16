@@ -15,7 +15,7 @@ description: "Tareas de la funcionalidad 007: indicadores y datos personales"
 - **Cada fase actualiza en su commit los documentos que su cambio afecta** (principio XI): la constitución, el ADR, la seguridad, los datos, la API, los componentes y su parte de la trazabilidad. La fase 4 solo cambia **estados y totales**. Así, si se corta una fase, ninguna anterior deja documentos a medias.
 - Cada fase termina con una tarea de **verificación** (suite y CI en verde) y una de **commit y push del responsable**.
 - Las tareas marcadas **Del responsable** las hace el usuario: aprobar la enmienda y el ADR, hacer el commit y el push, las revisiones manuales, el paso manual del rol en un volumen existente y la variable de su `.env`. Las demás las hace el agente, sin commit ni push.
-- **Fases recortables:** **2c** (si la enmienda no se aprueba o se complica, US2 se cierra con 2b) y **3** (la primera que se recorta). Cada recorte se registra como desviación en `spec.md` y en la fila de 007 de `docs/trazabilidad.md`.
+- **Fases recortables:** **2c** (si la enmienda no se aprueba o se complica, US2 se cierra con 2b) y **3** (la primera que se recorta). Cada recorte se registra como desviación en `spec.md` y en la fila de 007 de `docs/trazabilidad.md`. **Decisión del responsable (2026-11-16): no hay corte.** La enmienda, la revisión de ADR-031 y la aclaración PATCH se aprobaron, y las fases 2b, 2c y 3 se construyen.
 - **Migraciones sin número fijo:** cada una toma el **número siguiente libre al implementarla** (`NNNN_…`). El migrador no admite migraciones fuera de orden, y 2c y 3 pueden hacerse en cualquier orden. La última antes de 007 es `0031_asistente`.
 
 ## Format: `[ID] [P?] [Story] Description`
@@ -32,10 +32,10 @@ description: "Tareas de la funcionalidad 007: indicadores y datos personales"
 | Fase | Contenido | Historia | Tareas | Total | ¿Se recorta? |
 | ---- | --------- | -------- | ------ | ----- | ------------ |
 | 1 | Solicitudes sobre datos personales | US1 | T001–T019 | 19 | No |
-| 2a | Revisión y aplicación de la enmienda y de ADR-031 | — | T020–T026 | 7 | — (decide si hay 2c) |
+| 2a | Revisión y aplicación de la enmienda y de ADR-031 | — | T020–T026 | 7 | — (decidido: hay 2c) |
 | 2b | Indicadores: barberías por estado | US2 | T027–T042 | 16 | No |
-| 2c | Indicadores: citas por mes y usuarios (vistas de conteo) | US2 | T043–T056 | 14 | **Sí** |
-| 3 | `login_attempt` sin IP legible | US3 | T057–T069 | 13 | **Sí (la primera)** |
+| 2c | Indicadores: citas por mes y usuarios (vistas de conteo) | US2 | T043–T056 | 14 | No (sin corte, 2026-11-16) |
+| 3 | `login_attempt` sin IP legible | US3 | T057–T069 | 13 | No (sin corte, 2026-11-16) |
 | 4 | Cierre: estados, totales y guía rápida | — | T070–T079 | 10 | No |
 | | | | | **79** | |
 
@@ -149,26 +149,28 @@ description: "Tareas de la funcionalidad 007: indicadores y datos personales"
 
 **Purpose**: decidir si se construye la fase 2c. Los borradores están en [contracts/enmienda-y-adr.md](contracts/enmienda-y-adr.md). **Nada se aplica sin la aprobación del responsable.** Las fases 2b y 3 no dependen de esta fase. **Ningún documento queda a medias:** si hay aprobación, todo dice "aprobado, por construir en la fase 2c"; si hay corte, todo dice "no construido".
 
-- [ ] T020 **Del responsable:** revisar los cuatro borradores de [contracts/enmienda-y-adr.md](contracts/enmienda-y-adr.md) y decidir, con fecha:
+- [X] T020 **Del responsable:** revisar los cuatro borradores de [contracts/enmienda-y-adr.md](contracts/enmienda-y-adr.md) y decidir, con fecha:
   - (1) la enmienda MINOR 1.7.0;
   - (2) la revisión de ADR-031;
   - (2b) la nota de ADR-031 sobre el registro de indicadores: se aplica en la fase 2b sin depender de (1) ni de (2);
   - (3) el texto de la aclaración PATCH de US3: se aplica en T065.
 
   Por cada uno: **aprobado**, aprobado con cambios o rechazado. Si (1) o (2) no se aprueban a tiempo, o la discusión se complica, se aplica el **corte**: no se hace la fase 2c.
-- [ ] T021 Si (1) se aprobó: aplicar la enmienda 1.7.0 en `.specify/memory/constitution.md`:
+
+  **Decidido el 2026-11-16:** (1), (2) y (3) **aprobados tal como están**, sin corte. El responsable no nombró por separado (2b), la nota sobre el registro: queda por confirmar al aplicarla en T039 (ver el informe de la fase 2a).
+- [X] T021 Si (1) se aprobó: aplicar la enmienda 1.7.0 en `.specify/memory/constitution.md`:
   - el texto del principio III y su razón;
   - el Sync Impact Report, con la versión anterior al historial;
   - la puerta III de `.specify/templates/plan-template.md`;
   - la versión de la constitución en `docs/05-gestion/03-sdd-spec-kit.md`.
 
   Si se aprobó con cambios, aplicar el texto final del responsable.
-- [ ] T022 Si (2) se aprobó: agregar la revisión al final de ADR-031 en `docs/01-analisis-de-sistema/07-decisiones-arquitectonicas.md`, con el estado **"aprobada; las vistas se construyen en la fase 2c de 007"**, y en su fila de la tabla resumen.
-- [ ] T023 Si se aprobaron (1) y (2): actualizar en este mismo commit los documentos afectados por la enmienda (principio XI), con las vistas como **"aprobadas, por construir en la fase 2c"**:
+- [X] T022 Si (2) se aprobó: agregar la revisión al final de ADR-031 en `docs/01-analisis-de-sistema/07-decisiones-arquitectonicas.md`, con el estado **"aprobada; las vistas se construyen en la fase 2c de 007"**, y en su fila de la tabla resumen.
+- [X] T023 Si se aprobaron (1) y (2): actualizar en este mismo commit los documentos afectados por la enmienda (principio XI), con las vistas como **"aprobadas, por construir en la fase 2c"**:
   - `docs/02-arquitectura-software/multi-tenancy-y-datos.md`: la excepción de la plataforma con los conteos de uso;
   - `docs/02-arquitectura-software/seguridad-y-privacidad.md`: la excepción y las amenazas;
   - `docs/trazabilidad.md`: la enmienda y la revisión de ADR-031 en la fila de 007.
-- [ ] T024 Si se aplicó el corte (aquí, o más tarde durante la fase 2c): registrar la desviación "US2 sin citas por mes ni usuarios (enmienda no aprobada o fase 2c cortada), fecha y motivo":
+- [X] T024 **No aplica (2026-11-16): no hubo corte.** Si se aplicó el corte (aquí, o más tarde durante la fase 2c): registrar la desviación "US2 sin citas por mes ni usuarios (enmienda no aprobada o fase 2c cortada), fecha y motivo":
   - en `specs/007-indicadores-datos-personales/spec.md` (§ Desviaciones) y en la fila de 007 de `docs/trazabilidad.md`;
   - si T021 a T023 ya se aplicaron, dejar en esos documentos las vistas como **"aprobadas, no construidas"**, sin texto a medias;
   - marcar T043–T056 como **no se hacen** en este archivo.
@@ -244,7 +246,7 @@ description: "Tareas de la funcionalidad 007: indicadores y datos personales"
 
 ---
 
-## Fase 2c: User Story 2 - Indicadores: citas por mes y usuarios (Priority: P1) ✂️ RECORTABLE
+## Fase 2c: User Story 2 - Indicadores: citas por mes y usuarios (Priority: P1) — se construye (sin corte, decisión del 2026-11-16)
 
 **Goal**: sumar las citas por mes de los últimos 12 meses y los usuarios por tipo, desde dos vistas de solo conteo. Su dueño es el rol `barberias_conteos`, y el rol de la plataforma no recibe ningún permiso sobre las tablas.
 
@@ -316,7 +318,7 @@ description: "Tareas de la funcionalidad 007: indicadores y datos personales"
 
 ---
 
-## Fase 3: User Story 3 - `login_attempt` sin IP legible (Priority: P3) ✂️ RECORTABLE (la primera)
+## Fase 3: User Story 3 - `login_attempt` sin IP legible (Priority: P3) — se construye (sin corte, decisión del 2026-11-16)
 
 **Goal**: los intentos fallidos de inicio de sesión (personal, clientes y administrador) guardan el origen solo como `SHA-256(INTENTOS_SAL_IP ‖ ip)`; el límite se comporta igual.
 
