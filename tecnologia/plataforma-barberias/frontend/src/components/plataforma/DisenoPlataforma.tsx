@@ -22,6 +22,8 @@ const DESTINOS: { a: string; etiqueta: string; icono: NombreIcono; etiquetaCorta
   },
   // US5 (T099).
   { a: '/plataforma/barberias', etiqueta: 'Barberías', icono: 'tienda' },
+  // 007 (T038): indicadores agregados de uso de todas las barberías.
+  { a: '/plataforma/indicadores', etiqueta: 'Indicadores', icono: 'grafico' },
 ];
 
 export function DisenoPlataforma() {

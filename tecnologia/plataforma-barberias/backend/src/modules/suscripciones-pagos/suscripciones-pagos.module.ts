@@ -31,6 +31,7 @@ import { SuscripcionesPorVencer } from './suscripciones/application/ports/suscri
 import { VencerSuscripciones } from './suscripciones/application/vencer-suscripciones';
 import { KyselySuscripcionRepository } from './suscripciones/infrastructure/kysely-suscripcion-repository';
 import { SuscripcionesPorVencerPlataforma } from './suscripciones/infrastructure/plataforma/suscripciones-por-vencer';
+import { BarberiasPorEstadoIndicador } from './suscripciones/infrastructure/plataforma/barberias-por-estado-indicador';
 import { NotificacionesController } from './suscripciones/presentation/notificaciones.controller';
 import { SuscripcionController } from './suscripciones/presentation/suscripcion.controller';
 import {
@@ -106,6 +107,8 @@ import { AdelantoCitaController } from './adelantos/presentation/adelanto-cita.c
     { provide: EventoProveedorRepository, useClass: KyselyEventoProveedorRepository },
     { provide: UbicacionDePagos, useClass: UbicacionDePagosPlataforma },
     { provide: SuscripcionesPorVencer, useClass: SuscripcionesPorVencerPlataforma },
+    // 007 (fase 2b): fuente de indicadores de la plataforma (barberías por estado); la registra el host.
+    BarberiasPorEstadoIndicador,
     { provide: PaymentGateway, inject: [Configuracion, Clock], useFactory: crearPasarela },
     AutorizacionSuscripciones,
     PlanVigente,
@@ -163,6 +166,7 @@ import { AdelantoCitaController } from './adelantos/presentation/adelanto-cita.c
   ],
   exports: [
     SuscripcionesApi,
+    BarberiasPorEstadoIndicador,
     ConciliarPagos,
     VencerSuscripciones,
     ExpirarTransferencias,

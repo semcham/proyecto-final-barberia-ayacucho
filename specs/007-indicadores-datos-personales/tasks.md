@@ -191,7 +191,7 @@ description: "Tareas de la funcionalidad 007: indicadores y datos personales"
 
 ### Pruebas (escribir primero, deben fallar) ⚠️
 
-- [ ] T027 [P] [US2] Crear `backend/test/integration/plataforma/indicadores-plataforma.spec.ts` (US2-1, US2-4 a US2-6; FR-012 a FR-016; SC-004, SC-005):
+- [X] T027 [P] [US2] Crear `backend/test/integration/plataforma/indicadores-plataforma.spec.ts` (US2-1, US2-4 a US2-6; FR-012 a FR-016; SC-004, SC-005):
   - barberías sembradas en `TRIAL`, `ACTIVE`, `PAST_DUE`, `EXPIRED` y suspendidas: `barberias.activas`, `suspendidas` y `porEstadoDeSuscripcion` exactos;
   - el cuerpo no contiene ningún uuid, nombre ni slug de las barberías sembradas, ni correos o teléfonos;
   - `calculadoEn` presente;
@@ -199,40 +199,40 @@ description: "Tareas de la funcionalidad 007: indicadores y datos personales"
   - con un token de barbería → 401; sin token → 401;
   - cada consulta deja una fila `ADMIN_INDICADORES_CONSULTADOS` en `platform_audit_log`;
   - responde en ≤ 3 s con el volumen sembrado de `escalado`.
-- [ ] T028 [P] [US2] Crear `backend/test/unit/shared/registro-indicadores.spec.ts`:
+- [X] T028 [P] [US2] Crear `backend/test/unit/shared/registro-indicadores.spec.ts`:
   - el registro junta las fuentes registradas, sin reglas;
   - una fuente repetida al registrar → error al arrancar;
   - si una fuente falla, la consulta falla entera (sin resultados parciales que parezcan ceros).
-- [ ] T029 [P] [US2] Sumar la fila `GET /plataforma/indicadores` a la lista de filas implementadas de `backend/test/contract/rbac-007.spec.ts` (✓ solo con el token de la plataforma; 401 en las demás columnas) y crear `backend/test/contract/indicadores.contract.spec.ts` contra [contracts/openapi.yaml](contracts/openapi.yaml) (esquema `Indicadores`, con y sin `citasPorMes` y `usuarios`).
-- [ ] T030 [P] [US2] Prueba de la regla nueva **`indicadores-solo-por-registro`**, con la convención `src/modules/**/infrastructure/plataforma/*-indicador.ts`:
+- [X] T029 [P] [US2] Sumar la fila `GET /plataforma/indicadores` a la lista de filas implementadas de `backend/test/contract/rbac-007.spec.ts` (✓ solo con el token de la plataforma; 401 en las demás columnas) y crear `backend/test/contract/indicadores.contract.spec.ts` contra [contracts/openapi.yaml](contracts/openapi.yaml) (esquema `Indicadores`, con y sin `citasPorMes` y `usuarios`).
+- [X] T030 [P] [US2] Prueba de la regla nueva **`indicadores-solo-por-registro`**, con la convención `src/modules/**/infrastructure/plataforma/*-indicador.ts`:
   - en `backend/test/architecture/fixture/`, dos violaciones: un archivo de otro módulo (por ejemplo, de M04) que importa un `*-indicador.ts` de M02, y `shared/indicadores/` importando un módulo;
   - y un caso permitido: el `index.ts` del propio módulo exporta su `*-indicador.ts`, y `host/indicadores.ts` lo importa;
   - en `backend/test/architecture/reglas.spec.ts`: la regla detecta las dos violaciones, deja pasar el caso permitido y el código real no tiene ninguna.
-- [ ] T031 [P] [US2] Crear `frontend/test/pages/plataforma-indicadores.spec.tsx`:
+- [X] T031 [P] [US2] Crear `frontend/test/pages/plataforma-indicadores.spec.tsx`:
   - la pantalla de indicadores del administrador muestra las barberías activas, suspendidas y por estado, en tablas con encabezados, y la hora del cálculo;
   - sin `citasPorMes` ni `usuarios`, esas secciones no aparecen (ni como cero);
   - solo con sesión de la plataforma.
 
 ### Implementación
 
-- [ ] T032 [US2] Crear la migración `backend/migrations/NNNN_auditoria_indicadores.ts`, con el número siguiente libre, que amplía el `CHECK` de `platform_audit_log.action` con `ADMIN_INDICADORES_CONSULTADOS` (y la deja como estaba en `down`). Sumar la acción a `ACCIONES_ACCESO_ADMIN` y a `AccionAccesoAdmin` en `m01/identidad/application/ports/plataforma.ts`.
-- [ ] T033 [US2] Crear `backend/src/shared/indicadores/` (M06, sin reglas de negocio):
+- [X] T032 [US2] Crear la migración `backend/migrations/NNNN_auditoria_indicadores.ts`, con el número siguiente libre, que amplía el `CHECK` de `platform_audit_log.action` con `ADMIN_INDICADORES_CONSULTADOS` (y la deja como estaba en `down`). Sumar la acción a `ACCIONES_ACCESO_ADMIN` y a `AccionAccesoAdmin` en `m01/identidad/application/ports/plataforma.ts`.
+- [X] T033 [US2] Crear `backend/src/shared/indicadores/` (M06, sin reglas de negocio):
   - `fuente-de-indicador.ts` (interfaz con su nombre y `calcular()`);
   - `registro-de-indicadores.ts` (registra, rechaza repetidas y junta);
   - exportarlo en `backend/src/shared/index.ts`.
-- [ ] T034 [US2] Crear la fuente de M03 `backend/src/modules/suscripciones-pagos/suscripciones/infrastructure/plataforma/barberias-por-estado-indicador.ts`:
+- [X] T034 [US2] Crear la fuente de M03 `backend/src/modules/suscripciones-pagos/suscripciones/infrastructure/plataforma/barberias-por-estado-indicador.ts`:
   - con `LecturaPlataforma`, `tenant.status` × `subscription.status`;
   - "activa" según research R04;
   - solo números;
   - exportarla en el `index.ts` de M03.
-- [ ] T035 [US2] Crear `backend/src/host/indicadores.ts`, que registra en el `RegistroDeIndicadores` las fuentes `*-indicador.ts` de los módulos al arrancar (patrón de `host/tareas.ts`), y conectarlo en `backend/src/host/app.module.ts`.
-- [ ] T036 [US2] Crear `m01/identidad/application/plataforma/consultar-indicadores.ts` (usa el registro de M06 y audita en `platform_audit_log`) y `m01/identidad/presentation/indicadores-plataforma.controller.ts` (`GET /plataforma/indicadores` con `@Plataforma()`), y registrarlos en `m01/acceso-barberias.module.ts`.
-- [ ] T037 [US2] Sumar la regla **`indicadores-solo-por-registro`** a `backend/.dependency-cruiser.cjs`: `from` es cualquier archivo de `src/` salvo `host/indicadores.ts` y el `index.ts` del mismo módulo; `to` es `src/modules/[^/]+/.*infrastructure/plataforma/[^/]+-indicador\.ts$`. Y `shared/indicadores/` no importa `src/modules/`.
-- [ ] T038 [P] [US2] Crear la pantalla:
+- [X] T035 [US2] Crear `backend/src/host/indicadores.ts`, que registra en el `RegistroDeIndicadores` las fuentes `*-indicador.ts` de los módulos al arrancar (patrón de `host/tareas.ts`), y conectarlo en `backend/src/host/app.module.ts`.
+- [X] T036 [US2] Crear `m01/identidad/application/plataforma/consultar-indicadores.ts` (usa el registro de M06 y audita en `platform_audit_log`) y `m01/identidad/presentation/indicadores-plataforma.controller.ts` (`GET /plataforma/indicadores` con `@Plataforma()`), y registrarlos en `m01/acceso-barberias.module.ts`.
+- [X] T037 [US2] Sumar la regla **`indicadores-solo-por-registro`** a `backend/.dependency-cruiser.cjs`: `from` es cualquier archivo de `src/` salvo `host/indicadores.ts` y el `index.ts` del mismo módulo; `to` es `src/modules/[^/]+/.*infrastructure/plataforma/[^/]+-indicador\.ts$`. Y `shared/indicadores/` no importa `src/modules/`.
+- [X] T038 [P] [US2] Crear la pantalla:
   - `frontend/src/api/indicadores.ts`;
   - `frontend/src/pages/plataforma/Indicadores.tsx` (tablas sin gráficos; las secciones de citas y usuarios solo si vienen);
   - la ruta `/plataforma/indicadores` y su entrada en `frontend/src/components/plataforma/DisenoPlataforma.tsx`.
-- [ ] T039 [US2] Aplicar la **nota de ADR-031 sobre el registro de indicadores** (borrador 2b de [contracts/enmienda-y-adr.md](contracts/enmienda-y-adr.md), aprobada en T020) en `docs/01-analisis-de-sistema/07-decisiones-arquitectonicas.md`. No depende de la enmienda ni del corte de 2c. Actualizar en este mismo commit:
+- [X] T039 [US2] Aplicar la **nota de ADR-031 sobre el registro de indicadores** (borrador 2b de [contracts/enmienda-y-adr.md](contracts/enmienda-y-adr.md), aprobada en T020) en `docs/01-analisis-de-sistema/07-decisiones-arquitectonicas.md`. No depende de la enmienda ni del corte de 2c. Actualizar en este mismo commit:
   - `docs/02-arquitectura-software/componentes-arquitectonicos.md` y `estilo-arquitectonico.md`: el registro de M06 y la regla 6 (el host registra las fuentes);
   - `docs/02-arquitectura-software/api-rest.md`: la ruta de indicadores;
   - `docs/02-arquitectura-software/seguridad-y-privacidad.md`: la fila de indicadores en la matriz;

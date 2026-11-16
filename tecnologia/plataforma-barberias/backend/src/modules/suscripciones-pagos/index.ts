@@ -15,6 +15,9 @@ export { ConciliarPagos } from './pagos/application/conciliar-pagos';
 export { ExpirarTransferencias } from './pagos/application/expirar-transferencias';
 export { VencerSuscripciones } from './suscripciones/application/vencer-suscripciones';
 export { AvisarFinDePrueba } from './suscripciones/application/avisar-fin-de-prueba';
+// 007 (fase 2b, research R01): fuente de indicadores de la plataforma. Solo la registra host/indicadores.ts
+// (regla de PR14 indicadores-solo-por-registro).
+export { BarberiasPorEstadoIndicador } from './suscripciones/infrastructure/plataforma/barberias-por-estado-indicador';
 // Funcionalidad 008 (research R01): lo único del adelanto que ven M02 y el host.
 export {
   AdelantosApi,

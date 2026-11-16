@@ -70,6 +70,7 @@ describe('Reglas de arquitectura (PR14)', () => {
       'reportes-sin-ia',
       // Funcionalidad 007 (T006).
       'solicitudes-datos-sin-plataforma',
+      'indicadores-solo-por-registro',
     ])('%s', (regla) => {
       expect(salida).toContain(regla);
     });
@@ -155,6 +156,20 @@ describe('Reglas de arquitectura (PR14)', () => {
       expect(enLinea('solicitudes-datos-sin-plataforma', 'solicitudes-plataforma.controller.ts')).toBe(true);
       expect(enLinea('solicitudes-datos-sin-plataforma', 'plataforma/usa-solicitudes.ts')).toBe(true);
       expect(lineas.some((l) => l.includes('solicitudes-datos-permitido.controller.ts'))).toBe(false);
+    });
+
+    // T030 de 007 · research R01: las fuentes de indicadores (infrastructure/plataforma/*-indicador.ts) solo las
+    // importan el index.ts de su módulo y host/indicadores.ts, y el registro de M06 no conoce los módulos.
+    it('cada violación de la fase 2b de 007 se atribuye a su archivo, y los usos permitidos no se señalan', () => {
+      const lineas = salida.split(/\r?\n/);
+      const enLinea = (regla: string, archivo: string) =>
+        lineas.some((linea) => linea.includes(regla) && linea.includes(archivo));
+      expect(enLinea('indicadores-solo-por-registro', 'usa-indicador-m02.ts')).toBe(true);
+      expect(enLinea('indicadores-solo-por-registro', 'shared/indicadores/usa-modulo.ts')).toBe(true);
+      expect(lineas.some((l) => l.includes('host/indicadores.ts'))).toBe(false);
+      // El index.ts de M02 exporta su fuente: como origen, no se señala (sí aparece como destino de la violación de
+      // shared/indicadores/usa-modulo.ts).
+      expect(enLinea('indicadores-solo-por-registro', 'catalogo-citas/index.ts →')).toBe(false);
     });
   });
 });

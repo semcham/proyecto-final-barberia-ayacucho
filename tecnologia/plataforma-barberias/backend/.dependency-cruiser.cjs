@@ -113,6 +113,33 @@ module.exports = {
       to: { path: '(^|/)src/modules/acceso-barberias/solicitudes-datos/' },
     },
     {
+      name: 'indicadores-solo-por-registro',
+      comment:
+        'Las fuentes de indicadores de la plataforma (src/modules/**/infrastructure/plataforma/*-indicador.ts, 007, ' +
+        'research R01 y nota de ADR-031) solo las importan host/indicadores.ts, que las registra en el registro de ' +
+        'M06, y el index.ts o el *.module.ts de su propio módulo, que las exporta y las provee. Ningún otro archivo ' +
+        'llama a la fuente de otro módulo.',
+      severity: 'error',
+      from: {
+        path: '(^|/)src/',
+        pathNot: [
+          '(^|/)src/host/indicadores\\.ts$',
+          '(^|/)src/modules/[^/]+/index\\.ts$',
+          '(^|/)src/modules/[^/]+/[^/]+\\.module\\.ts$',
+        ],
+      },
+      to: { path: '(^|/)src/modules/[^/]+/.*infrastructure/plataforma/[^/]+-indicador\\.ts$' },
+    },
+    {
+      name: 'indicadores-solo-por-registro',
+      comment:
+        'El registro de indicadores de M06 (shared/indicadores/) no conoce los módulos: solo junta lo que el host ' +
+        'le registra (007, research R01).',
+      severity: 'error',
+      from: { path: '(^|/)src/shared/indicadores/' },
+      to: { path: '(^|/)src/modules/' },
+    },
+    {
       name: 'pasarela-solo-por-puerto',
       comment:
         'Solo pagos/infrastructure/ de M03 importa los adaptadores de la pasarela; el resto usa el puerto ' +

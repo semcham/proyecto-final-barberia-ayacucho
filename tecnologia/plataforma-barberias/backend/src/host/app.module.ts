@@ -10,6 +10,7 @@ import { AlmacenLimitesCompartido, CacheCompartida, SharedModule } from '../shar
 import { AuthGuard } from './auth.guard';
 import { ErrorFilter } from './error.filter';
 import { SuscripcionesDeEventos } from './eventos';
+import { IndicadoresDeLaPlataforma } from './indicadores';
 import { RolesGuard } from './roles.guard';
 import { SaludController } from './salud.controller';
 import { TareasProgramadas } from './tareas';
@@ -48,6 +49,8 @@ import { TenantHeaderInterceptor } from './tenant-header.interceptor';
     { provide: APP_FILTER, useClass: ErrorFilter },
     TareasProgramadas,
     SuscripcionesDeEventos,
+    // 007 (fase 2b): registra las fuentes de los indicadores de la plataforma en el registro de M06.
+    IndicadoresDeLaPlataforma,
   ],
 })
 export class AppModule {}

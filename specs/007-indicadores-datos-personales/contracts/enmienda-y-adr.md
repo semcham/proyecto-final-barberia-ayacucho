@@ -6,7 +6,8 @@
 >   `.specify/templates/plan-template.md` (fase 2a).
 > - **(2) Revisión de ADR-031:** aplicada en `docs/01-analisis-de-sistema/07-decisiones-arquitectonicas.md`, con
 >   las vistas "por construir en la fase 2c" (fase 2a).
-> - **(2b) Nota sobre el registro de indicadores:** se aplica en la fase 2b (T039).
+> - **(2b) Nota sobre el registro de indicadores:** aprobada el 2026-11-16 y aplicada en ADR-031 en la fase 2b
+>   (T039).
 > - **(3) Aclaración PATCH de US3:** aprobada; se aplica en la fase 3 (T065), cuando US3 esté en verde, como dice
 >   su propio texto. Hasta entonces, `login_attempt` sigue guardando la IP en claro y el texto vigente es el cierto.
 >

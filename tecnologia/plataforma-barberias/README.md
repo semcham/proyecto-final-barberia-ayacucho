@@ -15,8 +15,8 @@ funcionalidades:
 - [005 · Asistente de IA y reportes](../../specs/005-asistente-ia-reportes/spec.md) (el asistente usa el proveedor de IA
   **falso** en las pruebas y en Docker Compose; OpenRouter solo en desarrollo, fuera de Compose);
 - [007 · Indicadores y datos personales](../../specs/007-indicadores-datos-personales/spec.md), **en
-  implementación**: por ahora solo la fase 1, las solicitudes sobre datos personales (los indicadores y el cambio de
-  `login_attempt` siguen planificados).
+  implementación**: las solicitudes sobre datos personales (fase 1) y los indicadores de la plataforma con las
+  barberías por estado (fase 2b); las citas por mes, los usuarios y el cambio de `login_attempt` siguen planificados.
 
 Las guías completas (requisitos, escenarios manuales, criterios de cierre y registro de ejecuciones) están en
 [quickstart de 001](../../specs/001-registro-acceso-barberia/quickstart.md),
@@ -378,6 +378,10 @@ Son los mismos pasos que ejecuta el CI ([`.github/workflows/plataforma-barberias
 - **Pantallas nuevas:** "Mis datos" del cliente (`/mis-datos`, con el enlace "Mis datos" en Mis citas), "Mis datos"
   del barbero (`/app/mis-datos`) y la bandeja "Solicitudes de datos" del propietario (`/app/solicitudes-datos`), donde
   también registra una solicitud en nombre de un cliente.
+- **Fase 2b, construida (US2, RF31, mínimo):** la pantalla **Indicadores** del administrador de la plataforma
+  (`/plataforma/indicadores`, en su menú) muestra las barberías activas, suspendidas y por estado de la suscripción,
+  con la hora del cálculo; solo números, sin datos de barberías ni de personas. Cada consulta queda en
+  `platform_audit_log` (migración `0033_auditoria_indicadores`). Las citas por mes y los usuarios llegan con la fase 2c.
 - **No construido (decidido en la aclaración):** las solicitudes del propietario sobre su propia cuenta, la oposición,
   la anonimización del perfil y los avisos al solicitante.
 - **Sin variables nuevas** en esta fase. Las fases siguientes (indicadores y `login_attempt`) agregarán un rol de base

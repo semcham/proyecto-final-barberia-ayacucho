@@ -854,6 +854,12 @@ Un ADR registra **qué** se decidió, **por qué**, qué alternativas se descart
     - se crea el rol en `db/init/01-roles.sql`, más su paso manual para bases existentes;
     - la acción `ADMIN_INDICADORES_CONSULTADOS` en `platform_audit_log`;
     - la regla `lectura-plataforma-confinada` suma `catalogo-citas/citas/infrastructure/plataforma/`.
+- **Nota (funcionalidad 007, 2026-11-16): registro de indicadores de la plataforma.** Aprobada por el responsable el 2026-11-16; **implementada en la fase 2b de 007** (independiente de la enmienda 1.7.0 y de la revisión anterior). Los indicadores agregados de RF31 los junta un registro sin reglas de negocio en M06 (`shared/indicadores/`, `RegistroDeIndicadores`).
+  - Cada módulo aporta una fuente que cuenta **solo sus propios datos**, en su carpeta `infrastructure/plataforma/`, con el nombre `*-indicador.ts`, y con la lectura de la plataforma.
+  - El host (`host/indicadores.ts`) registra las fuentes al arrancar, como `host/tareas.ts` con el `EjecutorTareas`. La ruta `@Plataforma()` (`GET /plataforma/indicadores`) y la auditoría del acceso (`ADMIN_INDICADORES_CONSULTADOS` en `platform_audit_log`, migración 0033) están en M01, dueño de `platform_audit_log`.
+  - **Por qué:** la matriz de dependencias no deja que ningún módulo llame a la vez a M01, M02 y M03, y así no cambia.
+  - **Regla de PR14:** `indicadores-solo-por-registro`: las fuentes solo las importa el host (y el `index.ts` o el `*.module.ts` de su módulo, que las exporta y las provee), y M06 no importa módulos. Límite: si un módulo importara el `index.ts` de otro que exporta su fuente, la regla no lo ve por la ruta; la matriz de cada módulo sigue prohibiendo esas llamadas.
+  - **Hoy (fase 2b):** la única fuente es la de las barberías por estado (M03, `barberias-por-estado-indicador.ts`), con las columnas que el rol ya lee (`tenant.status` y `subscription.status`). La fase 2c suma las citas por mes (M02) y los usuarios por tipo (M01) desde las vistas de solo conteo.
 
 ## ADR-032 Acciones sobre una cita por enlace firmado, sin sesión
 

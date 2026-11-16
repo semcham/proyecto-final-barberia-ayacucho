@@ -43,7 +43,7 @@ Decisión base: [ADR-010](../01-analisis-de-sistema/07-decisiones-arquitectonica
 | Revisar comprobantes y resolver pagos por revisar          | —   | —                       | —              | —                    | ✓   |
 | Ver citas, clientes, catálogo o usuarios de una barbería   | —   | —                       | (según su rol) | (según su rol)       | —   |
 | Ver reportes de la barbería (`GET /reportes`, 005; el barbero recibe 403, ver la nota) | —   | —                       | —              | ✓                    | —   |
-| Indicadores agregados de la plataforma _(planificado, 007; las citas por mes y los usuarios, con la excepción aprobada en la enmienda 1.7.0)_ | —   | —                       | —              | —                    | ✓   |
+| Indicadores agregados de la plataforma (007: barberías activas y por estado; las citas por mes y los usuarios, _planificados_ para la fase 2c con la excepción aprobada en la enmienda 1.7.0) | —   | —                       | —              | —                    | ✓   |
 | Asistente de IA: servicios, barberos y horarios libres (005) | —   | ✓                       | —              | —                    | —   |
 | Asistente de IA: resumen de citas y servicios más pedidos (005) | —   | —                       | —              | ✓                    | —   |
 | Solicitar acceso, rectificación o eliminación de sus propios datos y ver las suyas (007) | —   | ✓\*                     | ✓\*            | — (no construido, ver la nota) | —   |

@@ -13,6 +13,7 @@ import {
   registrarSolicitud,
   sembrarSolicitudDatos,
 } from '../helpers/solicitudes-datos';
+import { pedirIndicadores } from '../helpers/indicadores';
 import { cerrarPools } from '../helpers/test-db';
 
 // T005 de 007 · PR08, FR-006, FR-022: las filas de specs/007-indicadores-datos-personales/contracts/rbac.md que ya
@@ -118,7 +119,7 @@ interface Caso {
   ejecutar: (prueba: AppDePrueba, token: string | null, s: Escenario) => Promise<{ status: number }>;
 }
 
-/** Filas implementadas (fase 1: las seis de solicitudes; la fase 2b suma GET /plataforma/indicadores). */
+/** Filas implementadas (fase 1: las seis de solicitudes; la fase 2b suma GET /plataforma/indicadores, abajo). */
 const IMPLEMENTADAS: Caso[] = [
   {
     fila: 'POST /datos-personales/solicitudes',
@@ -150,6 +151,12 @@ const IMPLEMENTADAS: Caso[] = [
     exito: 200,
     ejecutar: (p, t, s) =>
       cerrarSolicitud(p, t, s.solicitudId, { resultado: 'ATENDIDA', respuesta: 'Hecho a mano.' }),
+  },
+  // Fase 2b (T029): los indicadores, solo con el token de la plataforma; cualquier token de barbería → 401.
+  {
+    fila: 'GET /plataforma/indicadores',
+    exito: 200,
+    ejecutar: (p, t) => pedirIndicadores(p, t),
   },
 ];
 
@@ -200,6 +207,8 @@ describe('PR08 · Matriz de permisos de 007 (contracts/rbac.md)', () => {
     ]) {
       expect(simbolos(fila)).toBe('✓✗✗✗✗');
     }
+    // Fase 2b: los indicadores son solo del administrador de la plataforma (FR-014).
+    expect(simbolos('GET /plataforma/indicadores')).toBe('✗✗✗✗✓');
   });
 
   const casos = IMPLEMENTADAS.flatMap((caso) =>

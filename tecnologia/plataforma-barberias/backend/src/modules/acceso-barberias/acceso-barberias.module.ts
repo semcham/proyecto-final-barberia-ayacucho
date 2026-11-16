@@ -98,6 +98,8 @@ import { RegistrarEnNombre } from './solicitudes-datos/application/registrar-en-
 import { RegistrarSolicitud, RegistroDeSolicitud } from './solicitudes-datos/application/registrar-solicitud';
 import { KyselySolicitudesRepository } from './solicitudes-datos/infrastructure/kysely-solicitudes-repository';
 import { SolicitudesDatosController } from './solicitudes-datos/presentation/solicitudes-datos.controller';
+import { ConsultarIndicadores } from './identidad/application/plataforma/consultar-indicadores';
+import { IndicadoresPlataformaController } from './identidad/presentation/indicadores-plataforma.controller';
 
 /** M01 Acceso y barberías (submódulos identidad, barberias, clientes y, desde 007, solicitudes-datos). */
 @Module({
@@ -117,6 +119,8 @@ import { SolicitudesDatosController } from './solicitudes-datos/presentation/sol
     BarberiasPlataformaController,
     // Solicitudes sobre datos personales (007, US1).
     SolicitudesDatosController,
+    // Indicadores agregados de la plataforma (007, US2).
+    IndicadoresPlataformaController,
   ],
   providers: [
     // Puertos → adaptadores
@@ -191,6 +195,8 @@ import { SolicitudesDatosController } from './solicitudes-datos/presentation/sol
     BandejaSolicitudes,
     IniciarAtencion,
     CerrarSolicitud,
+    // Indicadores agregados de la plataforma (007, US2; research R01): usa el registro de M06.
+    ConsultarIndicadores,
   ],
   exports: [ValidarSolicitud, ValidarSolicitudPlataforma, BarberiasApi, ClientesApi, PersonalApi],
 })

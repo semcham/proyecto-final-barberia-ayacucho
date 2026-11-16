@@ -22,6 +22,7 @@ import { DespachadorDeEventos } from './eventos/despachador';
 import { PendientesDeEventos } from './eventos/pendientes-plataforma';
 import { SalidaDeEventosPostgres } from './eventos/salida-postgres';
 import { EjecutorTareas } from './tareas/ejecutor-tareas';
+import { RegistroDeIndicadores } from './indicadores/registro-de-indicadores';
 import { TenantContext } from './tenant/tenant-context';
 
 /**
@@ -79,6 +80,10 @@ import { TenantContext } from './tenant/tenant-context';
           reloj,
         }),
     },
+    // 007 (research R01): registro de indicadores de la plataforma. Las fuentes las registra el host
+    // (host/indicadores.ts); M06 solo las junta.
+    // Una instancia por aplicación (useFactory): dos aplicaciones en el mismo proceso no comparten el registro.
+    { provide: RegistroDeIndicadores, useFactory: () => new RegistroDeIndicadores() },
     KyselyUnitOfWork,
     { provide: UnitOfWork, useExisting: KyselyUnitOfWork },
     { provide: AuditLog, useClass: KyselyAuditLog },
@@ -117,6 +122,7 @@ import { TenantContext } from './tenant/tenant-context';
     VerificadorMigraciones,
     LecturaPlataforma,
     EjecutorTareas,
+    RegistroDeIndicadores,
     KyselyUnitOfWork,
     UnitOfWork,
     AuditLog,

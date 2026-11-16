@@ -95,7 +95,9 @@ export type AccionAccesoAdmin =
   | 'ADMIN_INGRESO_FALLIDO'
   | 'ADMIN_SEGUNDO_FACTOR_FALLIDO'
   | 'ADMIN_CODIGO_RECUPERACION_USADO'
-  | 'ADMIN_SALIDA';
+  | 'ADMIN_SALIDA'
+  // 007 (FR-015): cada consulta de los indicadores agregados de la plataforma (migración 0033).
+  | 'ADMIN_INDICADORES_CONSULTADOS';
 
 /** platform_audit_log: quién, qué, resultado, IP y cuándo. Nunca códigos, secretos ni contraseñas. */
 export abstract class AuditoriaAccesoPlataforma {

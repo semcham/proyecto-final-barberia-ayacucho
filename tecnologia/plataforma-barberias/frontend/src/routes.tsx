@@ -61,6 +61,8 @@ const InicioPlataforma = lazy(() => import('./pages/plataforma/Inicio'));
 const ComprobantesPlataforma = lazy(() => import('./pages/plataforma/Comprobantes'));
 const PagosPorRevisarPlataforma = lazy(() => import('./pages/plataforma/PagosPorRevisar'));
 const BarberiasPlataforma = lazy(() => import('./pages/plataforma/Barberias'));
+// Funcionalidad 007 (T038): indicadores agregados de la plataforma.
+const IndicadoresPlataforma = lazy(() => import('./pages/plataforma/Indicadores'));
 
 /**
  * Rutas del panel de 002 y los roles que las ven (solo navegación: el backend exige los permisos). Las que
@@ -272,6 +274,7 @@ export function RutasApp() {
               <Route path="comprobantes" element={<ComprobantesPlataforma />} />
               <Route path="pagos-por-revisar" element={<PagosPorRevisarPlataforma />} />
               <Route path="barberias" element={<BarberiasPlataforma />} />
+              <Route path="indicadores" element={<IndicadoresPlataforma />} />
             </Route>
           </Route>
           <Route path="*" element={<NoEncontrada />} />

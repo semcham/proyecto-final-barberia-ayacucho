@@ -31,6 +31,7 @@ import * as m0029 from './0029_adelantos';
 import * as m0030 from './0030_avisos_adelanto';
 import * as m0031 from './0031_asistente';
 import * as m0032 from './0032_solicitudes_datos';
+import * as m0033 from './0033_auditoria_indicadores';
 
 // Registro explícito de migraciones, en orden. Cada historia agrega aquí las suyas.
 // (Un proveedor estático evita depender de importaciones dinámicas de archivos .ts.)
@@ -68,6 +69,8 @@ const MIGRACIONES: Record<string, Migration> = {
   '0031_asistente': m0031,
   // 007 (T008): solicitudes sobre datos personales.
   '0032_solicitudes_datos': m0032,
+  // 007 (T032): auditoría de las consultas de indicadores de la plataforma.
+  '0033_auditoria_indicadores': m0033,
 };
 
 /** Nombre de la última migración que conoce el código (GET /salud/listo, 006). */

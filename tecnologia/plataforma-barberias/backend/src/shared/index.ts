@@ -28,6 +28,8 @@ export {
   type ResultadoDeCorrida,
 } from './tareas/ejecutor-tareas';
 export { AlmacenLimitesCompartido } from './limites/almacen-limites-compartido';
+// 007 (research R01): registro de indicadores de la plataforma, sin reglas; las fuentes las registra el host.
+export { RegistroDeIndicadores, type FuenteDeIndicador } from './indicadores';
 // 004 (ADR-025): bus de eventos con salida transaccional. Los módulos publican por el puerto; el despachador
 // lo usa solo el host (tarea despachar-eventos). Los enlaces firmados tienen su propia entrada:
 // shared/enlaces-firmados.ts.
