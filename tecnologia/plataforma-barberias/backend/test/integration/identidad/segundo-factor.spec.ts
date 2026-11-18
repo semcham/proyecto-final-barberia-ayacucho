@@ -1,9 +1,13 @@
+import { createHash } from 'node:crypto';
 import { Controller, Get, Logger } from '@nestjs/common';
 import type { TestingModuleBuilder } from '@nestjs/testing';
 import type { ActorPlataforma } from '../../../src/modules/acceso-barberias';
+import { IntentosRepository } from '../../../src/modules/acceso-barberias/identidad/application/ports/intentos-repository';
+import { hashDeToken } from '../../../src/modules/acceso-barberias/identidad/application/tokens-opacos';
+import { PoliticaIntentosPlataforma } from '../../../src/modules/acceso-barberias/identidad/domain/politica-intentos-plataforma';
 import { TotpNode } from '../../../src/modules/acceso-barberias/identidad/infrastructure/totp-node';
 import { AdminActual, Plataforma } from '../../../src/host/solicitud';
-import { Clock, Configuracion } from '../../../src/shared';
+import { Clock, Configuracion, UnitOfWork } from '../../../src/shared';
 import { type AppDePrueba, crearApp } from '../../helpers/app';
 import {
   type AdminSembrado,
@@ -378,6 +382,45 @@ describe('Ingreso del administrador con segundo factor (T064)', () => {
         .segundoFactor({ desafio: d, codigo: codigoPara(ad.secreto, reloj.ahora()) })
         .expect(429);
       await app(b).ingresar(ad.correo, ad.contrasena).expect(429);
+    });
+
+    // T058 de 007 · US3 (FR-017, FR-018): el bloqueo del administrador es igual, con el origen guardado solo derivado
+    // con INTENTOS_SAL_IP; también con la IP desconocida (0.0.0.0), que se deriva igual que cualquier otra.
+    it('guarda el origen derivado, nunca la IP; la IP desconocida (0.0.0.0) también se deriva y bloquea igual', async () => {
+      const sal = process.env.INTENTOS_SAL_IP as string;
+      const derivado = (ip: string) => createHash('sha256').update(sal).update(ip).digest('hex');
+      const ad = await admin({ recuperacion: false });
+      for (let i = 0; i < 2; i += 1) await app(a).ingresar(ad.correo, `mala-${i}`).expect(401);
+      const clave = hashDeToken(`plataforma:${ad.correo}`);
+      const filas = await poolDe('seed').query<{ ip_hash: string }>(
+        'SELECT ip_hash FROM login_attempt WHERE email_hash = $1',
+        [clave],
+      );
+      expect(filas.rows).toHaveLength(2);
+      for (const fila of filas.rows) {
+        expect(fila.ip_hash).toMatch(/^[0-9a-f]{64}$/);
+        expect([derivado('127.0.0.1'), derivado('::ffff:127.0.0.1'), derivado('::1')]).toContain(
+          fila.ip_hash,
+        );
+      }
+
+      // IP desconocida: el repositorio deriva 0.0.0.0 con la sal y cuenta los fallos igual (5 en 15 min bloquean).
+      const intentos = a.app.get(IntentosRepository);
+      const uow = a.app.get(UnitOfWork);
+      const claveDesconocida = hashDeToken(`plataforma:desconocida-${ad.correo}`);
+      const ahora = new Date();
+      await uow.ejecutarSinTenant(async () => {
+        for (let i = 0; i < 5; i += 1) await intentos.registrarFallo(claveDesconocida, '0.0.0.0', ahora);
+      });
+      const guardadas = await poolDe('seed').query<{ ip_hash: string }>(
+        'SELECT ip_hash FROM login_attempt WHERE email_hash = $1',
+        [claveDesconocida],
+      );
+      expect(guardadas.rows.map((f) => f.ip_hash)).toEqual(Array(5).fill(derivado('0.0.0.0')));
+      const fallos = await uow.ejecutarSinTenant(() =>
+        intentos.fallosDesde(claveDesconocida, '0.0.0.0', new Date(ahora.getTime() - 15 * 60 * 1000)),
+      );
+      expect(PoliticaIntentosPlataforma.evaluar(fallos, ahora).bloqueado).toBe(true);
     });
   });
 

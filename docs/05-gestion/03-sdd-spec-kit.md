@@ -13,7 +13,7 @@ _Figura 1. Flujo de SDD que siguen las funcionalidades 001, 002, 003 y 006._
 
 ```mermaid
 flowchart TB
-    A["Constitución 1.7.0"] --> B["Especificación<br/>spec.md"]
+    A["Constitución 1.7.1"] --> B["Especificación<br/>spec.md"]
     B --> C["Plan y ADR<br/>plan.md"]
     C --> D["Tareas<br/>tasks.md"]
     D --> E["Implementación"]
@@ -32,10 +32,10 @@ flowchart TB
 
 Leyenda: todos los pasos se aplicaron en las cuatro funcionalidades. Entre la especificación y el plan se usó `/speckit-clarify` cuando hubo dudas, y entre las tareas y la implementación, `/speckit-analyze` para revisar la consistencia.
 
-Evidencia: `.specify/memory/constitution.md` (versión 1.7.0), `specs/001-registro-acceso-barberia/`, `specs/002-catalogo-citas-cliente/`, `specs/003-suscripciones-pagos/` y `specs/006-escalado-cache-balanceo/` (cada una con `spec.md`, `plan.md`, `research.md`, `data-model.md`, `contracts/`, `quickstart.md` y `tasks.md`).
+Evidencia: `.specify/memory/constitution.md` (versión 1.7.1), `specs/001-registro-acceso-barberia/`, `specs/002-catalogo-citas-cliente/`, `specs/003-suscripciones-pagos/` y `specs/006-escalado-cache-balanceo/` (cada una con `spec.md`, `plan.md`, `research.md`, `data-model.md`, `contracts/`, `quickstart.md` y `tasks.md`).
 | Paso                   | Contenido en este proyecto                                                                                                 | Relación con el backlog                 |
 | ---------------------- | -------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- |
-| Constitución           | `.specify/memory/constitution.md` (1.7.0, doce principios): monolito modular, 4 capas, aislamiento de tenant, sin datos de tarjeta, pruebas obligatorias | Vincula todas las HU |
+| Constitución           | `.specify/memory/constitution.md` (1.7.1, doce principios): monolito modular, 4 capas, aislamiento de tenant, sin datos de tarjeta, pruebas obligatorias | Vincula todas las HU |
 | Especificación         | Por funcionalidad: HU, escenarios, límites                                                                                 | Una especificación por HU o grupo de HU |
 | Requisitos y criterios | RF y criterios de aceptación de [02](../01-analisis-de-sistema/02-historias-del-usuario.md)                                | HU → RF                                 |
 | Diseño técnico         | Decisiones y diagramas ya documentados ([ADR](../01-analisis-de-sistema/07-decisiones-arquitectonicas.md), C4)             | ADR                                     |
@@ -46,7 +46,7 @@ Evidencia: `.specify/memory/constitution.md` (versión 1.7.0), `specs/001-regist
 ## 2. Estructura de carpetas
 
 ```text
-.specify/memory/constitution.md       constitución del proyecto (1.7.0)
+.specify/memory/constitution.md       constitución del proyecto (1.7.1)
 specs/
   001-registro-acceso-barberia/       implementada
   002-catalogo-citas-cliente/         implementada
@@ -82,7 +82,7 @@ Spec Kit es un conjunto de herramientas de código abierto para desarrollo guiad
 
 | N.° | Punto SDD                    | Archivo                                                                                                                                   |
 | --- | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | Constitución del proyecto    | `.specify/memory/constitution.md` (1.7.0)                                                                                                 |
+| 1   | Constitución del proyecto    | `.specify/memory/constitution.md` (1.7.1)                                                                                                 |
 | 2   | Contexto y problema          | [00-contexto](../00-contexto-negocio-y-evidencias.md)                                                                                     |
 | 3   | Actores                      | [01-actores](../01-analisis-de-sistema/01-actores.md)                                                                                     |
 | 4   | Alcance y exclusiones        | [README](../../README.md), [05-restricciones](../01-analisis-de-sistema/05-restricciones.md)                                              |

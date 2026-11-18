@@ -1,6 +1,7 @@
 /**
  * Intentos fallidos de inicio de sesión por par cuenta + IP (tabla técnica global `login_attempt`, R10).
- * La cuenta se identifica por el SHA-256 del correo normalizado; el correo no se guarda.
+ * La cuenta se identifica por el SHA-256 del correo normalizado; el correo no se guarda. Desde 007 (US3), la IP
+ * tampoco: el adaptador guarda solo el origen derivado con la sal INTENTOS_SAL_IP. Este puerto sigue recibiendo la IP.
  */
 export abstract class IntentosRepository {
   /** Fallos del par desde `desde` (el historial útil es de 24 h). */

@@ -1,6 +1,30 @@
 <!--
 Sync Impact Report
 ==================
+Version change: 1.7.0 → 1.7.1
+Bump rationale: PATCH. Aclaración de un hecho ya previsto en 1.4.1, sin cambiar ninguna regla: login_attempt
+guarda ya el origen solo como hash con sal (INTENTOS_SAL_IP, distinta de ENLACES_SAL_IP), nunca la IP en claro.
+La mejora estaba asignada a la funcionalidad 007; se construyó en su fase 3 (migración 0035_intentos_con_hash) y
+el texto se aplica con sus pruebas en verde, como decía su borrador. Aprobada por el responsable el 2026-11-16.
+
+Modified principles:
+  - III. Aislamiento por barbería, "Tablas técnicas de intentos": login_attempt con el origen derivado.
+Added principles: ninguno
+Added sections: ninguna
+Removed sections: ninguna
+
+Templates requiring updates:
+  ✅ .specify/templates/plan-template.md — puerta III (login_attempt con el origen solo como hash con sal;
+     versión 1.7.1)
+  ✅ .specify/templates/spec-template.md y tasks-template.md — revisados; sin cambios necesarios
+  ✅ docs/02-arquitectura-software/multi-tenancy-y-datos.md y seguridad-y-privacidad.md — login_attempt
+     con ip_hash
+  ✅ docs/trazabilidad.md — evidencia de US3 de 007
+  ✅ docs/05-gestion/03-sdd-spec-kit.md — versión de la constitución
+
+Follow-up TODOs: ninguno.
+
+--- Historial: informe de la versión 1.7.0 ---
 Version change: 1.6.0 → 1.7.0
 Bump rationale: MINOR. Se amplía de forma material la guía de la excepción "operaciones de la
 plataforma" del principio III: para los indicadores agregados de RF31, el rol de lectura de la
@@ -411,12 +435,12 @@ intercambiables.
   `platform_admin`. La decisión se registra en ADR-031.
   **Tablas técnicas de intentos:** `login_attempt` (desde 001) y `action_link_attempt` (004) no
   pertenecen a ninguna barbería; MAY no tener `tenant_id` ni RLS, y MUST NOT guardar correos en
-  claro ni datos de negocio. `login_attempt` guarda, tal como está hoy, el SHA-256 del correo, la
-  IP **en claro** y la fecha; sus filas de más de 24 h se borran de forma oportunista al registrar
-  un fallo nuevo, y un ingreso correcto borra los fallos de ese par cuenta e IP (sin una purga
-  programada). `action_link_attempt` MUST guardar el origen solo como hash con sal
-  (`ENLACES_SAL_IP`), nunca la IP en claro, con purga a las 24 h. Pasar `login_attempt` a un hash
-  de la IP queda como mejora planificada para la funcionalidad 007.
+  claro ni datos de negocio. `login_attempt` guarda el SHA-256 del correo, el origen **solo como
+  hash con sal** (`INTENTOS_SAL_IP`, distinta de la de los enlaces), nunca la IP en claro, y la
+  fecha; sus filas de más de 24 h se borran de forma oportunista al registrar un fallo nuevo, y un
+  ingreso correcto borra los fallos de ese par cuenta y origen (sin una purga programada).
+  [Implementado en 007.] `action_link_attempt` MUST guardar el origen solo como hash con sal
+  (`ENLACES_SAL_IP`), nunca la IP en claro, con purga a las 24 h.
 - **Excepción acotada: acciones por enlace de la cita.** El recordatorio de una cita (RF34) MAY
   incluir enlaces que permitan al cliente, sin sesión, confirmar su asistencia, reprogramar o
   cancelar **esa** cita. La barbería y la cita MUST obtenerse **solo** del dato firmado del enlace,
@@ -631,4 +655,4 @@ implementación. La excepción existe solo porque la plataforma de CI impone la 
   alternativa más simple descartada, y registrarse como ADR.
 - La guía de ejecución del proyecto está en `README.md` y en `docs/`.
 
-**Version**: 1.7.0 | **Ratified**: 2026-10-15 | **Last Amended**: 2026-11-16
+**Version**: 1.7.1 | **Ratified**: 2026-10-15 | **Last Amended**: 2026-11-18

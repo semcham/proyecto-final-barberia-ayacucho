@@ -8,8 +8,8 @@
 >   las vistas "por construir en la fase 2c" (fase 2a).
 > - **(2b) Nota sobre el registro de indicadores:** aprobada el 2026-11-16 y aplicada en ADR-031 en la fase 2b
 >   (T039).
-> - **(3) Aclaración PATCH de US3:** aprobada; se aplica en la fase 3 (T065), cuando US3 esté en verde, como dice
->   su propio texto. Hasta entonces, `login_attempt` sigue guardando la IP en claro y el texto vigente es el cierto.
+> - **(3) Aclaración PATCH de US3:** aprobada y aplicada el 2026-11-18 como versión **1.7.1**, con las pruebas de US3
+>   en verde (T065).
 >
 > **No hay corte:** las fases 2b, 2c y 3 se construyen. Abajo quedan los textos tal como se aprobaron.
 

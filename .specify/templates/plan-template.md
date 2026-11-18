@@ -40,7 +40,7 @@
 
 _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
-Gates from `.specify/memory/constitution.md` (v1.7.0). Mark each ✅ / ❌ (justify ❌ in
+Gates from `.specify/memory/constitution.md` (v1.7.1). Mark each ✅ / ❌ (justify ❌ in
 Complexity Tracking and record an ADR):
 
 - [ ] **I. Six modules**: work fits in M01–M06 (no new module); cross-module calls only via
@@ -71,8 +71,8 @@ Complexity Tracking and record an ADR):
       insert into `provider_event` and never read `platform_admin` (ADR-031); the technical attempt
       tables `login_attempt` and `action_link_attempt` (the latter implemented in 004)
       may also lack `tenant_id` and never store emails in clear or business data; `login_attempt`
-      keeps the IP in clear with opportunistic deletion after 24 h (moving it to an IP hash is planned
-      for 007); `action_link_attempt` stores the origin only as a salted hash, purged after 24 h; (4) appointment
+      stores the origin only as a salted hash (`INTENTOS_SAL_IP`), with opportunistic deletion after 24 h
+      (implemented in 007); `action_link_attempt` stores the origin only as a salted hash, purged after 24 h; (4) appointment
       action links (accepted, implemented in 004): a reminder link lets the client
       confirm, reschedule or cancel ONE appointment without a session; tenant and appointment come
       only from the signed link, verified before reading anything; app role without `BYPASSRLS`,

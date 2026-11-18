@@ -326,11 +326,11 @@ description: "Tareas de la funcionalidad 007: indicadores y datos personales"
 
 ### Pruebas (escribir primero, deben fallar) ⚠️
 
-- [ ] T057 [P] [US3] Ampliar `backend/test/unit/shared/configuracion.spec.ts`:
+- [X] T057 [P] [US3] Ampliar `backend/test/unit/shared/configuracion.spec.ts`:
   - `INTENTOS_SAL_IP` es obligatoria, de al menos 16 caracteres y distinta de `ENLACES_SAL_IP`;
   - los mensajes de error no muestran el valor;
   - sumar la variable al entorno base de esa prueba y al de `backend/test/unit/shared/configuracion-ia.spec.ts`, con valores **de prueba** escritos en la propia prueba.
-- [ ] T058 [P] [US3] Ampliar `backend/test/integration/identidad/limite-intentos.spec.ts` (FR-017, FR-018, FR-020; SC-006):
+- [X] T058 [P] [US3] Ampliar `backend/test/integration/identidad/limite-intentos.spec.ts` (FR-017, FR-018, FR-020; SC-006):
   - tras los fallos, `login_attempt` no tiene la columna `ip`, y cada `ip_hash` es igual a `SHA-256(sal ‖ ip)`, calculado en la prueba con `process.env.INTENTOS_SAL_IP` (de `entorno.ts`, nunca del `.env`), y distinto de la IP;
   - los mismos umbrales, el mismo bloqueo, el mismo mensaje y el mismo `Retry-After` que antes;
   - otro origen no queda bloqueado;
@@ -339,26 +339,26 @@ description: "Tareas de la funcionalidad 007: indicadores y datos personales"
   - **la sal no aparece en ningún registro ni auditoría:** con una sal marcador en el entorno de la prueba, el marcador no aparece en los registros capturados de la aplicación (patrón de `registro-asistente` de 005), ni en `audit_log`, ni en `platform_audit_log`, ni en los cuerpos de error.
 
   Ampliar también `backend/test/integration/identidad/segundo-factor.spec.ts`: el bloqueo del administrador es igual, también con la IP desconocida (`0.0.0.0` derivada).
-- [ ] T059 [P] [US3] Crear `backend/test/integration/identidad/migracion-intentos.spec.ts` (FR-019):
+- [X] T059 [P] [US3] Crear `backend/test/integration/identidad/migracion-intentos.spec.ts` (FR-019):
   - en una base migrada hasta la anterior, sembrar filas de `login_attempt` con IP y aplicar la migración `intentos_con_hash`;
   - después no queda ninguna fila vieja ni la columna `ip`, y existe el índice `(email_hash, ip_hash, attempted_at)`;
   - `down` vuelve a la columna `ip` sin datos.
-- [ ] T060 [US3] Sumar `INTENTOS_SAL_IP` con un valor de pruebas, distinto de `ENLACES_SAL_IP`, en `backend/test/helpers/entorno.ts`. Ninguna prueba lee el `.env`.
+- [X] T060 [US3] Sumar `INTENTOS_SAL_IP` con un valor de pruebas, distinto de `ENLACES_SAL_IP`, en `backend/test/helpers/entorno.ts`. Ninguna prueba lee el `.env`.
 
 ### Implementación
 
-- [ ] T061 [US3] Sumar `intentos: { salIp }` a `backend/src/shared/config/configuracion.ts` (`secreto('INTENTOS_SAL_IP', 16)`, distinta de `ENLACES_SAL_IP`, sin mostrarla en errores).
-- [ ] T062 [US3] Crear la migración `backend/migrations/NNNN_intentos_con_hash.ts`, con el número siguiente libre (data-model §4):
+- [X] T061 [US3] Sumar `intentos: { salIp }` a `backend/src/shared/config/configuracion.ts` (`secreto('INTENTOS_SAL_IP', 16)`, distinta de `ENLACES_SAL_IP`, sin mostrarla en errores).
+- [X] T062 [US3] Crear la migración `backend/migrations/NNNN_intentos_con_hash.ts`, con el número siguiente libre (data-model §4):
   - borrar las filas, quitar `ip`, agregar `ip_hash char(64) NOT NULL` y rehacer el índice, sin tocar los permisos;
   - `down`: borrar las filas y volver a `ip inet NOT NULL`;
   - actualizar `backend/src/shared/persistence/db-types.ts`.
-- [ ] T063 [US3] Cambiar `m01/identidad/infrastructure/kysely-intentos-repository.ts` para que derive `ip_hash` con la sal (patrón de `KyselyIntentosEnlaceRepository`) en `fallosDesde`, `registrarFallo` y `borrarFallos`. El puerto `IntentosRepository`, el ingreso e `IntentosAdmin` no cambian. Actualizar los comentarios del puerto y del repositorio (la IP ya no se guarda).
-- [ ] T064 [US3] Dar valor **solo de desarrollo** a `INTENTOS_SAL_IP`, sin tocar el `.env` del responsable (FR-020: el valor de cualquier otro entorno va fuera del repositorio):
+- [X] T063 [US3] Cambiar `m01/identidad/infrastructure/kysely-intentos-repository.ts` para que derive `ip_hash` con la sal (patrón de `KyselyIntentosEnlaceRepository`) en `fallosDesde`, `registrarFallo` y `borrarFallos`. El puerto `IntentosRepository`, el ingreso e `IntentosAdmin` no cambian. Actualizar los comentarios del puerto y del repositorio (la IP ya no se guarda).
+- [X] T064 [US3] Dar valor **solo de desarrollo** a `INTENTOS_SAL_IP`, sin tocar el `.env` del responsable (FR-020: el valor de cualquier otro entorno va fuera del repositorio):
   - en `docker-compose.yml`: `${INTENTOS_SAL_IP:-<valor de desarrollo>}`, junto a `ENLACES_SAL_IP`;
   - en `.env.example`: un valor de desarrollo con un comentario como el de `ENLACES_SAL_IP` ("distinta de ENLACES_SAL_IP; en otros entornos, un secreto propio fuera del repositorio");
   - en `tecnologia/plataforma-barberias/README.md`: en la lista de variables, y que **sin `INTENTOS_SAL_IP` tampoco arrancan los scripts que construyen `Configuracion`** (por ejemplo, `npm run plataforma:crear-admin`) fuera de Compose;
   - en `specs/007-indicadores-datos-personales/quickstart.md` §0: **el responsable la añade a mano a su `.env`** si arranca sin Compose (con Compose, el valor de desarrollo cubre la falta).
-- [ ] T065 [US3] Con las pruebas de US3 en verde y el texto (3) aprobado en T020:
+- [X] T065 [US3] Con las pruebas de US3 en verde y el texto (3) aprobado en T020:
   - aplicar la aclaración PATCH del principio III en `.specify/memory/constitution.md` (1.7.1, o 1.6.1 si no hubo enmienda), con su Sync Impact Report;
   - actualizar la puerta III de `.specify/templates/plan-template.md` y la versión en `docs/05-gestion/03-sdd-spec-kit.md`.
 

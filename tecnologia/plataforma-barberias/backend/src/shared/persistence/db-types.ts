@@ -140,7 +140,8 @@ export interface TermsAcceptanceTable {
 export interface LoginAttemptTable {
   id: Generated<string>;
   email_hash: string;
-  ip: string;
+  /** 007 (migración 0035): SHA-256(INTENTOS_SAL_IP ‖ ip). La IP ya no se guarda. */
+  ip_hash: string;
   attempted_at: Fecha;
 }
 

@@ -264,7 +264,8 @@ Son los mismos pasos que ejecuta el CI ([`.github/workflows/plataforma-barberias
   `CORREO_REMITENTE`, `CORREO_TIEMPO_LIMITE_MS` (5000), `WHATSAPP_PROVEEDOR` (`simulado`, o `ninguno` si
   falta: los avisos van por correo), `WHATSAPP_URL_BASE`, `WHATSAPP_TOKEN`, `WHATSAPP_TOKEN_CONTROL`,
   `WHATSAPP_TIEMPO_LIMITE_MS` (3000), `ENLACES_LLAVE` (llave de los enlaces del recordatorio, 32 bytes en
-  base64), `ENLACES_SAL_IP` (sal del hash de la IP de los intentos de enlaces), `URL_PUBLICA` (base de los
+  base64), `ENLACES_SAL_IP` (sal del hash de la IP de los intentos de enlaces; desde 007 hay además
+  `INTENTOS_SAL_IP`, ver la sección de 007), `URL_PUBLICA` (base de los
   enlaces del recordatorio), `EVENTOS_INTERVALO_MS` (15000) y la red de Compose (`IP_MAILPIT`,
   `IP_WHATSAPP`). `MAILPIT_IMAGEN` permite usar la etiqueta de Mailpit que ya esté descargada. Con Compose,
   `docker-compose.yml` da valores **solo de desarrollo** a las que falten en `.env`.
@@ -416,8 +417,24 @@ Son los mismos pasos que ejecuta el CI ([`.github/workflows/plataforma-barberias
   listas. Basta con crear el rol y volver a levantar `preparar-backend`.
 - **No construido (decidido en la aclaración):** las solicitudes del propietario sobre su propia cuenta, la oposición,
   la anonimización del perfil y los avisos al solicitante.
-- **Sin variables nuevas** en las fases 1, 2b y 2c. La fase 3 (`login_attempt`) agregará la variable
-  `INTENTOS_SAL_IP`; se documentará aquí cuando se construya.
+- **Sin variables nuevas** en las fases 1, 2b y 2c.
+- **Fase 3, construida (US3):** `login_attempt` ya **no guarda la IP en claro**: guarda el origen solo como
+  `SHA-256(INTENTOS_SAL_IP ‖ ip)` (columna `ip_hash`, migración `0035_intentos_con_hash`, que borra las filas
+  existentes: valen 24 h). El límite de intentos funciona igual.
+- **Variable nueva obligatoria `INTENTOS_SAL_IP`** (fase 3): sal del origen de los intentos de inicio de sesión, de
+  al menos 16 caracteres y **distinta de `ENLACES_SAL_IP`**. `docker-compose.yml` y `.env.example` traen un valor
+  **solo de desarrollo**; en cualquier otro entorno va un secreto propio, fuera del repositorio.
+  - **Con Compose**, si tu `.env` no la tiene, se usa el valor de desarrollo de `docker-compose.yml`.
+  - **Sin Compose** (backend local con `node --env-file=../.env dist/src/main.js`), **añádela tú a mano a tu
+    `.env`** (el `.env` no está en git). Sin ella, el backend no arranca: `Configuracion` lo rechaza al iniciar con
+    "Falta la variable de entorno obligatoria INTENTOS_SAL_IP", sin mostrar ningún valor. Lo mismo le pasa a
+    **cualquier proceso que construya `Configuracion`** (el backend y las pruebas, que la toman de
+    `backend/test/helpers/entorno.ts`). Hoy ningún script de `backend/scripts/` construye `Configuracion` completa:
+    `plataforma:crear-admin` usa solo `DATABASE_URL_OWNER` y `PLATAFORMA_LLAVE_TOTP`, así que no la necesita.
+  - **Al aplicar la migración en Compose**, recrea las réplicas a la vez
+    (`docker compose up -d --force-recreate preparar-backend backend-1 backend-2`): una réplica vieja que siguiera
+    escribiendo la columna `ip` fallaría cerrada (el ingreso responde error) en lugar de guardar la IP. Es un
+    procedimiento, sin prueba automática.
 
 ## Referencias
 

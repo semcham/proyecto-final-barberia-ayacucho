@@ -22,6 +22,8 @@ const MINIMAS: Record<string, string> = {
   ENLACES_SAL_IP: 'sal-de-la-ip-de-pruebas-0123',
   SMTP_HOST: 'localhost',
   CORREO_REMITENTE: 'no-responder@barberias.local',
+  // 007 (US3): obligatoria desde la fase 3; valor solo de pruebas.
+  INTENTOS_SAL_IP: 'sal-de-los-intentos-de-pruebas-4567',
 };
 
 const VARIABLES_IA = [

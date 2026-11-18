@@ -354,6 +354,11 @@ export class Configuracion {
   };
   /** Enlaces de acción del recordatorio (ADR-032) y sal del hash de la IP de sus rechazos (constitución 1.4.1). */
   readonly enlaces = Configuracion.leerEnlaces(this.plataforma.llaveTotp);
+  /**
+   * 007 (US3): sal del hash del origen de los intentos de inicio de sesión (`login_attempt.ip_hash`). Propia y distinta
+   * de la de los enlaces. Fuera del entorno de desarrollo, un secreto fuera del repositorio (FR-020).
+   */
+  readonly intentos = Configuracion.leerIntentos(this.enlaces.salIp);
   /** Correo por SMTP detrás de NotificationChannel (ADR-026): Mailpit en desarrollo y pruebas. */
   readonly correo = {
     smtp: {
@@ -408,5 +413,14 @@ export class Configuracion {
       throw new Error('La variable de entorno ENLACES_SAL_IP debe ser distinta de ENLACES_LLAVE');
     }
     return { llave, salIp };
+  }
+
+  /** La sal de los intentos de inicio de sesión: obligatoria, de 16 o más, distinta de la de los enlaces. */
+  private static leerIntentos(salEnlaces: string): { salIp: string } {
+    const salIp = secreto('INTENTOS_SAL_IP', 16);
+    if (salIp.trim() === salEnlaces.trim()) {
+      throw new Error('La variable de entorno INTENTOS_SAL_IP debe ser distinta de ENLACES_SAL_IP');
+    }
+    return { salIp };
   }
 }

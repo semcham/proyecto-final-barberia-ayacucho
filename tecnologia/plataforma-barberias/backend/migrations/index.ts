@@ -33,6 +33,7 @@ import * as m0031 from './0031_asistente';
 import * as m0032 from './0032_solicitudes_datos';
 import * as m0033 from './0033_auditoria_indicadores';
 import * as m0034 from './0034_vistas_de_conteo';
+import * as m0035 from './0035_intentos_con_hash';
 
 // Registro explícito de migraciones, en orden. Cada historia agrega aquí las suyas.
 // (Un proveedor estático evita depender de importaciones dinámicas de archivos .ts.)
@@ -74,6 +75,8 @@ const MIGRACIONES: Record<string, Migration> = {
   '0033_auditoria_indicadores': m0033,
   // 007 (T048): vistas de solo conteo de la plataforma (requiere el rol barberias_conteos de db/init).
   '0034_vistas_de_conteo': m0034,
+  // 007 (T062): login_attempt guarda el origen solo como hash con sal (INTENTOS_SAL_IP).
+  '0035_intentos_con_hash': m0035,
 };
 
 /** Nombre de la última migración que conoce el código (GET /salud/listo, 006). */

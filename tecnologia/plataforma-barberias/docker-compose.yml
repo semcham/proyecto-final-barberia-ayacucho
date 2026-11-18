@@ -86,6 +86,9 @@ x-backend-entorno: &backend-entorno
   # falta, uno SOLO de desarrollo.
   ENLACES_LLAVE: ${ENLACES_LLAVE:-xe9JimETg9lyRkFYqT/XOYVj31b+b6pTPQD5W5/MQI8=}
   ENLACES_SAL_IP: ${ENLACES_SAL_IP:-01i5rWo2LyTiQCf0d56djNm4LAW_BIrZ}
+  # 007 (US3): sal del origen de los intentos de inicio de sesión. Valor SOLO de desarrollo, distinto de ENLACES_SAL_IP;
+  # en cualquier otro entorno, un secreto propio fuera del repositorio (FR-020).
+  INTENTOS_SAL_IP: ${INTENTOS_SAL_IP:-O0tPQhxNWRzUmuBI567p9VlDH48KwbyS}
   URL_PUBLICA: ${URL_PUBLICA:-http://localhost:5173}
   # 004 (ADR-025): tarea despachar-eventos, respaldo del despacho tras confirmar.
   EVENTOS_INTERVALO_MS: ${EVENTOS_INTERVALO_MS:-15000}

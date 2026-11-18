@@ -45,8 +45,12 @@ marcan "no construido".
   |       |            |                                    |                         |                                  |       |
 - **US3:** `INTENTOS_SAL_IP`. **El responsable la añade a mano a su `.env` local** (el agente no lo lee ni lo
   cambia); con Compose, si falta, se usa el valor solo de desarrollo de `docker-compose.yml`. Sin ella, fuera de
-  Compose no arrancan ni el backend ni los scripts que construyen `Configuracion` (por ejemplo,
-  `npm run plataforma:crear-admin`).
+  Compose no arranca nada que construya `Configuracion`: el backend falla al iniciar con "Falta la variable de entorno
+  obligatoria INTENTOS_SAL_IP". Hoy ningún script de `backend/scripts/` construye `Configuracion` completa
+  (`npm run plataforma:crear-admin` usa solo `DATABASE_URL_OWNER` y `PLATAFORMA_LLAVE_TOTP`), así que no la necesitan.
+- **US3, migración en Compose:** la `0035_intentos_con_hash` se aplica recreando a la vez las réplicas
+  (`docker compose up -d --force-recreate preparar-backend backend-1 backend-2`). Una réplica vieja que siguiera
+  escribiendo la columna `ip` fallaría cerrada en lugar de guardar la IP (procedimiento, sin prueba automática).
 - Dos barberías de prueba, cada una con su propietario, un barbero con usuario y un cliente con cuenta; citas en
   varios meses y en varios estados; y el administrador de la plataforma con su segundo factor.
 

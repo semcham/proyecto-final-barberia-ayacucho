@@ -20,6 +20,8 @@ const MINIMAS: Record<string, string> = {
   ENLACES_SAL_IP: 'sal-de-la-ip-de-pruebas-0123',
   SMTP_HOST: 'localhost',
   CORREO_REMITENTE: 'no-responder@barberias.local',
+  // 007 (US3): sal del origen de los intentos de inicio de sesión, distinta de la de los enlaces.
+  INTENTOS_SAL_IP: 'sal-de-los-intentos-de-pruebas-4567',
 };
 
 describe('Configuracion: período de gracia de la renovación', () => {
@@ -512,4 +514,55 @@ describe('Configuracion: enlaces, correo y eventos (004)', () => {
       expect(errorAlIniciar()).toContain('URL_PUBLICA');
     },
   );
+});
+
+// T057 de 007 · US3 (FR-017, FR-020): la sal del origen de los intentos de inicio de sesión. Obligatoria, de al menos
+// 16 caracteres y distinta de la de los enlaces; ningún mensaje de error muestra su valor.
+describe('Configuracion: sal de los intentos de inicio de sesión (007)', () => {
+  const original = { ...process.env };
+
+  beforeEach(() => {
+    process.env = { ...original, ...MINIMAS };
+  });
+
+  afterAll(() => {
+    process.env = original;
+  });
+
+  function errorAlIniciar(): string {
+    try {
+      new Configuracion();
+    } catch (error) {
+      return (error as Error).message;
+    }
+    throw new Error('Se esperaba un error al iniciar');
+  }
+
+  it('la lee tal cual', () => {
+    expect(new Configuracion().intentos).toEqual({ salIp: MINIMAS.INTENTOS_SAL_IP });
+  });
+
+  it('es obligatoria', () => {
+    delete process.env.INTENTOS_SAL_IP;
+    expect(errorAlIniciar()).toContain('INTENTOS_SAL_IP');
+  });
+
+  it('corta (menos de 16 caracteres) se rechaza sin mostrarla', () => {
+    process.env.INTENTOS_SAL_IP = 'sal-corta-15car';
+    const mensaje = errorAlIniciar();
+    expect(mensaje).toContain('INTENTOS_SAL_IP');
+    expect(mensaje).not.toContain('sal-corta-15car');
+  });
+
+  it('debe ser distinta de ENLACES_SAL_IP, sin mostrar ninguna', () => {
+    process.env.INTENTOS_SAL_IP = MINIMAS.ENLACES_SAL_IP;
+    const mensaje = errorAlIniciar();
+    expect(mensaje).toContain('INTENTOS_SAL_IP');
+    expect(mensaje).not.toContain(MINIMAS.ENLACES_SAL_IP);
+  });
+
+  it('con espacios a los lados sigue siendo la misma que ENLACES_SAL_IP', () => {
+    process.env.INTENTOS_SAL_IP = `  ${MINIMAS.ENLACES_SAL_IP}  `;
+    expect(errorAlIniciar()).toContain('INTENTOS_SAL_IP');
+  });
 });

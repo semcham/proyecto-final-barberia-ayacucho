@@ -27,6 +27,9 @@ process.env.TAREAS_ACTIVAS = 'false';
 // el adaptador a su propio Mailpit (helpers/mailpit.ts); aquí basta un servidor que no responde.
 process.env.ENLACES_LLAVE = Buffer.alloc(32, 43).toString('base64');
 process.env.ENLACES_SAL_IP = 'sal_ip_pruebas_integracion_0123';
+// 007 (US3): sal del hash del origen de los intentos de inicio de sesión. Valor SOLO de pruebas, distinto de la sal de
+// los enlaces. Ninguna prueba lee el .env.
+process.env.INTENTOS_SAL_IP = 'sal_intentos_pruebas_integracion_4567';
 process.env.SMTP_HOST = '127.0.0.1';
 process.env.SMTP_PUERTO = '9';
 process.env.SMTP_TLS = 'no';
