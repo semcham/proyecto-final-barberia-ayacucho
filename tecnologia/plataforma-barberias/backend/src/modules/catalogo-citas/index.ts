@@ -11,6 +11,9 @@ export {
 export { PurgarIntentosEnlace } from './citas/application/purgar-intentos-enlace';
 // 008 (T051): la tarea vencer-adelantos, que registra el host cada 60 s.
 export { VencerAdelantos } from './citas/application/vencer-adelantos';
+// 007 (fase 2c, research R01): fuente de indicadores de la plataforma. Solo la registra host/indicadores.ts (regla de
+// PR14 indicadores-solo-por-registro).
+export { CitasPorMesIndicador } from './citas/infrastructure/plataforma/citas-por-mes-indicador';
 // 005 (T009, research R01): la interfaz de solo lectura que usa M04 (asistente y reportes).
 export {
   CatalogoCitasApi,

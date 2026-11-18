@@ -1,12 +1,17 @@
 import { createHash } from 'node:crypto';
 import { sql } from 'kysely';
-import type { PoolClient } from 'pg';
+import { Client, type PoolClient } from 'pg';
 import { v7 as uuidv7 } from 'uuid';
 import { COLUMNAS_PLATAFORMA, PERMISOS_APP_PLATAFORMA } from '../../../migrations/0016_plataforma';
 import { COLUMNAS_PLATAFORMA_TAREAS, UPDATE_APP_TAREAS } from '../../../migrations/0017_tareas';
 import { COLUMNAS_PLATAFORMA_EVENTOS } from '../../../migrations/0021_salida_de_eventos';
 import { COLUMNAS_PLATAFORMA_AVISOS } from '../../../migrations/0024_avisos';
 import { COLUMNAS_PLATAFORMA_ADELANTOS } from '../../../migrations/0029_adelantos';
+import {
+  COLUMNAS_DE_CONTEO,
+  COLUMNAS_VISTAS_DE_CONTEO,
+  VISTAS_DE_CONTEO,
+} from '../../../migrations/0034_vistas_de_conteo';
 import { LecturaPlataforma } from '../../../src/shared/lectura-plataforma';
 import {
   sembrarBarberia,
@@ -59,7 +64,7 @@ const TABLAS_004_SIN_LECTURA_DE_PLATAFORMA = [
 const TABLAS_004 = ['outbox_event', 'notification', ...TABLAS_004_SIN_LECTURA_DE_PLATAFORMA];
 
 async function como<T>(
-  rol: 'plataforma' | 'app',
+  rol: 'plataforma' | 'app' | 'publico' | 'owner',
   tenantId: string | null,
   fn: (c: PoolClient) => Promise<T>,
 ): Promise<T> {
@@ -122,16 +127,22 @@ describe('PR09 · Lectura de la plataforma (ADR-031, constitución 1.3.1)', () =
       );
       expect(new Set(columnas.rows.map((f) => f.privilegio))).toEqual(new Set(['SELECT']));
       const otorgadas = columnas.rows.map((f) => `${f.tabla}.${f.columna}`).sort();
-      const esperadas = Object.entries(PERMISOS_ESPERADOS)
+      // 007 (fase 2c): el SELECT sobre las dos vistas aparece también columna por columna; la lista exacta es la de
+      // las tablas más las columnas de las vistas (revisión de ADR-031).
+      const esperadas = Object.entries({ ...PERMISOS_ESPERADOS, ...COLUMNAS_VISTAS_DE_CONTEO })
         .flatMap(([tabla, cols]) => cols.map((c) => `${tabla}.${c}`))
         .sort();
       expect(otorgadas).toEqual(esperadas);
 
-      const tablas = await seed.query(
+      // 007 (enmienda 1.7.0, FR-021): la única aserción existente que cambia. Antes, cero permisos de tabla; desde la
+      // fase 2c, exactamente SELECT sobre las dos vistas de solo conteo, y nada más de tabla.
+      const tablas = await seed.query<{ table_name: string; privilege_type: string }>(
         `SELECT table_name, privilege_type FROM information_schema.table_privileges
-          WHERE grantee = 'barberias_plataforma' AND table_schema = 'public'`,
+          WHERE grantee = 'barberias_plataforma' AND table_schema = 'public' ORDER BY table_name`,
       );
-      expect(tablas.rows).toEqual([]);
+      expect(tablas.rows).toEqual(
+        [...VISTAS_DE_CONTEO].sort().map((vista) => ({ table_name: vista, privilege_type: 'SELECT' })),
+      );
     });
 
     it('no recibe ningún permiso sobre el contenido de los comprobantes ni sobre el número completo', () => {
@@ -473,6 +484,176 @@ describe('PR09 · Lectura de la plataforma (ADR-031, constitución 1.3.1)', () =
           WHERE grantee IN ('barberias_plataforma', 'barberias_auth') AND table_name = 'data_subject_request'`,
       );
       expect(rows).toEqual([]);
+    });
+  });
+
+  // T044 de 007 · Enmienda 1.7.0 del principio III y revisión de ADR-031 (PR09, permisos exactos): el rol de la
+  // plataforma lee solo dos vistas de solo conteo, ya agregadas y sin ninguna columna de barbería ni de persona. Su dueño
+  // es barberias_conteos (NOLOGIN NOBYPASSRLS NOINHERIT), concedido a barberias_owner sin herencia.
+  describe('5e. Vistas de solo conteo (007, enmienda 1.7.0)', () => {
+    it('las dos vistas existen y solo tienen sus columnas de conteo: ninguna de barbería ni de persona', async () => {
+      const { rows } = await poolDe('seed').query<{ vista: string; columna: string }>(
+        `SELECT table_name AS vista, column_name AS columna FROM information_schema.columns
+          WHERE table_schema = 'public' AND table_name = ANY($1) ORDER BY table_name, ordinal_position`,
+        [[...VISTAS_DE_CONTEO]],
+      );
+      const porVista: Record<string, string[]> = {};
+      for (const fila of rows) (porVista[fila.vista] ??= []).push(fila.columna);
+      expect(porVista).toEqual(COLUMNAS_VISTAS_DE_CONTEO);
+      const tipos = await poolDe('seed').query<{ relkind: string }>(
+        `SELECT c.relkind FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+          WHERE n.nspname = 'public' AND c.relname = ANY($1)`,
+        [[...VISTAS_DE_CONTEO]],
+      );
+      expect(tipos.rows).toEqual([{ relkind: 'v' }, { relkind: 'v' }]);
+    });
+
+    it('barberias_plataforma lee las dos vistas: solo números, sin ningún id', async () => {
+      for (const vista of VISTAS_DE_CONTEO) {
+        const { rows, fields } = await comoPlataforma((c) => c.query(`SELECT * FROM ${vista}`));
+        expect(fields.map((f) => f.name)).toEqual(COLUMNAS_VISTAS_DE_CONTEO[vista]);
+        expect(JSON.stringify(rows)).not.toMatch(
+          /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i,
+        );
+      }
+    });
+
+    it.each([
+      ['SELECT created_at FROM appointment'],
+      ['SELECT status FROM appointment'],
+      ['SELECT role_code FROM membership'],
+      ['SELECT status FROM membership'],
+      ['SELECT id FROM customer_profile'],
+      ['SELECT id FROM user_account'],
+    ])(
+      'barberias_plataforma: %s → permiso denegado (sigue sin permisos sobre las tablas)',
+      async (consulta) => {
+        await expect(comoPlataforma((c) => c.query(consulta))).rejects.toThrow(/permission denied/);
+      },
+    );
+
+    it.each([
+      ['app' as const, 'platform_appointment_counts'],
+      ['app' as const, 'platform_membership_counts'],
+      ['publico' as const, 'platform_appointment_counts'],
+      ['publico' as const, 'platform_membership_counts'],
+    ])('barberias_%s no puede leer %s', async (rol, vista) => {
+      await expect(como(rol, tenants[0].tenantId, (c) => c.query(`SELECT * FROM ${vista}`))).rejects.toThrow(
+        /permission denied/,
+      );
+    });
+
+    it('barberias_conteos: sin inicio de sesión, sin BYPASSRLS, NOINHERIT, sin superusuario', async () => {
+      const { rows } = await poolDe('seed').query(
+        `SELECT rolcanlogin, rolbypassrls, rolinherit, rolsuper, rolcreaterole, rolcreatedb
+           FROM pg_roles WHERE rolname = 'barberias_conteos'`,
+      );
+      expect(rows).toEqual([
+        {
+          rolcanlogin: false,
+          rolbypassrls: false,
+          rolinherit: false,
+          rolsuper: false,
+          rolcreaterole: false,
+          rolcreatedb: false,
+        },
+      ]);
+    });
+
+    it('conectarse con barberias_conteos falla', async () => {
+      const url = new URL(process.env.TEST_DB_SEED_URL as string);
+      url.username = 'barberias_conteos';
+      url.password = 'cualquiera';
+      const cliente = new Client({ connectionString: url.toString() });
+      await expect(cliente.connect()).rejects.toThrow();
+      await cliente.end().catch(() => undefined);
+    });
+
+    it('barberias_conteos es dueño solo de las dos vistas y lee solo las columnas que cuentan', async () => {
+      const seed = poolDe('seed');
+      const propios = await seed.query<{ nombre: string }>(
+        `SELECT c.relname AS nombre FROM pg_class c JOIN pg_roles r ON r.oid = c.relowner
+          WHERE r.rolname = 'barberias_conteos'
+         UNION ALL
+         SELECT p.proname FROM pg_proc p JOIN pg_roles r ON r.oid = p.proowner WHERE r.rolname = 'barberias_conteos'
+         ORDER BY 1`,
+      );
+      expect(propios.rows.map((f) => f.nombre)).toEqual([...VISTAS_DE_CONTEO].sort());
+
+      const columnas = await seed.query<{ tabla: string; columna: string; privilegio: string }>(
+        `SELECT table_name AS tabla, column_name AS columna, privilege_type AS privilegio
+           FROM information_schema.column_privileges
+          WHERE grantee = 'barberias_conteos' AND table_schema = 'public' AND NOT (table_name = ANY($1))
+          ORDER BY 1, 2, 3`,
+        [[...VISTAS_DE_CONTEO]],
+      );
+      expect(columnas.rows).toEqual(
+        Object.entries(COLUMNAS_DE_CONTEO)
+          .flatMap(([tabla, cols]) => cols.map((columna) => ({ tabla, columna, privilegio: 'SELECT' })))
+          .sort((x, y) => `${x.tabla}.${x.columna}`.localeCompare(`${y.tabla}.${y.columna}`)),
+      );
+      // Ningún permiso de tabla completa fuera de sus propias vistas.
+      const tablas = await seed.query(
+        `SELECT table_name, privilege_type FROM information_schema.table_privileges
+          WHERE grantee = 'barberias_conteos' AND table_schema = 'public' AND NOT (table_name = ANY($1))`,
+        [[...VISTAS_DE_CONTEO]],
+      );
+      expect(tablas.rows).toEqual([]);
+    });
+
+    it('barberias_conteos no puede escribir en ninguna tabla', async () => {
+      const { rows } = await poolDe('seed').query<{ tabla: string; privilegio: string }>(
+        `SELECT c.relname AS tabla, p.privilegio
+           FROM pg_class c
+           JOIN pg_namespace n ON n.oid = c.relnamespace
+          CROSS JOIN unnest(ARRAY['INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER']) AS p(privilegio)
+          WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p')
+            AND (has_table_privilege('barberias_conteos', c.oid, p.privilegio)
+                 OR (p.privilegio IN ('INSERT', 'UPDATE', 'REFERENCES')
+                     AND has_any_column_privilege('barberias_conteos', c.oid, p.privilegio)))`,
+      );
+      expect(rows).toEqual([]);
+    });
+
+    it('ningún rol con inicio de sesión hereda barberias_conteos: su único miembro es barberias_owner, sin herencia', async () => {
+      const { rows } = await poolDe('seed').query(
+        `SELECT r.rolname AS miembro, m.inherit_option, m.set_option
+           FROM pg_auth_members m
+           JOIN pg_roles g ON g.oid = m.roleid
+           JOIN pg_roles r ON r.oid = m.member
+          WHERE g.rolname = 'barberias_conteos'`,
+      );
+      expect(rows).toEqual([{ miembro: 'barberias_owner', inherit_option: false, set_option: true }]);
+      const heredan = await poolDe('seed').query(
+        `SELECT r.rolname FROM pg_roles r
+          WHERE r.rolcanlogin AND NOT r.rolsuper
+            AND pg_has_role(r.oid, 'barberias_conteos', 'USAGE')`,
+      );
+      expect(heredan.rows).toEqual([]);
+    });
+
+    it('barberias_owner, con el tenant de A fijado, solo ve las citas y las membresías de A', async () => {
+      const [a, b] = tenants;
+      for (const t of [a, b]) {
+        const { barberoId, servicioId, clienteId } = await sembrarAgenda(t.tenantId);
+        await sembrarCita({
+          tenantId: t.tenantId,
+          barberoId,
+          servicioId,
+          clienteId,
+          inicio: new Date(Date.now() + 3 * DIA_MS),
+        });
+      }
+      const conteo = (tabla: string) => (c: PoolClient) =>
+        c.query<{ dea: number; deb: number }>(
+          `SELECT count(*) FILTER (WHERE tenant_id = $1)::int AS dea, count(*) FILTER (WHERE tenant_id = $2)::int AS deb
+             FROM ${tabla}`,
+          [a.tenantId, b.tenantId],
+        );
+      for (const tabla of ['appointment', 'membership']) {
+        const { rows } = await como('owner', a.tenantId, conteo(tabla));
+        expect({ tabla, ...rows[0], deA: rows[0].dea > 0 }).toMatchObject({ tabla, deb: 0, deA: true });
+      }
     });
   });
 

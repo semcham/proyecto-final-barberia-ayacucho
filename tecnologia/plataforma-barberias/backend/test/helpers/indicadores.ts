@@ -61,6 +61,50 @@ export async function borrarBarberiasEnBloque(ids: string[]): Promise<void> {
   await seed.query('DELETE FROM tenant WHERE id = ANY($1::uuid[])', [ids]);
 }
 
+/** Fija la fecha de registro de una cita (sembrado sin RLS): así se prueba el mes y su borde en Lima (T045). */
+export async function fijarRegistroDeCita(citaId: string, registradaEn: string | Date): Promise<void> {
+  await poolDe('seed').query('UPDATE appointment SET created_at = $2 WHERE id = $1', [citaId, registradaEn]);
+}
+
+/**
+ * Citas de volumen sembradas en bloque, sin RLS, en estados no activos (no chocan con las exclusiones de horario),
+ * registradas a lo largo del último año. Devuelve un marcador para borrarlas al terminar.
+ */
+export async function sembrarCitasEnBloque(opciones: {
+  tenantId: string;
+  barberoId: string;
+  servicioId: string;
+  clienteId: string;
+  cantidad: number;
+}): Promise<string> {
+  const marcador = `volumen-${uuidv7()}`;
+  await poolDe('seed').query(
+    `INSERT INTO appointment
+       (id, tenant_id, barber_id, service_id, customer_id, service_name, price, duration_min, starts_at, ends_at,
+        status, origin, created_by, created_at, cancelled_at)
+     SELECT gen_random_uuid(), $1, $2, $3, $4, $6, '20.00', 30,
+            now() - make_interval(days => g % 365, mins => g % 600), now() - make_interval(days => g % 365, mins => g % 600) + interval '30 minutes',
+            CASE WHEN g % 10 = 0 THEN 'CANCELADA' ELSE 'COMPLETADA' END, 'EN_LINEA', gen_random_uuid(),
+            now() - make_interval(days => g % 365),
+            CASE WHEN g % 10 = 0 THEN now() END
+       FROM generate_series(1, $5) AS g`,
+    [
+      opciones.tenantId,
+      opciones.barberoId,
+      opciones.servicioId,
+      opciones.clienteId,
+      opciones.cantidad,
+      marcador,
+    ],
+  );
+  return marcador;
+}
+
+/** Borra las citas de volumen sembradas con ese marcador (sin RLS). */
+export async function borrarCitasEnBloque(marcador: string): Promise<void> {
+  await poolDe('seed').query('DELETE FROM appointment WHERE service_name = $1', [marcador]);
+}
+
 /** Filas `ADMIN_INDICADORES_CONSULTADOS` de un administrador en platform_audit_log (sin RLS). */
 export async function consultasAuditadas(adminId: string): Promise<Record<string, unknown>[]> {
   const { rows } = await poolDe('seed').query(

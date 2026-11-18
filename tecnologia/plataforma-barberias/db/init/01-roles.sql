@@ -42,11 +42,23 @@ BEGIN
     CREATE ROLE barberias_plataforma LOGIN PASSWORD 'barberias_plataforma_dev'
       NOSUPERUSER NOBYPASSRLS NOINHERIT NOCREATEDB NOCREATEROLE;
   END IF;
+
+  -- Conteos de uso de la plataforma (007, enmienda 1.7.0 de la constitución, revisión de ADR-031): dueño de las dos
+  -- vistas de solo conteo (migración vistas_de_conteo), con SELECT solo sobre las columnas que cuentan. NOLOGIN y
+  -- sin BYPASSRLS: nadie se conecta con él y no omite RLS (lee por su propia política FOR SELECT).
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'barberias_conteos') THEN
+    CREATE ROLE barberias_conteos NOLOGIN NOSUPERUSER NOBYPASSRLS NOINHERIT NOCREATEDB NOCREATEROLE;
+  END IF;
 END
 $$;
 
 -- barberias_owner necesita poder asignar la propiedad de las funciones a barberias_auth.
 GRANT barberias_auth TO barberias_owner;
+
+-- 007 (research R02): barberias_owner asigna la propiedad de las vistas de conteo a barberias_conteos (SET TRUE), pero
+-- NO hereda sus privilegios ni sus políticas (INHERIT FALSE): sigue viendo solo la barbería de su transacción. Ningún
+-- rol con inicio de sesión hereda barberias_conteos (PostgreSQL 16).
+GRANT barberias_conteos TO barberias_owner WITH INHERIT FALSE, SET TRUE;
 
 -- La base pertenece a barberias_owner: así el esquema public (pg_database_owner) también es suyo.
 DO $$

@@ -158,6 +158,18 @@ describe('Reglas de arquitectura (PR14)', () => {
       expect(lineas.some((l) => l.includes('solicitudes-datos-permitido.controller.ts'))).toBe(false);
     });
 
+    // T046 de 007 · Enmienda 1.7.0: las citas de M02 leen su vista de conteo con el rol de la plataforma, desde su
+    // carpeta infrastructure/plataforma/; el resto de M02 (el catálogo) sigue sin poder usarlo.
+    it('lectura-plataforma-confinada admite las citas de M02 en plataforma/ y no el catálogo', () => {
+      const lineas = salida.split(/\r?\n/);
+      const enLinea = (regla: string, archivo: string) =>
+        lineas.some((linea) => linea.includes(regla) && linea.includes(archivo));
+      expect(
+        enLinea('lectura-plataforma-confinada', 'catalogo/infrastructure/catalogo-con-plataforma.ts'),
+      ).toBe(true);
+      expect(lineas.some((l) => l.includes('conteos-permitidos.ts'))).toBe(false);
+    });
+
     // T030 de 007 · research R01: las fuentes de indicadores (infrastructure/plataforma/*-indicador.ts) solo las
     // importan el index.ts de su módulo y host/indicadores.ts, y el registro de M06 no conoce los módulos.
     it('cada violación de la fase 2b de 007 se atribuye a su archivo, y los usos permitidos no se señalan', () => {

@@ -133,6 +133,51 @@ describe('Indicadores de la plataforma (/plataforma/indicadores)', () => {
     expect(screen.queryByRole('heading', { name: /usuarios/i })).not.toBeInTheDocument();
   });
 
+  // T051 de 007 · Fase 2c: con las vistas de solo conteo, el servidor envía las citas por mes y los usuarios por tipo.
+  it('con citasPorMes y usuarios, muestra sus tablas: el total y cada estado por mes, y el personal y los clientes', async () => {
+    servidorIndicadores({
+      ...SOLO_BARBERIAS,
+      citasPorMes: [
+        { mes: '2026-10', total: 0, porEstado: [] },
+        {
+          mes: '2026-11',
+          total: 9,
+          porEstado: [
+            { estado: 'PENDIENTE', citas: 1 },
+            { estado: 'CONFIRMADA', citas: 2 },
+            { estado: 'COMPLETADA', citas: 4 },
+            { estado: 'NO_ASISTIO', citas: 1 },
+            { estado: 'CANCELADA', citas: 1 },
+          ],
+        },
+      ],
+      usuarios: { personal: 12, clientes: 340 },
+    });
+    renderizar();
+
+    const citas = await screen.findByRole('table', { name: 'Citas registradas por mes' });
+    expect(
+      within(citas)
+        .getAllByRole('columnheader')
+        .map((c) => c.textContent),
+    ).toEqual(['Mes', 'Total', 'Pendientes', 'Confirmadas', 'Completadas', 'No asistió', 'Canceladas']);
+    expect(filasDe(citas)).toEqual([
+      ['octubre de 2026', '0', '0', '0', '0', '0', '0'],
+      ['noviembre de 2026', '9', '1', '2', '4', '1', '1'],
+    ]);
+
+    const usuarios = screen.getByRole('table', { name: 'Usuarios' });
+    expect(
+      within(usuarios)
+        .getAllByRole('columnheader')
+        .map((c) => c.textContent),
+    ).toEqual(['Tipo', 'Usuarios']);
+    expect(filasDe(usuarios)).toEqual([
+      ['Personal (propietarios y barberos)', '12'],
+      ['Clientes', '340'],
+    ]);
+  });
+
   it('si el cálculo falla, lo dice y permite reintentar', async () => {
     let intentos = 0;
     servidor.use(

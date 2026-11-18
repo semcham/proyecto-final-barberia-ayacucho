@@ -256,12 +256,12 @@ description: "Tareas de la funcionalidad 007: indicadores y datos personales"
 
 ### Rol, pruebas y paso manual (pruebas primero, deben fallar) ⚠️
 
-- [ ] T043 [US2] En `db/init/01-roles.sql`:
+- [X] T043 [US2] En `db/init/01-roles.sql`:
   - crear de forma idempotente el rol `barberias_conteos` `NOLOGIN NOSUPERUSER NOBYPASSRLS NOINHERIT NOCREATEDB NOCREATEROLE`, con un comentario de su origen;
   - concederlo con **`GRANT barberias_conteos TO barberias_owner WITH INHERIT FALSE, SET TRUE`** (PostgreSQL 16): `SET TRUE`, para asignar la propiedad de las vistas; `INHERIT FALSE`, para que el dueño de las tablas no herede sus políticas (research R02).
 
   Así un **volumen nuevo** de Docker Compose y la base de las pruebas (`backend/test/helpers/test-db.ts`, que ejecuta ese script) lo crean solos. Comprobar que `backend/test/integration/escalado/salud-listo.spec.ts`, que lee el script, sigue en verde.
-- [ ] T044 [US2] Ampliar `backend/test/integration/aislamiento/lectura-plataforma.spec.ts` con la **prueba de permisos exactos** (PR09; enmienda 1.7.0). Es la única aserción existente que cambia (FR-021):
+- [X] T044 [US2] Ampliar `backend/test/integration/aislamiento/lectura-plataforma.spec.ts` con la **prueba de permisos exactos** (PR09; enmienda 1.7.0). Es la única aserción existente que cambia (FR-021):
   - `barberias_plataforma` tiene `SELECT` sobre **exactamente** `platform_appointment_counts` y `platform_membership_counts` en `information_schema.table_privileges`, y nada más de tabla. Hoy la prueba exige cero permisos de tabla y debe aceptar exactamente esas dos vistas;
   - `SELECT id FROM appointment`, `FROM membership`, `FROM customer_profile` y `FROM user_account` siguen denegados;
   - las dos vistas se leen y devuelven solo sus columnas de conteo, sin ningún id;
@@ -270,20 +270,20 @@ description: "Tareas de la funcionalidad 007: indicadores y datos personales"
   - **`barberias_owner`, con el tenant de A fijado, solo ve las citas y las membresías de A** (no hereda la política `FOR SELECT TO barberias_conteos USING (true)`);
   - **ningún rol con inicio de sesión hereda `barberias_conteos`**: en `pg_auth_members`, el único miembro es `barberias_owner`, con `inherit_option = false` y `set_option = true`;
   - la sección 4, "Ninguna escritura", sigue en verde con las vistas.
-- [ ] T045 [P] [US2] Ampliar `backend/test/integration/plataforma/indicadores-plataforma.spec.ts`:
+- [X] T045 [P] [US2] Ampliar `backend/test/integration/plataforma/indicadores-plataforma.spec.ts`:
   - citas sembradas con **`created_at` puesto a propósito** en varios meses y estados: `citasPorMes` de los últimos 12 meses exacto, con ceros y con el borde del mes en Lima (una cita registrada a las 23:59 del último día del mes y otra a las 00:00 del día 1, hora de Lima);
   - `usuarios.personal` y `usuarios.clientes` exactos (membresías activas);
   - el cuerpo sigue sin ids, nombres, correos ni teléfonos;
   - responde en **≤ 3 s** con el volumen sembrado de `escalado`, ya con las vistas (SC-005).
-- [ ] T046 [P] [US2] Ampliar la prueba de la regla `lectura-plataforma-confinada` en `backend/test/architecture/reglas.spec.ts` con fixtures: `catalogo-citas/citas/infrastructure/plataforma/` **sí** puede importar `shared/lectura-plataforma.ts`, y `catalogo-citas/catalogo/infrastructure/` **no**.
-- [ ] T047 [US2] Documentar el **paso manual para un volumen que ya existe**, con el mismo patrón que los roles de 002 y 003:
+- [X] T046 [P] [US2] Ampliar la prueba de la regla `lectura-plataforma-confinada` en `backend/test/architecture/reglas.spec.ts` con fixtures: `catalogo-citas/citas/infrastructure/plataforma/` **sí** puede importar `shared/lectura-plataforma.ts`, y `catalogo-citas/catalogo/infrastructure/` **no**.
+- [X] T047 [US2] Documentar el **paso manual para un volumen que ya existe**, con el mismo patrón que los roles de 002 y 003:
   - en `tecnologia/plataforma-barberias/README.md`, el bloque SQL idempotente (`DO $$ … IF NOT EXISTS … CREATE ROLE barberias_conteos NOLOGIN …; GRANT barberias_conteos TO barberias_owner WITH INHERIT FALSE, SET TRUE;`) para pegar en `docker compose exec db psql -U postgres -d barberias` **antes** de aplicar la migración `vistas_de_conteo`;
   - en `specs/007-indicadores-datos-personales/quickstart.md` §0, las dos comprobaciones: que el rol existe sin inicio de sesión ni `BYPASSRLS`, y que su único miembro es `barberias_owner`, sin herencia;
   - qué pasa si se olvida: la migración `vistas_de_conteo` falla con un error claro y las réplicas no arrancan, como con cualquier migración fallida.
 
 ### Implementación
 
-- [ ] T048 [US2] Crear la migración `backend/migrations/NNNN_vistas_de_conteo.ts`, con el número siguiente libre, según data-model §2. En `up`, en este orden:
+- [X] T048 [US2] Crear la migración `backend/migrations/NNNN_vistas_de_conteo.ts`, con el número siguiente libre, según data-model §2. En `up`, en este orden:
   1. comprobar que existe `barberias_conteos`, y si no, fallar con el mensaje "falta el rol barberias_conteos: ver README";
   2. conceder sus `SELECT` por columna y las políticas `FOR SELECT TO barberias_conteos USING (true)` sobre `appointment` y `membership`;
   3. crear las dos vistas ya agregadas, sin `tenant_id`;
@@ -291,14 +291,14 @@ description: "Tareas de la funcionalidad 007: indicadores y datos personales"
   5. `GRANT SELECT` de las vistas solo a `barberias_plataforma`.
 
   `down` deshace todo en orden inverso. Exportar la lista de vistas para la prueba de T044.
-- [ ] T049 [US2] Crear las fuentes:
+- [X] T049 [US2] Crear las fuentes:
   - `backend/src/modules/catalogo-citas/citas/infrastructure/plataforma/citas-por-mes-indicador.ts` (completa los meses en cero);
   - `m01/identidad/infrastructure/plataforma/usuarios-por-tipo-indicador.ts`.
 
   Exportarlas en sus `index.ts` y registrarlas en `backend/src/host/indicadores.ts`.
-- [ ] T050 [US2] Ampliar `lectura-plataforma-confinada` en `backend/.dependency-cruiser.cjs` con `catalogo-citas/citas/infrastructure/plataforma/`, y su comentario.
-- [ ] T051 [P] [US2] En `frontend/src/pages/plataforma/Indicadores.tsx`, mostrar las tablas de citas por mes (con su total y por estado) y de usuarios por tipo, y ampliar `frontend/test/pages/plataforma-indicadores.spec.tsx` con esas secciones.
-- [ ] T052 [US2] Actualizar **en este commit** los documentos afectados, que pasan las vistas de "por construir" a "construidas" (principio XI):
+- [X] T050 [US2] Ampliar `lectura-plataforma-confinada` en `backend/.dependency-cruiser.cjs` con `catalogo-citas/citas/infrastructure/plataforma/`, y su comentario.
+- [X] T051 [P] [US2] En `frontend/src/pages/plataforma/Indicadores.tsx`, mostrar las tablas de citas por mes (con su total y por estado) y de usuarios por tipo, y ampliar `frontend/test/pages/plataforma-indicadores.spec.tsx` con esas secciones.
+- [X] T052 [US2] Actualizar **en este commit** los documentos afectados, que pasan las vistas de "por construir" a "construidas" (principio XI):
   - `docs/02-arquitectura-software/multi-tenancy-y-datos.md` (§2.1, roles de base de datos): el rol y las vistas, con su concesión sin herencia;
   - `docs/02-arquitectura-software/seguridad-y-privacidad.md`: la excepción y las amenazas;
   - `docs/01-analisis-de-sistema/07-decisiones-arquitectonicas.md`: la revisión de ADR-031, "implementada";

@@ -17,6 +17,9 @@ export {
   type EvaluacionIntentos,
 } from './identidad/domain/politica-intentos';
 export { BarberiaNoDisponible } from './barberias/domain/errores';
+// 007 (fase 2c, research R01): fuente de indicadores de la plataforma. Solo la registra host/indicadores.ts (regla de
+// PR14 indicadores-solo-por-registro).
+export { UsuariosPorTipoIndicador } from './identidad/infrastructure/plataforma/usuarios-por-tipo-indicador';
 // Interfaces públicas para M02 (ADR-020, research R05 de 002).
 export {
   PersonalApi,

@@ -11,8 +11,21 @@ marcan "no construido".
 - Las migraciones de 007 que se hayan construido, aplicadas por `preparar-backend`.
 - **US2 (vistas):** el rol `barberias_conteos` creado. En una base nueva lo crea `db/init/01-roles.sql`; en un
   volumen anterior a 007, se crea a mano una vez como superusuario, igual que los roles de 002 y 003, con el bloque
-  SQL del README de la plataforma (incluye `GRANT barberias_conteos TO barberias_owner WITH INHERIT FALSE, SET
-  TRUE`). Comprobación, antes de recrear las réplicas:
+  SQL del README de la plataforma, que se pega en `docker compose exec db psql -U postgres -d barberias`
+  **antes** de aplicar la migración `0034_vistas_de_conteo`:
+
+  ```sql
+  DO $$
+  BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'barberias_conteos') THEN
+      CREATE ROLE barberias_conteos NOLOGIN NOSUPERUSER NOBYPASSRLS NOINHERIT NOCREATEDB NOCREATEROLE;
+    END IF;
+  END
+  $$;
+  GRANT barberias_conteos TO barberias_owner WITH INHERIT FALSE, SET TRUE;
+  ```
+
+  Comprobación, antes de recrear las réplicas:
 
   ```sql
   SELECT rolname, rolcanlogin, rolbypassrls FROM pg_roles WHERE rolname = 'barberias_conteos';   -- una fila: f, f
@@ -20,6 +33,16 @@ marcan "no construido".
     FROM pg_auth_members m JOIN pg_roles g ON g.oid = m.roleid JOIN pg_roles r ON r.oid = m.member
    WHERE g.rolname = 'barberias_conteos';                                                      -- solo barberias_owner: f, t
   ```
+
+  Luego: `docker compose up -d --force-recreate preparar-backend backend-1 backend-2`. **Si se olvida el rol**, la
+  migración falla con "falta el rol barberias_conteos: ver README", `preparar-backend` termina con error y las réplicas
+  no quedan listas, como con cualquier migración fallida; se crea el rol y se vuelve a levantar `preparar-backend`.
+
+  Registro del paso manual en el volumen del responsable (T053):
+
+  | Fecha | Rol creado | Comprobaciones (f, f / owner f, t) | Migración 0034 aplicada | Indicadores con citas y usuarios | Notas |
+  | ----- | ---------- | ---------------------------------- | ----------------------- | -------------------------------- | ----- |
+  |       |            |                                    |                         |                                  |       |
 - **US3:** `INTENTOS_SAL_IP`. **El responsable la añade a mano a su `.env` local** (el agente no lo lee ni lo
   cambia); con Compose, si falta, se usa el valor solo de desarrollo de `docker-compose.yml`. Sin ella, fuera de
   Compose no arrancan ni el backend ni los scripts que construyen `Configuracion` (por ejemplo,

@@ -100,6 +100,7 @@ import { KyselySolicitudesRepository } from './solicitudes-datos/infrastructure/
 import { SolicitudesDatosController } from './solicitudes-datos/presentation/solicitudes-datos.controller';
 import { ConsultarIndicadores } from './identidad/application/plataforma/consultar-indicadores';
 import { IndicadoresPlataformaController } from './identidad/presentation/indicadores-plataforma.controller';
+import { UsuariosPorTipoIndicador } from './identidad/infrastructure/plataforma/usuarios-por-tipo-indicador';
 
 /** M01 Acceso y barberías (submódulos identidad, barberias, clientes y, desde 007, solicitudes-datos). */
 @Module({
@@ -197,7 +198,17 @@ import { IndicadoresPlataformaController } from './identidad/presentation/indica
     CerrarSolicitud,
     // Indicadores agregados de la plataforma (007, US2; research R01): usa el registro de M06.
     ConsultarIndicadores,
+    // 007 (fase 2c): fuente de indicadores de la plataforma (usuarios por tipo, desde la vista de solo conteo).
+    UsuariosPorTipoIndicador,
   ],
-  exports: [ValidarSolicitud, ValidarSolicitudPlataforma, BarberiasApi, ClientesApi, PersonalApi],
+  exports: [
+    ValidarSolicitud,
+    ValidarSolicitudPlataforma,
+    BarberiasApi,
+    ClientesApi,
+    PersonalApi,
+    // 007: la registra el host (host/indicadores.ts).
+    UsuariosPorTipoIndicador,
+  ],
 })
 export class AccesoBarberiasModule {}

@@ -1,21 +1,43 @@
 import { randomUUID } from 'node:crypto';
 import { type AppDePrueba, crearApp } from '../../helpers/app';
-import { sembrarBarberia, sembrarCliente } from '../../helpers/fixtures';
+import { ZonaHoraria } from '../../../src/shared/tiempo/zona-horaria';
+import {
+  sembrarBarberia,
+  sembrarBarbero,
+  sembrarCita,
+  sembrarCliente,
+  sembrarServicio,
+  sembrarUsuario,
+} from '../../helpers/fixtures';
 import {
   borrarBarberiasEnBloque,
+  borrarCitasEnBloque,
   consultasAuditadas,
   type EstadoSuscripcionSembrado,
   fijarEstados,
+  fijarRegistroDeCita,
   pedirIndicadores,
   sembrarBarberiasEnBloque,
+  sembrarCitasEnBloque,
 } from '../../helpers/indicadores';
 import { tokenPara, tokenPlataformaPara } from '../../helpers/sesiones';
 import { cerrarPools } from '../../helpers/test-db';
 
-// T027 de 007 · US2-1, US2-4 a US2-6; FR-012 a FR-016; SC-004, SC-005. El administrador de la plataforma ve las
-// barberías activas, suspendidas y por estado de la suscripción, con la hora del cálculo, sin ningún dato de una
-// barbería ni de una persona. La base de pruebas es compartida, así que los conteos se comparan por diferencia: antes
-// y después de sembrar. Fase 2b: sin las vistas de conteo, las citas por mes y los usuarios no aparecen.
+// T027 y T045 de 007 · US2-1 a US2-6; FR-012 a FR-016; SC-004, SC-005. El administrador de la plataforma ve las
+// barberías activas, suspendidas y por estado de la suscripción, las citas por mes de los últimos 12 meses (en Lima) y
+// los usuarios por tipo, con la hora del cálculo, sin ningún dato de una barbería ni de una persona. La base de pruebas
+// es compartida, así que los conteos se comparan por diferencia: antes y después de sembrar.
+
+interface CitasDelMes {
+  mes: string;
+  total: number;
+  porEstado: { estado: string; citas: number }[];
+}
+
+interface Usuarios {
+  personal: number;
+  clientes: number;
+}
 
 interface Indicadores {
   calculadoEn: string;
@@ -24,15 +46,64 @@ interface Indicadores {
     suspendidas: number;
     porEstadoDeSuscripcion: { estado: string; barberias: number }[];
   };
-  citasPorMes?: unknown;
-  usuarios?: unknown;
+  citasPorMes?: CitasDelMes[];
+  usuarios?: Usuarios;
 }
+
+type EstadoCita = 'PENDIENTE' | 'CONFIRMADA' | 'COMPLETADA' | 'NO_ASISTIO' | 'CANCELADA';
 
 const LIMITE_MS = 3000;
 const BARBERIAS_DE_VOLUMEN = 500;
+const CITAS_DE_VOLUMEN = 52_000;
 
 function porEstado(i: Indicadores): Record<string, number> {
   return Object.fromEntries(i.barberias.porEstadoDeSuscripcion.map((e) => [e.estado, e.barberias]));
+}
+
+/** Mes `YYYY-MM` de Lima, desplazado `meses` desde el actual. */
+function mesDeLima(meses: number): string {
+  const hoy = ZonaHoraria.LIMA.fechaDe(new Date());
+  const fecha = new Date(Date.UTC(hoy.anio, hoy.mes - 1 + meses, 1));
+  return `${fecha.getUTCFullYear()}-${String(fecha.getUTCMonth() + 1).padStart(2, '0')}`;
+}
+
+/** Último día (`DD`) de un mes `YYYY-MM`. */
+function ultimoDia(mes: string): string {
+  const [anio, numero] = mes.split('-').map(Number);
+  return String(new Date(Date.UTC(anio, numero, 0)).getUTCDate()).padStart(2, '0');
+}
+
+/** Por mes: lo que cambió entre dos consultas (el total y cada estado), solo los meses que cambiaron. */
+function diferenciaPorMes(antes: Indicadores, despues: Indicadores): Record<string, Record<string, number>> {
+  const aMapa = (i: Indicadores) =>
+    new Map(
+      (i.citasPorMes ?? []).map((m) => [
+        m.mes,
+        { total: m.total, ...Object.fromEntries(m.porEstado.map((e) => [e.estado, e.citas])) } as Record<
+          string,
+          number
+        >,
+      ]),
+    );
+  const previo = aMapa(antes);
+  const resultado: Record<string, Record<string, number>> = {};
+  for (const [mes, valores] of aMapa(despues)) {
+    const cambios = Object.fromEntries(
+      Object.entries(valores)
+        .map(([clave, n]) => [clave, n - (previo.get(mes)?.[clave] ?? 0)] as const)
+        .filter(([, n]) => n !== 0),
+    );
+    if (Object.keys(cambios).length > 0) resultado[mes] = cambios;
+  }
+  return resultado;
+}
+
+/** Servicio, barbero y cliente de una barbería, para sembrar citas. */
+async function agendaDe(tenantId: string) {
+  const { servicioId } = await sembrarServicio({ tenantId });
+  const { barberoId } = await sembrarBarbero({ tenantId, servicios: [servicioId] });
+  const { clienteId } = await sembrarCliente({ tenantId });
+  return { servicioId, barberoId, clienteId };
 }
 
 describe('T027 · Indicadores de la plataforma: barberías por estado (US2, FR-012 a FR-016)', () => {
@@ -112,15 +183,83 @@ describe('T027 · Indicadores de la plataforma: barberías por estado (US2, FR-0
     expect(texto).not.toMatch(/@/);
   });
 
-  it('dice la hora del cálculo; sin las vistas de conteo (fase 2b) no trae citas por mes ni usuarios', async () => {
+  // T045 de 007 · Esta aserción era propia de la fase 2b ("sin las vistas de conteo no trae citas por mes ni
+  // usuarios"); con las vistas de la fase 2c, las dos secciones vienen siempre.
+  it('dice la hora del cálculo y, con las vistas de conteo (fase 2c), trae citas por mes y usuarios', async () => {
     const inicio = Date.now();
     const indicadores = await consultar();
     const calculado = Date.parse(indicadores.calculadoEn);
     expect(calculado).not.toBeNaN();
     expect(calculado).toBeGreaterThanOrEqual(inicio - 1000);
     expect(calculado).toBeLessThanOrEqual(Date.now() + 1000);
-    expect(indicadores).not.toHaveProperty('citasPorMes');
-    expect(indicadores).not.toHaveProperty('usuarios');
+    expect(indicadores).toHaveProperty('citasPorMes');
+    expect(indicadores).toHaveProperty('usuarios');
+  });
+
+  describe('citas por mes (fase 2c, FR-016): los últimos 12 meses en Lima, con ceros y el borde del mes', () => {
+    it('cuenta exactamente las citas sembradas por mes de registro y estado', async () => {
+      const antes = await consultar();
+      const meses = (antes.citasPorMes as CitasDelMes[]).map((m) => m.mes);
+      // Doce meses consecutivos, del más antiguo al actual de Lima, aunque alguno esté en cero.
+      expect(meses).toEqual(Array.from({ length: 12 }, (_, i) => mesDeLima(i - 11)));
+
+      const b = await sembrarBarberia();
+      const agenda = await agendaDe(b.tenantId);
+      const mes0 = mesDeLima(0);
+      const mesAnterior = mesDeLima(-1);
+      const casos: { estado: EstadoCita; registradaEn: string; horasDespues: number }[] = [
+        // Ahora: mes actual.
+        { estado: 'CONFIRMADA', registradaEn: new Date().toISOString(), horasDespues: 50 },
+        // Borde: a las 00:00 del día 1 del mes actual, hora de Lima → mes actual.
+        { estado: 'CANCELADA', registradaEn: `${mes0}-01T00:00:00-05:00`, horasDespues: 51 },
+        // Borde: a las 23:59 del último día del mes anterior, hora de Lima (ya es el día 1 en UTC) → mes anterior.
+        {
+          estado: 'COMPLETADA',
+          registradaEn: `${mesAnterior}-${ultimoDia(mesAnterior)}T23:59:00-05:00`,
+          horasDespues: 52,
+        },
+        // Hace 11 meses: el más antiguo de la ventana.
+        { estado: 'NO_ASISTIO', registradaEn: `${mesDeLima(-11)}-15T12:00:00-05:00`, horasDespues: 53 },
+        // Hace 12 meses: fuera de la ventana, no cuenta.
+        { estado: 'COMPLETADA', registradaEn: `${mesDeLima(-12)}-15T12:00:00-05:00`, horasDespues: 54 },
+      ];
+      for (const caso of casos) {
+        const citaId = await sembrarCita({
+          tenantId: b.tenantId,
+          ...agenda,
+          inicio: new Date(Date.now() + caso.horasDespues * 3600_000),
+          estado: caso.estado,
+        });
+        await fijarRegistroDeCita(citaId, caso.registradaEn);
+      }
+
+      const despues = await consultar();
+      expect(diferenciaPorMes(antes, despues)).toEqual({
+        [mes0]: { total: 2, CONFIRMADA: 1, CANCELADA: 1 },
+        [mesAnterior]: { total: 1, COMPLETADA: 1 },
+        [mesDeLima(-11)]: { total: 1, NO_ASISTIO: 1 },
+      });
+      // Cada mes: el total es la suma de sus estados.
+      for (const mes of despues.citasPorMes as CitasDelMes[]) {
+        expect(mes.porEstado.reduce((suma, e) => suma + e.citas, 0)).toBe(mes.total);
+      }
+    });
+  });
+
+  it('usuarios (fase 2c): personal y clientes con membresía activa, exactos', async () => {
+    const antes = (await consultar()).usuarios as Usuarios;
+    const b = await sembrarBarberia(); // +1 personal: el propietario
+    await sembrarUsuario({ tenantId: b.tenantId, rol: 'BARBERO', estado: 'ACTIVA' }); // +1 personal
+    await sembrarUsuario({ tenantId: b.tenantId, rol: 'BARBERO', estado: 'PENDIENTE' }); // no cuenta
+    await sembrarUsuario({ tenantId: b.tenantId, rol: 'BARBERO', estado: 'DESACTIVADA' }); // no cuenta
+    await sembrarCliente({ tenantId: b.tenantId }); // +1 cliente
+    await sembrarCliente({ tenantId: b.tenantId }); // +1 cliente
+    await sembrarCliente({ tenantId: b.tenantId, conCuenta: false }); // presencial, sin cuenta ni membresía
+    const despues = (await consultar()).usuarios as Usuarios;
+    expect({
+      personal: despues.personal - antes.personal,
+      clientes: despues.clientes - antes.clientes,
+    }).toEqual({ personal: 2, clientes: 2 });
   });
 
   it('con un token de barbería → 401; sin token → 401', async () => {
@@ -151,6 +290,32 @@ describe('T027 · Indicadores de la plataforma: barberías por estado (US2, FR-0
       expect(duracion).toBeLessThanOrEqual(LIMITE_MS);
     } finally {
       await borrarBarberiasEnBloque(ids);
+    }
+  });
+
+  // T045 de 007 · SC-005 ya con las vistas de conteo: el volumen de `escalado` (reportes-periodo de 005): una barbería
+  // con 22 000 citas en un año y 10 barberías más con 3 000 cada una, es decir, 52 000 citas.
+  it(`responde en ${LIMITE_MS} ms o menos con el volumen de escalado: ${CITAS_DE_VOLUMEN} citas (SC-005, fase 2c)`, async () => {
+    const marcadores: string[] = [];
+    try {
+      const reparto = [22_000, ...Array.from({ length: 10 }, () => 3_000)];
+      for (const cantidad of reparto) {
+        const b = await sembrarBarberia();
+        marcadores.push(
+          await sembrarCitasEnBloque({ tenantId: b.tenantId, ...(await agendaDe(b.tenantId)), cantidad }),
+        );
+      }
+      expect(reparto.reduce((x, y) => x + y, 0)).toBe(CITAS_DE_VOLUMEN);
+      await consultar();
+      const inicio = performance.now();
+      const indicadores = await consultar();
+      const duracion = performance.now() - inicio;
+      const total = (indicadores.citasPorMes as CitasDelMes[]).reduce((suma, m) => suma + m.total, 0);
+      // Las registradas antes del primer día del mes más antiguo de la ventana quedan fuera (unas 8 de cada 100).
+      expect(total).toBeGreaterThanOrEqual(Math.floor(CITAS_DE_VOLUMEN * 0.85));
+      expect(duracion).toBeLessThanOrEqual(LIMITE_MS);
+    } finally {
+      for (const marcador of marcadores) await borrarCitasEnBloque(marcador);
     }
   });
 });

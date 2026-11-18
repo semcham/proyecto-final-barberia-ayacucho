@@ -72,6 +72,7 @@ import { BandejaAdelantos } from './citas/application/bandeja-adelantos';
 import { ConfirmarAdelanto } from './citas/application/confirmar-adelanto';
 import { AdelantoController } from './citas/presentation/adelanto.controller';
 import { VencerAdelantos } from './citas/application/vencer-adelantos';
+import { CitasPorMesIndicador } from './citas/infrastructure/plataforma/citas-por-mes-indicador';
 import { CatalogoCitasApi } from './catalogo-citas-api';
 import { CatalogoCitasApiImpl } from './catalogo/application/catalogo-citas-api-impl';
 import { ReportesDeCitasQuery } from './citas/application/ports/reportes-de-citas';
@@ -157,9 +158,11 @@ import { KyselyReportesDeCitasQuery } from './citas/infrastructure/reportes-de-c
     // 005 (T009): la interfaz de solo lectura para M04 y su lectura de agregados por período.
     { provide: ReportesDeCitasQuery, useClass: KyselyReportesDeCitasQuery },
     { provide: CatalogoCitasApi, useClass: CatalogoCitasApiImpl },
+    // 007 (fase 2c): fuente de indicadores de la plataforma (citas por mes, desde la vista de solo conteo).
+    CitasPorMesIndicador,
   ],
   // PurgarIntentosEnlace y VencerAdelantos: tareas que registra el host (host/tareas.ts). CatalogoCitasApi: la
-  // interfaz de solo lectura que usa M04 (005).
-  exports: [CatalogQuery, PurgarIntentosEnlace, VencerAdelantos, CatalogoCitasApi],
+  // interfaz de solo lectura que usa M04 (005). CitasPorMesIndicador: la registra el host (host/indicadores.ts, 007).
+  exports: [CatalogQuery, PurgarIntentosEnlace, VencerAdelantos, CatalogoCitasApi, CitasPorMesIndicador],
 })
 export class CatalogoCitasModule {}

@@ -99,9 +99,52 @@ function Contenido({ datos }: { datos: DatosIndicadores }) {
           columnas={['Estado de la suscripción', 'Barberías']}
           filas={barberias.porEstadoDeSuscripcion.map((e) => [ESTADOS[e.estado] ?? e.estado, e.barberias])}
         />
+        {/* T051 · Fase 2c: solo si el servidor los envía (vistas de solo conteo); si no, no se muestran ni en cero. */}
+        {datos.usuarios && (
+          <Tabla
+            titulo="Usuarios"
+            columnas={['Tipo', 'Usuarios']}
+            filas={[
+              ['Personal (propietarios y barberos)', datos.usuarios.personal],
+              ['Clientes', datos.usuarios.clientes],
+            ]}
+            nota="Membresías activas: una persona con cuenta en dos barberías cuenta una vez en cada una."
+          />
+        )}
       </div>
+      {datos.citasPorMes && (
+        <Tabla
+          titulo="Citas registradas por mes"
+          columnas={['Mes', 'Total', ...ESTADOS_DE_CITA.map(([, etiqueta]) => etiqueta)]}
+          filas={datos.citasPorMes.map((m) => {
+            const porEstado = new Map(m.porEstado.map((e) => [e.estado, e.citas]));
+            return [
+              nombreDelMes(m.mes),
+              m.total,
+              ...ESTADOS_DE_CITA.map(([estado]) => porEstado.get(estado) ?? 0),
+            ];
+          })}
+          nota="Los últimos 12 meses, por la fecha en que se registró cada cita (hora de Lima)."
+        />
+      )}
     </div>
   );
+}
+
+/** Estados de la cita, en el orden de las columnas. */
+const ESTADOS_DE_CITA: [string, string][] = [
+  ['PENDIENTE', 'Pendientes'],
+  ['CONFIRMADA', 'Confirmadas'],
+  ['COMPLETADA', 'Completadas'],
+  ['NO_ASISTIO', 'No asistió'],
+  ['CANCELADA', 'Canceladas'],
+];
+
+const formatoMes = new Intl.DateTimeFormat('es-PE', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+
+/** `2026-11` → "noviembre de 2026". */
+function nombreDelMes(mes: string): string {
+  return formatoMes.format(new Date(`${mes}-01T12:00:00Z`));
 }
 
 /** Tabla de datos con su título como <caption> (nombre accesible) y encabezados de columna. */

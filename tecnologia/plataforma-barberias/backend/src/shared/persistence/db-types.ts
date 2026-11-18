@@ -662,6 +662,22 @@ export interface DataSubjectRequestTable {
   closed_by: string | null;
 }
 
+/**
+ * 007 (migración 0034): vista de solo conteo, de barberias_conteos; solo la lee barberias_plataforma. `month` es una
+ * columna `date`: se lee como texto con ::text.
+ */
+export interface PlatformAppointmentCountsView {
+  month: string;
+  status: string;
+  appointments: number;
+}
+
+/** 007 (migración 0034): membresías activas por tipo (PERSONAL o CLIENTE), de todas las barberías. */
+export interface PlatformMembershipCountsView {
+  kind: 'PERSONAL' | 'CLIENTE';
+  users: number;
+}
+
 export interface Database {
   tenant: TenantTable;
   role: RoleTable;
@@ -709,4 +725,6 @@ export interface Database {
   assistant_quota: AssistantQuotaTable;
   assistant_question: AssistantQuestionTable;
   data_subject_request: DataSubjectRequestTable;
+  platform_appointment_counts: PlatformAppointmentCountsView;
+  platform_membership_counts: PlatformMembershipCountsView;
 }

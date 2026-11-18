@@ -77,8 +77,9 @@ module.exports = {
       name: 'lectura-plataforma-confinada',
       comment:
         'El pool de barberias_plataforma (shared/lectura-plataforma.ts, ADR-031) solo lo usan las carpetas ' +
-        'infrastructure/plataforma/ de M03, de M01 (barberias e identidad) y de M05, y la lista de pendientes ' +
-        'del despacho de eventos de M06 (004, ADR-025: solo columnas técnicas).',
+        'infrastructure/plataforma/ de M03, de M01 (barberias e identidad) y de M05, la de las citas de M02 (007, ' +
+        'enmienda 1.7.0: solo para leer su vista de solo conteo) y la lista de pendientes del despacho de eventos ' +
+        'de M06 (004, ADR-025: solo columnas técnicas).',
       severity: 'error',
       from: {
         path: '(^|/)src/',
@@ -86,6 +87,7 @@ module.exports = {
           '(^|/)src/modules/suscripciones-pagos/[^/]+/infrastructure/plataforma/',
           '(^|/)src/modules/acceso-barberias/(barberias|identidad)/infrastructure/plataforma/',
           '(^|/)src/modules/notificaciones/infrastructure/plataforma/',
+          '(^|/)src/modules/catalogo-citas/citas/infrastructure/plataforma/',
           '(^|/)src/shared/eventos/pendientes-plataforma\\.ts$',
         ],
       },

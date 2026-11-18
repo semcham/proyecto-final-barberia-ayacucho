@@ -15,8 +15,8 @@ funcionalidades:
 - [005 · Asistente de IA y reportes](../../specs/005-asistente-ia-reportes/spec.md) (el asistente usa el proveedor de IA
   **falso** en las pruebas y en Docker Compose; OpenRouter solo en desarrollo, fuera de Compose);
 - [007 · Indicadores y datos personales](../../specs/007-indicadores-datos-personales/spec.md), **en
-  implementación**: las solicitudes sobre datos personales (fase 1) y los indicadores de la plataforma con las
-  barberías por estado (fase 2b); las citas por mes, los usuarios y el cambio de `login_attempt` siguen planificados.
+  implementación**: las solicitudes sobre datos personales (fase 1) y los indicadores de la plataforma (barberías por
+  estado, citas por mes y usuarios; fases 2b y 2c); el cambio de `login_attempt` sigue planificado.
 
 Las guías completas (requisitos, escenarios manuales, criterios de cierre y registro de ejecuciones) están en
 [quickstart de 001](../../specs/001-registro-acceso-barberia/quickstart.md),
@@ -381,11 +381,43 @@ Son los mismos pasos que ejecuta el CI ([`.github/workflows/plataforma-barberias
 - **Fase 2b, construida (US2, RF31, mínimo):** la pantalla **Indicadores** del administrador de la plataforma
   (`/plataforma/indicadores`, en su menú) muestra las barberías activas, suspendidas y por estado de la suscripción,
   con la hora del cálculo; solo números, sin datos de barberías ni de personas. Cada consulta queda en
-  `platform_audit_log` (migración `0033_auditoria_indicadores`). Las citas por mes y los usuarios llegan con la fase 2c.
+  `platform_audit_log` (migración `0033_auditoria_indicadores`).
+- **Fase 2c, construida (US2, RF31 completo):** la misma pantalla suma las **citas registradas por mes** de los
+  últimos 12 meses (hora de Lima, con su total y cada estado) y los **usuarios por tipo** (personal y clientes con
+  membresía activa). Salen de dos **vistas de solo conteo** (`platform_appointment_counts` y
+  `platform_membership_counts`, migración `0034_vistas_de_conteo`), ya agregadas y sin ninguna columna de barbería ni
+  de persona (enmienda 1.7.0 de la constitución, revisión de ADR-031). El rol de la plataforma lee solo esas dos vistas
+  y no tiene ningún permiso sobre las tablas de citas, clientes ni usuarios.
+- **Rol de base nuevo `barberias_conteos`** (fase 2c): dueño de las dos vistas, `NOLOGIN NOBYPASSRLS NOINHERIT`
+  (nadie se conecta con él) y con `SELECT` solo sobre las columnas que cuentan. Se concede a `barberias_owner` con
+  `WITH INHERIT FALSE, SET TRUE`: puede asignarle la propiedad de las vistas, pero no hereda sus políticas. El
+  contenedor de la base lo crea solo al iniciar **por primera vez** (`db/init/01-roles.sql`), y la base de las pruebas
+  también. En una base que **ya existía** (volumen anterior a la fase 2c de 007), créalo una vez como superusuario
+  **antes** de aplicar la migración `0034_vistas_de_conteo`:
+
+  ```sql
+  DO $$
+  BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'barberias_conteos') THEN
+      CREATE ROLE barberias_conteos NOLOGIN NOSUPERUSER NOBYPASSRLS NOINHERIT NOCREATEDB NOCREATEROLE;
+    END IF;
+  END
+  $$;
+  GRANT barberias_conteos TO barberias_owner WITH INHERIT FALSE, SET TRUE;
+  ```
+
+  Con Compose: `docker compose exec db psql -U postgres -d barberias`, pegar esas líneas y luego recrear las réplicas
+  (`docker compose up -d --force-recreate preparar-backend backend-1 backend-2`). El rol no tiene contraseña: no se
+  puede iniciar sesión con él. Las comprobaciones están en la
+  [guía rápida de 007](../../specs/007-indicadores-datos-personales/quickstart.md) §0.
+
+  **Si se olvida:** la migración `0034_vistas_de_conteo` falla con el mensaje "falta el rol barberias_conteos: ver
+  README" y, como con cualquier migración fallida, `preparar-backend` termina con error y las réplicas no quedan
+  listas. Basta con crear el rol y volver a levantar `preparar-backend`.
 - **No construido (decidido en la aclaración):** las solicitudes del propietario sobre su propia cuenta, la oposición,
   la anonimización del perfil y los avisos al solicitante.
-- **Sin variables nuevas** en esta fase. Las fases siguientes (indicadores y `login_attempt`) agregarán un rol de base
-  y la variable `INTENTOS_SAL_IP`; se documentarán aquí cuando se construyan.
+- **Sin variables nuevas** en las fases 1, 2b y 2c. La fase 3 (`login_attempt`) agregará la variable
+  `INTENTOS_SAL_IP`; se documentará aquí cuando se construya.
 
 ## Referencias
 
