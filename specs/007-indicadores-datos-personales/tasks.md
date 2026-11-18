@@ -389,18 +389,18 @@ description: "Tareas de la funcionalidad 007: indicadores y datos personales"
 - la vista de la auditoría para el administrador.
 
 - [ ] T070 Recorrer `specs/007-indicadores-datos-personales/quickstart.md` §1 a §3 con Docker Compose (solo las historias construidas) y anotar cada resultado. Los pasos de §4 y los del responsable quedan como "pendiente del responsable" si no los hizo.
-- [ ] T071 [P] `docs/trazabilidad.md`, **solo estados y totales**: el estado de la fila de 007 (tareas, pruebas, totales de la última corrida, desviaciones), HU26 y HU27 en §1, §2 (estados de M01 `solicitudes-datos` y M06 indicadores) y §3 (estado de PR18 y PR21).
-- [ ] T072 [P] Estados de requisitos e historias:
+- [X] T071 [P] `docs/trazabilidad.md`, **solo estados y totales**: el estado de la fila de 007 (tareas, pruebas, totales de la última corrida, desviaciones), HU26 y HU27 en §1, §2 (estados de M01 `solicitudes-datos` y M06 indicadores) y §3 (estado de PR18 y PR21).
+- [X] T072 [P] Estados de requisitos e historias:
   - `docs/01-analisis-de-sistema/03-requisitos-funcionales.md`: RF31 y RF32 (RF32 "parcial": sin las solicitudes del propietario) y el resumen;
   - `docs/01-analisis-de-sistema/02-historias-del-usuario.md`: HU26 sigue parcial (sin la vista de la auditoría) y HU27 queda parcial (sin el propietario);
   - `docs/01-analisis-de-sistema/01-actores.md`: estados de las solicitudes por actor y de los indicadores.
-- [ ] T073 [P] Estados de los escenarios en `docs/01-analisis-de-sistema/08-escenarios-atributos-calidad.md`: EQ-18 con las solicitudes; EQ-13 y EQ-12, con la evidencia de US3 si se hizo.
-- [ ] T074 [P] Estados de los componentes en `docs/02-arquitectura-software/componentes-arquitectonicos.md` (§4) y en el texto de `docs/04-modelo-c4/` (niveles 1 a 3), y anotar las imágenes por regenerar en la §5 de la trazabilidad.
-- [ ] T075 [P] Gestión:
+- [X] T073 [P] Estados de los escenarios en `docs/01-analisis-de-sistema/08-escenarios-atributos-calidad.md`: EQ-18 con las solicitudes; EQ-13 y EQ-12, con la evidencia de US3 si se hizo.
+- [X] T074 [P] Estados de los componentes en `docs/02-arquitectura-software/componentes-arquitectonicos.md` (§4) y en el texto de `docs/04-modelo-c4/` (niveles 1 a 3), y anotar las imágenes por regenerar en la §5 de la trazabilidad.
+- [X] T075 [P] Gestión:
   - `docs/05-gestion/02-backlog-y-sprints.md`: el estado de la fila de 007 y las líneas de corte aplicadas;
   - `docs/05-gestion/04-pruebas.md`: los estados de PR18 y PR13, PR21 sigue planificada, §2.4 con los totales de la última corrida y una §2.8 de 007;
   - `docs/05-gestion/06-mvp-y-evolucion.md`: las evoluciones (solicitudes del propietario, anonimización, oposición y vista de la auditoría).
-- [ ] T076 [P] Totales y estado de 007 en el `README.md` raíz y en `tecnologia/plataforma-barberias/README.md`.
+- [X] T076 [P] Totales y estado de 007 en el `README.md` raíz y en `tecnologia/plataforma-barberias/README.md`.
 - [ ] T077 **Del responsable:** confirmar las revisiones manuales y las mediciones de T017, T040, T053, T054 y T068 (y SC-003 con cronómetro) antes de marcarlas.
 - [ ] T078 Verificación de fase 4: suite completa del backend (incluido `test:arch`) una vez, del frontend y Prettier, todo en verde; enlaces de los documentos cambiados resueltos; CI en verde tras el push.
 - [ ] T079 **Del responsable:** commit y push de la fase 4: `docs(007): cierre de indicadores y datos personales (fase 4)`.

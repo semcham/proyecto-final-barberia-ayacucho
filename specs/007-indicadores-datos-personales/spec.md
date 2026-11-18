@@ -4,7 +4,7 @@
 
 **Created**: 2026-11-15
 
-**Status**: En implementación. Fase 1 (US1) construida (2026-11-16). Fase 2a hecha (2026-11-16): la enmienda 1.7.0 del principio III y la revisión de ADR-031 están aprobadas y aplicadas, así que **no hay corte**: las fases 2b, 2c y 3 se construyen.
+**Status**: Construida en local, sin recortes (2026-11-16 a 2026-11-18): US1 (fase 1), US2 completa (fases 2b y 2c, tras la enmienda 1.7.0 y la revisión de ADR-031 de la fase 2a) y US3 (fase 3, con la aclaración 1.7.1). Fase 4 (cierre de documentación) hecha el 2026-11-18. Pendientes del responsable: las revisiones manuales y mediciones (T017, T040, T053, T054, T068 y SC-003), la sal en su `.env` (T066), el recorrido de la guía rápida con Docker Compose (T070) y los commits con la CI en verde. **No construido** (decidido en la aclaración): las solicitudes del propietario sobre su propia cuenta, la oposición, la anonimización, los avisos al solicitante y la vista de la auditoría para el administrador.
 
 **Input**: User description: "Funcionalidad 007 "Indicadores y datos personales" (módulos M06 y M01). Versión MÍNIMA para la entrega del 18 de noviembre; alcance cortable por historia. US1 (P1) RF32: registro y seguimiento de solicitudes de acceso, rectificación y eliminación de datos personales, con estado y registro, atendidas A MANO por la barbería o el administrador según corresponda, sin exportación automática; quién crea, quién atiende y qué ve cada rol sale de los roles y el aislamiento existentes. US2 (P1) RF31: indicadores agregados de uso para el administrador de la plataforma (barberías activas, citas por mes, usuarios), sin datos personales de clientes, con el rol de lectura de la plataforma (ADR-031), nunca BYPASSRLS. US3 (P3, la primera que se recorta): login_attempt con hash de la IP con sal, como action_link_attempt, con su migración. Condiciones: constitución, aislamiento, matriz de permisos, auditoría, no cambiar otras funcionalidades; lo no construido se documenta como no construido."
 
@@ -182,4 +182,7 @@ Aquí se registra cada recorte aplicado (por ejemplo, US3 completa, o las citas 
   las solicitudes del **propietario** sobre su propia cuenta quedan fuera de 007 (FR-005), y con ello HU27 queda
   "parcial"; la anonimización del perfil queda como evolución futura (FR-008); la auditoría de HU26, fuera de 007.
 - **Recortes:** ninguno. El 2026-11-16 el responsable aprobó la enmienda 1.7.0, la revisión de ADR-031 y la aclaración
-  PATCH de US3: el criterio de corte de FR-012 **no se aplica**, y las fases 2b, 2c y 3 se construyen.
+  PATCH de US3: el criterio de corte de FR-012 **no se aplica**, y las fases 2b, 2c y 3 se construyeron.
+- **Diferencia de contrato corregida en el cierre (2026-11-18):** el código responde `409 SOLICITUD_YA_EN_ATENCION`
+  al iniciar una solicitud que ya está en atención; `contracts/openapi.yaml` solo decía "o ya en atención" y ahora
+  nombra el código. No cambia ningún comportamiento.

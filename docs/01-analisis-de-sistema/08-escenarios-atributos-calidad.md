@@ -326,7 +326,7 @@ Un escenario de atributo de calidad es una descripción **concreta y medible** d
 | **Respuesta esperada**  | Se responde 429 y se aplica espera creciente                                                                                     |
 | **Medida**              | El intento 6 y siguientes se rechazan; el uso normal no se ve afectado _(propuesta por validar)_                                 |
 | **Verificación**        | PR12: prueba de limitación                                                                                                       |
-| **Estado**              | Prueba en verde en local (PR12, 001 y 006); el límite del asistente de IA, con cuotas diarias, en verde (005)                    |
+| **Estado**              | Prueba en verde en local (PR12, 001 y 006); el límite del asistente de IA, con cuotas diarias, en verde (005); desde 007, el mismo límite con el origen guardado solo como hash con sal, en verde |
 
 **Ficha de medición**
 
@@ -339,7 +339,7 @@ Un escenario de atributo de calidad es una descripción **concreta y medible** d
 | **Métrica y umbral**      | El intento 6 y siguientes se rechazan; el uso normal no se ve afectado                                               |
 | **Comando**               | `npm run test:int -- limite-intentos limite-compartido`                                                              |
 | **Evidencia**             | `backend/test/integration/identidad/limite-intentos.spec.ts` y `escalado/limite-compartido.spec.ts`; salida de la CI |
-| **Estado**                | **Usada.** En verde (PR12, 001 y 006). **El límite del asistente de IA (005): usado.** No es un límite por minuto, sino cuotas diarias de 20 preguntas por usuario y 200 por barbería, iguales para todos los planes y reiniciadas a la medianoche de la barbería: la siguiente responde 429 `CUOTA_ASISTENTE_AGOTADA` con `Retry-After`; con dos instancias a la vez nunca se pasa del límite; cerrar sesión no la reinicia (`npm run test:int -- cuotas-asistente`, en verde). El límite general por IP de 006 también protege la ruta |
+| **Estado**                | **Usada.** En verde (PR12, 001 y 006). **El límite del asistente de IA (005): usado.** No es un límite por minuto, sino cuotas diarias de 20 preguntas por usuario y 200 por barbería, iguales para todos los planes y reiniciadas a la medianoche de la barbería: la siguiente responde 429 `CUOTA_ASISTENTE_AGOTADA` con `Retry-After`; con dos instancias a la vez nunca se pasa del límite; cerrar sesión no la reinicia (`npm run test:int -- cuotas-asistente`, en verde). El límite general por IP de 006 también protege la ruta. **007 (US3, 2026-11-18): usada.** `login_attempt` ya no guarda la IP legible, sino SHA-256 de `INTENTOS_SAL_IP` y la IP; el bloqueo, el 429 `DEMASIADOS_INTENTOS`, el `Retry-After` y el desbloqueo por otro origen son los de antes, también para el administrador (`npm run test:int -- limite-intentos segundo-factor migracion-intentos`, en verde) |
 
 ## EQ-13. Seguridad: Auditoría
 
@@ -353,7 +353,7 @@ Un escenario de atributo de calidad es una descripción **concreta y medible** d
 | **Respuesta esperada**  | Se registra quién, qué, cuándo, desde dónde y sobre qué tenant                                                          |
 | **Medida**              | 100 % de las acciones sensibles listadas generan registro inmutable para el rol de aplicación _(propuesta por validar)_ |
 | **Verificación**        | PR13: revisión de registros tras ejecutar acciones sensibles                                                            |
-| **Estado**              | Prueba en verde en local (PR13, 001 a 003)                                                                              |
+| **Estado**              | Prueba en verde en local (PR13, 001 a 003; en 007, las solicitudes de datos y la consulta de indicadores del administrador) |
 
 **Ficha de medición**
 
@@ -366,7 +366,7 @@ Un escenario de atributo de calidad es una descripción **concreta y medible** d
 | **Métrica y umbral**      | 100 % de las acciones sensibles listadas con registro inmutable para el rol de aplicación                         |
 | **Comando**               | `npm run test:int -- auditoria`                                                                                   |
 | **Evidencia**             | `backend/test/integration/auditoria.spec.ts` (también comprueba el identificador de correlación); salida de la CI |
-| **Estado**                | **Usada.** En verde (PR13, 001 a 003)                                                                             |
+| **Estado**                | **Usada.** En verde (PR13, 001 a 003). **007 (2026-11-16 a 2026-11-18): usada.** Las cuatro acciones `SOLICITUD_DATOS_*` con actor y recurso, sin el texto del detalle, la respuesta ni el motivo (`solicitudes-datos-auditoria`); `ADMIN_INDICADORES_CONSULTADOS` en `platform_audit_log`, una fila por consulta (`indicadores-plataforma`); la sal de los intentos no aparece en `audit_log` ni en `platform_audit_log` (`limite-intentos`). La consulta de la auditoría por el administrador (HU26) **no está construida** |
 
 ## EQ-14. Mantenibilidad: Cambio de proveedor sin tocar reglas de negocio
 
@@ -488,7 +488,7 @@ Un escenario de atributo de calidad es una descripción **concreta y medible** d
 | **Respuesta esperada**  | Se guarda el consentimiento (fecha, versión del texto), incluido el de recibir mensajes por WhatsApp, y la solicitud se atiende con seguimiento                                                                            |
 | **Medida**              | 100 % de registros con consentimiento; 0 mensajes de WhatsApp enviados sin consentimiento registrado; solicitudes atendidas en el plazo interno propuesto de 10 días hábiles _(por validar contra el plazo legal vigente)_ |
 | **Verificación**        | PR18: prueba funcional y revisión de procedimiento                                                                                                                                                                         |
-| **Estado**              | Parcial: consentimiento implementado (002) y consentimiento de WhatsApp implementado y medido contra el simulador (004); solicitudes sobre los datos planificadas (007)                                                    |
+| **Estado**              | Parcial: consentimiento implementado (002) y consentimiento de WhatsApp implementado y medido contra el simulador (004); solicitudes sobre los datos del cliente y del barbero implementadas (007), sin las del propietario sobre su propia cuenta, sin oposición ni avisos (no construidos); el cumplimiento del plazo en la operación real, sin medir |
 
 **Ficha de medición**
 
@@ -499,9 +499,9 @@ Un escenario de atributo de calidad es una descripción **concreta y medible** d
 | **Preparación**           | Clientes registrados con cuenta y clientes presenciales                                                                                                                       |
 | **Configuración**         | Registro con y sin aceptar el consentimiento; consulta del registro guardado                                                                                                  |
 | **Métrica y umbral**      | 100 % de registros con consentimiento; 0 mensajes de WhatsApp sin consentimiento; solicitudes atendidas en 10 días hábiles (plazo interno propuesto)                          |
-| **Comando**               | `npm run test:int -- cuenta-cliente presencial`. WhatsApp (004): `npm run test:int -- canal-aviso whatsapp-sin-consentimiento`. Plazo de las solicitudes: revisión de procedimiento, por definir (007) |
-| **Evidencia**             | `backend/test/integration/clientes/cuenta-cliente.spec.ts`, `presencial.spec.ts`, `canal-aviso.spec.ts`, `canal-aviso-auditoria.spec.ts` y `notificaciones/whatsapp-sin-consentimiento.spec.ts`; salida de la CI |
-| **Estado**                | **Parcial.** Consentimiento: Usada (002). WhatsApp: Usada (004, 2026-11-12) contra el simulador: elegirlo exige aceptar el texto vigente; **0 mensajes** en el simulador para clientes sin consentimiento vigente, también si se retiró entre la cita y el recordatorio. Solicitudes sobre los datos (007): Planificadas |
+| **Comando**               | `npm run test:int -- cuenta-cliente presencial`. WhatsApp (004): `npm run test:int -- canal-aviso whatsapp-sin-consentimiento`. Solicitudes (007): `npm run test:int -- solicitudes-datos aislamiento-007` y `npm test -- solicitud-datos` (plazo de 10 días hábiles). Que se atiendan en plazo: revisión de procedimiento con la bandeja (vencidas), por hacer en la operación |
+| **Evidencia**             | `backend/test/integration/clientes/cuenta-cliente.spec.ts`, `presencial.spec.ts`, `canal-aviso.spec.ts`, `canal-aviso-auditoria.spec.ts` y `notificaciones/whatsapp-sin-consentimiento.spec.ts`; en 007, `solicitudes-datos/solicitudes-datos.spec.ts`, `solicitudes-datos-auditoria.spec.ts` y `aislamiento/aislamiento-007.spec.ts`; salida de la CI |
+| **Estado**                | **Parcial.** Consentimiento: Usada (002). WhatsApp: Usada (004, 2026-11-12) contra el simulador: elegirlo exige aceptar el texto vigente; **0 mensajes** en el simulador para clientes sin consentimiento vigente, también si se retiró entre la cita y el recordatorio. **Solicitudes sobre los datos (007, 2026-11-16): usada.** El cliente y el barbero registran acceso, rectificación o eliminación; el propietario las atiende a mano con estado, plazo de 10 días hábiles (vencidas marcadas en la bandeja) y respuesta; una abierta por titular y tipo; el sistema no borra ni exporta nada; aislamiento y auditoría sin texto en verde. **No construido:** las solicitudes del propietario sobre su propia cuenta, la oposición, la anonimización y los avisos al solicitante. El cumplimiento del plazo en la operación real queda sin medir |
 
 ## EQ-19. Privacidad: Privacidad en el asistente de IA
 

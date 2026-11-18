@@ -54,8 +54,8 @@ specs/
   004-notificaciones-reprogramacion/  implementada (correo con Mailpit, WhatsApp simulado)
   005-asistente-ia-reportes/          implementada (proveedor de IA falso; OpenRouter solo en desarrollo)
   006-escalado-cache-balanceo/        implementada
+  007-indicadores-datos-personales/   implementada (sin las partes que su especificación deja como no construidas)
   008-adelanto-reserva-qr/            implementada (verificación manual del pago)
-  (007: planificada, sin carpeta todavía)
 docs/                                 análisis, arquitectura, diseño, C4, gestión (ADR en 07-decisiones)
 tecnologia/plataforma-barberias/      backend/ y frontend/: la aplicación
 ```

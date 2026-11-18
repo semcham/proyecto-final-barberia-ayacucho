@@ -86,7 +86,7 @@ paths:
         "200": { description: En atención, content: { application/json: { schema: { $ref: "#/components/schemas/SolicitudEnBandeja" } } } }
         "403": { description: ACCESO_DENEGADO }
         "404": { description: SOLICITUD_NO_ENCONTRADA (también la de otra barbería) }
-        "409": { description: "SOLICITUD_CERRADA, o ya en atención" }
+        "409": { description: "SOLICITUD_CERRADA (ya atendida o rechazada) o SOLICITUD_YA_EN_ATENCION (ya estaba en atención)" }
 
   /datos-personales/solicitudes/{id}/cierre:
     post:

@@ -66,7 +66,17 @@ cd ../frontend && npm test
 
 Esperado: todo en verde.
 
+**Registro (2026-11-18, corrida completa de la fase 3; la fase 4 solo cambió documentos):** unitarias 1 148 de 1 148;
+arquitectura 50 de 50; integración 2 190 de 2 202, con 3 omitidas sin credenciales ni llave y 9 fallas de tiempo y
+carga en 5 archivos que la fase 3 no toca (entre ellos `indicadores-plataforma`, la prueba de volumen en ≤ 3 s), todas
+en verde al repetirlas solas; frontend 263 de 263. Detalle en [pruebas §2.4](../../docs/05-gestion/04-pruebas.md).
+
 ## 2. Recorrido con Docker Compose
+
+> **Estado (2026-11-18): no recorrido** (T070, pendiente). La columna "Resultado" de §2 queda vacía a propósito: lo
+> que dicen estos pasos está cubierto por las pruebas automáticas de §1 (`solicitudes-datos`,
+> `solicitudes-datos-auditoria`, `indicadores-plataforma`, `limite-intentos`), pero no se comprobó con Docker Compose.
+> En un volumen existente, antes hace falta el paso manual del rol (§0, T053) y recrear las réplicas.
 
 ### US1 · Solicitudes sobre datos personales
 
@@ -101,6 +111,9 @@ Esperado: todo en verde.
 
 ## 3. Comprobaciones de aislamiento y permisos (PR09, PR08)
 
+> **Estado (2026-11-18):** las cinco comprobaciones están en verde en las pruebas automáticas (`aislamiento-007`,
+> `rls`, `lectura-plataforma` §5e, `rbac-007`); a mano en Docker Compose, no se hicieron (T070).
+
 - Con el token de A, ninguna solicitud de B se lee, cambia ni crea (`aislamiento-007`, `rls`).
 - `barberias_plataforma` no puede hacer `SELECT id FROM appointment`, `FROM membership` ni `FROM customer_profile`.
   Sí puede leer las dos vistas, si se construyeron (`lectura-plataforma`).
@@ -125,5 +138,5 @@ Se revisa a 360 px y en escritorio, en tema claro y oscuro, solo con teclado y c
   cuenta feriados.
 - Que el propietario borre o corrija bien a mano lo que dice en su respuesta: el sistema solo registra la
   respuesta.
-- Las solicitudes del propietario sobre su propia cuenta, la exportación, la anonimización y la vista de la
-  auditoría para el administrador: **no construidas**.
+- Las solicitudes del propietario sobre su propia cuenta, la exportación, la anonimización, la oposición, los avisos
+  al solicitante y la vista de la auditoría para el administrador: **no construidas**.

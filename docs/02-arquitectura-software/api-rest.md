@@ -1,6 +1,6 @@
 # Diseño de la API REST
 
-Contrato entre la aplicación web y el backend (cuarto punto del enfoque SDD). Las rutas de M01, M02, M03, M04 y de salud están **implementadas** (funcionalidades 001, 002, 003, 004, 005, 006 y 008). Las rutas de solicitudes sobre datos personales de 007 (fase 1, US1) también están implementadas, con su contrato en `specs/007-indicadores-datos-personales/contracts/openapi.yaml`. La ruta de indicadores de la plataforma también existe (fases 2b y 2c de 007: barberías por estado, citas por mes y usuarios). Las partes marcadas _(planificado)_ no existen en el código: son el diseño del resto de 007. Complemento de la documentación núcleo.
+Contrato entre la aplicación web y el backend (cuarto punto del enfoque SDD). Las rutas de M01, M02, M03, M04 y de salud están **implementadas** (funcionalidades 001, 002, 003, 004, 005, 006 y 008). Las rutas de solicitudes sobre datos personales de 007 (fase 1, US1) también están implementadas, con su contrato en `specs/007-indicadores-datos-personales/contracts/openapi.yaml`. La ruta de indicadores de la plataforma también existe (fases 2b y 2c de 007: barberías por estado, citas por mes y usuarios). 007 no agrega más rutas: lo que su especificación deja como no construido (las solicitudes del propietario sobre su propia cuenta, la oposición, los avisos y la vista de la auditoría) no tiene ruta. Complemento de la documentación núcleo.
 
 ## 1. Convenciones
 
@@ -47,7 +47,7 @@ Roles: **ADM** administrador de la plataforma · **PRO** propietario · **BAR** 
 | `GET /datos-personales/solicitudes/mias`           | Las solicitudes propias, con estado, plazo (10 días hábiles) y respuesta (007)                      | RF32       | CLI, BAR          |
 | `GET /datos-personales/solicitudes?estado=`        | Bandeja de la barbería con el titular, el plazo y si está vencida; por defecto, las abiertas (007)  | RF32       | PRO               |
 | `POST /datos-personales/solicitudes/en-nombre`     | Registrar una solicitud por un cliente de la barbería que la pidió por otro medio (007)             | RF32       | PRO               |
-| `POST /datos-personales/solicitudes/{id}/atencion` | Pasarla a "en atención" (007)                                                                       | RF32       | PRO               |
+| `POST /datos-personales/solicitudes/{id}/atencion` | Pasarla a "en atención" (007). Si ya estaba en atención → 409 `SOLICITUD_YA_EN_ATENCION`; si ya está cerrada → 409 `SOLICITUD_CERRADA` | RF32       | PRO               |
 | `POST /datos-personales/solicitudes/{id}/cierre`   | Atenderla con la respuesta (qué se hizo a mano) o rechazarla con el motivo; el sistema no borra ni exporta nada (007) | RF32 | PRO      |
 
 ### M02 Catálogo y citas

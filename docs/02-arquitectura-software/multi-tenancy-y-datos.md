@@ -210,7 +210,7 @@ dirección, teléfono, descripción y antelación de cancelación).
 
 ## 3. Modelo de datos (actual: 001, 002 y 003)
 
-Son las **32 tablas** de las migraciones `0001` a `0020`, divididas en cuatro diagramas para que se lean de un vistazo. Cada diagrama muestra solo las columnas clave; la lista completa está en `backend/src/shared/persistence/db-types.ts`. `tenant` aparece en varios diagramas porque casi todo cuelga de él. Todas las tablas están implementadas. Las **siete tablas de 004** (migraciones `0021` a `0027`: `outbox_event`, `customer_notification_preference`, `whatsapp_consent`, `appointment_reschedule`, `appointment_link_use`, `notification` y `action_link_attempt`) también están implementadas, pero todavía no tienen diagrama: su detalle está en `specs/004-notificaciones-reprogramacion/data-model.md`. Las tablas del asistente de IA (005) y de las solicitudes sobre datos personales (007) están **planificadas** y no aparecen.
+Son las **32 tablas** de las migraciones `0001` a `0020`, divididas en cuatro diagramas para que se lean de un vistazo. Cada diagrama muestra solo las columnas clave; la lista completa está en `backend/src/shared/persistence/db-types.ts`. `tenant` aparece en varios diagramas porque casi todo cuelga de él. Todas las tablas están implementadas. Las **siete tablas de 004** (migraciones `0021` a `0027`: `outbox_event`, `customer_notification_preference`, `whatsapp_consent`, `appointment_reschedule`, `appointment_link_use`, `notification` y `action_link_attempt`) también están implementadas, pero todavía no tienen diagrama: su detalle está en `specs/004-notificaciones-reprogramacion/data-model.md`. Las tablas de 008, del asistente de IA (005) y de las solicitudes sobre datos personales (007) también están implementadas y no tienen diagrama: están en las tablas de §3.3, §3.4 y §3.5. Las dos vistas de solo conteo de 007 (migración `0034`) están en §1.3 y §2.1.
 
 ### 3.0.1 Identidad y acceso (funcionalidad 001)
 
@@ -282,14 +282,14 @@ erDiagram
     LOGIN_ATTEMPT {
         uuid id PK
         text email_hash
-        text ip
         timestamptz attempted_at
+        char ip_hash "0035"
     }
 ```
 
 </details>
 
-`login_attempt` no tiene relaciones: cuenta intentos por correo (en hash) e IP. `auth_session`, `account_activation` y `terms_acceptance` apuntan a la membresía con la clave compuesta `(tenant_id, user_id)`.
+`login_attempt` no tiene relaciones: cuenta intentos por correo y por origen, los dos solo en hash (desde 007, el origen es SHA-256 de `INTENTOS_SAL_IP` y la IP, migración 0035; ninguna IP legible). `auth_session`, `account_activation` y `terms_acceptance` apuntan a la membresía con la clave compuesta `(tenant_id, user_id)`.
 
 Evidencia: `backend/migrations/0001_nucleo_identidad.ts`, `0002_sesiones_y_activacion.ts`, `0003_autenticacion_sin_tenant.ts`, `0005_aceptacion_terminos.ts`, `0006_intentos_login.ts`, `0020_motivo_en_auditoria.ts`; pruebas `backend/test/integration/aislamiento/rls.spec.ts` y `identidad/limite-intentos.spec.ts`.
 
@@ -683,7 +683,7 @@ Con 200 solicitudes simultáneas por el mismo horario, **exactamente una** inser
 
 | Tema                         | Decisión                                                                                                           |
 | ---------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| Migraciones                  | Versionadas en `backend/migrations/` (0001 a 0020); se aplican una sola vez antes de arrancar las réplicas (`preparar-backend` en local; tarea previa en la nube), con el rol `barberias_owner` |
+| Migraciones                  | Versionadas en `backend/migrations/` (0001 a 0035; la última es `0035_intentos_con_hash`, de 007); se aplican una sola vez antes de arrancar las réplicas (`preparar-backend` en local; tarea previa en la nube), con el rol `barberias_owner` |
 | Respaldo                     | Completo diario (propuesta); la normativa menciona respaldos al menos semanales según fuente secundaria (L-02)     |
 | Recuperación                 | RPO ≤ 24 h, RTO ≤ 4 h (propuesta por validar, EQ-22); simulacro mensual                                            |
 | Respaldos y datos personales | Cifrados y con acceso restringido; retención definida                                                              |

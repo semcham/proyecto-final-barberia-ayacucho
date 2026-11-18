@@ -9,7 +9,7 @@
 ![Estilo](https://img.shields.io/badge/estilo-monolito%20modular-2da44e)
 ![Multi-tenancy](https://img.shields.io/badge/multi--tenancy-tenant__id%20%2B%20RLS-d29922)
 ![Modelo](<https://img.shields.io/badge/modelo-C4%20(4%20niveles)-0969da>)
-![Estado](https://img.shields.io/badge/estado-001%2C%20002%2C%20003%2C%20004%2C%20005%2C%20006%20y%20008%20implementadas-2da44e)
+![Estado](https://img.shields.io/badge/estado-001%20a%20008%20implementadas%20(007%20en%20parte)-2da44e)
 
 _Una sola plataforma web para que muchas barberías administren sus servicios, barberos, horarios y citas, con datos aislados por barbería._
 
@@ -32,9 +32,11 @@ _Una sola plataforma web para que muchas barberías administren sus servicios, b
 
 Plataforma **web** SaaS en la que varias barberías gestionan servicios, barberos, horarios, citas y usuarios desde una misma solución. Cada barbería es un _tenant_ con datos y permisos aislados. El modelo comercial es **prueba gratuita + suscripción**.
 
-**Qué hace hoy** (implementado y probado en local con Docker Compose): registro de barberías con roles, catálogo y reservas sin duplicados, cuenta de cliente, suscripciones con pago por Yape (pasarela **simulada**) o transferencia con comprobante, administrador de la plataforma con segundo factor, avisos y recordatorio de citas por correo (contra Mailpit) o WhatsApp (**simulado**) con reprogramación y acciones por enlace, adelanto de reserva por QR de Yape o Plin de la barbería (verificado **a mano** por el propietario: la plataforma no recibe el dinero), reportes por período en tablas para el propietario, un asistente de IA de solo lectura para el cliente (servicios, barberos y horarios libres) y para el propietario (resumen de citas y servicios más pedidos), en el que el modelo solo clasifica la pregunta y la respuesta sale de plantillas con los datos del backend (en las pruebas y en Docker Compose, con un proveedor de IA **falso**; OpenRouter solo en desarrollo), PostgreSQL con aislamiento por barbería, Redis como caché y un balanceador Nginx delante de dos réplicas del backend.
+**Qué hace hoy** (implementado y probado en local con Docker Compose): registro de barberías con roles, catálogo y reservas sin duplicados, cuenta de cliente, suscripciones con pago por Yape (pasarela **simulada**) o transferencia con comprobante, administrador de la plataforma con segundo factor, avisos y recordatorio de citas por correo (contra Mailpit) o WhatsApp (**simulado**) con reprogramación y acciones por enlace, adelanto de reserva por QR de Yape o Plin de la barbería (verificado **a mano** por el propietario: la plataforma no recibe el dinero), reportes por período en tablas para el propietario, un asistente de IA de solo lectura para el cliente (servicios, barberos y horarios libres) y para el propietario (resumen de citas y servicios más pedidos), en el que el modelo solo clasifica la pregunta y la respuesta sale de plantillas con los datos del backend (en las pruebas y en Docker Compose, con un proveedor de IA **falso**; OpenRouter solo en desarrollo), solicitudes de acceso, rectificación y eliminación de datos personales del cliente y del barbero, atendidas **a mano** por el propietario, e indicadores agregados de uso para el administrador de la plataforma (barberías por estado, citas por mes y usuarios por tipo, sin datos de personas) (007), PostgreSQL con aislamiento por barbería, Redis como caché y un balanceador Nginx delante de dos réplicas del backend. Estado: 34 de 35 RF implementados y 1 parcial (RF32).
 
-**Qué está planificado** (diseñado, sin código todavía): indicadores y solicitudes de datos personales (007), el proveedor de IA de producción, el proveedor de pagos real, los proveedores reales de correo y WhatsApp y el despliegue en la nube (AWS con Application Load Balancer).
+**Qué no está construido** (decidido en la especificación de 007): las solicitudes del propietario sobre su propia cuenta, la oposición, la anonimización del perfil, los avisos de las solicitudes y la vista de la auditoría para el administrador.
+
+**Qué está planificado** (diseñado, sin código todavía): el proveedor de IA de producción, el proveedor de pagos real, los proveedores reales de correo y WhatsApp y el despliegue en la nube (AWS con Application Load Balancer).
 
 > **Analogía.** Se parece a un servicio por suscripción (prueba gratuita y planes), pero el suscriptor es una **barbería**, no una persona, y los datos de cada una están aislados de las demás, como en una plataforma de tiendas en línea.
 
@@ -204,7 +206,7 @@ Seis módulos (cinco de negocio y un núcleo compartido). Hoy existen los seis: 
 backend/src/
 ├── host/                         raíz de composición: guardias de autenticación y rol, filtro de errores, salud, tareas
 ├── modules/
-│   ├── acceso-barberias/         M01   submódulos: identidad, barberias, clientes
+│   ├── acceso-barberias/         M01   submódulos: identidad, barberias, clientes, solicitudes-datos (007)
 │   ├── asistente-reportes/       M04   submódulos: reportes, asistente, comun (005)
 │   ├── catalogo-citas/           M02   submódulos: catalogo, citas
 │   ├── notificaciones/           M05   avisos por correo y WhatsApp (004 y 008)
@@ -217,7 +219,8 @@ backend/src/
 │       infrastructure/  repositorios y adaptadores
 │
 └── shared/                       M06   contexto de tenant, transacción con RLS, auditoría, caché, límites,
-                                        reloj y zona horaria, resiliencia, tareas programadas
+                                        reloj y zona horaria, resiliencia, tareas programadas,
+                                        registro de indicadores de la plataforma (007)
 ```
 
 Si el sistema crece, un submódulo puede promoverse a módulo (o extraerse como servicio) sin cambiar su contrato. Ver [estilo-arquitectonico.md](docs/02-arquitectura-software/estilo-arquitectonico.md#41-cómo-crece-el-sistema).
@@ -253,7 +256,7 @@ Aplicación web en <http://localhost:5173>, API (por Nginx) en <http://localhost
 
 - Cada dato de Perú o Ayacucho lleva fuente, nivel (nacional o regional) y estado de verificación. Ninguna cifra nacional se atribuye a Ayacucho.
 - Los umbrales numéricos son **metas propuestas por validar** con pruebas. Los precios de planes son **ejemplos hipotéticos**.
-- Cada componente se etiqueta como **implementado, prototipado, planificado o futuro**. Hoy están **implementadas** las funcionalidades 001 (registro, acceso con roles y aislamiento), 002 (catálogo, citas y cuenta de cliente), 003 (suscripciones y pagos, con la pasarela simulada) 006 (balanceador, dos réplicas y Redis), 004 (notificaciones y reprogramación, con correo contra Mailpit y WhatsApp simulado), 008 (adelanto de reserva, con verificación manual del pago) y 005 (asistente de IA y reportes, con el proveedor de IA falso); 007 sigue **planificada**. Nada está desplegado en la nube. El estado de cada componente está en la [trazabilidad](docs/trazabilidad.md).
+- Cada componente se etiqueta como **implementado, prototipado, planificado o futuro**. Hoy están **implementadas** las funcionalidades 001 (registro, acceso con roles y aislamiento), 002 (catálogo, citas y cuenta de cliente), 003 (suscripciones y pagos, con la pasarela simulada) 006 (balanceador, dos réplicas y Redis), 004 (notificaciones y reprogramación, con correo contra Mailpit y WhatsApp simulado), 008 (adelanto de reserva, con verificación manual del pago) 005 (asistente de IA y reportes, con el proveedor de IA falso) y 007 (indicadores de la plataforma y solicitudes sobre datos personales, sin las partes que su especificación deja como no construidas). Últimos totales en local (2026-11-18): backend, unitarias 1 148, integración 2 190 de 2 202 (3 omitidas sin credenciales y 9 fallas de tiempo y carga que pasan al repetirlas solas) y arquitectura 50; frontend 263; detalle en [pruebas §2.4](docs/05-gestion/04-pruebas.md). Nada está desplegado en la nube. El estado de cada componente está en la [trazabilidad](docs/trazabilidad.md).
 - Diagramas en Mermaid (compatibles con GitHub). Citas en APA 7.
 
 ## 🏷️ 6. Convenciones

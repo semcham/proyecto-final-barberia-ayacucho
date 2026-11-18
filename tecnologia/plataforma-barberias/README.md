@@ -14,9 +14,10 @@ funcionalidades:
   manual del propietario: la plataforma no recibe el dinero);
 - [005 · Asistente de IA y reportes](../../specs/005-asistente-ia-reportes/spec.md) (el asistente usa el proveedor de IA
   **falso** en las pruebas y en Docker Compose; OpenRouter solo en desarrollo, fuera de Compose);
-- [007 · Indicadores y datos personales](../../specs/007-indicadores-datos-personales/spec.md), **en
-  implementación**: las solicitudes sobre datos personales (fase 1) y los indicadores de la plataforma (barberías por
-  estado, citas por mes y usuarios; fases 2b y 2c); el cambio de `login_attempt` sigue planificado.
+- [007 · Indicadores y datos personales](../../specs/007-indicadores-datos-personales/spec.md), **construida
+  sin recortes**: las solicitudes sobre datos personales (fase 1), los indicadores de la plataforma (barberías por
+  estado, citas por mes y usuarios; fases 2b y 2c) y `login_attempt` sin IP legible (fase 3). Lo que su especificación
+  deja como no construido está en su sección.
 
 Las guías completas (requisitos, escenarios manuales, criterios de cierre y registro de ejecuciones) están en
 [quickstart de 001](../../specs/001-registro-acceso-barberia/quickstart.md),
@@ -24,8 +25,9 @@ Las guías completas (requisitos, escenarios manuales, criterios de cierre y reg
 [quickstart de 003](../../specs/003-suscripciones-pagos/quickstart.md),
 [quickstart de 004](../../specs/004-notificaciones-reprogramacion/quickstart.md),
 [quickstart de 006](../../specs/006-escalado-cache-balanceo/quickstart.md),
-[quickstart de 008](../../specs/008-adelanto-reserva-qr/quickstart.md) y
-[quickstart de 005](../../specs/005-asistente-ia-reportes/quickstart.md). Este archivo es el resumen.
+[quickstart de 008](../../specs/008-adelanto-reserva-qr/quickstart.md),
+[quickstart de 005](../../specs/005-asistente-ia-reportes/quickstart.md) y
+[quickstart de 007](../../specs/007-indicadores-datos-personales/quickstart.md). Este archivo es el resumen.
 
 ## Contenido
 
@@ -366,7 +368,7 @@ Son los mismos pasos que ejecuta el CI ([`.github/workflows/plataforma-barberias
 - **Pendientes del responsable:** las revisiones manuales de interfaz, la prueba con OpenRouter real, SC-003 y SC-005
   medidos en Docker Compose y el recorrido de la [guía rápida de 005](../../specs/005-asistente-ia-reportes/quickstart.md).
 
-## Funcionalidad 007: indicadores y datos personales (en implementación)
+## Funcionalidad 007: indicadores y datos personales (construida, 2026-11-16 a 2026-11-18)
 
 - **Especificación:** [spec de 007](../../specs/007-indicadores-datos-personales/spec.md) · [plan](../../specs/007-indicadores-datos-personales/plan.md) ·
   [tareas](../../specs/007-indicadores-datos-personales/tasks.md). Contratos:
@@ -415,8 +417,9 @@ Son los mismos pasos que ejecuta el CI ([`.github/workflows/plataforma-barberias
   **Si se olvida:** la migración `0034_vistas_de_conteo` falla con el mensaje "falta el rol barberias_conteos: ver
   README" y, como con cualquier migración fallida, `preparar-backend` termina con error y las réplicas no quedan
   listas. Basta con crear el rol y volver a levantar `preparar-backend`.
-- **No construido (decidido en la aclaración):** las solicitudes del propietario sobre su propia cuenta, la oposición,
-  la anonimización del perfil y los avisos al solicitante.
+- **No construido (decidido en la aclaración):** las solicitudes del propietario sobre su propia cuenta (las
+  atendería el administrador, que no puede ver datos de una barbería), la oposición, la anonimización del perfil, los
+  avisos al solicitante y la vista de la auditoría para el administrador.
 - **Sin variables nuevas** en las fases 1, 2b y 2c.
 - **Fase 3, construida (US3):** `login_attempt` ya **no guarda la IP en claro**: guarda el origen solo como
   `SHA-256(INTENTOS_SAL_IP ‖ ip)` (columna `ip_hash`, migración `0035_intentos_con_hash`, que borra las filas
@@ -435,6 +438,14 @@ Son los mismos pasos que ejecuta el CI ([`.github/workflows/plataforma-barberias
     (`docker compose up -d --force-recreate preparar-backend backend-1 backend-2`): una réplica vieja que siguiera
     escribiendo la columna `ip` fallaría cerrada (el ingreso responde error) en lugar de guardar la IP. Es un
     procedimiento, sin prueba automática.
+- **Totales de la última corrida completa** (2026-11-18, fase 3; la fase 4 solo cambió documentos): backend,
+  unitarias 1 148, integración 2 190 de 2 202 (3 omitidas sin credenciales ni llave y 9 fallas de tiempo y carga en 5
+  archivos que la fase 3 no toca, todas en verde al repetirlas solas) y arquitectura 50; frontend 263. Detalle en
+  [pruebas §2.4](../../docs/05-gestion/04-pruebas.md).
+- **Pendientes del responsable:** las revisiones manuales de interfaz y SC-003 con cronómetro, el paso manual del rol
+  `barberias_conteos` en un volumen existente, `INTENTOS_SAL_IP` en su `.env`, la comprobación en Compose de que un
+  ingreso fallido deja solo `ip_hash`, el recorrido de la
+  [guía rápida de 007](../../specs/007-indicadores-datos-personales/quickstart.md) y la CI en verde tras cada push.
 
 ## Referencias
 

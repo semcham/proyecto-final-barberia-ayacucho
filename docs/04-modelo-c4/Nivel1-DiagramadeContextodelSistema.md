@@ -76,11 +76,11 @@ En algunos diagramas se usa además rojo para una solicitud rechazada. Los diagr
 
 | Elemento                        | Tipo            | Origen (requisito)                                              | Estado                                                |
 | ------------------------------- | --------------- | --------------------------------------------------------------- | ----------------------------------------------------- |
-| Administrador de la plataforma  | Persona         | HU01, HU19, HU26 / RF02, RF22, RF31                             | Implementado (003); indicadores (RF31) planificados    |
-| Propietario de barbería         | Persona         | HU02–HU04, HU17, HU18, HU23, HU24 / RF01, RF06, RF20, RF29      | Implementado (001–005 y 008); reportes e IA en 005     |
-| Barbero                         | Persona         | HU09, HU14 / RF09, RF15, RF16                                   | Implementado (002)                                     |
-| Cliente                         | Persona         | HU06, HU10–HU13, HU22, HU25 / RF05, RF11–RF14, RF27, RF30, RF33 | Implementado (002, 004 y 005): reprogramar y avisos (004), asistente de IA (005) |
-| Plataforma SaaS                 | Sistema         | Todos los RF                                                    | Implementado en local: 33 RF, 1 parcial y 1 planificado |
+| Administrador de la plataforma  | Persona         | HU01, HU19, HU26 / RF02, RF22, RF31                             | Implementado (003); indicadores agregados (RF31) en 007; la vista de la auditoría (HU26), no construida |
+| Propietario de barbería         | Persona         | HU02–HU04, HU17, HU18, HU23, HU24 / RF01, RF06, RF20, RF29      | Implementado (001–005, 007 y 008); reportes e IA en 005; atiende las solicitudes sobre datos personales en 007 (sus propias solicitudes, no construidas) |
+| Barbero                         | Persona         | HU09, HU14 / RF09, RF15, RF16                                   | Implementado (002); solicitudes sobre sus datos en 007  |
+| Cliente                         | Persona         | HU06, HU10–HU13, HU22, HU25 / RF05, RF11–RF14, RF27, RF30, RF33 | Implementado (002, 004, 005 y 007): reprogramar y avisos (004), asistente de IA (005), solicitudes sobre sus datos (007) |
+| Plataforma SaaS                 | Sistema         | Todos los RF                                                    | Implementado en local: 34 RF y 1 parcial (RF32)       |
 | Proveedor de pagos              | Sistema externo | RF23–RF26, RC05, ADR-007, ADR-022                               | **Simulado** (pasarela simulada); proveedor real planificado (candidato: Culqi, sin contratar) |
 | Proveedor de IA                 | Sistema externo | RF27, RF28, RC11, ADR-008, ADR-027                              | En pruebas y Compose, un proveedor **falso** (sin red); OpenRouter solo en desarrollo; producción planificada (sin elegir) |
 | Servicio de correo              | Sistema externo | RF30, HU25                                                      | Integrado por SMTP (004), probado con Mailpit; proveedor de producción sin elegir |
