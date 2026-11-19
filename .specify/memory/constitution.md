@@ -1,6 +1,47 @@
 <!--
 Sync Impact Report
 ==================
+Version change: 1.7.1 → 1.7.2
+Bump rationale: PATCH. Aclara qué significa "construir" en la excepción de .github/workflows/ del principio
+XII, sin ampliar lo que la CI puede hacer fuera de la propia plataforma de CI:
+  - los flujos pueden conservar el artefacto estático del frontend, solo en main y con las pruebas en verde;
+  - pueden tener trabajos de prueba manuales;
+  - nunca despliegan, nunca tienen credenciales de despliegue ni de la aplicación, y solo usan la base efímera
+    de sus propias pruebas.
+Agrega dos aclaraciones en "Restricciones tecnológicas y de alcance":
+  - la publicación de demostración (dominio propio, CDN y túnel) no es el despliegue objetivo ni producción;
+  - el superusuario de PostgreSQL solo se usa dentro del servicio de base de datos para el respaldo y la
+    restauración de prueba.
+Aprobada por el responsable el 2026-11-19 (fase 0 de la funcionalidad 009). Borrador en
+specs/009-evidencia-calidad/borradores/enmienda-xii-y-adr-publicacion.md §1.
+Reemplaza a la enmienda MINOR de la versión 1 de ese borrador, que ya no hace falta: la interfaz se publica por
+un túnel desde el entorno local y la CI no publica en ninguna CDN.
+
+Modified principles:
+  - XII. Ubicación del código, excepción de .github/workflows/: qué incluye "construir", los trabajos de
+    prueba manuales y las prohibiciones de desplegar y de acceder a bases reales o publicadas.
+  - Restricciones tecnológicas y de alcance: "Privacidad" (superusuario solo para el respaldo) y "Despliegue
+    objetivo" (la publicación de demostración no es el despliegue objetivo).
+Added principles: ninguno
+Added sections: ninguna
+Removed sections: ninguna
+
+Templates requiring updates:
+  ✅ .specify/templates/plan-template.md — puerta XII (artefacto, trabajos manuales, bases efímeras, sin
+     desplegar; versión 1.7.2)
+  ✅ .specify/templates/spec-template.md y tasks-template.md — revisados; sin cambios necesarios
+  ✅ docs/05-gestion/03-sdd-spec-kit.md — versión de la constitución
+  ✅ specs/009-evidencia-calidad/plan.md — Constitution Check con la versión 1.7.2
+  ⏳ docs/02-arquitectura-software/despliegue-y-escalabilidad.md, docs/05-gestion/04-pruebas.md, el README y
+     docs/trazabilidad.md — se actualizan en las fases de 009 que construyen lo que la aclaración permite:
+     el trabajo herramientas (fase 1), el trabajo e2e manual (fase 3), el simulacro (fase 6) y el artefacto
+     con la publicación (fase 7). Hoy nada de eso está construido y ningún documento lo afirma.
+  ✅ docs/01-analisis-de-sistema/07-decisiones-arquitectonicas.md — sin cambios en esta versión: ADR-034 y
+     ADR-035, aprobados el mismo día, se aplican en las fases 2 y 7 de 009.
+
+Follow-up TODOs: ninguno en la constitución.
+
+--- Historial: informe de la versión 1.7.1 ---
 Version change: 1.7.0 → 1.7.1
 Bump rationale: PATCH. Aclaración de un hecho ya previsto en 1.4.1, sin cambiar ninguna regla: login_attempt
 guarda ya el origen solo como hash con sal (INTENTOS_SAL_IP, distinta de ENLACES_SAL_IP), nunca la IP en claro.
@@ -602,7 +643,15 @@ demuestra.
 - **Excepción:** los flujos de integración continua MUST ubicarse en `.github/workflows/`, única
   ruta que GitHub Actions lee. Esos archivos MUST limitarse a definir la CI (instalar, verificar,
   probar y construir ejecutando comandos dentro de `tecnologia/plataforma-barberias/`) y MUST NOT
-  contener lógica de la aplicación.
+  contener lógica de la aplicación. "Construir" incluye conservar el **artefacto estático compilado
+  del frontend** como artefacto de la propia corrida, solo en la rama principal y solo después de
+  que todos los trabajos de pruebas terminaron en verde. Los flujos MAY tener trabajos de prueba que
+  solo se lanzan a mano. Los flujos MUST NOT desplegar, MUST NOT tener credenciales de despliegue ni
+  de la aplicación y MUST NOT acceder a la base de datos de un entorno real o publicado. **Única
+  excepción:** la base efímera que las propias pruebas levantan y destruyen dentro de la corrida
+  (Testcontainers en las pruebas de integración y el Docker Compose de los recorridos de extremo a
+  extremo). Cualquier publicación se hace **fuera** de la CI, con código ubicado en
+  `tecnologia/plataforma-barberias/`.
 
 **Razón:** separa la documentación de arquitectura del código y deja una única raíz para la
 implementación. La excepción existe solo porque la plataforma de CI impone la ruta.
@@ -616,10 +665,18 @@ implementación. La excepción existe solo porque la plataforma de CI impone la 
 - **Seguridad:** JWT de corta vida con refresco y con usuario, rol y `tenant_id`; RBAC en la
   capa de aplicación; contraseñas con hash lento (Argon2id o bcrypt); secretos fuera del código.
 - **Privacidad:** Ley N.° 29733 y su reglamento: consentimiento, minimización, auditoría y
-  respaldo.
+  respaldo. El respaldo y la restauración de prueba MAY usar el superusuario de PostgreSQL **solo
+  dentro del contenedor o servicio de base de datos**, porque con FORCE RLS ningún rol sin
+  `BYPASSRLS` puede respaldar la base completa. MUST NOT usarse en la aplicación ni en ningún
+  script que lea o escriba datos de negocio, y para el respaldo no se crea ni se concede ningún rol
+  nuevo con `BYPASSRLS` (sin afectar a los roles que ya existen por diseño y están documentados,
+  como `barberias_auth` de ADR-015).
 - **Despliegue objetivo:** AWS con Application Load Balancer y varias instancias idénticas del
   monolito; se empieza con una instancia. Un balanceador MUST NOT presentarse como alta
-  disponibilidad (ADR-006).
+  disponibilidad (ADR-006). La **publicación de demostración** (dominio propio, CDN y túnel hacia el
+  entorno local) MUST NOT presentarse como el despliegue objetivo ni como producción: funciona solo
+  mientras el equipo del responsable está encendido, publica solo datos de ejemplo y no cambia
+  ADR-006.
 - **Stack propuesto:** TypeScript con NestJS en el backend; Angular o React en el frontend
   (pendiente de confirmar por el equipo); Docker / Docker Compose. Las versiones se fijan al
   iniciar la implementación.
@@ -655,4 +712,4 @@ implementación. La excepción existe solo porque la plataforma de CI impone la 
   alternativa más simple descartada, y registrarse como ADR.
 - La guía de ejecución del proyecto está en `README.md` y en `docs/`.
 
-**Version**: 1.7.1 | **Ratified**: 2026-10-15 | **Last Amended**: 2026-11-18
+**Version**: 1.7.2 | **Ratified**: 2026-10-15 | **Last Amended**: 2026-11-19

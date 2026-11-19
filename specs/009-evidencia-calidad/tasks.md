@@ -79,14 +79,15 @@ la fase 7 (T151).
 - T002 bloquea T045.
 - T003 bloquea la fase 7.
 
-- [ ] T001 **Del responsable:** revisar y aprobar (o corregir) la aclaración PATCH 1.7.2 del principio XII y las dos
+- [X] T001 **Del responsable** (aprobado el 2026-11-19): revisar y aprobar (o corregir) la aclaración PATCH 1.7.2 del principio XII y las dos
   aclaraciones de "Restricciones" (publicación de demostración, y superusuario solo para el respaldo) en
   [borradores/enmienda-xii-y-adr-publicacion.md](borradores/enmienda-xii-y-adr-publicacion.md) §1.
-- [ ] T002 **Del responsable:** aprobar ADR-034 en [borradores/adr-034-k6.md](borradores/adr-034-k6.md), que ya está
+- [X] T002 **Del responsable** (aprobado el 2026-11-19): aprobar ADR-034 en [borradores/adr-034-k6.md](borradores/adr-034-k6.md), que ya está
   marcado como revisado.
-- [ ] T003 **Del responsable:** revisar y aprobar ADR-035 en
+- [X] T003 **Del responsable** (aprobado el 2026-11-19): revisar y aprobar ADR-035 en
   [borradores/enmienda-xii-y-adr-publicacion.md](borradores/enmienda-xii-y-adr-publicacion.md) §2.
-- [ ] T004 Tras T001, y **solo con el aviso al responsable**, aplicar la aclaración PATCH:
+- [X] T004 Tras T001, y **solo con el aviso al responsable**, aplicar la aclaración PATCH (aplicada el 2026-11-19;
+  también se actualizó la versión en `docs/05-gestion/03-sdd-spec-kit.md`, por ser un documento afectado):
   - en `.specify/memory/constitution.md`: el texto de §1 en el principio XII y las dos aclaraciones en "Restricciones
     tecnológicas y de alcance" ("Despliegue objetivo" y "Privacidad"); el Sync Impact Report; la versión **1.7.2** y
     la fecha de "Last Amended";
@@ -95,11 +96,20 @@ la fase 7 (T151).
     credentials").
 
   Si T001 no se aprueba, no se aplica nada, y T063 y T141 quedan como no construidos.
-- [ ] T005 [P] En los dos borradores, actualizar la cabecera de estado ("aprobado el AAAA-MM-DD; se aplica en la fase
+- [X] T005 [P] En los dos borradores, actualizar la cabecera de estado ("aprobado el AAAA-MM-DD; se aplica en la fase
   N") según T001 a T003. No cambiar nada más.
-- [ ] T006 Verificación de la fase 0:
+- [X] T006 Verificación de la fase 0:
   - las referencias a "1.7.1" que deban pasar a "1.7.2" están actualizadas (por ejemplo, la puerta del plan de 009);
   - `git diff` solo toca la constitución, la plantilla y los borradores.
+
+  **Resultado (2026-11-19):**
+  - Las menciones vigentes pasaron a 1.7.2: la versión, la puerta de la plantilla, las 5 de `03-sdd-spec-kit.md` y el
+    Constitution Check del plan de 009.
+  - Las 1.7.1 que quedan son historia: el historial del Sync Impact Report, `trazabilidad` y `04-pruebas` sobre 007, el
+    backlog y los archivos de 007.
+  - `git status` muestra la constitución, la plantilla, los dos borradores, `docs/05-gestion/03-sdd-spec-kit.md` y
+    `specs/009-evidencia-calidad/plan.md` y `tasks.md`. Los tres últimos son documentos afectados (la versión, y el
+    estado de la fase). No se tocó código ni `07-decisiones-arquitectonicas.md`.
 - [ ] T007 **Del responsable:** commit y push de la fase 0: `docs(009): aclaración PATCH 1.7.2 del principio XII y
   borradores de ADR-034 y ADR-035 aprobados (fase 0)`.
 

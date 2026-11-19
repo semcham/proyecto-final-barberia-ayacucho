@@ -1,9 +1,14 @@
 # Borradores para revisión del responsable: aclaración del principio XII y ADR-035 de la publicación de la demo
 
-> **Estado (2026-11-19, versión 2): BORRADOR, sin aprobar y sin aplicar.** Nada de este archivo está en
-> `.specify/memory/constitution.md` ni en `docs/01-analisis-de-sistema/07-decisiones-arquitectonicas.md`. Se aplica
-> solo después de la aprobación del responsable, en la fase 0 de 009, y antes de construir US7. Los números de
-> versión y de ADR son provisionales.
+> **Estado (2026-11-19): aprobados por el responsable tal como están.**
+>
+> - **(1) Aclaración PATCH 1.7.2:** aprobada el 2026-11-19 y **aplicada en la fase 0 de 009**, en
+>   `.specify/memory/constitution.md` (principio XII y dos aclaraciones de "Restricciones", con su Sync Impact
+>   Report) y en la puerta XII de `.specify/templates/plan-template.md`.
+> - **(2) ADR-035:** aprobado el 2026-11-19. **Se aplica en la fase 7 de 009** (US7) en
+>   `docs/01-analisis-de-sistema/07-decisiones-arquitectonicas.md`. Su número se confirma libre al aplicarlo.
+>
+> Abajo quedan los textos tal como se aprobaron.
 >
 > **Cambio respecto a la versión 1:** el plan decidió servir la interfaz por el túnel desde el Nginx de Compose, y no
 > por Cloudflare Pages (research R09). La CI ya **no publica** en la CDN, así que la enmienda MINOR de la versión 1
@@ -45,8 +50,9 @@ CI puede hacer fuera de la plataforma de CI.
 
 > El respaldo y la restauración de prueba MAY usar el superusuario de PostgreSQL **solo dentro del contenedor o
 > servicio de base de datos**, porque con FORCE RLS ningún rol sin `BYPASSRLS` puede respaldar la base completa.
-> MUST NOT usarse en la aplicación ni en ningún script que lea o escriba datos de negocio, y no se crea ni se concede
-> ningún rol con `BYPASSRLS`.
+> MUST NOT usarse en la aplicación ni en ningún script que lea o escriba datos de negocio, y para el respaldo no se
+> crea ni se concede ningún rol nuevo con `BYPASSRLS` (sin afectar a los roles que ya existen por diseño y están
+> documentados, como `barberias_auth` de ADR-015).
 
 **Sync Impact Report (borrador):**
 

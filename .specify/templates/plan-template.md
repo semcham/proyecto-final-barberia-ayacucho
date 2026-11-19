@@ -40,7 +40,7 @@
 
 _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
-Gates from `.specify/memory/constitution.md` (v1.7.1). Mark each ✅ / ❌ (justify ❌ in
+Gates from `.specify/memory/constitution.md` (v1.7.2). Mark each ✅ / ❌ (justify ❌ in
 Complexity Tracking and record an ADR):
 
 - [ ] **I. Six modules**: work fits in M01–M06 (no new module); cross-module calls only via
@@ -103,7 +103,11 @@ Complexity Tracking and record an ADR):
 - [ ] **XI. ADR**: any architectural change recorded in
       `docs/01-analisis-de-sistema/07-decisiones-arquitectonicas.md`
 - [ ] **XII. Code location**: all application code under `tecnologia/plataforma-barberias/`;
-      only CI workflows may live in `.github/workflows/` (no application logic there)
+      only CI workflows may live in `.github/workflows/` (no application logic there); workflows
+      may keep the built frontend artifact (main, after tests) and have manual test jobs; may use
+      only ephemeral test databases; never deploy or hold deploy or application credentials
+      (amendment 1.7.2). PostgreSQL superuser only inside the database service, only for backup
+      and restore drills
 
 ## Project Structure
 

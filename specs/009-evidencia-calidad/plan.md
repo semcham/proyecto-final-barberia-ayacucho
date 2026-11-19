@@ -74,7 +74,10 @@ citas de volumen y 11 pruebas frágiles.
 
 ## Constitution Check
 
-_GATE: antes del research y otra vez tras el diseño._ Constitución **v1.7.1**.
+_GATE: antes del research y otra vez tras el diseño._ Se evaluó contra la constitución **v1.7.1**. **Desde la fase 0
+(2026-11-19) rige la v1.7.2**: el responsable aprobó la aclaración PATCH del principio XII, con sus dos aclaraciones de
+"Restricciones", y quedó aplicada. Los ✅ "pendientes de aprobación" de XI, XII y "Restricciones" quedan aprobados.
+ADR-034 y ADR-035 están aprobados y se aplican en `07-decisiones` en las fases 2 y 7.
 
 | Principio | Antes | Después del diseño | Nota |
 | --- | --- | --- | --- |
