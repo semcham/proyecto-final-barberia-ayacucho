@@ -536,8 +536,9 @@ desde el subdominio de otra no ve datos de esta última.
 - **Pago simulado:** la pasarela simulada de 003; ningún cobro real.
 - **CI:** GitHub Actions; las pruebas de integración ya corren allí con contenedores; la demo completa con dos
   réplicas puede no caber o ser inestable en el CI, y eso se evalúa (FR-015).
-- **Constitución:** US7 con publicación desde `.github/workflows/` necesita la enmienda MINOR del principio XII
-  (borrador; se propone la versión 1.8.0) y un ADR que revise ADR-006. Los dos están en
+- **Constitución:** US7 con publicación desde `.github/workflows/` necesita un cambio del principio XII y un ADR
+  que revise ADR-006. Tras el plan (research R09), la interfaz sale por el túnel y la CI no publica, así que basta
+  una aclaración PATCH (se propone la 1.7.2) en lugar de la enmienda MINOR. Los dos están en
   [borradores/enmienda-xii-y-adr-publicacion.md](borradores/enmienda-xii-y-adr-publicacion.md), sin aplicar. El cambio
   de R13 de 006 (k6) necesita su propio ADR. Ninguna otra historia cambia la constitución.
 - **Fuera de alcance:** alta disponibilidad, monitoreo con alertas (PR21), un proveedor real de pagos, de correo, de

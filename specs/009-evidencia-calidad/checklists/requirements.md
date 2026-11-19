@@ -42,6 +42,7 @@
   (son un hecho del entorno, no una decisión de diseño). La spec no contiene tokens, claves ni identificadores de
   cuenta o de zona.
 - **Dependencias de gobierno:**
-  - US7 necesita la enmienda MINOR del principio XII y un ADR que revise ADR-006. Los dos están en borrador en
-    `borradores/enmienda-xii-y-adr-publicacion.md`, sin aplicar.
+  - US7 necesita un cambio del principio XII y un ADR que revise ADR-006 (ADR-035). Los dos están en borrador en
+    `borradores/enmienda-xii-y-adr-publicacion.md`, sin aplicar. Desde el plan (2026-11-19, research R09) basta una
+    aclaración PATCH, porque la CI ya no publica en la CDN.
   - US1 necesita un ADR que cambie la decisión R13 de 006 (no descargar k6).
