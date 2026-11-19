@@ -18,6 +18,10 @@ funcionalidades:
   sin recortes**: las solicitudes sobre datos personales (fase 1), los indicadores de la plataforma (barberías por
   estado, citas por mes y usuarios; fases 2b y 2c) y `login_attempt` sin IP legible (fase 3). Lo que su especificación
   deja como no construido está en su sección.
+- [009 · Evidencia de calidad y despliegue](../../specs/009-evidencia-calidad/spec.md), **en construcción por fases**:
+  la fase 1 (arranque reproducible y semilla de demostración, US3) está hecha. La carga con k6, los recorridos E2E,
+  la interfaz de producción, la cobertura, la evidencia de base de datos y la publicación de la demo **todavía no
+  están construidos**.
 
 Las guías completas (requisitos, escenarios manuales, criterios de cierre y registro de ejecuciones) están en
 [quickstart de 001](../../specs/001-registro-acceso-barberia/quickstart.md),
@@ -40,18 +44,46 @@ Las guías completas (requisitos, escenarios manuales, criterios de cierre y reg
 | `db/init/`                 | Roles de PostgreSQL que crea el contenedor de la base al iniciar por primera vez                                                       |
 | `docker-compose.yml`       | Entorno de desarrollo escalado: `db`, `redis`, `preparar-backend`, `backend-1`, `backend-2`, `nginx`, `pasarela-simulada`, `mailpit`, `whatsapp-simulado` y `frontend` |
 | `nginx/`                   | Configuración del balanceador local (`nginx.conf` y la plantilla del upstream, ADR-030)                                                |
-| `.env.example`             | Variables de entorno de desarrollo (copiar a `.env`)                                                                                   |
+| `.env.example`             | Variables de entorno de desarrollo (`scripts/preparar-entorno` crea el `.env` a partir de él)                                          |
+| `scripts/`                 | 009: `preparar-entorno` (genera el `.env` de desarrollo, en bash y PowerShell) y el guardián de `COMPOSE_PROJECT_NAME` (`lib/proyecto`) |
+| `semilla/`                 | 009: semilla de demostración por la API pública (dos barberías inventadas), idempotente; ver su [README](semilla/README.md)            |
+| `evidencia/`               | 009: resultados medidos (se llena en las fases siguientes) y sus scripts, como `revisar-secretos`                                      |
 
 ## Ejecutar con Docker Compose
 
 Requisitos: Docker Desktop con Compose v2, **3 GB de memoria asignados a Docker** y los puertos 5433, 6380,
 3000, 3100, 3200, 1025, 8025 y 5173 libres.
 
-```powershell
+**Arranque reproducible (009, US3).** El script crea el `.env` de desarrollo a partir de `.env.example`, con claves
+JWT (ES256) y sales nuevas, sin openssl y sin pegar nada a mano. **Nunca escribe en un `.env` que ya exista:** de
+uno existente lee solo los **nombres** de las variables, sin guardar ni mostrar sus valores, e informa cuáles le
+faltan (código 2). Usa el Node del equipo (22 o mayor) o, si no hay, la imagen `node:22` de Docker.
+
+```bash
+# bash (Linux, macOS o WSL)
 cd tecnologia/plataforma-barberias
-Copy-Item .env.example .env      # completar las claves JWT de desarrollo (ver comentarios del archivo)
-docker compose up -d             # preparar-backend compila y migra una vez; luego arrancan las dos réplicas
+bash scripts/preparar-entorno.sh            # crea .env con claves y sales nuevas, solo de desarrollo
+docker compose up -d                        # preparar-backend compila y migra una vez; luego arrancan las réplicas
+docker compose --profile herramientas run --rm semilla   # dos barberías de ejemplo (idempotente)
 ```
+
+```powershell
+# PowerShell (Windows PowerShell 5.1 o PowerShell 7)
+cd tecnologia/plataforma-barberias
+.\scripts\preparar-entorno.ps1
+docker compose up -d
+docker compose --profile herramientas run --rm semilla
+```
+
+- Después, abre <http://localhost:5173/b/barberia-demo-centro> y `/b/barberia-demo-huamanga`. Las cuentas de la
+  demo **local**, con sus contraseñas de desarrollo, están en [semilla/README.md](semilla/README.md).
+- La semilla se carga **solo con ese comando**, nunca al levantar la demo. Una segunda carga dice "0 creadas".
+- **Una demo a la vez:** la demo de desarrollo, una copia de verificación y la demo publicada (009) comparten los
+  puertos del equipo y unos 1,9 GB de memoria cada una. Se levantan de una en una.
+- **Scripts de medición de 009** (fases siguientes): exigen `COMPOSE_PROJECT_NAME` con un proyecto propio y se niegan
+  (código 6) con el proyecto por defecto, `plataforma-barberias`, para no tocar nunca el volumen de desarrollo.
+- `--subred a.b.c` (`-Subred` en PowerShell) fija otra subred y otras IP fijas al **crear** un `.env` nuevo, para una
+  copia que conviva con la red de esta demo. Con un `.env` existente no cambia nada.
 
 | Servicio            | Puerto en el equipo | Memoria | Qué hace                                                                                                                          |
 | ------------------- | ------------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------- |

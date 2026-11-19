@@ -340,6 +340,27 @@ services:
         limits:
           memory: 512M
 
+  # 009 (US3, FR-019; research R04): semilla de demostración, por la API PÚBLICA y a través de Nginx, como un usuario.
+  # No usa ningún rol de base de datos y es idempotente. Perfil `herramientas`: no arranca con `docker compose up`.
+  # Con la demo levantada:  docker compose --profile herramientas run --rm semilla
+  # Sin env_file: no recibe ninguna variable del .env (solo la versión de los textos aceptados, por interpolación).
+  semilla:
+    image: node:22
+    profiles: [herramientas]
+    entrypoint: ["node", "/semilla/cargar-semilla.mjs"]
+    environment:
+      SEMILLA_API: http://nginx/api/v1
+      SEMILLA_BUZON: http://${IP_MAILPIT:-172.28.0.15}:8025
+      SEMILLA_VERSION_TERMINOS: ${TERMS_VERSION:-2026-10}
+      SEMILLA_VERSION_POLITICA: ${PRIVACY_POLICY_VERSION:-2026-10}
+    volumes:
+      - ./semilla:/semilla:ro
+    networks: [plataforma]
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+
 networks:
   plataforma:
     ipam:

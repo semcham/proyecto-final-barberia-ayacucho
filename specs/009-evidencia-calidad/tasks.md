@@ -126,7 +126,7 @@ semilla idempotente por la API. Además, dejar listas las herramientas comunes d
 
 ### Pruebas (primero; deben fallar)
 
-- [ ] T008 [P] [US3] Crear `scripts/test/preparar-entorno.test.mjs` (`node --test`, sin dependencias; FR-003,
+- [X] T008 [P] [US3] Crear `scripts/test/preparar-entorno.test.mjs` (`node --test`, sin dependencias; FR-003,
   FR-017, FR-018; research R03). Cada caso usa un directorio temporal con una copia de `.env.example` y comprueba:
   - sin `.env`: crea el archivo con código 0;
   - `JWT_PRIVATE_KEY` y `JWT_PUBLIC_KEYS["dev-1"]` firman y verifican un JWT ES256 con `node:crypto`;
@@ -138,13 +138,13 @@ semilla idempotente por la API. Además, dejar listas las herramientas comunes d
     código es 2, la salida contiene el **nombre** que falta y **ningún** valor del archivo;
   - con un `.env` completo: código 0 y "no falta ninguna variable";
   - ninguna salida contiene `BEGIN PRIVATE KEY` ni un valor generado.
-- [ ] T009 [P] [US3] Crear `scripts/test/proyecto.test.mjs` (guardián, research R01b):
+- [X] T009 [P] [US3] Crear `scripts/test/proyecto.test.mjs` (guardián, research R01b):
   - con `COMPOSE_PROJECT_NAME` vacío, el código es 6;
   - con `plataforma-barberias`, el código es 6;
   - con `barberias-verificacion`, la comprobación pasa;
   - el mensaje explica cómo fijar el proyecto.
   - Además, los envoltorios `.sh` y `.ps1` devuelven lo mismo que el `.mjs`.
-- [ ] T010 [P] [US3] Crear `semilla/test/semilla.test.mjs` (`node --test`, con un `fetch` falso; FR-019; research
+- [X] T010 [P] [US3] Crear `semilla/test/semilla.test.mjs` (`node --test`, con un `fetch` falso; FR-019; research
   R04). Comprueba:
   - una barbería cuyo slug ya responde en la vía pública se salta;
   - un correo ya registrado inicia sesión en vez de registrarse;
@@ -154,7 +154,7 @@ semilla idempotente por la API. Además, dejar listas las herramientas comunes d
   - `datos.json` tiene solo correos `@ejemplo.test`, teléfonos `+51 900 000 0NN`, ningún administrador de la
     plataforma, dos barberías y los conteos de [data-model.md](data-model.md) §4;
   - la carga normal nunca llama a una ruta que cambie contraseñas.
-- [ ] T011 [P] [US3] Crear `evidencia/scripts/test/revisar-secretos.test.mjs` (research R01). Comprueba que se
+- [X] T011 [P] [US3] Crear `evidencia/scripts/test/revisar-secretos.test.mjs` (research R01). Comprueba que se
   detectan, cada uno en un archivo de prueba:
   - un JWT;
   - `otpauth://`;
@@ -169,7 +169,7 @@ semilla idempotente por la API. Además, dejar listas las herramientas comunes d
 
 ### Implementación
 
-- [ ] T012 [US3] Crear `scripts/preparar-entorno.mjs` (Node 22, solo `node:crypto` y `node:fs`), según R03:
+- [X] T012 [US3] Crear `scripts/preparar-entorno.mjs` (Node 22, solo `node:crypto` y `node:fs`), según R03:
   - genera las claves EC P-256 en PEM PKCS#8 y SPKI, escapadas con `\n`, y `JWT_ACTIVE_KID=dev-1`;
   - 32 bytes en base64 para `PLATAFORMA_LLAVE_TOTP` y `ENLACES_LLAVE`;
   - sales distintas para `ENLACES_SAL_IP` e `INTENTOS_SAL_IP`;
@@ -179,22 +179,22 @@ semilla idempotente por la API. Además, dejar listas las herramientas comunes d
   - códigos de salida 0, 1 y 2.
 
   Debe hacer pasar T008.
-- [ ] T013 [P] [US3] Crear `scripts/preparar-entorno.sh` (bash):
+- [X] T013 [P] [US3] Crear `scripts/preparar-entorno.sh` (bash):
   - si hay `node` (versión 22 o mayor), ejecuta el `.mjs`;
   - si no, ejecuta `docker run --rm -v "$PWD":/w -w /w node:22 node scripts/preparar-entorno.mjs "$@"`;
   - propaga el código de salida.
-- [ ] T014 [P] [US3] Crear `scripts/preparar-entorno.ps1` (PowerShell 5.1 y 7), con el mismo comportamiento que T013
+- [X] T014 [P] [US3] Crear `scripts/preparar-entorno.ps1` (PowerShell 5.1 y 7), con el mismo comportamiento que T013
   y el parámetro `-Subred`.
-- [ ] T015 [US3] Crear `scripts/lib/proyecto.mjs`, `proyecto.sh` y `proyecto.ps1` (`exigirProyectoAparte`, código 6),
+- [X] T015 [US3] Crear `scripts/lib/proyecto.mjs`, `proyecto.sh` y `proyecto.ps1` (`exigirProyectoAparte`, código 6),
   según research R01b. Debe hacer pasar T009.
-- [ ] T016 [US3] Crear `evidencia/scripts/revisar-secretos.mjs` (Node 22, sin dependencias), con los patrones de T011.
+- [X] T016 [US3] Crear `evidencia/scripts/revisar-secretos.mjs` (Node 22, sin dependencias), con los patrones de T011.
   Recorre `evidencia/` salvo `**/no-versionado/`. Debe hacer pasar T011.
-- [ ] T017 [P] [US3] Crear `semilla/datos.json` según [data-model.md](data-model.md) §4:
+- [X] T017 [P] [US3] Crear `semilla/datos.json` según [data-model.md](data-model.md) §4:
   - `barberia-demo-centro` y `barberia-demo-huamanga`;
   - servicios, barberos (uno con usuario vinculado), horarios y clientes;
   - citas futuras, expresadas como días relativos a la fecha de carga;
   - contraseñas de desarrollo **solo para el modo local**.
-- [ ] T018 [US3] Crear `semilla/lib/`:
+- [X] T018 [US3] Crear `semilla/lib/`:
   - `api.mjs`: cliente `fetch` con la URL base, manejo de errores e `Idempotency-Key`;
   - `buzon.mjs`: lee el enlace de activación de la API HTTP de Mailpit, con espera acotada y un mensaje claro si no
     llega;
@@ -203,7 +203,7 @@ semilla idempotente por la API. Además, dejar listas las herramientas comunes d
     Lo usa la fase 7.
 
   Las rutas exactas salen de `specs/001-*/contracts/openapi.yaml` y `specs/002-*/contracts/openapi.yaml`.
-- [ ] T019 [US3] Crear `semilla/cargar-semilla.mjs` (`--api`, `--buzon`, `--modo local`, por defecto):
+- [X] T019 [US3] Crear `semilla/cargar-semilla.mjs` (`--api`, `--buzon`, `--modo local`, por defecto):
   - registro y activación de cada barbería;
   - inicio de sesión;
   - servicios, barberos, horario;
@@ -213,28 +213,28 @@ semilla idempotente por la API. Además, dejar listas las herramientas comunes d
   - rechaza `--reiniciar-contrasenas` en el modo local con código 3.
 
   Debe hacer pasar T010.
-- [ ] T020 [US3] En `docker-compose.yml`, agregar el servicio `semilla`:
+- [X] T020 [US3] En `docker-compose.yml`, agregar el servicio `semilla`:
   - perfil `herramientas`, `node:22`, red `plataforma`;
   - monta `./semilla:/semilla:ro`;
   - `SEMILLA_API=http://nginx/api/v1` y `SEMILLA_BUZON=http://${IP_MAILPIT:-172.28.0.15}:8025`;
   - **sin** `env_file`.
 
   Comentario con el uso.
-- [ ] T021 [P] [US3] Crear `semilla/README.md`:
+- [X] T021 [P] [US3] Crear `semilla/README.md`:
   - cuentas de la **demo local** con sus contraseñas de desarrollo, que solo sirven en el equipo de quien clona;
   - aviso de que la demo publicada usa otras contraseñas, que no están en el repositorio;
   - qué no se siembra (historial atendido, administrador) y por qué.
-- [ ] T022 [US3] Crear `herramientas.eslint.config.mjs` (ESLint 9, configuración plana) y `.prettierignore`:
+- [X] T022 [US3] Crear `herramientas.eslint.config.mjs` (ESLint 9, configuración plana) y `.prettierignore`:
   - ESLint cubre `scripts/`, `semilla/`, `carga/`, `e2e/`, `publicacion/` y `evidencia/scripts/`, con los globales de
     Node y, solo para `carga/`, los de k6 (`__ENV`, `__VU`, `__ITER`);
   - el `.prettierignore` excluye `evidencia/**` salvo `evidencia/scripts/**`, `node_modules/`, `dist/` y
     `publicacion/secretos/`.
 
   Sin dependencias nuevas en `backend/` ni en `frontend/` (análisis A2 y M9).
-- [ ] T023 [US3] En `.github/workflows/plataforma-barberias.yml`, agregar el trabajo `herramientas`:
+- [X] T023 [US3] En `.github/workflows/plataforma-barberias.yml`, agregar el trabajo `herramientas`:
   - `ubuntu-latest` y Node 22;
   - `working-directory: tecnologia/plataforma-barberias`;
-  - `node --test scripts/test/ semilla/test/ evidencia/scripts/test/`;
+  - `node --test "scripts/test/*.test.mjs" "semilla/test/*.test.mjs" "evidencia/scripts/test/*.test.mjs"` (desde Node 22, `node --test` recibe patrones, no carpetas);
   - `npx prettier@3.9.10 --check scripts semilla evidencia/scripts herramientas.eslint.config.mjs`;
   - `npx eslint@9.39.5 -c herramientas.eslint.config.mjs scripts semilla evidencia/scripts`;
   - `node evidencia/scripts/revisar-secretos.mjs`;
@@ -243,13 +243,19 @@ semilla idempotente por la API. Además, dejar listas las herramientas comunes d
 
   Comentario: cabe en "verificar" y "probar" (principio XII). Cada fase siguiente amplía este trabajo con sus
   carpetas y pruebas.
-- [ ] T024 [US3] Actualizar **en este commit** los documentos (FR-042):
+- [X] T024 [US3] Actualizar **en este commit** los documentos (FR-042):
   - `README.md` raíz y `README.md` de la plataforma: arranque con `preparar-entorno` en bash y PowerShell, semilla,
     cuentas locales, "una demo a la vez" y `COMPOSE_PROJECT_NAME` para los scripts de medición;
   - `docs/05-gestion/04-pruebas.md`: pruebas nuevas y el trabajo `herramientas`;
   - `docs/trazabilidad.md`: fila de 009, fase 1;
   - `docs/05-gestion/02-backlog-y-sprints.md`.
-- [ ] T025 [US3] Verificación de la fase 1, con la copia aislada:
+- [ ] T025 [US3] Verificación de la fase 1, con la copia aislada (**parcial el 2026-11-19, por eso sin marcar**:
+  Docker no estaba en marcha y no se inició, porque los servicios de la demo del responsable tienen `restart:
+  unless-stopped` y se habrían vuelto a levantar. Se comprobó: las 30 pruebas de Node, Prettier y ESLint en verde,
+  `revisar-secretos` sin hallazgos, el YAML de Compose y de la CI válido, y los dos envoltorios en una carpeta
+  temporal `barberias-verificacion`: crean el `.env` con la subred 172.29.0.0/24 y, en la segunda ejecución, lo dejan
+  igual. **Falta:** levantar la copia con Compose, cargar la semilla dos veces contra la API real, abrir los dos
+  enlaces y comprobar el aislamiento y las fechas de los volúmenes):
   - `node --test scripts/test/ semilla/test/ evidencia/scripts/test/` en verde, y Prettier y ESLint en verde con la
     configuración de T022;
   - crear la **copia de verificación** según las reglas, con la carpeta `barberias-verificacion`, `--subred 172.29.0`

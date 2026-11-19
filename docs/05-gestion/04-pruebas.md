@@ -294,6 +294,32 @@ anonimización, los avisos al solicitante y la vista de la auditoría para el ad
 
 Evidencia: `backend/test/` (`unit/`, `integration/`, `contract/`, `architecture/`), `frontend/test/**/*.spec.ts(x)` (35 archivos), `specs/003-suscripciones-pagos/quickstart.md` §6, `specs/004-notificaciones-reprogramacion/quickstart.md` §2, `specs/008-adelanto-reserva-qr/quickstart.md`, `specs/005-asistente-ia-reportes/quickstart.md` y `specs/007-indicadores-datos-personales/quickstart.md`.
 
+### 2.9 Funcionalidad 009 (evidencia de calidad y despliegue), por fases
+
+009 produce la evidencia de PR01, PR02, PR03, PR22, PR23, PR29 y PR30, una fase por commit. Aquí se anota cada fase al
+terminarla. Lo que no aparece está **planificado**: hoy no hay cifras de carga, E2E, cobertura ni base de datos de 009.
+
+**Fase 1 (US3, arranque reproducible y semilla), 2026-11-19.** Pruebas de Node (`node --test`, sin dependencias ni
+Docker) de las herramientas nuevas: **30 en verde**.
+
+| Archivo | Casos | Qué comprueba |
+| --- | --- | --- |
+| `scripts/test/preparar-entorno.test.mjs` | 7 | El `.env` nuevo trae claves ES256 que firman y verifican, llaves de 32 bytes y dos sales distintas; `--subred` fija la subred y las IP; un `.env` existente queda igual byte a byte, con código 2 y solo los **nombres** que faltan; ninguna salida muestra un valor |
+| `scripts/test/proyecto.test.mjs` | 6 | El guardián rechaza (código 6) `COMPOSE_PROJECT_NAME` vacío o `plataforma-barberias`, también en sus envoltorios de bash y PowerShell |
+| `semilla/test/semilla.test.mjs` | 8 | Con una API falsa: la primera carga crea todo; la segunda, 0 creadas y ninguna escritura; idempotencia de barberías, clientes y citas (un 409 es "existente"); `--reiniciar-contrasenas` rechazado en el modo local; nunca cambia contraseñas; `datos.json` solo con datos inventados y sin administrador |
+| `semilla/test/lib.test.mjs` | 6 | Fechas en Lima (días de atención), lectura del buzón, contraseñas al azar y reintento ante un 429 |
+| `evidencia/scripts/test/revisar-secretos.test.mjs` | 3 | Detecta JWT, `otpauth://`, `Bearer`, `set-cookie`, PEM, tokens de GitHub y credenciales del túnel sin mostrar el valor; ignora `no-versionado/` |
+
+- **En la CI:** corren en el trabajo nuevo `herramientas`, junto con Prettier, ESLint (`herramientas.eslint.config.mjs`)
+  y `revisar-secretos`. Sin secretos ni base de datos. Desde Node 22, `node --test` recibe patrones de archivos y no
+  carpetas.
+- **Sin verificar en esta fase:** la carga real de la semilla contra la API con Docker Compose, en una copia aislada
+  (T025). Docker no estaba en marcha, y no se inició para no levantar los contenedores de la demo del responsable.
+- **Pendiente del responsable:** el cronómetro del arranque desde el README en bash y PowerShell (SC-001, T026).
+- **Suite de la aplicación:** la fase 1 no cambia `backend/` ni `frontend/` (solo `docker-compose.yml`, con un servicio
+  de perfil, y `.env.example`, con un comentario). Sus totales siguen siendo los de §2.4; la CI los vuelve a ejecutar
+  en el push.
+
 ## 3. Datos y entornos
 
 - Datos de prueba **ficticios**; nunca datos reales de clientes.

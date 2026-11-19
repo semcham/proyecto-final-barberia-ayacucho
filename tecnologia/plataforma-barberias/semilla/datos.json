@@ -1,0 +1,281 @@
+{
+  "descripcion": "Semilla de demostración de 009 (US3, FR-019). Datos INVENTADOS: ninguna persona real. Correos del dominio reservado ejemplo.test (RFC 2606/6761) y teléfonos ficticios +51 900 000 0NN. Las contraseñas son valores de DESARROLLO solo para la demo local (modo local); la demo publicada usa otras, generadas al azar y fuera del repositorio.",
+  "zonaHoraria": "America/Lima",
+  "barberias": [
+    {
+      "nombre": "Barbería Demo Centro",
+      "slugEsperado": "barberia-demo-centro",
+      "propietario": {
+        "nombre": "Rosa Ejemplo Centro",
+        "correo": "propietario.centro@ejemplo.test",
+        "contrasena": "DemoLocal-2026-Centro"
+      },
+      "horario": [
+        { "diaSemana": 1, "inicio": "09:00", "fin": "19:00" },
+        { "diaSemana": 2, "inicio": "09:00", "fin": "19:00" },
+        { "diaSemana": 3, "inicio": "09:00", "fin": "19:00" },
+        { "diaSemana": 4, "inicio": "09:00", "fin": "19:00" },
+        { "diaSemana": 5, "inicio": "09:00", "fin": "19:00" },
+        { "diaSemana": 6, "inicio": "09:00", "fin": "19:00" }
+      ],
+      "servicios": [
+        { "nombre": "Corte clásico", "precio": "25.00", "duracionMinutos": 30 },
+        { "nombre": "Arreglo de barba", "precio": "15.00", "duracionMinutos": 20 },
+        { "nombre": "Corte y barba", "precio": "35.00", "duracionMinutos": 45 },
+        { "nombre": "Corte para niño", "precio": "18.00", "duracionMinutos": 30 }
+      ],
+      "barberos": [
+        {
+          "nombre": "Carlos Demo",
+          "servicios": ["Corte clásico", "Arreglo de barba", "Corte y barba", "Corte para niño"],
+          "usuario": {
+            "nombre": "Carlos Demo",
+            "correo": "barbero.carlos@ejemplo.test",
+            "contrasena": "DemoLocal-2026-Barbero"
+          }
+        },
+        { "nombre": "Luis Demo", "servicios": ["Corte clásico", "Corte y barba", "Corte para niño"] },
+        { "nombre": "Pedro Demo", "servicios": ["Arreglo de barba", "Corte y barba"] }
+      ],
+      "clientes": [
+        {
+          "nombre": "Ana Ejemplo",
+          "correo": "cliente.centro.1@ejemplo.test",
+          "telefono": "+51 900 000 001",
+          "contrasena": "DemoLocal-2026-Cliente"
+        },
+        {
+          "nombre": "Bruno Ejemplo",
+          "correo": "cliente.centro.2@ejemplo.test",
+          "telefono": "+51 900 000 002",
+          "contrasena": "DemoLocal-2026-Cliente"
+        },
+        {
+          "nombre": "Carla Ejemplo",
+          "correo": "cliente.centro.3@ejemplo.test",
+          "telefono": "+51 900 000 003",
+          "contrasena": "DemoLocal-2026-Cliente"
+        },
+        {
+          "nombre": "Diego Ejemplo",
+          "correo": "cliente.centro.4@ejemplo.test",
+          "telefono": "+51 900 000 004",
+          "contrasena": "DemoLocal-2026-Cliente"
+        },
+        {
+          "nombre": "Elena Ejemplo",
+          "correo": "cliente.centro.5@ejemplo.test",
+          "telefono": "+51 900 000 005",
+          "contrasena": "DemoLocal-2026-Cliente"
+        },
+        {
+          "nombre": "Fabio Ejemplo",
+          "correo": "cliente.centro.6@ejemplo.test",
+          "telefono": "+51 900 000 006",
+          "contrasena": "DemoLocal-2026-Cliente"
+        }
+      ],
+      "citas": [
+        {
+          "cliente": "cliente.centro.1@ejemplo.test",
+          "barbero": "Carlos Demo",
+          "servicio": "Corte clásico",
+          "diaDeAtencion": 1,
+          "hora": "09:00"
+        },
+        {
+          "cliente": "cliente.centro.2@ejemplo.test",
+          "barbero": "Luis Demo",
+          "servicio": "Corte clásico",
+          "diaDeAtencion": 1,
+          "hora": "09:00"
+        },
+        {
+          "cliente": "cliente.centro.3@ejemplo.test",
+          "barbero": "Pedro Demo",
+          "servicio": "Arreglo de barba",
+          "diaDeAtencion": 1,
+          "hora": "10:00"
+        },
+        {
+          "cliente": "cliente.centro.4@ejemplo.test",
+          "barbero": "Carlos Demo",
+          "servicio": "Corte y barba",
+          "diaDeAtencion": 2,
+          "hora": "11:00"
+        },
+        {
+          "cliente": "cliente.centro.5@ejemplo.test",
+          "barbero": "Luis Demo",
+          "servicio": "Corte para niño",
+          "diaDeAtencion": 2,
+          "hora": "11:00",
+          "cancelar": true
+        },
+        {
+          "cliente": "cliente.centro.6@ejemplo.test",
+          "barbero": "Pedro Demo",
+          "servicio": "Corte y barba",
+          "diaDeAtencion": 2,
+          "hora": "15:00"
+        },
+        {
+          "cliente": "cliente.centro.1@ejemplo.test",
+          "barbero": "Luis Demo",
+          "servicio": "Corte y barba",
+          "diaDeAtencion": 3,
+          "hora": "16:00"
+        },
+        {
+          "cliente": "cliente.centro.2@ejemplo.test",
+          "barbero": "Carlos Demo",
+          "servicio": "Arreglo de barba",
+          "diaDeAtencion": 3,
+          "hora": "10:00",
+          "cancelar": true
+        },
+        {
+          "cliente": "cliente.centro.3@ejemplo.test",
+          "barbero": "Carlos Demo",
+          "servicio": "Corte clásico",
+          "diaDeAtencion": 4,
+          "hora": "12:00"
+        },
+        {
+          "cliente": "cliente.centro.4@ejemplo.test",
+          "barbero": "Pedro Demo",
+          "servicio": "Arreglo de barba",
+          "diaDeAtencion": 4,
+          "hora": "17:00"
+        },
+        {
+          "cliente": "cliente.centro.5@ejemplo.test",
+          "barbero": "Carlos Demo",
+          "servicio": "Corte para niño",
+          "diaDeAtencion": 5,
+          "hora": "09:00"
+        },
+        {
+          "cliente": "cliente.centro.6@ejemplo.test",
+          "barbero": "Luis Demo",
+          "servicio": "Corte clásico",
+          "diaDeAtencion": 6,
+          "hora": "18:00",
+          "cancelar": true
+        }
+      ]
+    },
+    {
+      "nombre": "Barbería Demo Huamanga",
+      "slugEsperado": "barberia-demo-huamanga",
+      "propietario": {
+        "nombre": "Julio Ejemplo Huamanga",
+        "correo": "propietario.huamanga@ejemplo.test",
+        "contrasena": "DemoLocal-2026-Huamanga"
+      },
+      "horario": [
+        { "diaSemana": 2, "inicio": "10:00", "fin": "20:00" },
+        { "diaSemana": 3, "inicio": "10:00", "fin": "20:00" },
+        { "diaSemana": 4, "inicio": "10:00", "fin": "20:00" },
+        { "diaSemana": 5, "inicio": "10:00", "fin": "20:00" },
+        { "diaSemana": 6, "inicio": "10:00", "fin": "20:00" },
+        { "diaSemana": 0, "inicio": "10:00", "fin": "20:00" }
+      ],
+      "servicios": [
+        { "nombre": "Corte moderno", "precio": "30.00", "duracionMinutos": 40 },
+        { "nombre": "Perfilado de barba", "precio": "15.00", "duracionMinutos": 20 },
+        { "nombre": "Corte y lavado", "precio": "35.00", "duracionMinutos": 45 }
+      ],
+      "barberos": [
+        { "nombre": "Jorge Demo", "servicios": ["Corte moderno", "Perfilado de barba", "Corte y lavado"] },
+        { "nombre": "Raúl Demo", "servicios": ["Corte moderno", "Corte y lavado"] }
+      ],
+      "clientes": [
+        {
+          "nombre": "Gabriela Ejemplo",
+          "correo": "cliente.huamanga.1@ejemplo.test",
+          "telefono": "+51 900 000 007",
+          "contrasena": "DemoLocal-2026-Cliente"
+        },
+        {
+          "nombre": "Hugo Ejemplo",
+          "correo": "cliente.huamanga.2@ejemplo.test",
+          "telefono": "+51 900 000 008",
+          "contrasena": "DemoLocal-2026-Cliente"
+        },
+        {
+          "nombre": "Irene Ejemplo",
+          "correo": "cliente.huamanga.3@ejemplo.test",
+          "telefono": "+51 900 000 009",
+          "contrasena": "DemoLocal-2026-Cliente"
+        },
+        {
+          "nombre": "Javier Ejemplo",
+          "correo": "cliente.huamanga.4@ejemplo.test",
+          "telefono": "+51 900 000 010",
+          "contrasena": "DemoLocal-2026-Cliente"
+        }
+      ],
+      "citas": [
+        {
+          "cliente": "cliente.huamanga.1@ejemplo.test",
+          "barbero": "Jorge Demo",
+          "servicio": "Corte moderno",
+          "diaDeAtencion": 1,
+          "hora": "10:00"
+        },
+        {
+          "cliente": "cliente.huamanga.2@ejemplo.test",
+          "barbero": "Raúl Demo",
+          "servicio": "Corte y lavado",
+          "diaDeAtencion": 1,
+          "hora": "10:00"
+        },
+        {
+          "cliente": "cliente.huamanga.3@ejemplo.test",
+          "barbero": "Jorge Demo",
+          "servicio": "Perfilado de barba",
+          "diaDeAtencion": 2,
+          "hora": "14:00",
+          "cancelar": true
+        },
+        {
+          "cliente": "cliente.huamanga.4@ejemplo.test",
+          "barbero": "Raúl Demo",
+          "servicio": "Corte moderno",
+          "diaDeAtencion": 2,
+          "hora": "15:00"
+        },
+        {
+          "cliente": "cliente.huamanga.1@ejemplo.test",
+          "barbero": "Raúl Demo",
+          "servicio": "Corte y lavado",
+          "diaDeAtencion": 3,
+          "hora": "11:00"
+        },
+        {
+          "cliente": "cliente.huamanga.2@ejemplo.test",
+          "barbero": "Jorge Demo",
+          "servicio": "Corte moderno",
+          "diaDeAtencion": 3,
+          "hora": "16:00"
+        },
+        {
+          "cliente": "cliente.huamanga.3@ejemplo.test",
+          "barbero": "Jorge Demo",
+          "servicio": "Corte y lavado",
+          "diaDeAtencion": 4,
+          "hora": "18:00"
+        },
+        {
+          "cliente": "cliente.huamanga.4@ejemplo.test",
+          "barbero": "Jorge Demo",
+          "servicio": "Perfilado de barba",
+          "diaDeAtencion": 5,
+          "hora": "12:00",
+          "cancelar": true
+        }
+      ]
+    }
+  ]
+}

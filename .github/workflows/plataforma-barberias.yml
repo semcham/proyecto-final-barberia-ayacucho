@@ -55,3 +55,22 @@ jobs:
       # Incluye tsc --noEmit (errores de tipos) y el build de producción de Vite.
       - run: npm run build
       - run: npm test
+
+  # 009 (análisis A2 y M9): pruebas, formato y lint de las herramientas nuevas (scripts/, semilla/, evidencia/scripts/;
+  # cada fase de 009 agrega sus carpetas) y revisión de secretos en evidencia/. Cabe en "verificar" y "probar"
+  # (principio XII): sin secretos, sin base de datos y sin desplegar nada.
+  herramientas:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: tecnologia/plataforma-barberias
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # Desde Node 22, `node --test` recibe patrones de archivos, no carpetas.
+      - run: node --test "scripts/test/*.test.mjs" "semilla/test/*.test.mjs" "evidencia/scripts/test/*.test.mjs"
+      - run: npx --yes prettier@3.9.10 --check scripts semilla evidencia/scripts herramientas.eslint.config.mjs
+      - run: npx --yes eslint@9.39.5 -c herramientas.eslint.config.mjs scripts semilla evidencia/scripts herramientas.eslint.config.mjs
+      - run: node evidencia/scripts/revisar-secretos.mjs

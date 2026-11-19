@@ -244,11 +244,24 @@ Si el sistema crece, un submódulo puede promoverse a módulo (o extraerse como 
 
 ## ▶️ Cómo ejecutar la aplicación
 
-```powershell
+```bash
+# bash (Linux, macOS o WSL)
 cd tecnologia/plataforma-barberias
-Copy-Item .env.example .env      # completar las claves JWT de desarrollo
-docker compose up -d             # preparar-backend instala, compila y migra una sola vez; luego arrancan las réplicas
+bash scripts/preparar-entorno.sh                          # crea el .env de desarrollo con claves y sales nuevas
+docker compose up -d                                      # compila y migra una sola vez; luego arrancan las réplicas
+docker compose --profile herramientas run --rm semilla    # dos barberías de ejemplo (idempotente)
 ```
+
+```powershell
+# PowerShell
+cd tecnologia/plataforma-barberias
+.\scripts\preparar-entorno.ps1
+docker compose up -d
+docker compose --profile herramientas run --rm semilla
+```
+
+`preparar-entorno` nunca escribe en un `.env` que ya exista: solo informa los nombres de las variables que le faltan
+(funcionalidad 009, US3). Las cuentas de la demo local están en el [README de la semilla](tecnologia/plataforma-barberias/semilla/README.md).
 
 Aplicación web en <http://localhost:5173>, API (por Nginx) en <http://localhost:3000/api/v1/salud> y pasarela simulada en <http://localhost:3100>. Ejecución sin Docker, comprobaciones (las mismas del CI) y notas del entorno en el [README de la aplicación](tecnologia/plataforma-barberias/README.md). Guías con los escenarios de validación: [001](specs/001-registro-acceso-barberia/quickstart.md), [002](specs/002-catalogo-citas-cliente/quickstart.md), [003](specs/003-suscripciones-pagos/quickstart.md) y [006](specs/006-escalado-cache-balanceo/quickstart.md).
 
@@ -256,7 +269,7 @@ Aplicación web en <http://localhost:5173>, API (por Nginx) en <http://localhost
 
 - Cada dato de Perú o Ayacucho lleva fuente, nivel (nacional o regional) y estado de verificación. Ninguna cifra nacional se atribuye a Ayacucho.
 - Los umbrales numéricos son **metas propuestas por validar** con pruebas. Los precios de planes son **ejemplos hipotéticos**.
-- Cada componente se etiqueta como **implementado, prototipado, planificado o futuro**. Hoy están **implementadas** las funcionalidades 001 (registro, acceso con roles y aislamiento), 002 (catálogo, citas y cuenta de cliente), 003 (suscripciones y pagos, con la pasarela simulada) 006 (balanceador, dos réplicas y Redis), 004 (notificaciones y reprogramación, con correo contra Mailpit y WhatsApp simulado), 008 (adelanto de reserva, con verificación manual del pago) 005 (asistente de IA y reportes, con el proveedor de IA falso) y 007 (indicadores de la plataforma y solicitudes sobre datos personales, sin las partes que su especificación deja como no construidas). Últimos totales en local (2026-11-18): backend, unitarias 1 148, integración 2 190 de 2 202 (3 omitidas sin credenciales y 9 fallas de tiempo y carga que pasan al repetirlas solas) y arquitectura 50; frontend 263; detalle en [pruebas §2.4](docs/05-gestion/04-pruebas.md). Nada está desplegado en la nube. El estado de cada componente está en la [trazabilidad](docs/trazabilidad.md).
+- Cada componente se etiqueta como **implementado, prototipado, planificado o futuro**. Hoy están **implementadas** las funcionalidades 001 (registro, acceso con roles y aislamiento), 002 (catálogo, citas y cuenta de cliente), 003 (suscripciones y pagos, con la pasarela simulada) 006 (balanceador, dos réplicas y Redis), 004 (notificaciones y reprogramación, con correo contra Mailpit y WhatsApp simulado), 008 (adelanto de reserva, con verificación manual del pago) 005 (asistente de IA y reportes, con el proveedor de IA falso) y 007 (indicadores de la plataforma y solicitudes sobre datos personales, sin las partes que su especificación deja como no construidas). De 009 (evidencia de calidad y despliegue) está construida la fase 1: arranque reproducible y semilla de demostración. Sus otras fases (carga con k6, E2E, interfaz de producción, cobertura, base de datos y publicación) están **planificadas**. Últimos totales en local (2026-11-18): backend, unitarias 1 148, integración 2 190 de 2 202 (3 omitidas sin credenciales y 9 fallas de tiempo y carga que pasan al repetirlas solas) y arquitectura 50; frontend 263; detalle en [pruebas §2.4](docs/05-gestion/04-pruebas.md). Nada está desplegado en la nube. El estado de cada componente está en la [trazabilidad](docs/trazabilidad.md).
 - Diagramas en Mermaid (compatibles con GitHub). Citas en APA 7.
 
 ## 🏷️ 6. Convenciones

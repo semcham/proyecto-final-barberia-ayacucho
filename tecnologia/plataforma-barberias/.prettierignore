@@ -1,0 +1,11 @@
+# Funcionalidad 009: Prettier para las carpetas nuevas de herramientas (se ejecuta desde tecnologia/plataforma-barberias/).
+# evidencia/ guarda salidas crudas de las herramientas (k6, axe, Lighthouse, planes): no se reformatean. Solo sus
+# scripts pasan por Prettier.
+evidencia/*
+!evidencia/scripts/
+node_modules/
+dist/
+publicacion/secretos/
+# backend/ y frontend/ tienen su propio .prettierignore y su propio paso en la CI.
+backend/
+frontend/
