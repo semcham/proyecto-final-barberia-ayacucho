@@ -300,7 +300,7 @@ Evidencia: `backend/test/` (`unit/`, `integration/`, `contract/`, `architecture/
 terminarla. Lo que no aparece está **planificado**: hoy no hay cifras de carga, E2E, cobertura ni base de datos de 009.
 
 **Fase 1 (US3, arranque reproducible y semilla), 2026-11-19.** Pruebas de Node (`node --test`, sin dependencias ni
-Docker) de las herramientas nuevas: **30 en verde**.
+Docker) de las herramientas nuevas: **36 en verde**.
 
 | Archivo | Casos | Qué comprueba |
 | --- | --- | --- |
@@ -308,10 +308,12 @@ Docker) de las herramientas nuevas: **30 en verde**.
 | `scripts/test/proyecto.test.mjs` | 6 | El guardián rechaza (código 6) `COMPOSE_PROJECT_NAME` vacío o `plataforma-barberias`, también en sus envoltorios de bash y PowerShell |
 | `semilla/test/semilla.test.mjs` | 8 | Con una API falsa: la primera carga crea todo; la segunda, 0 creadas y ninguna escritura; idempotencia de barberías, clientes y citas (un 409 es "existente"); `--reiniciar-contrasenas` rechazado en el modo local; nunca cambia contraseñas; `datos.json` solo con datos inventados y sin administrador |
 | `semilla/test/lib.test.mjs` | 6 | Fechas en Lima (días de atención), lectura del buzón, contraseñas al azar y reintento ante un 429 |
+| `scripts/test/validar-compose.test.mjs` | 6 | `docker-compose.yml` sin claves duplicadas en un mismo mapa (por ejemplo, un servicio definido dos veces), con línea y columna; la misma clave en mapas distintos, los elementos de lista, los comentarios y los bloques literales no son duplicados |
 | `evidencia/scripts/test/revisar-secretos.test.mjs` | 3 | Detecta JWT, `otpauth://`, `Bearer`, `set-cookie`, PEM, tokens de GitHub y credenciales del túnel sin mostrar el valor; ignora `no-versionado/` |
 
-- **En la CI:** corren en el trabajo nuevo `herramientas`, junto con Prettier, ESLint (`herramientas.eslint.config.mjs`)
-  y `revisar-secretos`. Sin secretos ni base de datos. Desde Node 22, `node --test` recibe patrones de archivos y no
+- **En la CI:** corren en el trabajo nuevo `herramientas`, junto con Prettier, ESLint (`herramientas.eslint.config.mjs`),
+  `revisar-secretos`, `validar-compose` y `docker compose config -q` (con un `.env` del runner creado desde
+  `.env.example`; sin y con el perfil `herramientas`). Sin secretos ni base de datos. Desde Node 22, `node --test` recibe patrones de archivos y no
   carpetas.
 - **Sin verificar en esta fase:** la carga real de la semilla contra la API con Docker Compose, en una copia aislada
   (T025). Docker no estaba en marcha, y no se inició para no levantar los contenedores de la demo del responsable.

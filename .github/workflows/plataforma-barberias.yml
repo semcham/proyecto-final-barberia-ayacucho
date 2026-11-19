@@ -74,3 +74,7 @@ jobs:
       - run: npx --yes prettier@3.9.10 --check scripts semilla evidencia/scripts herramientas.eslint.config.mjs
       - run: npx --yes eslint@9.39.5 -c herramientas.eslint.config.mjs scripts semilla evidencia/scripts herramientas.eslint.config.mjs
       - run: node evidencia/scripts/revisar-secretos.mjs
+      # docker-compose.yml: sin claves duplicadas (p. ej., un servicio definido dos veces) y válido para Compose.
+      # El .env del runner sale de .env.example (valores solo de desarrollo; ningún secreto) y se descarta con el runner.
+      - run: node scripts/validar-compose.mjs docker-compose.yml
+      - run: cp .env.example .env && docker compose config -q && docker compose --profile herramientas config -q

@@ -238,6 +238,8 @@ semilla idempotente por la API. Además, dejar listas las herramientas comunes d
   - `npx prettier@3.9.10 --check scripts semilla evidencia/scripts herramientas.eslint.config.mjs`;
   - `npx eslint@9.39.5 -c herramientas.eslint.config.mjs scripts semilla evidencia/scripts`;
   - `node evidencia/scripts/revisar-secretos.mjs`;
+  - `node scripts/validar-compose.mjs docker-compose.yml` (claves duplicadas) y `docker compose config -q`, sin y con
+    el perfil `herramientas`, con un `.env` del runner copiado de `.env.example` (agregado el 2026-11-19);
   - sin secretos y sin base de datos;
   - agregarlo a `needs` de `notificar_telegram`.
 
