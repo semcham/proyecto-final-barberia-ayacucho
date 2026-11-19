@@ -40,10 +40,18 @@ CI puede hacer fuera de la plataforma de CI.
 > como el despliegue objetivo ni como producción: funciona solo mientras el equipo del responsable está encendido,
 > publica solo datos de ejemplo y no cambia ADR-006.
 
+**Aclaración que se agrega en "Restricciones tecnológicas y de alcance", al final de "Privacidad"** (agregada el
+2026-11-19 a partir del análisis C2, con la aprobación del responsable):
+
+> El respaldo y la restauración de prueba MAY usar el superusuario de PostgreSQL **solo dentro del contenedor o
+> servicio de base de datos**, porque con FORCE RLS ningún rol sin `BYPASSRLS` puede respaldar la base completa.
+> MUST NOT usarse en la aplicación ni en ningún script que lea o escriba datos de negocio, y no se crea ni se concede
+> ningún rol con `BYPASSRLS`.
+
 **Sync Impact Report (borrador):**
 
 - _Modified principles:_ XII. Ubicación del código, una aclaración de "construir"; "Restricciones tecnológicas y de
-  alcance", una aclaración de la publicación de demostración.
+  alcance", una aclaración de la publicación de demostración y otra del superusuario solo para el respaldo.
 - _Templates requiring updates:_ en `.specify/templates/plan-template.md`, la puerta XII agrega "workflows may keep
   the built frontend artifact (main, after tests) and have manual test jobs; never deploy or hold deploy
   credentials".

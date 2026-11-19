@@ -20,7 +20,8 @@ Ruta: `tecnologia/plataforma-barberias/evidencia/<tipo>/<AAAA-MM-DD-HHMM>-<nombr
 {
   "fecha": "ISO 8601 con zona",
   "comando": "línea exacta ejecutada",
-  "git": { "sha": "…", "sucio": false },
+  "git": { "sha": "… (de git o de EVIDENCIA_GIT_SHA en la copia; si no hay, \"desconocido\")", "sucio": false },
+  "proyecto": "COMPOSE_PROJECT_NAME usado (nunca el proyecto por defecto del responsable)",
   "equipo": { "cpu": "…", "nucleos": 0, "memoriaGB": 0, "cargaPromedio": [0, 0, 0], "so": "…" },
   "herramienta": { "nombre": "k6 | playwright | lighthouse | axe | jest | vitest | pg_dump", "version": "…", "imagen": "…:etiqueta" },
   "configuracion": { "VARIABLE_DE_LISTA_BLANCA": "valor" },
@@ -36,16 +37,21 @@ Ruta: `tecnologia/plataforma-barberias/evidencia/<tipo>/<AAAA-MM-DD-HHMM>-<nombr
 - Un resultado no se edita después de generarse. Si se repite una medición, se guarda **otra carpeta**, y el resumen
   de la fase cita todas las corridas (borde "umbral no cumplido").
 - Si la medición no cumple, `resumen.md` dice "no cumple" con la cifra real.
+- **No se versionan** (van a `evidencia/**/no-versionado/`, ignorado por el `.gitignore`) las trazas, las capturas,
+  los videos ni el informe HTML de Playwright. De Playwright solo se versiona el informe JSON filtrado (research R01
+  y R05).
+- `evidencia/scripts/revisar-secretos.mjs` debe pasar sobre `evidencia/` antes de cada commit y en la CI.
+- Los planes de `auto_explain` se guardan sin valores de parámetros: solo el texto con `$1`, `$2`… (research R07).
 
 **Tipos y nombres:**
 
 | Tipo | Ejecuciones previstas |
 | --- | --- |
-| `carga/` | `catalogo`, `horarios`, `reserva` (US1), `escalado-pr03` (US4), `volumen` (US5) |
-| `e2e/` | `corrida-N` (5 locales), `ci-N` (3 en el CI, con el enlace a la corrida), `evaluacion.md` |
+| `carga/` | `catalogo`, `horarios`, `reserva` (US1; también es PR02), `escalado-pr03` (US4), `volumen-52k`, `volumen-130k` y `volumen-260k` (US5) |
+| `e2e/` | `corrida-N` (5 locales, informe JSON filtrado), `ci-N` (3 en el CI, con el enlace a la corrida), `evaluacion.md` |
 | `accesibilidad/` | 4 pantallas × 2 tamaños = 8 informes |
-| `rendimiento-web/` | 4 pantallas × 2 configuraciones = 8 informes |
-| `base-de-datos/` | `planes`, `pool`, `volumen`, `simulacro-pr22` |
+| `rendimiento-web/` | 4 pantallas × 2 configuraciones = 8 informes con `vite preview` (fase 3) y otros 8 contra el 8080 (fase 4) |
+| `base-de-datos/` | `planes`, `pool`, `volumen` (con la extrapolación), `simulacro-pr22` |
 | `cobertura/` | `backend`, `frontend` |
 | `pruebas-fragiles/` | Repeticiones de las metas, cuando se ejecuta con `MEDIR_METAS=1` |
 | `despliegue/` | `cabeceras`, `dns`, `certificado`, `publicaciones.jsonl` |
@@ -108,12 +114,16 @@ Las rutas exactas se toman de los contratos OpenAPI de 002 al escribir los scrip
 
 | Archivo | Qué es | Secretos |
 | --- | --- | --- |
-| `nginx/templates/web.conf.template` | `server` 8080: interfaz de producción y `/api/` (US4) | No |
+| `scripts/lib/proyecto.(mjs\|sh\|ps1)` | Guardián: exige un `COMPOSE_PROJECT_NAME` distinto de `plataforma-barberias` (código 6) | No |
+| `herramientas.eslint.config.mjs` y `.prettierignore` (en `tecnologia/plataforma-barberias/`) | ESLint y Prettier para las carpetas nuevas; excluyen `evidencia/` salvo `evidencia/scripts/` | No |
+| `semilla/volumen.sql` | Inserción por conjuntos de las citas de volumen, como `barberias_app` con `set_config('app.tenant_id', …, true)` | No (usa la URL de desarrollo de Compose) |
+| `nginx/templates/web.conf.template` | `server` 8080 (`WEB_PUERTO`): interfaz de producción y `/api/` (US4) | No |
 | `nginx/templates/publicacion.conf.template` | `server` 8081: túnel, `real_ip` y el subdominio de US8 | No |
 | `nginx/upstream-extra/` (vacío; `.gitkeep`) | Instancias extra para PR03 | No |
-| `docker-compose.medicion.yml` | `auto_explain` en PostgreSQL (US5) | No |
+| `docker-compose.medicion.yml` | `auto_explain` en PostgreSQL (US5), con `log_parameter_max_length=0` | No |
 | `docker-compose.publicacion.yml` | `cloudflared`, `actualizador-frontend` y los orígenes públicos de las réplicas | No; lee `publicacion/publicacion.env` |
-| `publicacion/cloudflared/config.yml` | Reglas de entrada del túnel (hostnames → `http://nginx:8081`) | No; las credenciales van en `publicacion/secretos/` (no versionado) |
+| `publicacion/cloudflared/config.yml` | Reglas de entrada del túnel (hostnames → `http://nginx:8081`) | No; las credenciales van en `publicacion/secretos/tunel.json` (nombre fijo, no versionado; sin UUID en el `config.yml`) |
+| `publicacion/red-publicacion.env` | `RED_SUBRED=172.30.0.0/24` y las IP fijas del proyecto `barberias-publicacion` | No |
 | `publicacion/publicacion.env.example` | Nombres de las variables del túnel y del actualizador, sin valores | No |
 | `publicacion/cuentas-publicadas.example.json` | Forma del archivo de cuentas de la demo publicada (rol, barbería, correo), con la contraseña como marcador `"<generada>"` | No; el archivo real, `publicacion/secretos/cuentas-publicadas.json`, no se versiona |
 | `publicacion/levantar.sh` · `levantar.ps1` | Levanta la demo publicada como el proyecto `barberias-publicacion`; antes comprueba que la demo de desarrollo no esté corriendo | No |

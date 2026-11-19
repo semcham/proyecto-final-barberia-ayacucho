@@ -139,8 +139,9 @@ Windows (PowerShell) termina con la demo funcionando y las dos barberías visibl
 
 La demo sirve la interfaz como en producción (archivos compilados detrás de un servidor web, no el servidor de
 desarrollo), con cabeceras de caché correctas para los archivos con hash y para la página principal. Con esa demo se
-miden PR02 (reservas con carga) y PR03 (agregar una tercera instancia del backend con tráfico, sin perder
-solicitudes).
+mide PR03 (agregar una tercera instancia del backend con tráfico, sin perder solicitudes). PR02 (reservas con carga)
+se toma de la medición de US1, porque la API pasa por el mismo balanceo: el puerto 8080 solo agrega los archivos
+estáticos.
 
 **Why this priority**: el escalado del frontend hoy no tiene evidencia (la demo usa el servidor de desarrollo), y
 PR02 y PR03 siguen sin medir desde 006.
@@ -216,25 +217,26 @@ corrida; tres corridas completas seguidas de la suite no tienen fallas de tiempo
 
 ### User Story 7 - Dominio propio, CDN y despliegue continuo (Priority: P3)
 
-La demo se publica en el dominio propio `ayacuchobarber.shop` (DNS, CDN y HTTPS en Cloudflare, plan gratuito). La API
-y/o la interfaz de producción de US4 salen por un **túnel con nombre** hacia el Compose local. Si la interfaz va a la
-CDN de páginas (Cloudflare Pages), cada cambio en la rama principal que pasa todas las pruebas publica solo el
-artefacto estático compilado. Si sale por el túnel desde el Nginx de Compose, no hay publicación desde la CI. Antes
-de construir se analiza cuál de las dos vías se usa, teniendo en cuenta US8. Solo se publican datos de ejemplo.
+La demo se publica en el dominio propio `ayacuchobarber.shop` (DNS, CDN y HTTPS en Cloudflare, plan gratuito). La
+interfaz de producción de US4 y la API salen juntas, en el mismo origen, por un **túnel con nombre** desde el Nginx de
+Compose (research R09; Cloudflare Pages quedó como alternativa descartada). La CI **no despliega**: cuando todas las
+pruebas pasan en la rama principal, guarda el artefacto compilado del frontend. Un actualizador que corre en el
+equipo del responsable lo descarga y lo publica: **CD por extracción (pull-based)** (research R10). Solo se publican
+datos de ejemplo.
 
 **Why this priority**: es el criterio de dominio, DNS y CDN, y el de CD. Depende de cuentas externas y del equipo del
 responsable encendido, y necesita una enmienda de la constitución (principio XII) y un ADR. Es lo más incierto.
 
 **Independent Test**: con el Compose y el túnel levantados, el subdominio de la demo responde con HTTPS a través de la
-CDN y muestra las barberías de ejemplo. Si se usa la publicación desde la CI: con la CI en verde en `main` se
-publica la versión nueva; con la CI en rojo o desde otra rama, no se publica nada.
+CDN y muestra las barberías de ejemplo. Con la CI en verde en `main`, el actualizador publica la versión nueva; con
+la CI en rojo o desde otra rama, no hay artefacto y no se publica nada.
 
 **Acceptance Scenarios**:
 
 1. **Given** el Compose y el túnel levantados, **When** se abre la demo en el dominio propio, **Then** responde con
    HTTPS por la CDN, con las cabeceras de caché de US4, y solo muestra datos de la semilla.
-2. **Given** la publicación desde la CI y la CI en verde en `main`, **When** termina, **Then** se publica solo el
-   artefacto estático del frontend; **Given** la CI en rojo o otra rama, **Then** no se publica nada.
+2. **Given** la CI en verde en `main`, **When** termina, **Then** guarda solo el artefacto estático del frontend y
+   el actualizador lo publica; **Given** la CI en rojo o otra rama, **Then** no hay artefacto y no se publica nada.
 3. **Given** el equipo del responsable apagado o el túnel caído, **When** se abre la demo, **Then** la API no
    responde, y eso está escrito en el README y en el documento de despliegue: la versión publicada solo funciona
    mientras el equipo está encendido.
@@ -290,8 +292,9 @@ desde el subdominio de otra no ve datos de esta última.
   simulacro lo dice y documenta el paso previo.
 - **Cobertura engañosa:** el archivo de pruebas de arquitectura y los simuladores no cuentan como código cubierto ni
   descubierto; el informe dice qué se excluyó.
-- **CD sin secretos configurados:** si faltan las credenciales del despliegue en la CI, el paso de publicación no se
-  ejecuta y lo informa, sin fallar la CI de pruebas.
+- **CD sin token del actualizador:** la CI no tiene ninguna credencial de despliegue. Si en el equipo falta el token
+  de solo lectura del actualizador, o está vencido, el actualizador registra el error, conserva la versión publicada
+  y vuelve a intentar en el siguiente sondeo, sin entrar en un bucle.
 - **Datos personales en una nube:** la demo publicada usa solo los datos inventados de la semilla; nunca datos
   reales. El tráfico pasa por la CDN de un proveedor fuera del país, y eso se escribe en el análisis.
 - **Equipo apagado o túnel caído (US7):** la API publicada no responde; la interfaz, si está en la CDN de páginas,
@@ -316,8 +319,9 @@ desde el subdominio de otra no ve datos de esta última.
 - **FR-002**: Todo lo que toque la IA MUST usar el proveedor de IA falso; ninguna prueba, medición ni demo de 009
   MUST llamar a un proveedor real.
 - **FR-003**: Ningún secreto real MUST quedar en el repositorio. Los valores de desarrollo que se versionen MUST
-  marcarse como solo de desarrollo. Ningún script MUST leer, mostrar ni modificar el archivo de configuración local
-  del responsable.
+  marcarse como solo de desarrollo. Un script MAY leer de un archivo de configuración local ya existente **solo los
+  nombres** de sus variables, para informar cuáles faltan. MUST NOT leer, guardar ni mostrar sus **valores**, y
+  MUST NOT escribir en él.
 - **FR-004**: Ningún resultado MUST inventarse ni redondearse a favor: cada cifra (carga, rendimiento, accesibilidad,
   cobertura, tiempos de respaldo) MUST venir de una ejecución real, guardada en el repositorio con su fecha, el
   comando, la configuración y el equipo.
@@ -372,8 +376,9 @@ desde el subdominio de otra no ve datos de esta última.
   para los archivos con hash, sin caché para la página principal y con la página principal para las rutas de la
   aplicación, como dice el documento de despliegue (§4.1).
 - **FR-022**: El modo de desarrollo con recarga en caliente MUST seguir disponible.
-- **FR-023**: MUST medirse PR02 (reservas con carga) y PR03 (agregar una tercera instancia con tráfico), y guardarse
-  el throughput con dos y tres instancias y las solicitudes perdidas durante el alta.
+- **FR-023**: MUST medirse PR03 (agregar una tercera instancia con tráfico), y guardarse el throughput con dos y tres
+  instancias y las solicitudes perdidas durante el alta. PR02 (reservas con carga) MUST citarse desde la medición de
+  US1 (FR-008), que usa la misma API y el mismo balanceo.
 
 **US5 · Base de datos**
 
@@ -384,7 +389,10 @@ desde el subdominio de otra no ve datos de esta última.
 - **FR-026**: MUST medirse las consultas críticas con un volumen mayor que el de las pruebas actuales, y guardarse
   los tiempos.
 - **FR-027**: MUST hacerse un simulacro de respaldo y restauración en una base vacía (PR22), con conteos comparados,
-  la seguridad por filas verificada y los tiempos medidos frente a EQ-22, guardado como acta.
+  la seguridad por filas verificada y los tiempos medidos frente a EQ-22, guardado como acta. **Excepción acotada,
+  aprobada por el responsable (2026-11-19):** el respaldo y la restauración usan el superusuario `postgres` **solo
+  dentro del contenedor `db` y solo para este simulacro**, porque con FORCE RLS un rol sin `BYPASSRLS` no puede
+  respaldar toda la base. Nunca se usa en la aplicación ni en scripts de datos.
 - **FR-028**: Las réplicas de lectura, el particionado y el agrupador de conexiones externo MUST documentarse como no
   construidos, con su motivo y la condición para construirlos.
 
@@ -426,15 +434,18 @@ desde el subdominio de otra no ve datos de esta última.
 
 - **FR-035**: Antes de construir, MUST documentarse el análisis de viabilidad: base de datos con seguridad por filas
   y varios roles, secretos, costos, datos personales fuera del país y plazo; con al menos dos alternativas.
-- **FR-036**: Si hay publicación desde la CI, MUST publicar solo el artefacto estático del frontend, solo desde
-  `main` y solo si todos los trabajos de pruebas de la misma corrida pasaron; MUST NOT tener acceso a la base de
-  datos, a Redis ni a secretos de la aplicación. La interfaz MUST servirse con HTTPS y las cabeceras de US4.
-- **FR-037**: Los secretos de la publicación (credencial del túnel, credencial de publicación en la CDN) MUST ser los
-  mínimos, con permiso limitado a esa tarea, y guardarse solo en el equipo del responsable o en el almacén de
-  secretos de la CI. Ningún archivo del repositorio MUST contener tokens, claves ni identificadores de cuenta o de
-  zona de Cloudflare ni de Namecheap; los ejemplos usan marcadores.
-- **FR-038**: La publicación desde `.github/workflows/` MUST contar antes con la enmienda del principio XII aprobada y
-  aplicada, y con su ADR, que revisa ADR-006 solo para aclarar que la demo publicada no es el despliegue objetivo.
+- **FR-036**: La CI MUST NOT desplegar. Solo MAY guardar el artefacto estático del frontend como artefacto de la
+  corrida, solo desde `main` y solo si todos los trabajos de pruebas de la misma corrida pasaron, sin acceso a una
+  base de datos real o publicada, a Redis ni a secretos de la aplicación. La publicación la hace el actualizador del
+  equipo del responsable (CD por extracción, pull-based). La interfaz MUST servirse con HTTPS y las cabeceras de US4.
+- **FR-037**: Los secretos de la publicación (la credencial del túnel y el token de GitHub de grano fino, de solo
+  lectura y limitado a este repositorio, que usa el actualizador) MUST ser los mínimos y guardarse **solo en el
+  equipo del responsable**, fuera del repositorio y separados del `.env` de la aplicación. La CI no tiene ningún
+  secreto de despliegue. Ningún archivo del repositorio MUST contener tokens, claves ni identificadores de cuenta, de
+  zona o del túnel de Cloudflare, ni de Namecheap; los ejemplos usan marcadores.
+- **FR-038**: Guardar el artefacto desde `.github/workflows/` MUST contar antes con la aclaración PATCH del principio
+  XII aprobada y aplicada, y la publicación con ADR-035, que revisa ADR-006 solo para aclarar que la demo publicada
+  no es el despliegue objetivo.
   Los dos están en borrador en [borradores/enmienda-xii-y-adr-publicacion.md](borradores/enmienda-xii-y-adr-publicacion.md),
   sin aplicar a la constitución hasta la revisión del responsable.
 - **FR-039**: El README y el documento de despliegue MUST decir que la versión publicada solo funciona mientras el
@@ -446,10 +457,10 @@ desde el subdominio de otra no ve datos de esta última.
   documentarse el porqué y la evidencia de despliegue MUST ser la demo local de producción de US4.
 - **FR-041**: El alcance de la publicación MUST ser el dominio propio `ayacuchobarber.shop` (registrador Namecheap;
   DNS, CDN y HTTPS en Cloudflare, plan gratuito) con un **túnel con nombre** hacia el Compose local para la API y/o la
-  interfaz de producción, publicando solo los datos de ejemplo de la semilla de US3. El análisis (FR-035) MUST
-  decidir, con su motivo, si la interfaz va a Cloudflare Pages (con publicación desde la CI) o sale por el túnel
-  desde el Nginx de Compose. Debe considerar que algunos servicios gratuitos no admiten subdominios comodín en
-  dominios propios, lo que condiciona US8.
+  interfaz de producción, publicando solo los datos de ejemplo de la semilla de US3. **Decisión del análisis**
+  (FR-035, research R09): la interfaz y la API salen juntas por el túnel desde el Nginx de Compose, en el mismo
+  origen. Cloudflare Pages queda como alternativa descartada: exigía cambiar el frontend y CORS, y no admite un
+  dominio propio comodín (por verificar), lo que condiciona US8.
 
 **US8 · Subdominio por barbería**
 
@@ -482,7 +493,7 @@ desde el subdominio de otra no ve datos de esta última.
   documentadas; datos inventados, carga idempotente.
 - **Acta de simulacro**: respaldo, restauración, conteos antes y después, verificación de la seguridad por filas y
   tiempos frente a EQ-22.
-- **Análisis de despliegue**: opciones (Cloudflare Pages o túnel desde el Nginx de Compose), limitaciones (equipo
+- **Análisis de despliegue**: opciones (túnel desde el Nginx de Compose, elegida; Cloudflare Pages, descartada), limitaciones (equipo
   encendido, comodín, datos fuera del país), costos, secretos (solo nombres, nunca valores) y decisión, con su ADR.
 - **Subdominio de barbería (US8)**: el slug de una barbería activa usado como nombre de host; solo elige la página
   pública; tiene nombres reservados.
@@ -512,9 +523,9 @@ desde el subdominio de otra no ve datos de esta última.
   y ninguna perdió aserciones de comportamiento. Las metas de requisito de la tabla de FR-034 (≤ 3 s, ≤ 3 s, ≤ 3 s y
   p95 ≤ 2 s) siguen iguales y su medición (mediana o suite aparte) queda guardada con la cifra real.
 - **SC-010**: Si US7 se construye, la demo responde con HTTPS en el dominio propio mientras el equipo está
-  encendido. Si hay publicación desde la CI, un cambio en `main` con la CI en verde queda publicado en menos de
-  15 minutos, y uno con la CI en rojo o desde otra rama no se publica. Si no se construye, el motivo está
-  documentado.
+  encendido. Un cambio en `main` queda publicado en menos de 15 minutos **contados desde el fin de la corrida verde
+  de la CI** hasta que el `version.json` publicado muestra el nuevo SHA (la duración de la propia CI no cuenta). Un
+  cambio con la CI en rojo o desde otra rama no se publica. Si no se construye, el motivo está documentado.
 - **SC-011**: Si US8 se construye, el 100 % de las barberías de ejemplo se abren por su subdominio con la misma
   página que por `/b/slug`, y la prueba de sesión cruzada (FR-045) da 0 datos privados de otra barbería.
 
