@@ -251,13 +251,23 @@ semilla idempotente por la API. Además, dejar listas las herramientas comunes d
   - `docs/05-gestion/04-pruebas.md`: pruebas nuevas y el trabajo `herramientas`;
   - `docs/trazabilidad.md`: fila de 009, fase 1;
   - `docs/05-gestion/02-backlog-y-sprints.md`.
-- [ ] T025 [US3] Verificación de la fase 1, con la copia aislada (**parcial el 2026-11-19, por eso sin marcar**:
-  Docker no estaba en marcha y no se inició, porque los servicios de la demo del responsable tienen `restart:
-  unless-stopped` y se habrían vuelto a levantar. Se comprobó: las 30 pruebas de Node, Prettier y ESLint en verde,
-  `revisar-secretos` sin hallazgos, el YAML de Compose y de la CI válido, y los dos envoltorios en una carpeta
-  temporal `barberias-verificacion`: crean el `.env` con la subred 172.29.0.0/24 y, en la segunda ejecución, lo dejan
-  igual. **Falta:** levantar la copia con Compose, cargar la semilla dos veces contra la API real, abrir los dos
-  enlaces y comprobar el aislamiento y las fechas de los volúmenes):
+- [X] T025 [US3] Verificación de la fase 1, con la copia aislada. **Hecha el 2026-11-19 con Docker real:**
+  - la copia `barberias-verificacion` (sin `.env`, `node_modules` ni `dist`) con su `.env` generado por
+    `preparar-entorno --subred 172.29.0`;
+  - el guardián se negó (código 6) con `plataforma-barberias` y sin proyecto, y aceptó `barberias-verificacion`;
+  - red `172.29.0.0/24`; dos réplicas sanas; `IA_PROVEEDOR=falso`;
+  - semilla contra la API real: la primera carga creó 47 elementos (2 barberías, 2 horarios, 7 servicios, 1 usuario
+    barbero, 5 barberos, 10 clientes y 20 citas) y la segunda dio "0 creadas" con código 0. **No hizo falta corregir
+    la semilla:** rutas y cuerpos coinciden con el backend;
+  - `/b/barberia-demo-centro` y `/b/barberia-demo-huamanga` responden 200, y sus catálogos públicos, 4 y 3 servicios;
+  - aislamiento: cada propietario ve solo sus barberos y sus clientes (6 y 4); la disponibilidad de un barbero de la
+    otra barbería da 404; en 10 días, las agendas tienen 12 y 8 citas y ninguna ajena; un cliente de A ve solo sus
+    citas de A, y desde el enlace de B recibe 409 `UNIRSE_REQUIERE_CONSENTIMIENTO`, sin sesión en B;
+  - los cuatro volúmenes `plataforma-barberias_*` del responsable conservan su fecha de creación antes y después;
+  - la copia se bajó con `down -v` tras confirmarla el guardián; no quedaron contenedores, red ni volúmenes de la copia,
+    y su carpeta temporal se borró.
+
+  Pasos previstos de la tarea:
   - `node --test scripts/test/ semilla/test/ evidencia/scripts/test/` en verde, y Prettier y ESLint en verde con la
     configuración de T022;
   - crear la **copia de verificación** según las reglas, con la carpeta `barberias-verificacion`, `--subred 172.29.0`

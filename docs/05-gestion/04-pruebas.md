@@ -315,8 +315,11 @@ Docker) de las herramientas nuevas: **36 en verde**.
   `revisar-secretos`, `validar-compose` y `docker compose config -q` (con un `.env` del runner creado desde
   `.env.example`; sin y con el perfil `herramientas`). Sin secretos ni base de datos. Desde Node 22, `node --test` recibe patrones de archivos y no
   carpetas.
-- **Sin verificar en esta fase:** la carga real de la semilla contra la API con Docker Compose, en una copia aislada
-  (T025). Docker no estaba en marcha, y no se inició para no levantar los contenedores de la demo del responsable.
+- **Con Docker real, en una copia aislada** (T025, 2026-11-19; proyecto `barberias-verificacion`, subred
+  `172.29.0.0/24`, proveedor de IA falso): la primera carga de la semilla creó 47 elementos y la segunda dio
+  "0 creadas"; `/b/barberia-demo-centro` y `/b/barberia-demo-huamanga` responden; 14 de 14 comprobaciones de
+  aislamiento entre las dos barberías en verde (barberos, clientes, disponibilidad de la otra con 404, agendas sin
+  citas ajenas y cliente sin sesión en la otra barbería); los volúmenes del responsable, sin cambios.
 - **Pendiente del responsable:** el cronómetro del arranque desde el README en bash y PowerShell (SC-001, T026).
 - **Suite de la aplicación:** la fase 1 no cambia `backend/` ni `frontend/` (solo `docker-compose.yml`, con un servicio
   de perfil, y `.env.example`, con un comentario). Sus totales siguen siendo los de §2.4; la CI los vuelve a ejecutar
