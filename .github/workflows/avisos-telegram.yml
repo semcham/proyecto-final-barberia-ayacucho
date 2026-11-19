@@ -1,0 +1,71 @@
+# Avisa por Telegram de cualquier cambio en el proyecto.
+name: avisos-telegram
+
+on:
+  push:
+    branches: ["**"]
+    tags: ["**"]
+  pull_request:
+    types: [opened, reopened, closed, synchronize]
+  issues:
+    types: [opened, closed, reopened]
+  issue_comment:
+    types: [created]
+  release:
+    types: [published]
+  create:
+  delete:
+  deployment_status:
+  workflow_dispatch:
+
+jobs:
+  avisar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enviar aviso a Telegram
+        env:
+          TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          CHAT: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          E="$GITHUB_EVENT_PATH"
+          QUIEN="$GITHUB_ACTOR"
+          j() { jq -r "$1 // \"\"" "$E"; }
+
+          case "$GITHUB_EVENT_NAME" in
+            push)
+              N=$(jq '.commits | length' "$E")
+              COMMITS=$(jq -r '.commits[] | "• " + (.message | split("\n")[0]) + " (" + .author.name + ")"' "$E" | head -n 15)
+              ARCHIVOS=$(jq -r '[.commits[] | (.added + .modified + .removed)[]] | unique | .[]' "$E" | head -n 25)
+              TEXTO=$(printf '🔨 %s cambio(s) en la rama %s por %s\n\n%s\n\n📁 Archivos:\n%s\n\n🔗 %s' \
+                "$N" "$GITHUB_REF_NAME" "$QUIEN" "$COMMITS" "$ARCHIVOS" "$(j .compare)") ;;
+            pull_request)
+              ACCION=$(j .action)
+              [ "$ACCION" = "closed" ] && [ "$(j .pull_request.merged)" = "true" ] && ACCION="fusionado (merge)"
+              TEXTO=$(printf '🔀 Pull request %s por %s\n%s\n🔗 %s' \
+                "$ACCION" "$QUIEN" "$(j .pull_request.title)" "$(j .pull_request.html_url)") ;;
+            issues)
+              TEXTO=$(printf '🐛 Issue %s por %s\n%s\n🔗 %s' \
+                "$(j .action)" "$QUIEN" "$(j .issue.title)" "$(j .issue.html_url)") ;;
+            issue_comment)
+              TEXTO=$(printf '💬 Comentario de %s en: %s\n\n%s\n🔗 %s' \
+                "$QUIEN" "$(j .issue.title)" "$(j .comment.body | head -c 500)" "$(j .comment.html_url)") ;;
+            release)
+              TEXTO=$(printf '🏷️ Nueva versión publicada: %s por %s\n🔗 %s' \
+                "$(j .release.tag_name)" "$QUIEN" "$(j .release.html_url)") ;;
+            create)
+              TEXTO=$(printf '🌱 %s creado: %s por %s' "$(j .ref_type)" "$(j .ref)" "$QUIEN") ;;
+            delete)
+              TEXTO=$(printf '🗑️ %s borrado: %s por %s' "$(j .ref_type)" "$(j .ref)" "$QUIEN") ;;
+            deployment_status)
+              TEXTO=$(printf '🚀 Deploy en %s: %s\n🔗 %s' \
+                "$(j .deployment.environment)" "$(j .deployment_status.state)" "$(j .deployment_status.target_url)") ;;
+            *)
+              TEXTO=$(printf '✅ Prueba manual de avisos por %s' "$QUIEN") ;;
+          esac
+
+          TEXTO=$(printf '📦 %s\n%s' "$GITHUB_REPOSITORY" "$TEXTO" | head -c 4000)
+          RESP=$(curl -sS --max-time 20 "https://api.telegram.org/bot${TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${CHAT}" \
+            --data-urlencode "text=${TEXTO}")
+          echo "$RESP"
+          echo "$RESP" | grep -q '"ok":true'
