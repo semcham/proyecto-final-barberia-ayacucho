@@ -17,9 +17,28 @@
   gap: var(--espacio-4);
 }
 
-.cabecera p {
-  margin: 0;
-  white-space: nowrap;
+/* Acceso del cliente: a la derecha del logo; en el celular, si no cabe, baja bajo el logo y ocupa el ancho. */
+.cabecera {
+  flex-wrap: wrap;
+}
+
+.acceso {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--espacio-2);
+}
+
+@media (max-width: 29.99rem) {
+  .acceso {
+    flex: 1 1 100%;
+    justify-content: flex-start;
+  }
+}
+
+.barberia :global(.antetitulo) {
+  margin: 0 0 var(--espacio-1);
 }
 
 .barberia h1 {

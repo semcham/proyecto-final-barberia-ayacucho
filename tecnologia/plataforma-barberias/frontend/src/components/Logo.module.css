@@ -19,8 +19,10 @@
   border-radius: 50%;
   background: radial-gradient(circle at 30% 30%, var(--color-acento-hover), var(--color-acento-activo));
   color: var(--color-acento-texto);
+  /* El anillo toma el color de lo que hay detrás: el fondo de la página, o el del menú azul noche
+     (--color-fondo-logo lo fija quien pone el logo sobre otra superficie). */
   box-shadow:
-    0 0 0 3px var(--color-fondo),
+    0 0 0 3px var(--color-fondo-logo, var(--color-fondo)),
     0 0 0 4px var(--color-acento-borde);
 }
 

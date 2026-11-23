@@ -5,11 +5,13 @@ import { RutaProtegida } from './auth/RutaProtegida';
 import { Icono } from './components/Icono';
 import { Logo } from './components/Logo';
 import { clasesBoton, ProveedorAvisos } from './components/ui';
-import estilos from './pages/Portada.module.css';
+import estilos from './pages/NoEncontrada.module.css';
 
 // Rutas de la aplicación. Se usan <Routes> (no el router de datos): la aplicación no necesita loaders ni actions.
 // Cada pantalla se descarga solo cuando se visita (React.lazy): quien entra a registrarse no baja el panel,
 // y quien entra al panel no baja los formularios de acceso.
+// Portada para dueños de barbería (rediseño de 2026-11), en su propio archivo.
+const Portada = lazy(() => import('./pages/Portada'));
 const Registro = lazy(() => import('./pages/Registro'));
 const Ingresar = lazy(() => import('./pages/Ingresar'));
 const Activar = lazy(() => import('./pages/Activar'));
@@ -25,6 +27,8 @@ const Barberos = lazy(() => import('./pages/panel/Barberos'));
 const Disponibilidad = lazy(() => import('./pages/panel/Disponibilidad'));
 const Agenda = lazy(() => import('./pages/panel/Agenda'));
 const MisCitas = lazy(() => import('./pages/cliente/MisCitas'));
+// /mis-citas sin sesión: cómo ingresar desde la barbería (el cliente no ingresa por /ingresar, ADR-020).
+const ClienteSinSesion = lazy(() => import('./pages/cliente/ClienteSinSesion'));
 const CanalAviso = lazy(() => import('./pages/cliente/CanalAviso'));
 const Clientes = lazy(() => import('./pages/panel/Clientes'));
 const RegistroCliente = lazy(() => import('./pages/publico/RegistroCliente'));
@@ -87,29 +91,6 @@ const RUTAS_PANEL_002: {
   { ruta: 'clientes', titulo: 'Clientes', roles: ['PROPIETARIO'], pantalla: Clientes },
 ];
 
-function Portada() {
-  return (
-    <main className={estilos.portada}>
-      <Logo />
-      <div className={estilos.hero}>
-        <p className="antetitulo">Software para barberías</p>
-        <h1>Barberías Ayacucho</h1>
-        <p className={estilos.bajada}>Gestiona tu barbería, tus barberos y tus citas desde el celular.</p>
-        <div className={estilos.acciones}>
-          <Link to="/registro" className={clasesBoton()}>
-            Registra tu barbería gratis
-            <Icono nombre="flecha" tamano={18} />
-          </Link>
-          <Link to="/ingresar" className={clasesBoton({ variante: 'secundario' })}>
-            <Icono nombre="usuario" tamano={18} />
-            Ingresar
-          </Link>
-        </div>
-      </div>
-    </main>
-  );
-}
-
 function NoEncontrada() {
   return (
     <main className={estilos.portada}>
@@ -147,7 +128,10 @@ export function RutasApp() {
           <Route
             path="/mis-citas"
             element={
-              <RutaProtegida roles={['CLIENTE']}>
+              <RutaProtegida
+                roles={['CLIENTE']}
+                sinSesion={(desde) => <ClienteSinSesion titulo="Mis citas" desde={desde} />}
+              >
                 <MisCitas />
               </RutaProtegida>
             }

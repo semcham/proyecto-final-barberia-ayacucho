@@ -31,10 +31,10 @@
   inset: 0;
   background: linear-gradient(
     180deg,
-    rgb(15 13 11 / 0) 0%,
-    rgb(15 13 11 / 0) 38%,
-    rgb(15 13 11 / 0.8) 50%,
-    #0f0d0b 60%
+    var(--color-marca-transparente) 0%,
+    var(--color-marca-transparente) 38%,
+    var(--color-marca-velo) 50%,
+    var(--color-marca-fondo) 60%
   );
 }
 
@@ -42,9 +42,9 @@
 .capaFoto {
   background: linear-gradient(
     180deg,
-    rgb(15 13 11 / 0.55) 0%,
-    rgb(15 13 11 / 0.45) 35%,
-    rgb(15 13 11 / 0.9) 70%,
-    #0f0d0b 100%
+    var(--color-marca-velo-suave) 0%,
+    var(--color-marca-velo-suave) 35%,
+    var(--color-marca-velo) 70%,
+    var(--color-marca-fondo) 100%
   );
 }

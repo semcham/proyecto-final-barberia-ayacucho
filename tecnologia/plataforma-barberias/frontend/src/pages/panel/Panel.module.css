@@ -96,7 +96,8 @@
   padding: var(--espacio-3) var(--espacio-4);
   border: 1px solid var(--color-borde);
   border-radius: var(--radio);
-  background: var(--color-superficie);
+  /* Dentro de una tarjeta blanca, un tono apenas distinto separa cada elemento de la tarjeta. */
+  background: var(--color-superficie-elevada);
 }
 
 .elementoTextos {
@@ -235,4 +236,59 @@
   display: flex;
   flex-direction: column;
   gap: var(--espacio-6);
+}
+
+/* Grupo de campos de un formulario largo, con subtítulo (por ejemplo, "Datos de contacto"). Es un <fieldset>
+   con <legend>: los lectores de pantalla anuncian el grupo al entrar en sus campos. Entre grupos, una línea. */
+.grupo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-4);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+.grupo + .grupo {
+  padding-top: var(--espacio-5);
+  border-top: 1px solid var(--color-borde);
+}
+
+.grupoTitulo {
+  display: flex;
+  align-items: center;
+  gap: var(--espacio-3);
+  /* <legend> no admite bien flex en todos los navegadores sin float; el margen lo separa de los campos. */
+  float: left;
+  width: 100%;
+  margin: 0 0 var(--espacio-1);
+  padding: 0;
+  font-family: var(--fuente-titulos);
+  font-size: var(--texto-lg);
+  font-weight: var(--peso-titulo);
+  line-height: var(--interlineado-ajustado);
+  color: var(--color-texto);
+}
+
+/* Icono del subtítulo dentro de un círculo dorado suave. */
+.grupoTitulo svg {
+  box-sizing: content-box;
+  width: 1.125rem;
+  height: 1.125rem;
+  padding: 0.5rem;
+  border-radius: 50%;
+  background: var(--color-acento-suave);
+  color: var(--color-enlace);
+}
+
+/* El float de la leyenda no debe envolver a los campos. */
+.grupoTitulo + * {
+  clear: both;
+}
+
+.grupoDescripcion {
+  margin: 0;
+  color: var(--color-texto-suave);
+  font-size: var(--texto-sm);
 }

@@ -12,15 +12,20 @@ export function inicioDelRol(rol: RolSesion): string {
  * Muestra su contenido solo con sesión iniciada; si no, lleva a `ingreso` (por defecto /ingresar) y recuerda
  * la dirección completa para volver. Con `roles`, además exige uno de esos roles; si no lo tiene, lleva al
  * inicio de su rol. Es solo una ayuda de navegación: los permisos reales los aplica el backend.
+ *
+ * Con `sinSesion`, en vez de llevar a `ingreso` muestra esa pantalla (por ejemplo, la que explica al cliente
+ * cómo ingresar desde su barbería). La dirección para volver tras ingresar la recibe `desde`.
  */
 export function RutaProtegida({
   children,
   roles,
   ingreso = '/ingresar',
+  sinSesion,
 }: {
   children: ReactNode;
   roles?: RolSesion[];
   ingreso?: string;
+  sinSesion?: (desde: string) => ReactNode;
 }) {
   const { estado, usuario } = useSesion();
   const ubicacion = useLocation();
@@ -29,7 +34,9 @@ export function RutaProtegida({
     return <PantallaCarga />;
   }
   if (estado === 'anonimo' || !usuario) {
-    return <Navigate to={ingreso} replace state={{ desde: ubicacion.pathname + ubicacion.search }} />;
+    const desde = ubicacion.pathname + ubicacion.search;
+    if (sinSesion) return <>{sinSesion(desde)}</>;
+    return <Navigate to={ingreso} replace state={{ desde }} />;
   }
   if (roles && !roles.includes(usuario.rol)) {
     return <Navigate to={inicioDelRol(usuario.rol)} replace />;

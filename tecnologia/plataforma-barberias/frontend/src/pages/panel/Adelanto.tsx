@@ -303,6 +303,7 @@ function FormularioAdelanto({ config }: { config: ConfiguracionAdelanto }) {
             etiqueta="Monto (S/)"
             inputMode="decimal"
             autoComplete="off"
+            placeholder="Ej.: 10.00"
             registro={register('monto')}
             error={errors.monto?.message}
             ayuda="Entre S/ 1.00 y S/ 500.00. Nunca se pide más que el precio del servicio."
@@ -314,6 +315,7 @@ function FormularioAdelanto({ config }: { config: ConfiguracionAdelanto }) {
             etiqueta="Porcentaje (%)"
             type="number"
             inputMode="numeric"
+            placeholder="Ej.: 30"
             registro={register('porcentaje')}
             error={errors.porcentaje?.message}
             ayuda="Del precio del servicio, entre 1 y 100."
@@ -324,6 +326,7 @@ function FormularioAdelanto({ config }: { config: ConfiguracionAdelanto }) {
           etiqueta="Plazo para pagar (minutos)"
           type="number"
           inputMode="numeric"
+          placeholder="Ej.: 60"
           registro={register('plazo')}
           error={errors.plazo?.message}
           ayuda="Entre 10 minutos y 24 horas (1440). Si no paga a tiempo, la reserva se cancela y el horario queda libre."

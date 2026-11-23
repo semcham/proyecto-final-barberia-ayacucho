@@ -79,9 +79,10 @@ img {
   display: block;
 }
 
-/* Foco siempre visible con el anillo del acento (solo con teclado). */
+/* Foco siempre visible (solo con teclado): contorno dorado oscuro, con 3:1 o más sobre fondo y superficies. Los
+   botones y los campos añaden el halo dorado con --anillo-foco. */
 :focus-visible {
-  outline: 2px solid var(--color-enlace);
+  outline: 2px solid var(--color-foco-fuerte);
   outline-offset: 2px;
 }
 
@@ -186,7 +187,7 @@ textarea {
   color: var(--color-acento-texto);
   box-shadow:
     var(--sombra-xs),
-    0 1px 0 rgb(255 255 255 / 0.25) inset;
+    0 1px 0 var(--color-brillo-boton) inset;
 }
 
 .boton--primario:hover:not(:disabled) {
@@ -276,7 +277,7 @@ textarea {
   background: var(--color-superficie);
   border: 1px solid var(--color-borde);
   border-radius: var(--radio-lg);
-  box-shadow: var(--sombra-sm);
+  box-shadow: var(--sombra-tarjeta);
   padding: var(--espacio-5);
 }
 
@@ -288,9 +289,11 @@ textarea {
   gap: var(--espacio-2);
 }
 
+/* Etiqueta a 15 px y ayuda a 14 px (nunca menos), con interlineado cómodo para leer en el celular. */
 .campo__etiqueta {
-  font-size: var(--texto-sm);
+  font-size: 0.9375rem;
   font-weight: var(--peso-fuerte);
+  line-height: var(--interlineado-ajustado);
   color: var(--color-texto);
 }
 
@@ -314,7 +317,7 @@ textarea {
   min-height: var(--alto-control);
   padding: 0 var(--espacio-3);
   background: var(--color-superficie);
-  border: 1px solid var(--color-borde-control);
+  border: var(--ancho-borde-control) solid var(--color-borde-control);
   border-radius: var(--radio);
   color: var(--color-texto);
   box-shadow: var(--sombra-xs);
@@ -330,13 +333,13 @@ textarea {
 }
 
 .entrada:hover {
-  border-color: var(--color-texto-tenue);
+  border-color: var(--color-texto-suave);
 }
 
 .entrada:focus,
 .entrada:focus-visible {
   outline: none;
-  border-color: var(--color-enlace);
+  border-color: var(--color-foco-fuerte);
   box-shadow: var(--anillo-foco);
 }
 
@@ -395,13 +398,14 @@ textarea {
 .campo__ayuda {
   margin: 0;
   font-size: var(--texto-sm);
+  line-height: var(--interlineado);
   color: var(--color-texto-suave);
 }
 
 select.entrada {
   appearance: none;
   padding-right: 2.5rem;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238f8478' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-image: var(--icono-select);
   background-repeat: no-repeat;
   background-position: right 0.75rem center;
   cursor: pointer;
@@ -456,7 +460,7 @@ select.entrada {
 .casilla input:checked {
   border-color: var(--color-enlace);
   background-color: var(--color-acento);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231a1209' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E");
+  background-image: var(--icono-casilla);
 }
 
 .casilla input:focus-visible {

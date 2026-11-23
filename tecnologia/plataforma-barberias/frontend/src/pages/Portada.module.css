@@ -1,52 +1,564 @@
-.portada {
-  display: flex;
-  flex-direction: column;
-  gap: var(--espacio-12);
-  width: 100%;
-  max-width: var(--ancho-contenido);
+/* Portada (/) para dueños de barbería. Móvil primero; secciones de ancho limitado sobre el fondo marfil (azul
+   noche en oscuro) y una franja de cierre azul noche en ambos temas. Solo tokens. */
+
+.pagina {
   min-height: 100vh;
   min-height: 100dvh;
-  margin: 0 auto;
-  padding: var(--espacio-6) var(--espacio-4) var(--espacio-12);
 }
 
-.hero {
+.saltar {
+  position: absolute;
+  z-index: var(--capa-flotante);
+  top: var(--espacio-2);
+  left: var(--espacio-2);
+  padding: var(--espacio-2) var(--espacio-4);
+  border-radius: var(--radio);
+  background: var(--color-acento);
+  color: var(--color-acento-texto);
+  font-weight: var(--peso-fuerte);
+  text-decoration: none;
+  transform: translateY(-200%);
+}
+
+.saltar:focus-visible {
+  transform: none;
+  box-shadow: var(--anillo-foco);
+}
+
+/* ---------- Barra superior ---------- */
+
+.barra {
+  position: sticky;
+  top: 0;
+  z-index: var(--capa-cabecera);
+  border-bottom: 1px solid var(--color-borde);
+  background: var(--color-cabecera);
+  box-shadow: var(--sombra-xs);
+}
+
+.barraInterior {
   display: flex;
-  flex-direction: column;
-  justify-content: center;
-  flex: 1;
-  max-width: 40rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--espacio-3);
+  max-width: var(--ancho-contenido);
+  min-height: 4rem;
+  margin: 0 auto;
+  padding: var(--espacio-2) var(--espacio-4);
 }
 
-.hero h1 {
-  font-size: var(--texto-3xl);
+/* En el celular solo caben el logo y los dos botones; las secciones se ven desde 64rem. */
+.secciones {
+  display: none;
+}
+
+.secciones ul {
+  display: flex;
+  gap: var(--espacio-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.secciones a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--alto-control-sm);
+  padding: 0 var(--espacio-3);
+  border-radius: var(--radio);
+  color: var(--color-texto-suave);
+  font-size: var(--texto-sm);
+  font-weight: var(--peso-medio);
+  text-decoration: none;
+}
+
+.secciones a:hover {
+  background: var(--color-superficie-hundida);
+  color: var(--color-texto);
+}
+
+.barraAcciones {
+  display: flex;
+  align-items: center;
+  gap: var(--espacio-2);
+}
+
+/* En el celular, el logo compacto (solo el sello): así caben los dos botones a 360 px. */
+.logoAncho {
+  display: none;
+}
+
+.logoCompacto {
+  display: inline-flex;
+}
+
+@media (min-width: 40rem) {
+  .logoAncho {
+    display: inline-flex;
+  }
+
+  .logoCompacto {
+    display: none;
+  }
+}
+
+@media (min-width: 64rem) {
+  .secciones {
+    display: block;
+  }
+}
+
+/* ---------- Portada ---------- */
+
+.portada {
+  display: grid;
+  gap: var(--espacio-10);
+  max-width: var(--ancho-contenido);
+  margin: 0 auto;
+  padding: var(--espacio-10) var(--espacio-4) var(--espacio-12);
+}
+
+.titulo {
+  margin: 0 0 var(--espacio-4);
+  font-size: var(--texto-4xl);
+  line-height: 1.08;
+  letter-spacing: -0.02em;
 }
 
 .bajada {
+  max-width: 36rem;
+  margin: 0 0 var(--espacio-6);
   font-size: var(--texto-lg);
   color: var(--color-texto-suave);
-  margin-bottom: var(--espacio-8);
 }
 
-.acciones {
+.accionesPortada {
   display: flex;
   flex-direction: column;
   gap: var(--espacio-3);
 }
 
+.nota {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--espacio-2);
+  margin: var(--espacio-4) 0 0;
+  font-size: var(--texto-sm);
+  font-weight: var(--peso-medio);
+  color: var(--color-exito);
+}
+
 @media (min-width: 30rem) {
-  .acciones {
+  .accionesPortada {
     flex-direction: row;
     flex-wrap: wrap;
   }
 }
 
-@media (min-width: 48rem) {
+@media (min-width: 64rem) {
   .portada {
-    padding: var(--espacio-10) var(--espacio-8);
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+    align-items: center;
+    gap: var(--espacio-12);
+    padding: var(--espacio-16) var(--espacio-8) var(--espacio-20);
   }
 
-  .hero h1 {
-    font-size: var(--texto-4xl);
+  .titulo {
+    font-size: var(--texto-5xl);
+  }
+}
+
+/* ---------- Tarjeta de agenda de ejemplo ---------- */
+
+.ejemplo {
+  margin: 0;
+  padding: var(--espacio-5);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio-xl);
+  background: var(--color-superficie);
+  box-shadow: var(--sombra-lg);
+}
+
+.ejemploCabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--espacio-3);
+  margin-bottom: var(--espacio-4);
+}
+
+.ejemploTitulo {
+  margin: 0;
+  font-family: var(--fuente-titulos);
+  font-size: var(--texto-xl);
+  font-weight: var(--peso-titulo);
+}
+
+.ejemploSubtitulo {
+  margin: 0;
+  font-size: var(--texto-sm);
+  color: var(--color-texto-suave);
+}
+
+.marcaEjemplo {
+  padding: var(--espacio-1) var(--espacio-3);
+  border: 1px dashed var(--color-acento-borde);
+  border-radius: var(--radio-pildora);
+  background: var(--color-acento-suave);
+  color: var(--color-enlace);
+  font-size: var(--texto-xs);
+  font-weight: var(--peso-fuerte);
+  letter-spacing: 0.02em;
+}
+
+.ejemploLista {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ejemploLista li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--espacio-1) var(--espacio-3);
+  padding: var(--espacio-3);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio);
+  background: var(--color-superficie-elevada);
+}
+
+.ejemploHora {
+  font-weight: var(--peso-negrita);
+  font-variant-numeric: tabular-nums;
+}
+
+.ejemploTextos {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.ejemploTextos span {
+  font-size: var(--texto-sm);
+  color: var(--color-texto-suave);
+}
+
+.ejemploEstado {
+  grid-column: 2;
+  justify-self: start;
+  padding: 0.125rem var(--espacio-2);
+  border: 1px solid var(--color-aviso-borde);
+  border-radius: var(--radio-pildora);
+  background: var(--color-aviso-fondo);
+  color: var(--color-aviso);
+  font-size: var(--texto-xs);
+  font-weight: var(--peso-fuerte);
+}
+
+.ejemploEstado[data-estado='ok'] {
+  border-color: var(--color-exito-borde);
+  background: var(--color-exito-fondo);
+  color: var(--color-exito);
+}
+
+@media (min-width: 30rem) {
+  .ejemploLista li {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+
+  .ejemploEstado {
+    grid-column: auto;
+  }
+}
+
+.ejemploNota {
+  margin-top: var(--espacio-3);
+  font-size: var(--texto-xs);
+  color: var(--color-texto-suave);
+}
+
+/* ---------- Secciones ---------- */
+
+.seccion {
+  max-width: var(--ancho-contenido);
+  margin: 0 auto;
+  padding: var(--espacio-12) var(--espacio-4);
+  scroll-margin-top: 4.5rem;
+}
+
+.seccionCabecera {
+  max-width: 40rem;
+  margin-bottom: var(--espacio-8);
+}
+
+.seccionTitulo {
+  margin: 0;
+  font-size: var(--texto-3xl);
+}
+
+.seccionBajada {
+  margin: var(--espacio-3) 0 0;
+  color: var(--color-texto-suave);
+}
+
+.pasos,
+.beneficios,
+.planes {
+  display: grid;
+  gap: var(--espacio-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tarjetaItem {
+  padding: var(--espacio-6);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio-lg);
+  background: var(--color-superficie);
+  box-shadow: var(--sombra-tarjeta);
+}
+
+.circulo {
+  display: inline-grid;
+  place-items: center;
+  width: 3rem;
+  height: 3rem;
+  margin-bottom: var(--espacio-4);
+  border-radius: 50%;
+  background: var(--color-acento-suave);
+  color: var(--color-enlace);
+}
+
+.itemTitulo {
+  margin: 0 0 var(--espacio-2);
+  font-family: var(--fuente-cuerpo);
+  font-size: var(--texto-lg);
+  font-weight: var(--peso-fuerte);
+  letter-spacing: 0;
+}
+
+.numeroPaso {
+  color: var(--color-enlace);
+}
+
+.itemTexto {
+  margin: 0;
+  color: var(--color-texto-suave);
+}
+
+@media (min-width: 48rem) {
+  .seccion {
+    padding: var(--espacio-16) var(--espacio-8);
+  }
+
+  .pasos,
+  .planes {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .beneficios {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 72rem) {
+  .beneficios {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+/* ---------- Planes ---------- */
+
+.plan {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-3);
+  padding: var(--espacio-6);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio-lg);
+  background: var(--color-superficie);
+  box-shadow: var(--sombra-tarjeta);
+}
+
+.plan[data-destacado] {
+  border: 2px solid var(--color-acento);
+}
+
+.planNombre {
+  margin: 0;
+  font-size: var(--texto-xl);
+}
+
+.planPrecio {
+  margin: 0;
+  color: var(--color-texto-suave);
+}
+
+.planPrecio strong {
+  font-family: var(--fuente-titulos);
+  font-size: var(--texto-3xl);
+  color: var(--color-texto);
+}
+
+.planLimites {
+  display: flex;
+  align-items: center;
+  gap: var(--espacio-2);
+  margin: 0;
+}
+
+.planLimites svg {
+  color: var(--color-enlace);
+}
+
+/* ---------- Preguntas ---------- */
+
+.preguntas {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-3);
+  max-width: 48rem;
+}
+
+.pregunta {
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio-lg);
+  background: var(--color-superficie);
+}
+
+.pregunta summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--espacio-3);
+  min-height: var(--alto-control);
+  padding: var(--espacio-3) var(--espacio-5);
+  font-weight: var(--peso-fuerte);
+  cursor: pointer;
+  list-style: none;
+}
+
+.pregunta summary::-webkit-details-marker {
+  display: none;
+}
+
+.pregunta summary svg {
+  color: var(--color-enlace);
+  transition: transform var(--transicion);
+}
+
+.pregunta[open] summary svg {
+  transform: rotate(180deg);
+}
+
+.pregunta summary:focus-visible {
+  border-radius: var(--radio-lg);
+}
+
+.pregunta p {
+  margin: 0;
+  padding: 0 var(--espacio-5) var(--espacio-5);
+  color: var(--color-texto-suave);
+}
+
+/* ---------- Franja de cierre (azul noche en ambos temas) ---------- */
+
+.cierre {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--espacio-4);
+  max-width: var(--ancho-contenido);
+  margin: var(--espacio-8) var(--espacio-4) var(--espacio-12);
+  padding: var(--espacio-10) var(--espacio-6);
+  border: 1px solid var(--color-menu-borde);
+  border-radius: var(--radio-xl);
+  background: var(--color-menu);
+  color: var(--color-menu-texto-fuerte);
+  /* El foco sobre el azul noche usa el dorado. */
+  --color-foco-fuerte: var(--color-menu-activo);
+}
+
+.cierreTitulo {
+  margin: 0;
+  font-size: var(--texto-3xl);
+  color: var(--color-menu-texto-fuerte);
+}
+
+.cierreTexto {
+  margin: 0;
+  color: var(--color-menu-texto);
+}
+
+@media (min-width: 72rem) {
+  .cierre {
+    margin: var(--espacio-8) auto var(--espacio-16);
+    padding: var(--espacio-12) var(--espacio-12);
+  }
+}
+
+@media (min-width: 48rem) and (max-width: 71.99rem) {
+  .cierre {
+    margin-left: var(--espacio-8);
+    margin-right: var(--espacio-8);
+  }
+}
+
+/* ---------- Pie ---------- */
+
+.pie {
+  border-top: 1px solid var(--color-borde);
+  background: var(--color-superficie);
+}
+
+.pieInterior {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--espacio-4);
+  max-width: var(--ancho-contenido);
+  margin: 0 auto;
+  padding: var(--espacio-8) var(--espacio-4);
+}
+
+.pieTexto {
+  margin: 0;
+  font-size: var(--texto-sm);
+  color: var(--color-texto-suave);
+}
+
+.pieEnlaces {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--espacio-2) var(--espacio-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--texto-sm);
+  color: var(--color-texto-suave);
+}
+
+.pieEnlaces a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+}
+
+.pieEnlaces span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+}
+
+@media (min-width: 48rem) {
+  .pieInterior {
+    padding: var(--espacio-8);
   }
 }

@@ -1,9 +1,12 @@
 /*
  * Tokens del sistema de diseño. Toda pantalla usa estas variables: no se escriben colores, tamaños ni sombras
- * sueltos en los módulos CSS. Identidad: barbería clásica, tonos cálidos y acento dorado cobre.
+ * sueltos en los módulos CSS. Identidad: marfil y azul noche con acento dorado (rediseño de 2026-11).
  *
  * Tema: sigue a prefers-color-scheme y el conmutador lo fija con data-theme="light" | "dark" en <html>.
  * Cada color se declara una sola vez con light-dark(claro, oscuro), que se resuelve según color-scheme.
+ *
+ * Contraste: cada combinación de texto, icono, borde de control y foco se midió con la fórmula de WCAG 2.x
+ * (script de verificación del rediseño). Los valores entre paréntesis son claro / oscuro.
  */
 
 :root {
@@ -20,56 +23,101 @@
 
 :root {
   /* ---------- Color: fondos y superficies (de más profundo a más elevado) ---------- */
-  --color-fondo: light-dark(#f7f3ec, #0f0d0b);
-  --color-superficie: light-dark(#ffffff, #1a1714);
-  --color-superficie-elevada: light-dark(#fbf8f3, #241f1a);
-  --color-superficie-hundida: light-dark(#f2ece2, #13110e);
-  --color-borde: light-dark(#e4dacb, #3a322a);
-  --color-borde-fuerte: light-dark(#cbbba5, #5a4d40);
-  /* Límite de los controles de formulario (entradas, casillas y select): 3:1 o más sobre fondo y superficies en
-     ambos temas (WCAG 1.4.11). Claro: 3,38–3,98:1; oscuro: 3,37–4,00:1. Solo para controles; los bordes
-     decorativos (tarjetas, separadores) siguen con --color-borde. */
-  --color-borde-control: light-dark(#8f7d63, #7f6f5c);
-  --color-cabecera: light-dark(rgb(247 243 236 / 0.86), rgb(19 17 14 / 0.86));
-  --color-velo: light-dark(rgb(31 26 21 / 0.45), rgb(0 0 0 / 0.65));
+  /* Claro: fondo marfil, tarjetas blancas. Oscuro: base azul noche, superficies un tono más claras. */
+  --color-fondo: light-dark(#f7f3ea, #0b1b3a);
+  --color-superficie: light-dark(#ffffff, #13264d);
+  --color-superficie-elevada: light-dark(#fcfaf5, #1a2f5c);
+  --color-superficie-hundida: light-dark(#f1ece0, #0e2145);
+  --color-borde: light-dark(#e3dac8, #2a3f6b);
+  --color-borde-fuerte: light-dark(#cfc3ab, #3b5285);
+  /* Límite de los controles de formulario (entradas, casillas y select), de 1,5 px: 3:1 o más sobre fondo y
+     superficie (3,57 y 3,22:1 / 4,82 y 5,52:1, WCAG 1.4.11). Los bordes decorativos usan --color-borde. */
+  --color-borde-control: light-dark(#8f8774, #8093ba);
+  --ancho-borde-control: 1.5px;
+  /* Barra superior del panel: blanca en claro y superficie azul en oscuro. */
+  --color-cabecera: light-dark(#ffffff, #13264d);
+  --color-velo: light-dark(rgb(11 27 58 / 0.45), rgb(3 9 22 / 0.7));
+  /* Blanco fijo para los QR (Yape, Plin): el lector necesita fondo claro en ambos temas. */
+  --color-fondo-qr: #ffffff;
 
-  /* ---------- Color: texto (AA sobre fondo y superficies) ---------- */
-  --color-texto: light-dark(#1f1a15, #f4eee6);
-  --color-texto-suave: light-dark(#5a4f44, #bdb2a4);
-  --color-texto-tenue: light-dark(#6f6457, #9a8e81);
+  /* ---------- Color: menú lateral del panel (azul noche en ambos temas) ---------- */
+  /* Texto 11,3:1 / 12,2:1; etiquetas de grupo 6,5:1 / 7,0:1; hover 9,9:1 / 10,8:1; activo: azul noche sobre
+     dorado 7,6:1. En oscuro el menú es un tono más oscuro que el contenido. */
+  --color-menu: light-dark(#0b1b3a, #071330);
+  --color-menu-borde: light-dark(#0b1b3a, #1c2e57);
+  --color-menu-texto: #c9d3e8;
+  --color-menu-texto-fuerte: #ffffff;
+  --color-menu-hover: light-dark(#13264d, #0f1f42);
+  --color-menu-grupo: #8fa0c4;
+  --color-menu-activo: #d9a441;
+  --color-menu-activo-texto: #0b1b3a;
+  /* Marca sobre el menú (el nombre de la barbería). */
+  --color-menu-tarjeta: light-dark(#13264d, #0f1f42);
 
-  /* ---------- Color: acento dorado cobre ---------- */
-  /* Relleno de botones y sellos; su texto es --color-acento-texto (6:1 o más en ambos temas). */
-  --color-acento: light-dark(#c08a35, #d4a24c);
-  --color-acento-hover: light-dark(#cc9744, #e2b462);
-  --color-acento-activo: light-dark(#a87628, #b98a3a);
-  --color-acento-texto: #1a1209;
-  /* El acento usado como texto, icono o enlace sobre superficies (AA en ambos temas). */
-  --color-enlace: light-dark(#8a5a1c, #e2b462);
-  --color-enlace-hover: light-dark(#6e4510, #f0c77e);
-  --color-acento-suave: light-dark(rgb(192 138 53 / 0.12), rgb(212 162 76 / 0.14));
-  --color-acento-borde: light-dark(rgb(168 118 40 / 0.45), rgb(212 162 76 / 0.45));
-  --color-acento-brillo: light-dark(rgb(192 138 53 / 0.1), rgb(212 162 76 / 0.08));
+  /* ---------- Color: texto ---------- */
+  /* Texto 16,0:1 / 13,5:1 sobre superficie; suave 7,1:1 / 9,9:1; tenue (también placeholder) 5,7:1 / 7,3:1. */
+  --color-texto: light-dark(#14213d, #f2f4fa);
+  --color-texto-suave: light-dark(#4f586b, #c9d3e8);
+  --color-texto-tenue: light-dark(#6b6757, #a9b6d3);
+
+  /* ---------- Color: acento dorado ---------- */
+  /* Solo como relleno o borde. El texto sobre dorado es azul noche (7,6:1). */
+  --color-acento: #d9a441;
+  --color-acento-hover: #e3b358;
+  --color-acento-activo: #c4912e;
+  --color-acento-texto: #0b1b3a;
+  /* Dorado oscuro para texto, iconos y enlaces: 5,6:1 sobre blanco, 5,0:1 sobre --color-acento-suave; en oscuro,
+     dorado claro 8,5:1 sobre superficie. */
+  --color-enlace: light-dark(#8a5f0a, #e8be6a);
+  --color-enlace-hover: light-dark(#6e4b05, #f3d08b);
+  /* Fondo dorado suave (círculos de iconos, opción elegida, aviso). */
+  --color-acento-suave: light-dark(#fbf1da, #2f3a52);
+  --color-acento-borde: light-dark(#e6c27c, #8a6c32);
+  --color-acento-brillo: light-dark(rgb(217 164 65 / 0.08), rgb(217 164 65 / 0.06));
+
+  /* ---------- Color: foco ---------- */
+  /* Contorno dorado #D9A441 como halo, con un anillo interior dorado oscuro que da el 3:1 frente a lo que rodea
+     (5,6:1 sobre blanco; 9,2:1 sobre superficie oscura), porque el dorado claro solo no lo alcanza en claro. */
+  --color-foco: #d9a441;
+  --color-foco-fuerte: light-dark(#8a5f0a, #f0c66e);
 
   /* ---------- Color: estados ---------- */
-  --color-exito: light-dark(#1e7b4b, #7bd8a0);
-  --color-exito-fondo: light-dark(rgb(30 123 75 / 0.1), rgb(123 216 160 / 0.12));
-  --color-exito-borde: light-dark(rgb(30 123 75 / 0.35), rgb(123 216 160 / 0.35));
-  --color-aviso: light-dark(#8a5d00, #f2c462);
-  --color-aviso-fondo: light-dark(rgb(178 120 0 / 0.1), rgb(242 196 98 / 0.12));
-  --color-aviso-borde: light-dark(rgb(138 93 0 / 0.35), rgb(242 196 98 / 0.35));
-  --color-neutro: light-dark(#6b6259, #a39a90);
-  --color-neutro-fondo: light-dark(rgb(107 98 89 / 0.1), rgb(163 154 144 / 0.14));
-  --color-neutro-borde: light-dark(rgb(107 98 89 / 0.3), rgb(163 154 144 / 0.35));
-  --color-error: light-dark(#b3261e, #f28b82);
-  --color-error-fondo: light-dark(rgb(179 38 30 / 0.08), rgb(242 139 130 / 0.12));
-  --color-error-borde: light-dark(rgb(179 38 30 / 0.35), rgb(242 139 130 / 0.4));
+  /* Positivo verde azulado 5,2:1 / 7,1:1 sobre su fondo; aviso 5,0:1 / 7,0:1; error 5,6:1 / 7,0:1; neutro 5,1:1 /
+     6,8:1. */
+  --color-exito: light-dark(#1f6f63, #7fd6c6);
+  --color-exito-fondo: light-dark(#e3f3f0, #173a47);
+  --color-exito-borde: light-dark(#9fd1c8, #2f6b6a);
+  --color-aviso: light-dark(#8a5f0a, #f0c66e);
+  --color-aviso-fondo: light-dark(#fbf1da, #2f3a52);
+  --color-aviso-borde: light-dark(#e6c27c, #8a6c32);
+  --color-neutro: light-dark(#5e6577, #b7c1d8);
+  --color-neutro-fondo: light-dark(#eef0f4, #1f3361);
+  --color-neutro-borde: light-dark(#cdd2dd, #3b5285);
+  --color-error: light-dark(#b3261e, #f4a29b);
+  --color-error-fondo: light-dark(#fbeae8, #3a2633);
+  --color-error-borde: light-dark(#ecb1ab, #7a4550);
   /* Relleno del botón de peligro y su texto. */
-  --color-peligro: light-dark(#b3261e, #f28b82);
-  --color-peligro-hover: light-dark(#9c1f18, #f6a39b);
+  --color-peligro: light-dark(#b3261e, #f4a29b);
+  --color-peligro-hover: light-dark(#9c1f18, #f7b8b2);
   --color-peligro-texto: light-dark(#ffffff, #2a0d0a);
 
+  /* ---------- Color: ilustraciones de marca ---------- */
+  /* Solo decorativos (sin texto encima de ellos, salvo el velo inferior del panel de marca). */
+  --color-ilustracion-claro: #f2f4fa;
+  --color-ilustracion-rojo: #b3402f;
+  --color-ilustracion-madera: #3a2a1f;
+  --color-ilustracion-madera-clara: #5c4231;
+  --color-ilustracion-metal: #8090b0;
+  /* Velo del panel de marca: de transparente al azul noche, para que el texto sobre la imagen sea legible. */
+  --color-marca-velo: rgb(11 27 58 / 0.85);
+  --color-marca-velo-suave: rgb(11 27 58 / 0.5);
+  --color-marca-transparente: rgb(11 27 58 / 0);
+  --color-marca-fondo: #0b1b3a;
+  /* Brillo interior de los botones dorados. */
+  --color-brillo-boton: rgb(255 255 255 / 0.3);
+
   /* ---------- Tipografía ---------- */
+  /* Fraunces (títulos) e Inter (cuerpo), cargadas localmente con @fontsource-variable (sin servicios externos). */
   --fuente-titulos: 'Fraunces Variable', 'Iowan Old Style', 'Palatino Linotype', Georgia, serif;
   --fuente-cuerpo:
     'Inter Variable', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
@@ -84,10 +132,12 @@
   --texto-2xl: clamp(1.5rem, 1.3rem + 0.9vw, 1.875rem);
   --texto-3xl: clamp(1.875rem, 1.5rem + 1.6vw, 2.5rem);
   --texto-4xl: clamp(2.25rem, 1.6rem + 2.8vw, 3.25rem);
+  --texto-5xl: clamp(2.5rem, 1.7rem + 3.6vw, 4rem);
 
   --peso-normal: 400;
   --peso-medio: 500;
   --peso-fuerte: 600;
+  --peso-negrita: 700;
   --peso-titulo: 650;
 
   --interlineado: 1.55;
@@ -108,6 +158,7 @@
   --espacio-12: 3rem;
   --espacio-16: 4rem;
   --espacio-20: 5rem;
+  --espacio-24: 6rem;
 
   /* ---------- Bordes redondeados ---------- */
   --radio-sm: 0.375rem;
@@ -116,19 +167,27 @@
   --radio-xl: 1.25rem;
   --radio-pildora: 999px;
 
-  /* ---------- Sombras (suaves en claro; en oscuro se apoyan en un borde interior tenue) ---------- */
-  --sombra-xs: 0 1px 2px light-dark(rgb(60 40 20 / 0.06), rgb(0 0 0 / 0.35));
+  /* ---------- Sombras (suaves, teñidas de azul noche en claro; en oscuro, más profundas) ---------- */
+  --sombra-xs: 0 1px 2px light-dark(rgb(20 33 61 / 0.06), rgb(0 0 0 / 0.3));
   --sombra-sm:
-    0 1px 2px light-dark(rgb(60 40 20 / 0.06), rgb(0 0 0 / 0.4)),
-    0 1px 3px light-dark(rgb(60 40 20 / 0.06), rgb(0 0 0 / 0.2));
+    0 1px 2px light-dark(rgb(20 33 61 / 0.06), rgb(0 0 0 / 0.35)),
+    0 1px 3px light-dark(rgb(20 33 61 / 0.05), rgb(0 0 0 / 0.2));
   --sombra:
-    0 4px 14px light-dark(rgb(60 40 20 / 0.08), rgb(0 0 0 / 0.35)),
-    0 1px 0 light-dark(rgb(255 255 255 / 0), rgb(255 255 255 / 0.03)) inset;
-  --sombra-lg:
-    0 18px 48px light-dark(rgb(60 40 20 / 0.14), rgb(0 0 0 / 0.55)),
+    0 4px 14px light-dark(rgb(20 33 61 / 0.08), rgb(0 0 0 / 0.35)),
     0 1px 0 light-dark(rgb(255 255 255 / 0), rgb(255 255 255 / 0.04)) inset;
-  --anillo-foco: 0 0 0 3px light-dark(rgb(168 118 40 / 0.45), rgb(212 162 76 / 0.55));
-  --anillo-foco-error: 0 0 0 3px light-dark(rgb(179 38 30 / 0.3), rgb(242 139 130 / 0.35));
+  --sombra-lg:
+    0 18px 48px light-dark(rgb(20 33 61 / 0.14), rgb(0 0 0 / 0.5)),
+    0 1px 0 light-dark(rgb(255 255 255 / 0), rgb(255 255 255 / 0.05)) inset;
+  /* Tarjetas: borde más sombra suave en dos capas, para separarlas del fondo marfil. */
+  --sombra-tarjeta:
+    0 1px 2px light-dark(rgb(20 33 61 / 0.05), rgb(0 0 0 / 0.3)),
+    0 6px 16px light-dark(rgb(20 33 61 / 0.06), rgb(0 0 0 / 0.22)),
+    0 1px 0 light-dark(rgb(255 255 255 / 0), rgb(255 255 255 / 0.04)) inset;
+  /* Foco: anillo interior dorado oscuro (contraste) y halo dorado. */
+  --anillo-foco:
+    0 0 0 2px var(--color-foco-fuerte), 0 0 0 5px light-dark(rgb(217 164 65 / 0.45), rgb(217 164 65 / 0.4));
+  --anillo-foco-error:
+    0 0 0 2px var(--color-error), 0 0 0 5px light-dark(rgb(179 38 30 / 0.2), rgb(244 162 155 / 0.3));
 
   /* ---------- Movimiento ---------- */
   --duracion-rapida: 120ms;
@@ -154,5 +213,13 @@
   /* Panel con sesión en pantallas grandes (100rem o más): aprovecha el ancho sin estirar demasiado las líneas. */
   --ancho-contenido-amplio: 84rem;
   --ancho-formulario: 28rem;
-  --ancho-lateral: 16rem;
+  --ancho-lateral: 16.5rem;
+  /* Icono dentro de un círculo dorado suave (encabezados de sección y de tarjeta). */
+  --tamano-circulo-icono: 2.5rem;
+
+  /* ---------- Iconos en CSS (no admiten variables de color dentro) ---------- */
+  /* Flecha del select: gris azulado #7a869f, decorativa (el borde del control ya da el 3:1), legible en ambos
+     temas. Marca de la casilla: azul noche sobre el relleno dorado, igual en ambos temas (7,6:1). */
+  --icono-select: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%237a869f' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  --icono-casilla: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%230b1b3a' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E");
 }

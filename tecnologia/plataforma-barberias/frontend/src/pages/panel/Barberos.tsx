@@ -161,6 +161,7 @@ export default function Barberos() {
             <Campo
               id="nombre-barbero"
               etiqueta="Nombre visible"
+              placeholder="Ej.: Carlos Ñaupa"
               registro={register('nombre')}
               error={errors.nombre?.message}
             />

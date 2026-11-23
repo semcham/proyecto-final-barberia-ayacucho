@@ -309,6 +309,7 @@ function Bloqueos({ barbero, zona }: { barbero: Barbero; zona: string }) {
           <Campo
             id="motivo"
             etiqueta="Motivo (opcional)"
+            placeholder="Ej.: Capacitación o cita médica"
             registro={register('motivo')}
             error={errors.motivo?.message}
             ayuda="Solo lo ve tu equipo."

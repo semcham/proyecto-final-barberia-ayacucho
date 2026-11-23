@@ -82,6 +82,7 @@ export function FormularioClientePresencial({
       <Campo
         id="cliente-nombre"
         etiqueta="Nombre"
+        placeholder="Ej.: Ana Quispe"
         registro={register('nombre')}
         error={errors.nombre?.message}
       />
@@ -91,6 +92,7 @@ export function FormularioClientePresencial({
           etiqueta="Teléfono"
           type="tel"
           inputMode="tel"
+          placeholder="Ej.: 966 123 456"
           registro={register('telefono')}
           error={errors.telefono?.message}
         />
@@ -99,6 +101,7 @@ export function FormularioClientePresencial({
           etiqueta="Correo (opcional)"
           type="email"
           inputMode="email"
+          placeholder="Ej.: ana@correo.com"
           registro={register('correo')}
           error={errors.correo?.message}
         />
@@ -168,6 +171,7 @@ export function BuscadorClientes({
             type="search"
             className="entrada entrada--con-icono"
             autoComplete="off"
+            placeholder="Ej.: Ana o 966"
             aria-describedby="buscar-cliente-ayuda"
             value={texto}
             onChange={(evento) => setTexto(evento.target.value)}

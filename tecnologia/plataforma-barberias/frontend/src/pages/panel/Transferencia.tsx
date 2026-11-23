@@ -133,6 +133,7 @@ function FormularioComprobante({ pagoId, alSubir }: { pagoId: string; alSubir: (
           id="numeroOperacion"
           etiqueta="Número de operación"
           autoComplete="off"
+          placeholder="Ej.: 00123456"
           registro={register('numeroOperacion')}
           error={errors.numeroOperacion?.message}
         />

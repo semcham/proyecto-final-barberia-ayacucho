@@ -2,10 +2,9 @@
   display: inline-grid;
   place-items: center;
   flex-shrink: 0;
-  width: 2.5rem;
-  height: 2.5rem;
-  border: 1px solid var(--color-acento-borde);
-  border-radius: var(--radio);
+  width: var(--tamano-circulo-icono);
+  height: var(--tamano-circulo-icono);
+  border-radius: 50%;
   background: var(--color-acento-suave);
   color: var(--color-enlace);
 }
@@ -125,6 +124,109 @@
   margin: 0;
   font-size: var(--texto-sm);
   color: var(--color-texto-suave);
+}
+
+/* ---------- Primeros pasos ---------- */
+
+.pasos {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-4);
+}
+
+.pasosCabecera {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--espacio-4);
+}
+
+.pasosTitulo {
+  margin: 0 0 var(--espacio-1);
+  font-size: var(--texto-xl);
+}
+
+.pasosDescripcion {
+  margin: 0;
+  font-size: var(--texto-sm);
+  color: var(--color-texto-suave);
+}
+
+.listaPasos {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* En el celular: icono y textos arriba; estado y botón debajo, alineados con el texto. */
+.paso {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--espacio-2) var(--espacio-4);
+  align-items: start;
+  padding: var(--espacio-4) 0;
+  border-top: 1px solid var(--color-borde);
+}
+
+.pasoIcono {
+  display: inline-grid;
+  place-items: center;
+  width: var(--tamano-circulo-icono);
+  height: var(--tamano-circulo-icono);
+  border-radius: 50%;
+  background: var(--color-acento-suave);
+  color: var(--color-enlace);
+}
+
+/* Paso hecho: marca en verde azulado (5,2:1 sobre su fondo). */
+.paso[data-hecho] .pasoIcono {
+  background: var(--color-exito-fondo);
+  color: var(--color-exito);
+}
+
+.pasoTextos {
+  min-width: 0;
+}
+
+.pasoTitulo {
+  margin: 0 0 var(--espacio-1);
+  font-family: var(--fuente-cuerpo);
+  font-size: var(--texto-base);
+  font-weight: var(--peso-fuerte);
+  letter-spacing: 0;
+}
+
+.pasoNumero {
+  color: var(--color-texto-suave);
+  font-weight: var(--peso-medio);
+}
+
+.pasoTexto {
+  margin: 0;
+  font-size: var(--texto-sm);
+  color: var(--color-texto-suave);
+  overflow-wrap: anywhere;
+}
+
+.pasoAcciones {
+  grid-column: 2;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--espacio-3);
+}
+
+@media (min-width: 48rem) {
+  .paso {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+  }
+
+  .pasoAcciones {
+    grid-column: auto;
+    justify-content: flex-end;
+  }
 }
 
 /* ---------- Accesos rápidos ---------- */

@@ -1,8 +1,9 @@
-/* Móvil primero: cabecera compacta arriba y navegación fija abajo. Barra lateral desde 64rem. */
+/* Móvil primero: barra superior compacta y navegación fija abajo. Barra lateral desde 64rem.
+   El menú (lateral y barra inferior) es azul noche en ambos temas; la barra superior es blanca en claro. */
 
 .app {
   --alto-cabecera: 4rem;
-  --alto-nav-inferior: calc(4rem + env(safe-area-inset-bottom));
+  --alto-nav-inferior: calc(4.25rem + env(safe-area-inset-bottom));
   min-height: 100vh;
   min-height: 100dvh;
 }
@@ -28,11 +29,12 @@
   box-shadow: var(--anillo-foco);
 }
 
-/* ---------- Barra lateral (en el celular solo queda la navegación, abajo) ---------- */
+/* ---------- Menú: en el celular, solo la navegación, fija abajo ---------- */
 
 .marca,
 .barberia,
-.proximamente {
+.proximamente,
+.grupoTitulo {
   display: none;
 }
 
@@ -44,35 +46,48 @@
   bottom: 0;
   height: var(--alto-nav-inferior);
   padding-bottom: env(safe-area-inset-bottom);
-  border-top: 1px solid var(--color-borde);
-  background: var(--color-cabecera);
-  backdrop-filter: blur(12px);
+  border-top: 1px solid var(--color-menu-borde);
+  background: var(--color-menu);
+  /* El foco dentro del menú se ve sobre el azul noche. */
+  --color-foco-fuerte: var(--color-menu-activo);
 }
 
-.navegacion ul {
+/* Lista principal: en el celular las opciones de todos los grupos van seguidas y la barra se desliza. */
+.navegacion > ul {
   display: flex;
-  justify-content: center;
+  justify-content: flex-start;
   height: 100%;
   margin: 0;
-  padding: 0;
+  padding: 0 var(--espacio-1);
   list-style: none;
-  /* Con muchas secciones (funcionalidad 002) la barra inferior se desliza en lugar de apretar las etiquetas. */
   overflow-x: auto;
   scrollbar-width: none;
 }
 
-.navegacion ul::-webkit-scrollbar {
+.navegacion > ul::-webkit-scrollbar {
   display: none;
 }
 
-.navegacion li {
+/* Los grupos y sus listas no ocupan lugar propio en la barra inferior: sus opciones se acomodan en la fila. */
+.grupo,
+.grupo > ul {
+  display: contents;
+}
+
+.grupo > ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.navegacion li:not(.grupo) {
   flex: 1 0 4.75rem;
   max-width: 8rem;
 }
 
-@media (max-width: 40rem) {
-  .navegacion ul {
-    justify-content: flex-start;
+@media (min-width: 40rem) {
+  .navegacion > ul {
+    justify-content: center;
   }
 }
 
@@ -82,17 +97,22 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.15rem;
+  gap: 0.2rem;
   height: 100%;
-  color: var(--color-texto-suave);
+  padding: 0 var(--espacio-1);
+  color: var(--color-menu-texto);
   font-size: var(--texto-xs);
   font-weight: var(--peso-fuerte);
+  line-height: 1.2;
+  text-align: center;
   text-decoration: none;
-  transition: color var(--transicion);
+  transition:
+    color var(--transicion),
+    background-color var(--transicion);
 }
 
 .enlace:hover {
-  color: var(--color-texto);
+  color: var(--color-menu-texto-fuerte);
 }
 
 .enlace:focus-visible {
@@ -100,12 +120,30 @@
   border-radius: var(--radio);
 }
 
-.activo,
-.activo:hover {
-  color: var(--color-enlace);
+.enlace svg {
+  color: var(--color-menu-texto);
+  transition: color var(--transicion);
 }
 
-/* Etiqueta corta en la barra inferior del celular; la completa en la barra lateral. */
+/* Opción activa en la barra inferior: dorado (7,6:1 sobre el azul noche) y una barra arriba. */
+.activo,
+.activo:hover,
+.activo svg {
+  color: var(--color-menu-activo);
+}
+
+.activo::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 25%;
+  right: 25%;
+  height: 3px;
+  border-radius: 0 0 var(--radio-pildora) var(--radio-pildora);
+  background: var(--color-menu-activo);
+}
+
+/* Etiqueta corta en la barra inferior del celular; la completa en la barra lateral (panel de la plataforma). */
 .etiquetaLarga {
   display: none;
 }
@@ -114,18 +152,7 @@
   white-space: nowrap;
 }
 
-.activo::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 30%;
-  right: 30%;
-  height: 3px;
-  border-radius: 0 0 var(--radio-pildora) var(--radio-pildora);
-  background: var(--color-enlace);
-}
-
-/* ---------- Cabecera ---------- */
+/* ---------- Barra superior ---------- */
 
 .cabecera {
   position: sticky;
@@ -139,7 +166,7 @@
   padding: 0 var(--espacio-4);
   border-bottom: 1px solid var(--color-borde);
   background: var(--color-cabecera);
-  backdrop-filter: blur(12px);
+  box-shadow: var(--sombra-xs);
 }
 
 .cabeceraMovil {
@@ -161,6 +188,7 @@
   display: none;
   margin: 0;
   font-size: var(--texto-sm);
+  font-weight: var(--peso-medio);
   color: var(--color-texto-suave);
 }
 
@@ -197,12 +225,14 @@
   }
 }
 
-/* ---------- Escritorio ---------- */
+/* ---------- Escritorio: barra lateral azul noche ---------- */
 
 @media (min-width: 64rem) {
   .app {
     display: grid;
     grid-template-columns: var(--ancho-lateral) minmax(0, 1fr);
+    /* La columna del menú es azul noche de arriba abajo, aunque el contenido sea más alto que la ventana. */
+    background: linear-gradient(to right, var(--color-menu) var(--ancho-lateral), transparent 0);
   }
 
   .lateral {
@@ -210,14 +240,17 @@
     top: 0;
     display: flex;
     flex-direction: column;
-    gap: var(--espacio-6);
+    gap: var(--espacio-3);
     height: 100vh;
     height: 100dvh;
-    padding: var(--espacio-5) var(--espacio-4);
-    border-right: 1px solid var(--color-borde);
-    background: var(--color-superficie);
-    /* Marca y barbería arriba, "Próximamente" abajo y siempre visible: si las opciones no caben en la altura,
-       se desplaza solo la navegación. */
+    padding: var(--espacio-4) var(--espacio-4) var(--espacio-3);
+    border-right: 1px solid var(--color-menu-borde);
+    background: var(--color-menu);
+    color: var(--color-menu-texto);
+    /* El logo se dibuja con el texto claro del menú y su anillo toma el azul noche. */
+    --color-fondo-logo: var(--color-menu);
+    --color-foco-fuerte: var(--color-menu-activo);
+    /* Marca y barbería arriba: si las opciones no caben en la altura, se desplaza solo la navegación. */
     overflow: hidden;
   }
 
@@ -232,20 +265,26 @@
     padding: 0 var(--espacio-2);
   }
 
+  .marca a,
+  .marca a:hover {
+    color: var(--color-menu-texto-fuerte);
+  }
+
+  /* La barbería, en una línea bajo el logo y separada del menú por una raya: así todas las opciones caben en una
+     pantalla de 900 px de alto sin bajar de 44 px por opción. */
   .barberia {
     display: flex;
     flex-direction: column;
-    gap: var(--espacio-1);
-    padding: var(--espacio-3);
-    border: 1px solid var(--color-borde);
-    border-radius: var(--radio);
-    background: var(--color-superficie-elevada);
+    gap: 0.125rem;
+    padding: var(--espacio-2) var(--espacio-3) var(--espacio-3);
+    border-bottom: 1px solid var(--color-menu-borde);
   }
 
   .barberia strong {
     font-family: var(--fuente-titulos);
     font-size: var(--texto-base);
     line-height: var(--interlineado-ajustado);
+    color: var(--color-menu-texto-fuerte);
     overflow-wrap: anywhere;
   }
 
@@ -254,7 +293,7 @@
     font-weight: var(--peso-fuerte);
     letter-spacing: var(--tracking-mayusculas);
     text-transform: uppercase;
-    color: var(--color-texto-tenue);
+    color: var(--color-menu-grupo);
   }
 
   .navegacion {
@@ -262,23 +301,51 @@
     flex: 0 1 auto;
     min-height: 0;
     height: auto;
-    padding: 0;
+    padding: 0 0 var(--espacio-2);
     border: none;
     background: none;
-    backdrop-filter: none;
     overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-menu-hover) transparent;
   }
 
-  .navegacion ul {
+  .navegacion > ul {
     flex-direction: column;
     gap: var(--espacio-1);
     height: auto;
+    padding: 0;
     overflow: visible;
   }
 
-  /* En el celular cada opción ocupa al menos 4,75rem de ancho (flex: 1 0 4.75rem); en la columna lateral ese
-     valor se volvería altura. Aquí cada opción mide lo que su enlace. */
-  .navegacion li {
+  /* Con grupos (panel de la barbería), más aire entre un grupo y otro. */
+  .navegacion > ul:has(> .grupo) {
+    gap: var(--espacio-3);
+  }
+
+  /* Cada grupo con su título; las opciones en columna. */
+  .grupo {
+    display: block;
+  }
+
+  .grupo > ul {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+  }
+
+  .grupoTitulo {
+    display: block;
+    margin: 0 0 var(--espacio-1);
+    padding: 0 var(--espacio-3);
+    font-size: var(--texto-xs);
+    font-weight: var(--peso-fuerte);
+    letter-spacing: var(--tracking-mayusculas);
+    text-transform: uppercase;
+    color: var(--color-menu-grupo);
+  }
+
+  /* En el celular cada opción ocupa al menos 4,75rem de ancho; en la columna lateral mide lo que su enlace. */
+  .navegacion li:not(.grupo) {
     flex: none;
     max-width: none;
   }
@@ -290,16 +357,40 @@
     min-height: var(--alto-control-sm);
     padding: 0 var(--espacio-3);
     border-radius: var(--radio);
-    font-size: var(--texto-sm);
+    font-size: 0.9375rem;
+    font-weight: var(--peso-medio);
+    text-align: left;
   }
 
   .enlace:hover {
-    background: var(--color-superficie-hundida);
+    background: var(--color-menu-hover);
   }
 
+  .enlace:hover svg {
+    color: var(--color-menu-texto-fuerte);
+  }
+
+  /* Opción activa: relleno dorado, texto azul noche en negrita (7,6:1) e icono del mismo azul. */
   .activo,
   .activo:hover {
-    background: var(--color-acento-suave);
+    background: var(--color-menu-activo);
+    color: var(--color-menu-activo-texto);
+    font-weight: var(--peso-negrita);
+    box-shadow: var(--sombra-sm);
+  }
+
+  .activo svg,
+  .activo:hover svg {
+    color: var(--color-menu-activo-texto);
+  }
+
+  /* Sobre el relleno dorado, el foco usa el azul noche. */
+  .activo:focus-visible {
+    outline-color: var(--color-menu-activo-texto);
+  }
+
+  .activo::before {
+    content: none;
   }
 
   .etiquetaLarga {
@@ -310,21 +401,11 @@
     display: none;
   }
 
-  .activo::before {
-    top: 25%;
-    bottom: 25%;
-    left: 0;
-    right: auto;
-    width: 3px;
-    height: auto;
-    border-radius: 0 var(--radio-pildora) var(--radio-pildora) 0;
-  }
-
   .proximamente {
     display: block;
     margin-top: auto;
     padding: var(--espacio-3);
-    border: 1px dashed var(--color-borde-fuerte);
+    border: 1px dashed var(--color-menu-borde);
     border-radius: var(--radio);
   }
 
@@ -334,7 +415,7 @@
     font-weight: var(--peso-fuerte);
     letter-spacing: var(--tracking-mayusculas);
     text-transform: uppercase;
-    color: var(--color-texto-tenue);
+    color: var(--color-menu-grupo);
   }
 
   .proximamente ul {
@@ -351,7 +432,7 @@
     align-items: center;
     gap: var(--espacio-3);
     font-size: var(--texto-sm);
-    color: var(--color-texto-tenue);
+    color: var(--color-menu-texto);
   }
 
   .cabeceraMovil {

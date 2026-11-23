@@ -7,11 +7,11 @@
 }
 
 .vidrio {
-  fill: #f4eee6;
+  fill: var(--color-ilustracion-claro);
 }
 
 .rayaRoja {
-  fill: #9e3a2c;
+  fill: var(--color-ilustracion-rojo);
 }
 
 .rayaCobre {
@@ -68,17 +68,17 @@
 }
 
 .mangoNavaja {
-  fill: #3b2a1e;
+  fill: var(--color-ilustracion-madera);
   stroke: var(--color-acento);
   stroke-width: 2;
 }
 
 .vetaNavaja {
-  fill: #5a4030;
+  fill: var(--color-ilustracion-madera-clara);
 }
 
 .lomo {
-  fill: #7d776f;
+  fill: var(--color-ilustracion-metal);
 }
 
 .destello {

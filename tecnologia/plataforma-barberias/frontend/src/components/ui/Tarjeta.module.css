@@ -21,14 +21,14 @@
   gap: var(--espacio-3) var(--espacio-4);
 }
 
+/* Icono del encabezado dentro de un círculo dorado suave (5,0:1 el icono sobre su fondo). */
 .icono {
   display: inline-grid;
   place-items: center;
   flex-shrink: 0;
   width: var(--ancho-icono-tarjeta);
   height: var(--ancho-icono-tarjeta);
-  border: 1px solid var(--color-acento-borde);
-  border-radius: var(--radio);
+  border-radius: 50%;
   background: var(--color-acento-suave);
   color: var(--color-enlace);
 }

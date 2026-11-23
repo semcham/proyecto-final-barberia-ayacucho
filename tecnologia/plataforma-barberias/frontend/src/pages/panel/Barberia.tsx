@@ -9,6 +9,7 @@ import type { components } from '../../api/schema-002';
 import { EditorSemana, type Tramo, validarSemana } from '../../components/app/EditorSemana';
 import { EncabezadoPagina } from '../../components/app/EncabezadoPagina';
 import { type CitaAfectada, citasEnConflicto, ModalConflictos } from '../../components/app/ModalConflictos';
+import { Icono } from '../../components/Icono';
 import { Alerta, Boton, Campo, Tarjeta, useAvisos } from '../../components/ui';
 import { Cargando } from './Cargando';
 import { type BarberiaConfig, mensajeDeError, useBarberia } from './datos-barberia';
@@ -160,26 +161,47 @@ function FormularioDatos({ config }: { config: BarberiaConfig }) {
 
   return (
     <form className={estilos.formulario} onSubmit={handleSubmit(enviar)} noValidate>
-      <p className={estilos.enlace}>
-        <span>Tu enlace para reservar:</span>
-        <code>{enlace}</code>
-        <Boton type="button" variante="secundario" tamano="sm" icono="copiar" onClick={copiar}>
-          Copiar enlace
-        </Boton>
-      </p>
-      <div className={estilos.fila}>
+      <fieldset className={estilos.grupo}>
+        <legend className={estilos.grupoTitulo}>
+          <Icono nombre="tienda" />
+          Datos de la barbería
+        </legend>
         <Campo
           id="nombre"
           etiqueta="Nombre comercial"
           icono="tienda"
+          placeholder="Ej.: Barbería Huamanga"
           registro={register('nombre')}
           error={errors.nombre?.message}
         />
+        <Campo
+          id="descripcion"
+          etiqueta="Descripción"
+          placeholder="Ej.: Cortes clásicos y modernos, arreglo de barba y afeitado."
+          registro={register('descripcion')}
+          error={errors.descripcion?.message}
+          ayuda="Se muestra en tu página de reservas. Hasta 500 caracteres."
+        />
+      </fieldset>
+
+      <fieldset className={estilos.grupo}>
+        <legend className={estilos.grupoTitulo}>
+          <Icono nombre="enlace" />
+          Enlace para reservar
+        </legend>
+        <p className={estilos.enlace}>
+          <span>Tu enlace para reservar:</span>
+          <code>{enlace}</code>
+          <Boton type="button" variante="secundario" tamano="sm" icono="copiar" onClick={copiar}>
+            Copiar enlace
+          </Boton>
+        </p>
         <Campo
           id="slug"
           etiqueta="Enlace"
           icono="enlace"
           autoComplete="off"
+          placeholder="Ej.: barberia-huamanga"
           registro={register('slug')}
           error={errors.slug?.message}
           ayuda={
@@ -188,39 +210,51 @@ function FormularioDatos({ config }: { config: BarberiaConfig }) {
               : 'Entre 3 y 60 caracteres: minúsculas, números y guiones.'
           }
         />
-      </div>
-      <div className={estilos.fila}>
+      </fieldset>
+
+      <fieldset className={estilos.grupo}>
+        <legend className={estilos.grupoTitulo}>
+          <Icono nombre="celular" />
+          Datos de contacto
+        </legend>
+        <div className={estilos.fila}>
+          <Campo
+            id="direccion"
+            etiqueta="Dirección"
+            placeholder="Ej.: Jr. Asamblea 123, Ayacucho"
+            registro={register('direccion')}
+            error={errors.direccion?.message}
+          />
+          <Campo
+            id="telefono"
+            etiqueta="Teléfono"
+            icono="celular"
+            type="tel"
+            inputMode="tel"
+            placeholder="Ej.: 966 123 456"
+            registro={register('telefono')}
+            error={errors.telefono?.message}
+          />
+        </div>
+      </fieldset>
+
+      <fieldset className={estilos.grupo}>
+        <legend className={estilos.grupoTitulo}>
+          <Icono nombre="reloj" />
+          Reglas de cancelación
+        </legend>
         <Campo
-          id="direccion"
-          etiqueta="Dirección"
-          registro={register('direccion')}
-          error={errors.direccion?.message}
+          id="antelacion"
+          etiqueta="Antelación mínima para cancelar (minutos)"
+          type="number"
+          inputMode="numeric"
+          placeholder="Ej.: 120"
+          registro={register('antelacion')}
+          error={errors.antelacion?.message}
+          ayuda="Si un cliente cancela con menos tiempo, la cita queda marcada como cancelación tardía."
         />
-        <Campo
-          id="telefono"
-          etiqueta="Teléfono"
-          icono="celular"
-          type="tel"
-          inputMode="tel"
-          registro={register('telefono')}
-          error={errors.telefono?.message}
-        />
-      </div>
-      <Campo
-        id="descripcion"
-        etiqueta="Descripción"
-        registro={register('descripcion')}
-        error={errors.descripcion?.message}
-      />
-      <Campo
-        id="antelacion"
-        etiqueta="Antelación mínima para cancelar (minutos)"
-        type="number"
-        inputMode="numeric"
-        registro={register('antelacion')}
-        error={errors.antelacion?.message}
-        ayuda="Si un cliente cancela con menos tiempo, la cita queda marcada como cancelación tardía."
-      />
+      </fieldset>
+
       {errorGeneral && <Alerta>{mensajeDeError(guardar.error)}</Alerta>}
       <div className={estilos.acciones}>
         <Boton type="submit" cargando={guardar.isPending} textoCargando="Guardando…">

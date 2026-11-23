@@ -146,6 +146,7 @@ export default function Servicios() {
             <Campo
               id="nombre-servicio"
               etiqueta="Nombre"
+              placeholder="Ej.: Corte clásico"
               registro={register('nombre')}
               error={errors.nombre?.message}
             />
@@ -155,7 +156,7 @@ export default function Servicios() {
                 etiqueta="Precio (S/)"
                 icono="dinero"
                 inputMode="decimal"
-                placeholder="25.00"
+                placeholder="Ej.: 25.00"
                 ayuda="En soles, con punto decimal."
                 registro={register('precio')}
                 error={errors.precio?.message}
@@ -166,6 +167,7 @@ export default function Servicios() {
                 icono="reloj"
                 type="number"
                 inputMode="numeric"
+                placeholder="Ej.: 30"
                 ayuda="De 5 en 5 minutos."
                 registro={register('duracion')}
                 error={errors.duracion?.message}
@@ -174,6 +176,7 @@ export default function Servicios() {
             <Campo
               id="descripcion-servicio"
               etiqueta="Descripción (opcional)"
+              placeholder="Ej.: Con tijera y máquina, incluye lavado."
               registro={register('descripcion')}
               error={errors.descripcion?.message}
             />

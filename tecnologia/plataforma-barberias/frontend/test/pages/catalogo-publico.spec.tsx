@@ -10,6 +10,8 @@ import { indicadorSesion } from '../../src/auth/indicadorSesion';
 import { SesionProvider } from '../../src/auth/SesionProvider';
 import { fechaIsoDeBarberia } from '../../src/hora-barberia';
 import CatalogoPublico from '../../src/pages/publico/CatalogoPublico';
+import IngresarBarberia from '../../src/pages/publico/IngresarBarberia';
+import { ultimaBarberia } from '../../src/ultima-barberia';
 import { servidor } from '../setup';
 
 // T067 · Catálogo público por enlace (/b/:slug, RF10 y RF11): sin sesión, una solicitud para el catálogo y
@@ -121,7 +123,10 @@ function simularApi() {
 const elegirFecha = (fecha: string) =>
   fireEvent.change(screen.getByLabelText(/fecha/i), { target: { value: fecha } });
 
-afterEach(() => tokenEnMemoria.limpiar());
+afterEach(() => {
+  tokenEnMemoria.limpiar();
+  ultimaBarberia.olvidar();
+});
 
 describe('Catálogo público (/b/:slug)', () => {
   it('muestra la barbería, sus servicios con precio y duración y sus barberos', async () => {
@@ -249,5 +254,167 @@ describe('Catálogo público (/b/:slug)', () => {
     expect(screen.getByTestId('ruta').textContent).toBe(
       `/b/${SLUG}/reservar?servicio=${CORTE}&barbero=${CARLOS}&inicio=${inicio}`,
     );
+  });
+});
+
+// Acceso del cliente en el encabezado de /b/:slug: sin sesión, "Ingresar" y "Crear cuenta" desde el inicio;
+// con sesión de cliente de esta barbería, "Mis citas", "Preguntar al asistente" y "Cerrar sesión".
+
+/** Respuesta de sesión (renovación o ingreso) de una persona con ese rol en la barbería del `slug`. */
+const sesionDe = (rol: 'CLIENTE' | 'PROPIETARIO' | 'BARBERO', slug = SLUG) => ({
+  tokenAcceso: `token-${rol.toLowerCase()}`,
+  tipo: 'Bearer',
+  expiraEn: 900,
+  usuario: {
+    id: '0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5c',
+    nombre: 'Luis Huamán',
+    correo: 'luis@prueba.pe',
+    rol,
+    barberia: { id: '0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b', nombre: 'Barbería Huamanga', slug },
+  },
+});
+
+const conSesion = (rol: 'CLIENTE' | 'PROPIETARIO' | 'BARBERO', slug = SLUG) =>
+  servidor.use(http.post('/api/v1/auth/refresh', () => HttpResponse.json(sesionDe(rol, slug))));
+
+const encabezado = () => screen.getByRole('navigation', { name: 'Tu cuenta' });
+
+describe('Catálogo público · acceso del cliente en el encabezado', () => {
+  it('sin sesión muestra "Ingresar" y "Crear cuenta" de esta barbería, sin elegir hora', async () => {
+    indicadorSesion.quitar();
+    simularApi();
+    renderizar();
+    await screen.findByRole('heading', { level: 1, name: 'Barbería Huamanga' });
+    const cuenta = encabezado();
+    expect(within(cuenta).getByRole('link', { name: 'Ingresar' })).toHaveAttribute(
+      'href',
+      `/b/${SLUG}/ingresar`,
+    );
+    expect(within(cuenta).getByRole('link', { name: 'Crear cuenta' })).toHaveAttribute(
+      'href',
+      `/b/${SLUG}/registro`,
+    );
+    expect(within(cuenta).queryByRole('link', { name: /mis citas/i })).not.toBeInTheDocument();
+    expect(within(cuenta).queryByRole('button', { name: /cerrar sesión/i })).not.toBeInTheDocument();
+    // Sin hora elegida, aún no hay tarjeta de reserva: el acceso no depende de ella.
+    expect(screen.queryByRole('region', { name: /tu selección/i })).not.toBeInTheDocument();
+  });
+
+  it('"Ingresar" del encabezado vuelve a esta misma página (con lo ya elegido en la dirección)', async () => {
+    indicadorSesion.quitar();
+    simularApi();
+    renderizar(`/b/${SLUG}?servicio=${CORTE}`);
+    await screen.findByRole('heading', { level: 1, name: 'Barbería Huamanga' });
+    await userEvent.setup().click(within(encabezado()).getByRole('link', { name: 'Ingresar' }));
+    expect(await screen.findByRole('heading', { name: /ingreso de cliente/i })).toBeInTheDocument();
+    expect(screen.getByTestId('desde').textContent).toBe(`/b/${SLUG}?servicio=${CORTE}`);
+  });
+
+  it('tras ingresar sin haber elegido hora, el cliente queda en /b/:slug con su acceso en el encabezado', async () => {
+    indicadorSesion.quitar();
+    simularApi();
+    let cuerpoIngreso: unknown;
+    servidor.use(
+      http.post('/api/v1/auth/login', async ({ request }) => {
+        cuerpoIngreso = await request.json();
+        return HttpResponse.json(sesionDe('CLIENTE'));
+      }),
+    );
+    render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <MemoryRouter initialEntries={[`/b/${SLUG}`]}>
+          <SesionProvider>
+            <Routes>
+              <Route path="/b/:slug" element={<CatalogoPublico />} />
+              <Route path="/b/:slug/ingresar" element={<IngresarBarberia />} />
+            </Routes>
+            <RutaActual />
+          </SesionProvider>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    const usuario = userEvent.setup();
+    await screen.findByRole('heading', { level: 1, name: 'Barbería Huamanga' });
+    await usuario.click(within(encabezado()).getByRole('link', { name: 'Ingresar' }));
+    await usuario.type(await screen.findByLabelText(/correo/i), 'luis@prueba.pe');
+    await usuario.type(screen.getByLabelText(/contraseña/i), 'una-clave-segura');
+    await usuario.click(screen.getByRole('button', { name: /^ingresar$/i }));
+
+    // Vuelve al catálogo de la misma barbería, con el flujo de elegir hora intacto.
+    expect(await screen.findByRole('link', { name: /mis citas/i })).toHaveAttribute('href', '/mis-citas');
+    expect(screen.getByTestId('ruta').textContent).toBe(`/b/${SLUG}`);
+    expect(cuerpoIngreso).toMatchObject({ correo: 'luis@prueba.pe', barberia: SLUG });
+    expect(screen.getByRole('radiogroup', { name: /servicio/i })).toBeInTheDocument();
+  });
+
+  it('con sesión de cliente de esta barbería muestra "Mis citas", "Preguntar al asistente" y "Cerrar sesión"', async () => {
+    conSesion('CLIENTE');
+    simularApi();
+    renderizar();
+    const misCitas = await screen.findByRole('link', { name: /mis citas/i });
+    const cuenta = encabezado();
+    expect(cuenta).toContainElement(misCitas);
+    expect(misCitas).toHaveAttribute('href', '/mis-citas');
+    expect(within(cuenta).getByRole('link', { name: 'Preguntar al asistente' })).toHaveAttribute(
+      'href',
+      '/asistente',
+    );
+    expect(within(cuenta).getByRole('button', { name: /cerrar sesión/i })).toBeInTheDocument();
+    expect(within(cuenta).queryByRole('link', { name: 'Ingresar' })).not.toBeInTheDocument();
+    expect(within(cuenta).queryByRole('link', { name: 'Crear cuenta' })).not.toBeInTheDocument();
+  });
+
+  it('"Cerrar sesión" cierra la sesión en el servidor, vuelve a "Ingresar" y deja el foco en él', async () => {
+    conSesion('CLIENTE');
+    simularApi();
+    let salidas = 0;
+    servidor.use(
+      http.post('/api/v1/auth/logout', () => {
+        salidas++;
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+    renderizar();
+    const usuario = userEvent.setup();
+    await usuario.click(await screen.findByRole('button', { name: /cerrar sesión/i }));
+
+    const ingresar = await within(encabezado()).findByRole('link', { name: 'Ingresar' });
+    expect(salidas).toBe(1);
+    expect(ingresar).toHaveFocus();
+    expect(screen.queryByRole('link', { name: /mis citas/i })).not.toBeInTheDocument();
+    // Sigue en la misma página.
+    expect(screen.getByTestId('ruta').textContent).toBe(`/b/${SLUG}`);
+  });
+
+  it('un cliente con sesión en otra barbería solo ve "Cerrar sesión" (no sus citas ni su asistente de la otra)', async () => {
+    conSesion('CLIENTE', 'otra-barberia');
+    simularApi();
+    renderizar();
+    const salir = await screen.findByRole('button', { name: /cerrar sesión/i });
+    const cuenta = encabezado();
+    expect(cuenta).toContainElement(salir);
+    expect(within(cuenta).queryByRole('link', { name: /mis citas/i })).not.toBeInTheDocument();
+    expect(within(cuenta).queryByRole('link', { name: 'Preguntar al asistente' })).not.toBeInTheDocument();
+    expect(within(cuenta).queryByRole('link', { name: 'Ingresar' })).not.toBeInTheDocument();
+  });
+
+  it.each(['PROPIETARIO', 'BARBERO'] as const)(
+    'con sesión de %s (personal) se muestra el acceso del cliente: "Ingresar" y "Crear cuenta"',
+    async (rol) => {
+      conSesion(rol);
+      simularApi();
+      renderizar();
+      const ingresar = await screen.findByRole('link', { name: 'Ingresar' });
+      expect(encabezado()).toContainElement(ingresar);
+      expect(screen.queryByRole('link', { name: /mis citas/i })).not.toBeInTheDocument();
+    },
+  );
+
+  it('recuerda esta barbería (solo enlace y nombre) para ofrecer "Ingresar" desde /mis-citas', async () => {
+    indicadorSesion.quitar();
+    simularApi();
+    renderizar();
+    await screen.findByRole('heading', { level: 1, name: 'Barbería Huamanga' });
+    expect(ultimaBarberia.leer()).toEqual({ slug: SLUG, nombre: 'Barbería Huamanga' });
   });
 });

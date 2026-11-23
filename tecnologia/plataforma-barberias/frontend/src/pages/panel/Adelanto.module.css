@@ -61,7 +61,7 @@
   padding: var(--espacio-2);
   border: 1px solid var(--color-borde);
   border-radius: var(--radio);
-  background: #fff;
+  background: var(--color-fondo-qr);
 }
 
 .qr figcaption {

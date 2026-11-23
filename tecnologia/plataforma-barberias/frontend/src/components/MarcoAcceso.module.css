@@ -77,11 +77,13 @@
     height: 100vh;
     height: 100dvh;
     padding: var(--espacio-10) var(--espacio-12);
-    border-right: 1px solid var(--color-borde);
-    /* El panel es siempre oscuro (escaparate), en ambos temas: los tokens se resuelven en su versión oscura. */
+    border-right: 1px solid var(--color-menu-borde);
+    /* El panel de marca es azul noche en ambos temas: los tokens se resuelven en su versión oscura y el fondo es
+       el del menú (un tono más oscuro que el lado del formulario en el tema oscuro, para que se distingan). */
     color-scheme: dark;
-    background: var(--color-fondo);
+    background: var(--color-menu);
     color: var(--color-texto);
+    --color-fondo-logo: var(--color-menu);
     overflow: hidden;
   }
 
@@ -90,10 +92,11 @@
     position: relative;
   }
 
+  /* Arriba deja lugar al selector de tema (fijo en la esquina) para que no tape una tarjeta alta (registro). */
   .principal {
     position: relative;
     justify-content: center;
-    padding: var(--espacio-12) var(--espacio-8);
+    padding: var(--espacio-20) var(--espacio-8) var(--espacio-12);
   }
 
   .logoMovil {
@@ -163,10 +166,10 @@
 .iconoPunto {
   display: inline-grid;
   place-items: center;
-  width: 2.5rem;
-  height: 2.5rem;
-  border: 1px solid var(--color-acento-borde);
-  border-radius: var(--radio);
+  flex-shrink: 0;
+  width: var(--tamano-circulo-icono);
+  height: var(--tamano-circulo-icono);
+  border-radius: 50%;
   background: var(--color-acento-suave);
   color: var(--color-enlace);
 }

@@ -16,27 +16,64 @@ interface Destino {
   roles?: RolSesion[];
 }
 
-const DESTINOS: Destino[] = [
-  { a: '/app', etiqueta: 'Inicio', icono: 'inicio' },
-  // Funcionalidad 002 (T038).
-  { a: '/app/agenda', etiqueta: 'Agenda', icono: 'calendario', roles: ['PROPIETARIO', 'BARBERO'] },
-  // Funcionalidad 008 (T045): los pagos de adelanto que el propietario debe confirmar o rechazar.
-  { a: '/app/adelantos', etiqueta: 'Adelantos por revisar', icono: 'documento', roles: ['PROPIETARIO'] },
-  { a: '/app/disponibilidad', etiqueta: 'Disponibilidad', icono: 'reloj', roles: ['PROPIETARIO', 'BARBERO'] },
-  { a: '/app/servicios', etiqueta: 'Servicios', icono: 'tijeras', roles: ['PROPIETARIO'] },
-  { a: '/app/barberos', etiqueta: 'Barberos', icono: 'usuario', roles: ['PROPIETARIO'] },
-  { a: '/app/clientes', etiqueta: 'Clientes', icono: 'celular', roles: ['PROPIETARIO'] },
-  { a: '/app/barberia', etiqueta: 'Barbería', icono: 'tienda', roles: ['PROPIETARIO'] },
-  // Funcionalidad 008 (T018): configuración del adelanto de reserva con el QR de la barbería.
-  { a: '/app/adelanto', etiqueta: 'Adelanto', icono: 'calendarioCheck', roles: ['PROPIETARIO'] },
-  { a: '/app/usuarios', etiqueta: 'Usuarios', icono: 'usuarios', roles: ['PROPIETARIO'] },
-  // Funcionalidad 003 (T051).
-  { a: '/app/suscripcion', etiqueta: 'Suscripción', icono: 'dinero', roles: ['PROPIETARIO'] },
-  // Funcionalidad 005 (T023): reportes del período, solo para el propietario.
-  { a: '/app/reportes', etiqueta: 'Reportes', icono: 'grafico', roles: ['PROPIETARIO'] },
-  // Funcionalidad 007 (T015): solicitudes sobre datos personales. El barbero, las suyas; el propietario, la bandeja.
-  { a: '/app/solicitudes-datos', etiqueta: 'Solicitudes de datos', icono: 'escudo', roles: ['PROPIETARIO'] },
-  { a: '/app/mis-datos', etiqueta: 'Mis datos', icono: 'escudo', roles: ['BARBERO'] },
+/**
+ * Opciones del menú agrupadas (rediseño de 2026-11). Solo cambia el orden visual y el agrupamiento: las rutas, las
+ * etiquetas y los roles que ven cada opción son los mismos de antes. Un grupo sin opciones para el rol no se muestra.
+ */
+const GRUPOS: { id: string; titulo: string; destinos: Destino[] }[] = [
+  {
+    id: 'grupo-dia-a-dia',
+    titulo: 'Día a día',
+    destinos: [
+      { a: '/app', etiqueta: 'Inicio', icono: 'inicio' },
+      // Funcionalidad 002 (T038).
+      { a: '/app/agenda', etiqueta: 'Agenda', icono: 'calendario', roles: ['PROPIETARIO', 'BARBERO'] },
+      // Funcionalidad 008 (T045): los pagos de adelanto que el propietario debe confirmar o rechazar.
+      {
+        a: '/app/adelantos',
+        etiqueta: 'Adelantos por revisar',
+        icono: 'documento',
+        roles: ['PROPIETARIO'],
+      },
+      {
+        a: '/app/disponibilidad',
+        etiqueta: 'Disponibilidad',
+        icono: 'reloj',
+        roles: ['PROPIETARIO', 'BARBERO'],
+      },
+    ],
+  },
+  {
+    id: 'grupo-mi-negocio',
+    titulo: 'Mi negocio',
+    destinos: [
+      { a: '/app/servicios', etiqueta: 'Servicios', icono: 'tijeras', roles: ['PROPIETARIO'] },
+      { a: '/app/barberos', etiqueta: 'Barberos', icono: 'usuario', roles: ['PROPIETARIO'] },
+      { a: '/app/clientes', etiqueta: 'Clientes', icono: 'celular', roles: ['PROPIETARIO'] },
+      { a: '/app/barberia', etiqueta: 'Barbería', icono: 'tienda', roles: ['PROPIETARIO'] },
+      // Funcionalidad 008 (T018): configuración del adelanto de reserva con el QR de la barbería.
+      { a: '/app/adelanto', etiqueta: 'Adelanto', icono: 'calendarioCheck', roles: ['PROPIETARIO'] },
+      // Funcionalidad 005 (T023): reportes del período, solo para el propietario.
+      { a: '/app/reportes', etiqueta: 'Reportes', icono: 'grafico', roles: ['PROPIETARIO'] },
+    ],
+  },
+  {
+    id: 'grupo-cuenta',
+    titulo: 'Cuenta',
+    destinos: [
+      { a: '/app/usuarios', etiqueta: 'Usuarios', icono: 'usuarios', roles: ['PROPIETARIO'] },
+      // Funcionalidad 003 (T051).
+      { a: '/app/suscripcion', etiqueta: 'Suscripción', icono: 'dinero', roles: ['PROPIETARIO'] },
+      // Funcionalidad 007 (T015): solicitudes sobre datos personales. El barbero, las suyas; el propietario, la bandeja.
+      {
+        a: '/app/solicitudes-datos',
+        etiqueta: 'Solicitudes de datos',
+        icono: 'escudo',
+        roles: ['PROPIETARIO'],
+      },
+      { a: '/app/mis-datos', etiqueta: 'Mis datos', icono: 'escudo', roles: ['BARBERO'] },
+    ],
+  },
 ];
 
 // Secciones anunciadas que aún no existen; el bloque "Próximamente" solo se muestra si hay alguna.
@@ -56,7 +93,10 @@ function fechaDeHoy(): string {
  */
 export function DisenoApp() {
   const { usuario } = useSesion();
-  const destinos = DESTINOS.filter((d) => !d.roles || (usuario !== null && d.roles.includes(usuario.rol)));
+  const grupos = GRUPOS.map((grupo) => ({
+    ...grupo,
+    destinos: grupo.destinos.filter((d) => !d.roles || (usuario !== null && d.roles.includes(usuario.rol))),
+  })).filter((grupo) => grupo.destinos.length > 0);
   const barberia = usuario?.barberia.nombre;
 
   return (
@@ -76,21 +116,33 @@ export function DisenoApp() {
         </div>
 
         <nav aria-label="Principal" className={estilos.navegacion}>
+          {/* Cada grupo es una lista con su título (en el celular, la barra inferior los muestra seguidos). */}
           <ul>
-            {destinos.map((destino) => (
-              <li key={destino.a}>
-                <NavLink
-                  to={destino.a}
-                  end={destino.a === '/app'}
-                  className={({ isActive }) =>
-                    isActive ? `${estilos.enlace} ${estilos.activo}` : estilos.enlace
-                  }
-                >
-                  <Icono nombre={destino.icono} />
-                  <span>{destino.etiqueta}</span>
-                </NavLink>
-              </li>
-            ))}
+            {grupos.map((grupo) => {
+              return (
+                <li key={grupo.titulo} className={estilos.grupo}>
+                  <span id={grupo.id} className={estilos.grupoTitulo}>
+                    {grupo.titulo}
+                  </span>
+                  <ul aria-labelledby={grupo.id}>
+                    {grupo.destinos.map((destino) => (
+                      <li key={destino.a}>
+                        <NavLink
+                          to={destino.a}
+                          end={destino.a === '/app'}
+                          className={({ isActive }) =>
+                            isActive ? `${estilos.enlace} ${estilos.activo}` : estilos.enlace
+                          }
+                        >
+                          <Icono nombre={destino.icono} />
+                          <span>{destino.etiqueta}</span>
+                        </NavLink>
+                      </li>
+                    ))}
+                  </ul>
+                </li>
+              );
+            })}
           </ul>
         </nav>
 
