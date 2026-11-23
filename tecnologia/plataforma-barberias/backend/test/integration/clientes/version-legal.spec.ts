@@ -19,7 +19,8 @@ describe('Versión aceptada de los textos legales', () => {
   let a: BarberiaSembrada;
   let b: BarberiaSembrada;
 
-  const filas = async (sql: string, parametros: unknown[]) => (await poolDe('seed').query(sql, parametros)).rows;
+  const filas = async (sql: string, parametros: unknown[]) =>
+    (await poolDe('seed').query(sql, parametros)).rows;
   const cuentaDe = (correo: string) => filas('SELECT id FROM user_account WHERE email = $1', [correo]);
 
   beforeAll(async () => {
@@ -114,9 +115,15 @@ describe('Versión aceptada de los textos legales', () => {
 
     it('con otra versión: 400 y no crea la membresía ni el consentimiento en la otra barbería', async () => {
       const cliente = await sembrarCliente({ tenantId: a.tenantId });
-      await unirse({ correo: cliente.correo as string, contrasena: cliente.contrasena as string }, OTRA).expect(400);
+      await unirse(
+        { correo: cliente.correo as string, contrasena: cliente.contrasena as string },
+        OTRA,
+      ).expect(400);
       expect(
-        await filas('SELECT 1 FROM membership WHERE tenant_id = $1 AND user_id = $2', [b.tenantId, cliente.usuarioId]),
+        await filas('SELECT 1 FROM membership WHERE tenant_id = $1 AND user_id = $2', [
+          b.tenantId,
+          cliente.usuarioId,
+        ]),
       ).toEqual([]);
     });
 
