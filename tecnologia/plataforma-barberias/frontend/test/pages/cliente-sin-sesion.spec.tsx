@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
@@ -9,6 +9,7 @@ import { indicadorSesion } from '../../src/auth/indicadorSesion';
 import { RutaProtegida } from '../../src/auth/RutaProtegida';
 import { SesionProvider } from '../../src/auth/SesionProvider';
 import ClienteSinSesion from '../../src/pages/cliente/ClienteSinSesion';
+import { RutasApp } from '../../src/routes';
 import { ultimaBarberia } from '../../src/ultima-barberia';
 import { servidor } from '../setup';
 
@@ -18,6 +19,18 @@ import { servidor } from '../setup';
 
 const SLUG = 'barberia-huamanga';
 const CLAVE = 'barberias.ultimaBarberia';
+const SESION_CLIENTE = {
+  tokenAcceso: 'token-cliente',
+  tipo: 'Bearer',
+  expiraEn: 900,
+  usuario: {
+    id: '0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5c',
+    nombre: 'Luis Huamán',
+    correo: 'luis@prueba.pe',
+    rol: 'CLIENTE',
+    barberia: { id: '0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b', nombre: 'Barbería Huamanga', slug: SLUG },
+  },
+};
 
 function IngresoSimulado() {
   const estado = useLocation().state as { desde?: string } | null;
@@ -45,7 +58,7 @@ function renderizar(ruta = '/mis-citas') {
               element={
                 <RutaProtegida
                   roles={['CLIENTE']}
-                  sinSesion={(desde) => <ClienteSinSesion titulo="Mis citas" desde={desde} />}
+                  sinSesion={(desde) => <ClienteSinSesion pantalla="mis-citas" desde={desde} />}
                 >
                   <h1>Historial del cliente</h1>
                 </RutaProtegida>
@@ -142,6 +155,79 @@ describe('/mis-citas sin sesión', () => {
     expect(await screen.findByRole('heading', { name: 'Historial del cliente' })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Ingresar' })).not.toBeInTheDocument();
   });
+});
+
+// T019 de 010 (US4; FR-028, FR-029): las demás pantallas del cliente se comportan como /mis-citas. Con las rutas reales
+// de la aplicación (RutasApp), para fijar también que cada ruta usa `sinSesion`.
+const CITA_ID = '0190a1b2-c3d4-7e5f-8a9b-000000000099';
+const PANTALLAS: { ruta: string; titulo: string; ultimoPaso: RegExp }[] = [
+  { ruta: '/asistente', titulo: 'Asistente', ultimoPaso: /«preguntar al asistente»/i },
+  { ruta: '/mis-avisos', titulo: 'Cómo recibo mis avisos', ultimoPaso: /«cómo recibo mis avisos»/i },
+  { ruta: '/mis-datos', titulo: 'Mis datos', ultimoPaso: /«mis datos»/i },
+  { ruta: `/mis-citas/${CITA_ID}/adelanto`, titulo: 'Pagar adelanto', ultimoPaso: /«pagar adelanto»/i },
+];
+
+function renderizarApp(ruta: string) {
+  render(
+    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+      <MemoryRouter initialEntries={[ruta]}>
+        <SesionProvider>
+          <RutasApp />
+          <RutaActual />
+        </SesionProvider>
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+}
+
+describe('Las demás pantallas del cliente sin sesión (010, US4)', () => {
+  it.each(PANTALLAS)(
+    '$ruta sin barbería recordada explica cómo llegar, sin llevar a /ingresar',
+    async ({ ruta, titulo, ultimoPaso }) => {
+      indicadorSesion.quitar();
+      renderizarApp(ruta);
+      expect(await screen.findByRole('heading', { level: 1, name: titulo })).toBeInTheDocument();
+      expect(screen.getByText(/abre el enlace de tu barbería/i)).toBeInTheDocument();
+      expect(screen.getByText(ultimoPaso)).toBeInTheDocument();
+      expect(screen.queryByRole('link', { name: 'Ingresar' })).not.toBeInTheDocument();
+      expect(screen.getByTestId('ruta').textContent).toBe(ruta);
+    },
+  );
+
+  it.each(PANTALLAS)(
+    '$ruta con barbería recordada ofrece "Ingresar" en ella y, tras ingresar, vuelve a $ruta',
+    async ({ ruta, titulo }) => {
+      indicadorSesion.quitar();
+      ultimaBarberia.guardar({ slug: SLUG, nombre: 'Barbería Huamanga' });
+      // Ya con sesión, la pantalla pedida consulta la API: aquí basta con que responda (con un error). MSW usa el
+      // primer manejador que coincide, así que el del ingreso va antes que el genérico.
+      servidor.use(
+        http.post('/api/v1/auth/login', () => HttpResponse.json(SESION_CLIENTE)),
+        http.all('/api/v1/*', () =>
+          HttpResponse.json(
+            { codigo: 'NO_DISPONIBLE', mensaje: 'Sin datos en esta prueba.', detalles: [] },
+            { status: 503 },
+          ),
+        ),
+      );
+      renderizarApp(ruta);
+
+      expect(await screen.findByRole('heading', { level: 1, name: titulo })).toBeInTheDocument();
+      expect(screen.getByText('Barbería Huamanga')).toBeInTheDocument();
+      expect(screen.getByTestId('ruta').textContent).toBe(ruta);
+
+      const usuario = userEvent.setup();
+      const ingresar = screen.getByRole('link', { name: 'Ingresar' });
+      expect(ingresar).toHaveAttribute('href', `/b/${SLUG}/ingresar`);
+      await usuario.click(ingresar);
+      await usuario.type(await screen.findByLabelText(/correo/i), 'luis@prueba.pe');
+      await usuario.type(screen.getByLabelText(/contraseña/i), 'mi corte de los sabados');
+      await usuario.click(screen.getByRole('button', { name: /^ingresar$/i }));
+
+      await waitFor(() => expect(screen.getByTestId('ruta').textContent).toBe(ruta));
+      expect(screen.queryByRole('link', { name: 'Ingresar' })).not.toBeInTheDocument();
+    },
+  );
 });
 
 describe('ultimaBarberia (almacenamiento ligero en el navegador)', () => {

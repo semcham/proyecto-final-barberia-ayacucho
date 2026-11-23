@@ -115,7 +115,8 @@ function NoValido() {
         Puede que ya lo hayas usado, que la cita haya cambiado o que haya pasado su hora. Inicia sesión para
         gestionar tus citas.
       </p>
-      <Link to="/ingresar" className={clasesBoton({ variante: 'secundario' })}>
+      {/* 010 (FR-030): las citas del cliente; sin sesión, esa pantalla explica cómo ingresar desde su barbería. */}
+      <Link to="/mis-citas" className={clasesBoton({ variante: 'secundario' })}>
         Iniciar sesión
       </Link>
     </section>

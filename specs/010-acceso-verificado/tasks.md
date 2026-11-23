@@ -118,24 +118,24 @@ FR-031, sin el enlace de verificación, que llega con US1).
 
 ### Tests for User Story 4 (MANDATORY - constitution Principle X) ⚠️
 
-- [ ] T019 [P] [US4] Ampliar la prueba de pantallas sin sesión a `/asistente`, `/mis-avisos`, `/mis-datos` y
+- [X] T019 [P] [US4] Ampliar la prueba de pantallas sin sesión a `/asistente`, `/mis-avisos`, `/mis-datos` y
   `/mis-citas/:citaId/adelanto` (título de cada una, "Ingresar" hacia la última barbería con `desde` = la ruta pedida, la
   explicación sin barbería recordada, nunca `/ingresar`) en `frontend/test/pages/cliente-sin-sesion.spec.tsx`
-- [ ] T020 [P] [US4] Prueba: en `/e`, con el enlace no válido, "Iniciar sesión" lleva a `/mis-citas`, en
+- [X] T020 [P] [US4] Prueba: en `/e`, con el enlace no válido, "Iniciar sesión" lleva a `/mis-citas`, en
   `frontend/test/pages/enlace.spec.tsx`
-- [ ] T021 [P] [US4] Prueba de integración que fija que el aviso `ADELANTO_SOLICITADO` al cliente incluye
+- [X] T021 [P] [US4] Prueba de integración que fija que el aviso `ADELANTO_SOLICITADO` al cliente incluye
   `URL_PUBLICA/mis-citas/<citaId>/adelanto` (FR-030), en `backend/test/integration/adelantos/avisos-adelanto.spec.ts`
-- [ ] T022 [P] [US4] Prueba: tras ingresar desde la pantalla sin sesión de `/mis-citas/:citaId/adelanto` (con y sin unión a
+- [X] T022 [P] [US4] Prueba: tras ingresar desde la pantalla sin sesión de `/mis-citas/:citaId/adelanto` (con y sin unión a
   la barbería), el cliente llega a esa misma dirección, en `frontend/test/pages/cliente-reserva.spec.tsx`
 
 ### Implementation for User Story 4
 
-- [ ] T023 [US4] `ClienteSinSesion` con el motivo según la pantalla (por ejemplo "Para ver tus avisos…", "Para pagar el
+- [X] T023 [US4] `ClienteSinSesion` con el motivo según la pantalla (por ejemplo "Para ver tus avisos…", "Para pagar el
   adelanto de tu cita…") sin cambiar el texto de `/mis-citas`, en `frontend/src/pages/cliente/ClienteSinSesion.tsx`
-- [ ] T024 [US4] Opción `sinSesion` en las rutas `/asistente`, `/mis-avisos`, `/mis-datos` y `/mis-citas/:citaId/adelanto`
+- [X] T024 [US4] Opción `sinSesion` en las rutas `/asistente`, `/mis-avisos`, `/mis-datos` y `/mis-citas/:citaId/adelanto`
   en `frontend/src/routes.tsx`
-- [ ] T025 [P] [US4] "Iniciar sesión" del enlace no válido → `/mis-citas`, en `frontend/src/pages/publico/Enlace.tsx`
-- [ ] T026 [US4] Verificación de la fase 2: lint, typecheck, Prettier y todas las pruebas del frontend; `avisos-adelanto.spec.ts`;
+- [X] T025 [P] [US4] "Iniciar sesión" del enlace no válido → `/mis-citas`, en `frontend/src/pages/publico/Enlace.tsx`
+- [X] T026 [US4] Verificación de la fase 2: lint, typecheck, Prettier y todas las pruebas del frontend; `avisos-adelanto.spec.ts`;
   capturas y axe de las cuatro pantallas sin sesión a 360 px y en escritorio
 - [ ] T027 [US4] **Del responsable:** commit y push de la fase 2: `feat(010): pantallas del cliente sin sesión (fase 2,
   US4)`

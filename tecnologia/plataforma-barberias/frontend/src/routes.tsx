@@ -5,6 +5,7 @@ import { RutaProtegida } from './auth/RutaProtegida';
 import { Icono } from './components/Icono';
 import { Logo } from './components/Logo';
 import { clasesBoton, ProveedorAvisos } from './components/ui';
+import type { PantallaCliente } from './pages/cliente/ClienteSinSesion';
 import estilos from './pages/NoEncontrada.module.css';
 
 // Rutas de la aplicación. Se usan <Routes> (no el router de datos): la aplicación no necesita loaders ni actions.
@@ -96,6 +97,11 @@ const RUTAS_PANEL_002: {
   { ruta: 'clientes', titulo: 'Clientes', roles: ['PROPIETARIO'], pantalla: Clientes },
 ];
 
+/** Una pantalla del cliente sin sesión: cómo ingresar desde su barbería y volver a `desde` (ADR-020; 010, US4). */
+const sinSesionDe = (pantalla: PantallaCliente) => (desde: string) => (
+  <ClienteSinSesion pantalla={pantalla} desde={desde} />
+);
+
 function NoEncontrada() {
   return (
     <main className={estilos.portada}>
@@ -135,18 +141,16 @@ export function RutasApp() {
           <Route
             path="/mis-citas"
             element={
-              <RutaProtegida
-                roles={['CLIENTE']}
-                sinSesion={(desde) => <ClienteSinSesion titulo="Mis citas" desde={desde} />}
-              >
+              <RutaProtegida roles={['CLIENTE']} sinSesion={sinSesionDe('mis-citas')}>
                 <MisCitas />
               </RutaProtegida>
             }
           />
+          {/* 010 (T024, FR-028): las demás pantallas del cliente, igual que /mis-citas, nunca llevan a /ingresar. */}
           <Route
             path="/mis-citas/:citaId/adelanto"
             element={
-              <RutaProtegida roles={['CLIENTE']}>
+              <RutaProtegida roles={['CLIENTE']} sinSesion={sinSesionDe('adelanto')}>
                 <PagarAdelanto />
               </RutaProtegida>
             }
@@ -154,7 +158,7 @@ export function RutasApp() {
           <Route
             path="/asistente"
             element={
-              <RutaProtegida roles={['CLIENTE']}>
+              <RutaProtegida roles={['CLIENTE']} sinSesion={sinSesionDe('asistente')}>
                 <Asistente />
               </RutaProtegida>
             }
@@ -162,7 +166,7 @@ export function RutasApp() {
           <Route
             path="/mis-avisos"
             element={
-              <RutaProtegida roles={['CLIENTE']}>
+              <RutaProtegida roles={['CLIENTE']} sinSesion={sinSesionDe('mis-avisos')}>
                 <CanalAviso />
               </RutaProtegida>
             }
@@ -170,7 +174,7 @@ export function RutasApp() {
           <Route
             path="/mis-datos"
             element={
-              <RutaProtegida roles={['CLIENTE']}>
+              <RutaProtegida roles={['CLIENTE']} sinSesion={sinSesionDe('mis-datos')}>
                 <MisDatos />
               </RutaProtegida>
             }

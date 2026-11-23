@@ -8,11 +8,14 @@ import { clavesConsulta } from '../../src/api/claves';
 import { tokenEnMemoria } from '../../src/api/client';
 import type { components } from '../../src/api/schema-002';
 import { indicadorSesion } from '../../src/auth/indicadorSesion';
+import { RutaProtegida } from '../../src/auth/RutaProtegida';
 import { SesionProvider } from '../../src/auth/SesionProvider';
 import { VERSION_POLITICA_DATOS } from '../../src/legal';
+import ClienteSinSesion from '../../src/pages/cliente/ClienteSinSesion';
 import IngresarBarberia from '../../src/pages/publico/IngresarBarberia';
 import RegistroCliente from '../../src/pages/publico/RegistroCliente';
 import { ReservarProtegida } from '../../src/pages/publico/Reservar';
+import { ultimaBarberia } from '../../src/ultima-barberia';
 import { servidor } from '../setup';
 
 // T082 · Pantallas de la cuenta de cliente y de la reserva (US3): registro con consentimiento, ingreso desde el
@@ -107,7 +110,18 @@ function renderizar(
             <Route path="/b/:slug/ingresar" element={<IngresarBarberia />} />
             <Route path="/b/:slug/reservar" element={<ReservarProtegida />} />
             <Route path="/mis-citas" element={<h1>Mis citas</h1>} />
-            <Route path="/mis-citas/:citaId/adelanto" element={<h1>Pagar adelanto</h1>} />
+            {/* Como en routes.tsx: sin sesión, la pantalla que explica cómo ingresar (010, US4). */}
+            <Route
+              path="/mis-citas/:citaId/adelanto"
+              element={
+                <RutaProtegida
+                  roles={['CLIENTE']}
+                  sinSesion={(desde) => <ClienteSinSesion pantalla="adelanto" desde={desde} />}
+                >
+                  <h1>Pagar adelanto</h1>
+                </RutaProtegida>
+              }
+            />
           </Routes>
           <RutaActual />
           <OtraHora />
@@ -120,7 +134,10 @@ function renderizar(
 
 const rutaActual = () => screen.getByTestId('ruta').textContent;
 
-afterEach(() => tokenEnMemoria.limpiar());
+afterEach(() => {
+  tokenEnMemoria.limpiar();
+  ultimaBarberia.olvidar();
+});
 
 describe('Registro de cliente desde el enlace (/b/:slug/registro)', () => {
   it('pide solo los datos mínimos y exige aceptar la política de datos, sin llamar a la API', async () => {
@@ -255,6 +272,47 @@ describe('Ingreso desde el enlace (/b/:slug/ingresar)', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent(/personal de una barbería/i);
     expect(screen.queryByLabelText(/política de tratamiento de datos/i)).not.toBeInTheDocument();
+  });
+});
+
+// T022 de 010 (US4; FR-029): el enlace del correo del adelanto (/mis-citas/:citaId/adelanto) abierto sin sesión. Tras
+// ingresar desde esa pantalla, con o sin el paso de unión, el cliente llega a la misma dirección.
+describe('Pago del adelanto abierto sin sesión (/mis-citas/:citaId/adelanto)', () => {
+  const ADELANTO = `/mis-citas/${CITA.id}/adelanto`;
+
+  it.each([
+    ['ya es cliente de la barbería', false],
+    ['tiene que unirse a la barbería', true],
+  ])('tras ingresar (%s) vuelve a la pantalla de pago', async (_caso, pideUnion) => {
+    indicadorSesion.quitar();
+    ultimaBarberia.guardar({ slug: SLUG, nombre: 'Barbería Huamanga' });
+    servidor.use(
+      http.post('/api/v1/auth/login', async ({ request }) => {
+        const cuerpo = (await request.json()) as Record<string, unknown>;
+        return pideUnion && !cuerpo.aceptaPoliticaDatos
+          ? error(409, 'UNIRSE_REQUIERE_CONSENTIMIENTO', 'Para reservar aquí, acepta la política de datos.')
+          : HttpResponse.json(sesionCliente());
+      }),
+    );
+    renderizar(ADELANTO);
+    const usuario = userEvent.setup();
+
+    expect(await screen.findByText(/para pagar el adelanto de tu cita/i)).toBeInTheDocument();
+    await usuario.click(screen.getByRole('link', { name: 'Ingresar' }));
+    await usuario.type(await screen.findByLabelText(/correo/i), 'luis@prueba.pe');
+    await usuario.type(screen.getByLabelText(/contraseña/i), 'mi corte de los sabados');
+    await usuario.click(screen.getByRole('button', { name: /^ingresar$/i }));
+
+    if (pideUnion) {
+      await usuario.type(await screen.findByLabelText(/teléfono/i), '966123456');
+      await usuario.click(screen.getByLabelText(/política de tratamiento de datos/i));
+      await usuario.click(screen.getByRole('button', { name: /unirme y continuar/i }));
+    }
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Pagar adelanto' })).toBeInTheDocument();
+    expect(rutaActual()).toBe(ADELANTO);
+    expect(screen.queryByText(/para pagar el adelanto de tu cita/i)).not.toBeInTheDocument();
+    expect(tokenEnMemoria.obtener()).toBe(`token-${SLUG}`);
   });
 });
 

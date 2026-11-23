@@ -33,6 +33,12 @@ import { EjecutorTareas } from '../../../src/shared';
 
 jest.setTimeout(180_000);
 
+// La dirección pública de la interfaz en las pruebas (URL_PUBLICA, que por defecto sigue a FRONTEND_BASE_URL).
+const URL_PUBLICA = (process.env.URL_PUBLICA ?? (process.env.FRONTEND_BASE_URL as string)).replace(
+  /\/+$/,
+  '',
+);
+
 const soles = (centimos: number) =>
   new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(centimos / 100);
 const horaEnLima = (iso: string) =>
@@ -98,6 +104,10 @@ describe('Avisos del adelanto (T025, US2)', () => {
     ]) {
       expect(correo.texto).toContain(parte);
     }
+    // T021 de 010 (FR-030): la dirección completa de la pantalla de pago de esa cita, que sin sesión explica cómo
+    // ingresar desde la barbería (US4); nunca el ingreso del personal.
+    expect(correo.texto).toContain(`${URL_PUBLICA}/mis-citas/${cita.id}/adelanto`);
+    expect(correo.texto).not.toContain(`${URL_PUBLICA}/ingresar`);
     expect(correo.texto).not.toContain(cliente.cliente.telefono);
     expect(correo.texto).not.toContain(cliente.cliente.correo as string);
     // Nunca dice que la cita quedó confirmada: está pendiente del adelanto.

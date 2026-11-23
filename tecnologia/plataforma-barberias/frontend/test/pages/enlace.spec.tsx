@@ -212,7 +212,13 @@ describe('Página del enlace /e (T086)', () => {
     servidor.use(enlaces.noValido());
     renderizar();
     expect(await screen.findByRole('heading', { name: /este enlace ya no es válido/i })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /iniciar sesión/i })).toBeInTheDocument();
+    // 010 (T020, FR-030): lleva a las citas del cliente, nunca al ingreso del personal.
+    const iniciar = screen.getByRole('link', { name: /iniciar sesión/i });
+    expect(iniciar).toHaveAttribute('href', '/mis-citas');
+    await userEvent.setup().click(iniciar);
+    expect(await screen.findByRole('heading', { level: 1, name: 'Mis citas' })).toBeInTheDocument();
+    expect(screen.getByText(/abre el enlace de tu barbería/i)).toBeInTheDocument();
+    expect(screen.getByTestId('ubicacion')).toHaveTextContent(/^\/mis-citas$/);
   });
 
   it('sin token en la dirección muestra el mismo mensaje genérico, sin llamar a la API', async () => {

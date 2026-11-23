@@ -28,7 +28,7 @@ Todas con los tokens y componentes del sistema de diseño (`frontend/src/styles/
   botón "Reenviar correo de verificación" y, tras pulsarlo, "Te enviamos un correo nuevo" o el tiempo de espera. En la
   reserva no se pierde la hora elegida.
 - **Pantallas del cliente sin sesión** (`RutaProtegida` con `sinSesion` y `ClienteSinSesion`): `/asistente`
-  ("Asistente"), `/mis-avisos` ("Mis avisos"), `/mis-datos` ("Mis datos") y `/mis-citas/:citaId/adelanto` ("Pagar
+  ("Asistente"), `/mis-avisos` ("Cómo recibo mis avisos", el título de esa pantalla con sesión), `/mis-datos` ("Mis datos") y `/mis-citas/:citaId/adelanto` ("Pagar
   adelanto"), además de `/mis-citas`. Tras ingresar, vuelven a la dirección pedida (FR-029).
 - **Recordatorio con enlace no válido** (`/e`, `pages/publico/Enlace.tsx:118`): hoy el botón "Iniciar sesión" lleva a
   `/ingresar`, el ingreso del personal. Pasa a llevar a `/mis-citas`, que sin sesión muestra la pantalla "Ingresar" de la
