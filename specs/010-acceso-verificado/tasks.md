@@ -153,61 +153,71 @@ a R04 y R08; data-model §1 a §7; contracts/eventos-y-avisos.md).
 
 ### Tests for the foundation (MANDATORY) ⚠️
 
-- [ ] T028 [P] Pruebas unitarias del enlace de cuenta: vigencia de 24 h y de 1 h, un solo uso, anulación al emitir otro
+- [X] T028 [P] Pruebas unitarias del enlace de cuenta: vigencia de 24 h y de 1 h, un solo uso, anulación al emitir otro
   del mismo propósito, vencimiento calculado al leer, el mismo error para usado, vencido, anulado o inexistente, en
   `backend/test/unit/identidad/enlace-de-cuenta.spec.ts`
-- [ ] T029 [P] Pruebas unitarias de los límites (reenvío 3/h por cuenta y 20/h por origen; recuperación 3/h y 10/h; usos
+- [X] T029 [P] Pruebas unitarias de los límites (reenvío 3/h por cuenta y 20/h por origen; recuperación 3/h y 10/h; usos
   fallidos 20/h por origen; `reintentarEnSegundos`), en `backend/test/unit/identidad/limite-enlaces.spec.ts`
-- [ ] T030 [P] Permisos exactos: las 4 funciones nuevas son de `barberias_auth`, solo `barberias_app` las ejecuta y
+- [X] T030 [P] Permisos exactos: las 4 funciones nuevas son de `barberias_auth`, solo `barberias_app` las ejecuta y
   `barberias_publico` y `barberias_plataforma` no; ningún rol nuevo con `BYPASSRLS`, en
   `backend/test/integration/aislamiento/funciones-definer.spec.ts`
-- [ ] T031 [P] Permisos y RLS de las tablas nuevas: `account_link` con RLS forzada y los permisos por columna de
+- [X] T031 [P] Permisos y RLS de las tablas nuevas: `account_link` con RLS forzada y los permisos por columna de
   data-model §2; `account_link_attempt` sin `tenant_id` y solo para `barberias_app`; columnas nuevas de `user_account` solo
   con `SELECT` para la aplicación; las políticas RLS existentes no cambian (comparación con `pg_policies`), en
   `backend/test/integration/aislamiento/permisos-010.spec.ts`
-- [ ] T032 [P] Migración: toda cuenta existente queda verificada con `MIGRACION`, las nuevas nacen sin verificar y se
+- [X] T032 [P] Migración: toda cuenta existente queda verificada con `MIGRACION`, las nuevas nacen sin verificar y se
   cumplen los `CHECK`, en `backend/test/integration/identidad/migracion-verificacion.spec.ts`
-- [ ] T033 [P] Plantillas de los avisos `VERIFICAR_CORREO`, `RECUPERAR_CONTRASENA` y `CONTRASENA_CAMBIADA` (sin el correo de
+- [X] T033 [P] Plantillas de los avisos `VERIFICAR_CORREO`, `RECUPERAR_CONTRASENA` y `CONTRASENA_CAMBIADA` (sin el correo de
   la persona, sin la contraseña, con la vigencia del enlace), en `backend/test/unit/notificaciones/plantillas.spec.ts`
-- [ ] T034 [P] Envío de los avisos de la cuenta: el evento crea un aviso para `CUENTA` siempre por correo; al enviar se
+- [X] T034 [P] Envío de los avisos de la cuenta: el evento crea un aviso para `CUENTA` siempre por correo; al enviar se
   emite el token y se guarda solo su hash; el correo del buzón trae el enlace cuyo hash coincide; un reintento reemite;
   un enlace no vigente descarta el aviso; con un canario, ningún token aparece en `outbox_event.payload`, en
   `notification` ni en los registros; **con el canal de correo caído** (G2), el registro y la solicitud responden bien, el
   aviso queda pendiente y sale al volver el canal; y el correo llega al buzón de pruebas dentro de 60 s (aserción con plazo,
   apoyo de SC-004), en `backend/test/integration/notificaciones/avisos-cuenta.spec.ts`
-- [ ] T035 [P] Reglas de dependencias: solo el host (y M05) consumen `CuentasApi`; M03 y M04 siguen sin llamar a M01, en
+  *(Fase 3: el enlace se pide con `SolicitarEnlaceDeCuenta`, la base común; el registro que lo pide llega con T057, y su
+  prueba con el correo caído se suma ahí.)*
+- [X] T035 [P] Reglas de dependencias: solo el host (y M05) consumen `CuentasApi`; M03 y M04 siguen sin llamar a M01, en
   `backend/test/architecture/reglas.spec.ts` (con su regla en `backend/.dependency-cruiser.cjs`)
-- [ ] T036 [P] Retención: la tarea programada borra los enlaces usados, anulados o vencidos hace más de 30 días, sin
+- [X] T036 [P] Retención: la tarea programada borra los enlaces usados, anulados o vencidos hace más de 30 días, sin
   duplicados entre réplicas, en `backend/test/integration/identidad/retencion-enlaces.spec.ts`
 
 ### Implementation for the foundation
 
-- [ ] T037 Migración con columnas de `user_account`, `account_link`, `account_link_attempt`, las 4 funciones de
+- [X] T037 Migración con columnas de `user_account`, `account_link`, `account_link_attempt`, las 4 funciones de
   `barberias_auth` con sus permisos por columna, los tipos y el destinatario nuevos de `notification` (data-model §1 a §5),
   con su `down`, en `backend/migrations/0036_acceso_verificado.ts`
-- [ ] T038 Tipos de las tablas y columnas nuevas en `backend/src/shared/persistence/db-types.ts`
-- [ ] T039 [P] Reglas puras del enlace y de los límites en
+  *(Fase 3: el índice de "un solo enlace vigente" es por barbería; la aplicación también puede borrar en `account_link`
+  (retención); y el `INSERT` de la aplicación en `user_account` pasa a ser por columna, para que no pueda crear cuentas ya
+  verificadas. Ver data-model.md.)*
+- [X] T038 Tipos de las tablas y columnas nuevas en `backend/src/shared/persistence/db-types.ts`
+- [X] T039 [P] Reglas puras del enlace y de los límites en
   `backend/src/modules/acceso-barberias/identidad/domain/enlace-de-cuenta.ts` y `limite-enlaces.ts`, con los errores
   `EnlaceNoValido` (410 `ENLACE_NO_VALIDO`) y `CorreoNoVerificado` (403 `CORREO_NO_VERIFICADO`) en `identidad/domain/errores.ts`
   y su mapeo en `backend/src/host/error.filter.ts`
-- [ ] T040 Puertos y repositorios Kysely del enlace (crear sin token, emitir token, anular, llamar a las funciones de
+- [X] T040 Puertos y repositorios Kysely del enlace (crear sin token, emitir token, anular, llamar a las funciones de
   sistema) y del contador de intentos (origen con `INTENTOS_SAL_IP`), en
   `backend/src/modules/acceso-barberias/identidad/application/ports/` y
   `identidad/infrastructure/kysely-enlace-de-cuenta-repository.ts` y `kysely-intentos-enlace-repository.ts`
-- [ ] T041 `CuentasApi` (`correoVerificado`, `correoDeCuenta`, `emitirToken`) en
+- [X] T041 `CuentasApi` (`correoVerificado`, `correoDeCuenta`, `emitirToken`) en
   `backend/src/modules/acceso-barberias/api-publica.ts`, `index.ts` e `identidad/application/cuentas-api.ts`
-- [ ] T042 Eventos `EnlaceDeCuentaSolicitado` y `ContrasenaCambiada` (payload sin secretos y clave de reemplazo de
+  *(Fase 3: sale por `acceso-barberias/cuentas.ts`, no por `index.ts`, para que la regla `cuentas-api-confinada` se pueda
+  comprobar; ver contracts/eventos-y-avisos.md §3.)*
+- [X] T042 Eventos `EnlaceDeCuentaSolicitado` y `ContrasenaCambiada` (payload sin secretos y clave de reemplazo de
   data-model §6) en el módulo M01, publicados por `BusDeEventos`
-- [ ] T043 M05: tipos de aviso y destinatario `CUENTA` en `backend/src/modules/notificaciones/domain/aviso.ts` y
+- [X] T043 M05: tipos de aviso y destinatario `CUENTA` en `backend/src/modules/notificaciones/domain/aviso.ts` y
   `destinatarios.ts`, plantillas en `domain/plantillas.ts`, manejador nuevo
   `backend/src/modules/notificaciones/application/manejadores-de-cuenta.ts`, emisión del token al enviar y descarte en
   `application/enviar-avisos.ts`, y su registro en `notificaciones.module.ts` y en la suscripción del host
   (`backend/src/host/app.module.ts`)
-- [ ] T044 [P] Acciones de auditoría nuevas (data-model §7) en `backend/src/shared/audit/audit-log.ts`
-- [ ] T045 Tarea de retención de enlaces en `backend/src/modules/acceso-barberias/identidad/application/purgar-enlaces-de-cuenta.ts`,
+  *(Fase 3: la suscripción del host está en `backend/src/host/eventos.ts`, no en `app.module.ts`.)*
+- [X] T044 [P] Acciones de auditoría nuevas (data-model §7) en `backend/src/shared/audit/audit-log.ts`
+- [X] T045 Tarea de retención de enlaces en `backend/src/modules/acceso-barberias/identidad/application/purgar-enlaces-de-cuenta.ts`,
   registrada en el ejecutor de tareas del host (ADR-024)
-- [ ] T046 Verificación de la fase 3: `npm test`, `npm run test:int`, `npm run test:arch`, lint y Prettier del backend, todo en
+- [X] T046 Verificación de la fase 3: `npm test`, `npm run test:int`, `npm run test:arch`, lint y Prettier del backend, todo en
   verde
+  *(2026-11-23: en la suite completa fallaron 3 pruebas de tiempo (degradacion-asistente, canal-whatsapp, proveedor-caido)
+  que pasan solas; y rls.spec necesitaba sembrar un `account_link`, ya corregido.)*
 - [ ] T047 **Del responsable:** commit y push de la fase 3: `feat(010): base de los enlaces de cuenta por correo (fase 3)`
 
 **Checkpoint**: la base está lista; US1 y US2 pueden avanzar en paralelo.

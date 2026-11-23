@@ -107,6 +107,23 @@ export class CredencialesPlataformaInvalidas extends ErrorDeAplicacion {
   }
 }
 
+// --- Funcionalidad 010: enlaces de cuenta por correo (verificar el correo y recuperar la contraseña) ---
+
+export class EnlaceNoValido extends ErrorDeAplicacion {
+  readonly codigo = 'ENLACE_NO_VALIDO';
+  constructor() {
+    // Un solo mensaje para un enlace usado, vencido, anulado, inexistente o mal formado (FR-005): no revela cuál fue.
+    super('Este enlace ya no es válido. Pide uno nuevo.');
+  }
+}
+
+export class CorreoNoVerificado extends ErrorDeAplicacion {
+  readonly codigo = 'CORREO_NO_VERIFICADO';
+  constructor() {
+    super('Verifica tu correo para continuar. Te enviamos un enlace al correo de tu cuenta.');
+  }
+}
+
 export class DemasiadosIntentos extends ErrorDeAplicacion {
   readonly codigo = 'DEMASIADOS_INTENTOS';
   constructor(readonly reintentarEnSegundos: number) {

@@ -6,6 +6,15 @@ import type { Destinatario } from './aviso';
 
 const texto = (valor: unknown): string | null => (typeof valor === 'string' && valor !== '' ? valor : null);
 
+/**
+ * 010 · El destinatario de un aviso de la cuenta (`EnlaceDeCuentaSolicitado`, `ContrasenaCambiada`): la cuenta del
+ * evento, o null si el evento no la trae.
+ */
+export function destinatarioDeCuenta(payload: Record<string, unknown>): Destinatario | null {
+  const usuarioId = texto(payload.usuarioId);
+  return usuarioId ? { tipo: 'CUENTA', ref: usuarioId } : null;
+}
+
 export function destinatariosDe(
   tipoEvento: string,
   payload: Record<string, unknown>,

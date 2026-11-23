@@ -73,7 +73,15 @@ export type AccionAuditada =
   | 'SOLICITUD_DATOS_REGISTRADA'
   | 'SOLICITUD_DATOS_EN_ATENCION'
   | 'SOLICITUD_DATOS_ATENDIDA'
-  | 'SOLICITUD_DATOS_RECHAZADA';
+  | 'SOLICITUD_DATOS_RECHAZADA'
+  // Funcionalidad 010 (data-model §7): en la barbería del enlace. Nunca el token, el enlace ni la contraseña. El rechazo
+  // se registra solo si el enlace pertenece a una cuenta (usado, vencido o anulado); un enlace desconocido no tiene
+  // cuenta ni barbería y queda solo como USO_FALLIDO en account_link_attempt (research R15).
+  | 'CORREO_VERIFICACION_SOLICITADA'
+  | 'CORREO_VERIFICADO'
+  | 'RECUPERACION_SOLICITADA'
+  | 'CONTRASENA_RESTABLECIDA'
+  | 'ENLACE_DE_CUENTA_RECHAZADO';
 
 export interface EntradaAuditoria {
   accion: AccionAuditada;

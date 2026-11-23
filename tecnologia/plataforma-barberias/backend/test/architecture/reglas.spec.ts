@@ -71,6 +71,8 @@ describe('Reglas de arquitectura (PR14)', () => {
       // Funcionalidad 007 (T006).
       'solicitudes-datos-sin-plataforma',
       'indicadores-solo-por-registro',
+      // Funcionalidad 010 (T035).
+      'cuentas-api-confinada',
     ])('%s', (regla) => {
       expect(salida).toContain(regla);
     });
@@ -182,6 +184,21 @@ describe('Reglas de arquitectura (PR14)', () => {
       // El index.ts de M02 exporta su fuente: como origen, no se señala (sí aparece como destino de la violación de
       // shared/indicadores/usa-modulo.ts).
       expect(enLinea('indicadores-solo-por-registro', 'catalogo-citas/index.ts →')).toBe(false);
+    });
+
+    // T035 de 010 · research R02 y R05: CuentasApi (acceso-barberias/cuentas.ts) solo la usan el host y M05; M02, M03 y
+    // M04 no, y M03 y M04 siguen sin llamar a M01 en absoluto.
+    it('cada violación de 010 se atribuye a su archivo, y los usos del host y de M05 no se señalan', () => {
+      const lineas = salida.split(/\r?\n/);
+      const enLinea = (regla: string, archivo: string) =>
+        lineas.some((linea) => linea.includes(regla) && linea.includes(archivo));
+      expect(enLinea('cuentas-api-confinada', 'citas/application/usa-cuentas-api.ts')).toBe(true);
+      expect(enLinea('cuentas-api-confinada', 'usa-cuentas-m03.ts')).toBe(true);
+      expect(enLinea('matriz-m03', 'usa-cuentas-m03.ts')).toBe(true);
+      expect(enLinea('cuentas-api-confinada', 'usa-cuentas-m04.ts')).toBe(true);
+      expect(enLinea('matriz-m04', 'usa-cuentas-m04.ts')).toBe(true);
+      expect(lineas.some((l) => l.includes('cuentas-permitidas.ts'))).toBe(false);
+      expect(lineas.some((l) => l.includes('correo-verificado-permitido.ts'))).toBe(false);
     });
   });
 });

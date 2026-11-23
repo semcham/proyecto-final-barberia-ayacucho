@@ -34,7 +34,12 @@ token, la dirección completa del enlace ni la contraseña** (research R02).
 - **Datos del mensaje** (principio VII, con la ampliación de la enmienda 1.8.0): nombre de la barbería, el enlace de la
   cuenta y su vigencia. Nunca el correo de la persona en el cuerpo, la contraseña, teléfonos ni datos de citas.
 
-## 3. Interfaz pública nueva de M01 (`CuentasApi`, en `acceso-barberias/index.ts`)
+## 3. Interfaz pública nueva de M01 (`CuentasApi`, en `acceso-barberias/cuentas.ts`)
+
+*Precisión de la implementación (fase 3)*: `CuentasApi` sale por una entrada propia, `acceso-barberias/cuentas.ts`, y no
+por `index.ts`. dependency-cruiser ve a quién importa cada archivo, no qué clase usa: si saliera por `index.ts` (que M02 sí
+puede importar), la regla "solo el host y M05" no se podría comprobar. La regla nueva `cuentas-api-confinada` de PR14 lo
+exige, y `matriz-m03` y `matriz-m04` siguen prohibiendo cualquier llamada a M01.
 
 | Método | Para quién | Regla |
 | --- | --- | --- |

@@ -10,3 +10,5 @@ export { ManejadorRecordatorio } from './application/manejador-recordatorio';
 export { ManejadoresDeSuscripcion } from './application/manejadores-de-suscripcion';
 // 008 (T032): los avisos del adelanto de reserva.
 export { ManejadoresDeAdelanto } from './application/manejadores-de-adelanto';
+// 010 (T043): los avisos de la cuenta.
+export { ManejadoresDeCuenta } from './application/manejadores-de-cuenta';

@@ -34,6 +34,7 @@ import * as m0032 from './0032_solicitudes_datos';
 import * as m0033 from './0033_auditoria_indicadores';
 import * as m0034 from './0034_vistas_de_conteo';
 import * as m0035 from './0035_intentos_con_hash';
+import * as m0036 from './0036_acceso_verificado';
 
 // Registro explícito de migraciones, en orden. Cada historia agrega aquí las suyas.
 // (Un proveedor estático evita depender de importaciones dinámicas de archivos .ts.)
@@ -77,6 +78,9 @@ const MIGRACIONES: Record<string, Migration> = {
   '0034_vistas_de_conteo': m0034,
   // 007 (T062): login_attempt guarda el origen solo como hash con sal (INTENTOS_SAL_IP).
   '0035_intentos_con_hash': m0035,
+  // 010 (T037): verificación del correo, enlaces de cuenta, sus intentos, las funciones de sistema y los avisos de la
+  // cuenta (constitución 1.8.0, ADR-036).
+  '0036_acceso_verificado': m0036,
 };
 
 /** Nombre de la última migración que conoce el código (GET /salud/listo, 006). */

@@ -79,6 +79,9 @@ export const ESTADO_POR_CODIGO: Record<string, number> = {
   SOLICITUD_YA_EN_ATENCION: 409,
   SOLICITUD_NO_ENCONTRADA: 404,
   CLIENTE_NO_ENCONTRADO: 404,
+  // Funcionalidad 010 (specs/010-acceso-verificado/contracts/openapi.yaml). El enlace de cuenta no válido usa el mismo
+  // ENLACE_NO_VALIDO (410) de los enlaces de acción, ya mapeado arriba.
+  CORREO_NO_VERIFICADO: 403,
 };
 
 function desdeHttp(estado: number): CuerpoError {

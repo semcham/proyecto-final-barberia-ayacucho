@@ -6,6 +6,7 @@ import { ManejadoresDeCita } from './application/manejadores-de-cita';
 import { ManejadorRecordatorio } from './application/manejador-recordatorio';
 import { ManejadoresDeSuscripcion } from './application/manejadores-de-suscripcion';
 import { ManejadoresDeAdelanto } from './application/manejadores-de-adelanto';
+import { ManejadoresDeCuenta } from './application/manejadores-de-cuenta';
 import { AvisoRepository, PendientesDeAvisos } from './application/ports/aviso-repository';
 import { CanalesDeAviso } from './application/ports/notification-channel';
 import { crearCanalesDeAviso } from './infrastructure/fabrica-canales';
@@ -39,6 +40,8 @@ import { AvisosPendientesPlataforma } from './infrastructure/plataforma/avisos-p
     ManejadoresDeSuscripcion,
     // 008 (T032): los avisos del adelanto de reserva.
     ManejadoresDeAdelanto,
+    // 010 (T043): los avisos de la cuenta (verificar el correo, recuperar y contraseña cambiada).
+    ManejadoresDeCuenta,
     EnviarAvisos,
   ],
   exports: [
@@ -46,6 +49,7 @@ import { AvisosPendientesPlataforma } from './infrastructure/plataforma/avisos-p
     ManejadorRecordatorio,
     ManejadoresDeSuscripcion,
     ManejadoresDeAdelanto,
+    ManejadoresDeCuenta,
     EnviarAvisos,
   ],
 })

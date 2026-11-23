@@ -15,6 +15,9 @@ Todo en una migración nueva (`backend/migrations/0036_acceso_verificado.ts`). N
 - **Permisos**: `barberias_app` recibe `SELECT` de las dos columnas (para leer el estado con RLS, ADR-015) y **ningún**
   `UPDATE` sobre ellas: solo las cambian la activación del personal (dentro de su transacción con tenant, mediante una
   función de sistema) y `auth_verificar_correo` / `auth_restablecer_contrasena` (sección 4).
+  - *Precisión de la implementación (fase 3)*: `barberias_app` tenía `INSERT` de tabla completa sobre `user_account`
+    (0001), que se habría extendido a las columnas nuevas. La migración lo cambia a `INSERT` por columna sobre las seis de
+    antes, sin las de verificación: la aplicación no puede crear una cuenta ya verificada. Nada de lo existente cambia.
 - **Reglas de estado** (una sola dirección):
 
 ```text
@@ -43,10 +46,18 @@ Enlace de cuenta por correo, de un solo uso (R01).
 | `revoked_at` | timestamptz, nulo | Al emitir otro del mismo propósito, al cambiar la contraseña o al verificar |
 
 - **Restricciones**: `CHECK (expires_at > requested_at)`; `CHECK (NOT (used_at IS NOT NULL AND revoked_at IS NOT NULL))`;
-  índice único parcial: **un solo enlace vigente** por (`user_id`, `purpose`) donde `used_at IS NULL AND revoked_at IS NULL`.
+  índice único parcial: **un solo enlace vigente** por (`tenant_id`, `user_id`, `purpose`) donde
+  `used_at IS NULL AND revoked_at IS NULL`.
+  - *Precisión de la implementación (fase 3)*: el índice incluye `tenant_id`. Con RLS, la aplicación solo ve y anula los
+    enlaces de su barbería; con un índice por (`user_id`, `purpose`), un cliente que se registró en A y pide el reenvío
+    desde B chocaría con el enlace de A, que B no puede anular. Al **usar** un enlace, las funciones de sistema anulan
+    los demás del mismo propósito en **todas** las barberías (sección 4), así que nunca sirven dos después de un uso.
 - **RLS**: `ENABLE` + `FORCE`, política `tenant_isolation` como las demás tablas de negocio (`rlsPorTenant`). `barberias_app`:
-  `SELECT`, `INSERT` y `UPDATE (token_hash, revoked_at)`; nunca `used_at` (solo las funciones de sistema lo marcan).
-  `barberias_publico` y `barberias_plataforma`: ningún permiso.
+  `SELECT`, `DELETE` (retención de 30 días, con RLS), `INSERT` solo de (`id`, `tenant_id`, `user_id`, `purpose`,
+  `requested_at`, `expires_at`) —el enlace nace sin token, sin uso y sin anular— y `UPDATE (token_hash, revoked_at)`;
+  nunca `used_at` (solo las funciones de sistema lo marcan). `barberias_publico` y `barberias_plataforma`: ningún permiso.
+  - *Precisión de la implementación (fase 3)*: el `DELETE` no estaba en la lista original; lo necesita la retención, que
+    borra barbería por barbería con el rol de la aplicación (como la purga de `notification`, migración 0026).
 - **Vigencia del token**: el token se puede emitir (o reemitir en un reintento) solo mientras el enlace esté vigente;
   `expires_at` no se mueve al reemitir.
 - **Retención**: las filas usadas, anuladas o vencidas hace más de 30 días se borran con una tarea programada (ADR-024).
@@ -87,6 +98,10 @@ principio III (enmienda 1.8.0).
 | `auth_restablecer_contrasena(p_token_hash, p_hash_nuevo)` | Si hay un enlace `RECUPERAR_CONTRASENA` vigente: lo marca usado, cambia `password_hash`, marca la cuenta verificada (`ENLACE`) si no lo estaba, anula sus otros enlaces de recuperación y pasa a `REVOCADA` todas sus sesiones `ACTIVA` en todas las barberías | Igual que la anterior: `APLICADO` o `RECHAZADO` con `tenant_id` y `user_id`, o ninguna fila |
 | `auth_marcar_verificada_por_activacion(p_user_id)` | La usa la activación del personal dentro de su transacción | nada |
 
+- *Precisiones de la implementación (fase 3)*: `auth_barberia_para_enlace` solo considera membresías `ACTIVA` (un usuario
+  del personal pendiente o desactivado no recibe enlaces); `auth_marcar_verificada_por_activacion` solo marca la cuenta si
+  tiene una activación **ya usada**, para que la aplicación no pueda verificar otras cuentas con ella; y
+  `auth_restablecer_contrasena` rechaza un hash nuevo que no sea argon2id.
 - `REVOKE ALL ... FROM PUBLIC`; `GRANT EXECUTE` solo a `barberias_app`. `barberias_publico` y `barberias_plataforma` no
   pueden ejecutarlas (lo comprueba la prueba de funciones de sistema existente, `aislamiento/funciones-definer.spec.ts`).
 - `barberias_auth` recibe solo los permisos por columna que estas funciones necesitan: `UPDATE (password_hash,

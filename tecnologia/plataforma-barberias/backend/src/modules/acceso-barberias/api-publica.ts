@@ -64,6 +64,30 @@ export interface DatosPublicosBarberia {
   zonaHoraria: string;
 }
 
+/** 010 · Un token de enlace de cuenta recién emitido (solo en memoria: se guarda únicamente su hash). */
+export interface TokenDeEnlace {
+  token: string;
+  proposito: 'VERIFICAR_CORREO' | 'RECUPERAR_CONTRASENA';
+  venceEn: Date;
+}
+
+/**
+ * 010 (T041; research R02 y R05; contracts/eventos-y-avisos.md §3) · Las cuentas por correo. Solo la usan el host (el
+ * guard del correo verificado) y M05 (al enviar los avisos de la cuenta), y solo desde `acceso-barberias/cuentas.ts`
+ * (regla cuentas-api-confinada de PR14): M02, M03 y M04 no la ven. Todo ocurre en la barbería del contexto.
+ */
+export abstract class CuentasApi {
+  /** Si la cuenta tiene el correo verificado; false si no es visible en la barbería del contexto. */
+  abstract correoVerificado(usuarioId: string): Promise<boolean>;
+  /** El correo de la cuenta, solo como destino del aviso; null si no es visible en la barbería del contexto. */
+  abstract correoDeCuenta(usuarioId: string): Promise<string | null>;
+  /**
+   * Emite un token nuevo para el enlace y guarda solo su hash (cada reintento del envío reemite y el anterior deja de
+   * servir). null si el enlace ya no está vigente (usado, anulado o vencido): el aviso se descarta sin enviar.
+   */
+  abstract emitirToken(enlaceId: string): Promise<TokenDeEnlace | null>;
+}
+
 /** Datos de la barbería que necesitan el catálogo y las citas. */
 export abstract class BarberiasApi {
   /** Zona horaria y antelación mínima de cancelación de la barbería del contexto (transacción en curso). */

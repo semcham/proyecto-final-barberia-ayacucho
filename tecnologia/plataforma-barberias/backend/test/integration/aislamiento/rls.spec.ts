@@ -26,6 +26,7 @@ import { cerrarPools, poolDe } from '../../helpers/test-db';
 // T090 · PR09 a nivel de base: RLS forzada en toda tabla con tenant_id, sin fugas entre barberías.
 // T013 (funcionalidad 002): tablas del catálogo, clientes y citas, y RLS de edición en tenant.
 // T004 de 007: data_subject_request (una fila por barbería y su política tenant_isolation).
+// T037 de 010: account_link (un enlace por barbería).
 
 const DIA_MS = 24 * 60 * 60 * 1000;
 
@@ -141,6 +142,12 @@ describe('PR09 · RLS en la base de datos', () => {
         `INSERT INTO account_activation (id, tenant_id, user_id, token_hash, expires_at, created_by)
          VALUES ($1, $2, $3, $4, now() + interval '72 hours', $3)`,
         [uuidv7(), barberia.tenantId, barberia.propietarioId, uuidv7().replace(/-/g, '').padEnd(64, '0')],
+      );
+      // 010 (T037): un enlace de cuenta por barbería (account_link).
+      await seed.query(
+        `INSERT INTO account_link (id, tenant_id, user_id, purpose, requested_at, expires_at)
+         VALUES ($1, $2, $3, 'VERIFICAR_CORREO', now(), now() + interval '24 hours')`,
+        [uuidv7(), barberia.tenantId, barberia.propietarioId],
       );
       // 004 (T009): una fila en cada tabla nueva con barbería.
       await sembrarFilas004({

@@ -1,4 +1,5 @@
 import { Injectable, type OnApplicationBootstrap } from '@nestjs/common';
+import { PurgarEnlacesDeCuenta } from '../modules/acceso-barberias';
 import { PurgarIntentosEnlace, VencerAdelantos } from '../modules/catalogo-citas';
 import { EnviarAvisos } from '../modules/notificaciones';
 import {
@@ -25,6 +26,7 @@ export class TareasProgramadas implements OnApplicationBootstrap {
     private readonly purgarIntentosEnlace: PurgarIntentosEnlace,
     private readonly avisarFinDePrueba: AvisarFinDePrueba,
     private readonly vencerAdelantos: VencerAdelantos,
+    private readonly purgarEnlacesDeCuenta: PurgarEnlacesDeCuenta,
     private readonly configuracion: Configuracion,
   ) {}
 
@@ -72,6 +74,12 @@ export class TareasProgramadas implements OnApplicationBootstrap {
       nombre: 'vencer-adelantos',
       intervaloMs: 60 * 1000,
       ejecutar: () => this.vencerAdelantos.ejecutar(),
+    });
+    // 010 (T045, data-model §2): los enlaces de cuenta usados, anulados o vencidos hace más de 30 días, cada 6 h.
+    this.ejecutor.registrar({
+      nombre: 'purgar-enlaces-de-cuenta',
+      intervaloMs: 6 * 60 * 60 * 1000,
+      ejecutar: () => this.purgarEnlacesDeCuenta.ejecutar(),
     });
     this.ejecutor.iniciar();
   }

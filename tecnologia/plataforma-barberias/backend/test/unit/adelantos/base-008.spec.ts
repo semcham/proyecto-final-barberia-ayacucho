@@ -10,6 +10,7 @@ import { PermisosSuscripciones } from '../../../src/modules/suscripciones-pagos/
 import type { AccionAuditada } from '../../../src/shared';
 import { TIPOS_DE_AVISO as TIPOS_0024 } from '../../../migrations/0024_avisos';
 import { TIPOS_DE_AVISO_ADELANTO } from '../../../migrations/0030_avisos_adelanto';
+import { TIPOS_DE_AVISO_CUENTA } from '../../../migrations/0036_acceso_verificado';
 
 // T008 a T010 de 008 · Constantes de la base del adelanto: errores con su estado HTTP (contracts/openapi.yaml),
 // operaciones de las matrices de permisos (contracts/rbac.md) y los cinco tipos de aviso (contracts/eventos.md §3).
@@ -93,12 +94,15 @@ describe('Tipos de aviso del adelanto (contracts/eventos.md §3, migración 0030
     'ADELANTO_VENCIDO',
   ];
 
-  it('M05 conoce los cinco tipos nuevos, además de los de 004', () => {
-    expect([...TIPOS_DE_AVISO].sort()).toEqual([...TIPOS_0024, ...NUEVOS].sort());
+  // 010 (migración 0036) suma los tres avisos de la cuenta.
+  it('M05 conoce los cinco tipos nuevos, además de los de 004 (y los de la cuenta de 010)', () => {
+    expect([...TIPOS_DE_AVISO].sort()).toEqual([...TIPOS_0024, ...NUEVOS, ...TIPOS_DE_AVISO_CUENTA].sort());
   });
 
-  it('el CHECK de notification.kind (0024 + 0030) admite exactamente los tipos de M05', () => {
-    expect([...TIPOS_0024, ...TIPOS_DE_AVISO_ADELANTO].sort()).toEqual([...TIPOS_DE_AVISO].sort());
+  it('el CHECK de notification.kind (0024 + 0030 + 0036) admite exactamente los tipos de M05', () => {
+    expect([...TIPOS_0024, ...TIPOS_DE_AVISO_ADELANTO, ...TIPOS_DE_AVISO_CUENTA].sort()).toEqual(
+      [...TIPOS_DE_AVISO].sort(),
+    );
   });
 
   it('cada tipo cabe en notification.kind varchar(32)', () => {

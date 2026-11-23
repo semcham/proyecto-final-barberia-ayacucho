@@ -20,6 +20,10 @@ export { BarberiaNoDisponible } from './barberias/domain/errores';
 // 007 (fase 2c, research R01): fuente de indicadores de la plataforma. Solo la registra host/indicadores.ts (regla de
 // PR14 indicadores-solo-por-registro).
 export { UsuariosPorTipoIndicador } from './identidad/infrastructure/plataforma/usuarios-por-tipo-indicador';
+// 010 (T045): retención de los enlaces de cuenta; solo la registra host/tareas.ts. CuentasApi NO sale por aquí: tiene
+// su entrada propia, acceso-barberias/cuentas.ts (regla cuentas-api-confinada de PR14).
+export { PurgarEnlacesDeCuenta } from './identidad/application/purgar-enlaces-de-cuenta';
+export { CorreoNoVerificado } from './identidad/domain/errores';
 // Interfaces públicas para M02 (ADR-020, research R05 de 002).
 export {
   PersonalApi,

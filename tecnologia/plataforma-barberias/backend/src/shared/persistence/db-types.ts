@@ -39,6 +39,9 @@ export interface UserAccountTable {
   password_hash: string | null;
   is_platform_admin: Generated<boolean>;
   created_at: Fecha;
+  // 010 (migración 0036): barberias_app solo las LEE; las escriben las funciones de sistema de barberias_auth.
+  email_verified_at: ColumnType<Date | null, never, never>;
+  email_verified_via: ColumnType<'ENLACE' | 'ACTIVACION' | 'MIGRACION' | null, never, never>;
 }
 
 export interface MembershipTable {
@@ -491,7 +494,7 @@ export interface NotificationTable {
   tenant_id: string;
   event_id: string;
   kind: string;
-  recipient_kind: 'CLIENTE' | 'PROPIETARIO' | 'BARBERO';
+  recipient_kind: 'CLIENTE' | 'PROPIETARIO' | 'BARBERO' | 'CUENTA';
   recipient_ref: string;
   appointment_id: TextoNulo;
   channel_planned: 'CORREO' | 'WHATSAPP';
@@ -510,6 +513,32 @@ export interface ActionLinkAttemptTable {
   id: Generated<string>;
   ip_hash: string;
   attempted_at: Generated<Date>;
+}
+
+// Funcionalidad 010 (migración 0036, data-model.md §2 y §3 de 010).
+
+export type PropositoEnlaceDb = 'VERIFICAR_CORREO' | 'RECUPERAR_CONTRASENA';
+
+/** Enlace de cuenta por correo (por barbería, RLS forzada). Nace sin token; `used_at` solo lo marcan las funciones. */
+export interface AccountLinkTable {
+  id: string;
+  tenant_id: string;
+  user_id: string;
+  purpose: PropositoEnlaceDb;
+  token_hash: ColumnType<string | null, never, string | null>;
+  requested_at: Fecha;
+  expires_at: Fecha;
+  used_at: ColumnType<Date | null, never, never>;
+  revoked_at: ColumnType<Date | null, never, Date | string | null>;
+}
+
+/** Intentos de los enlaces de cuenta (tabla técnica sin barbería): sujeto y origen solo como hash. */
+export interface AccountLinkAttemptTable {
+  id: Generated<string>;
+  kind: 'REENVIO' | 'RECUPERACION' | 'USO_FALLIDO';
+  subject_hash: string | null;
+  origin_hash: string;
+  at: Fecha;
 }
 
 // Funcionalidad 008 (migraciones 0028 a 0030, data-model.md de 008). Importes en céntimos enteros.
@@ -719,6 +748,8 @@ export interface Database {
   appointment_link_use: AppointmentLinkUseTable;
   notification: NotificationTable;
   action_link_attempt: ActionLinkAttemptTable;
+  account_link: AccountLinkTable;
+  account_link_attempt: AccountLinkAttemptTable;
   booking_deposit_file: BookingDepositFileTable;
   booking_deposit_settings: BookingDepositSettingsTable;
   booking_deposit: BookingDepositTable;

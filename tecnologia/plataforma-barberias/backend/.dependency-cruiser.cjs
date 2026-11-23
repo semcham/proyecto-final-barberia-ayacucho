@@ -47,13 +47,31 @@ module.exports = {
     },
     {
       name: 'modulos-solo-por-index',
-      comment: 'Un módulo solo importa otro módulo a través de su index.ts (principio I).',
+      comment:
+        'Un módulo solo importa otro módulo a través de su index.ts (principio I). Entrada aparte: ' +
+        'acceso-barberias/cuentas.ts (010, CuentasApi), confinada por cuentas-api-confinada.',
       severity: 'error',
       from: { path: '(^|/)src/modules/([^/]+)/' },
       to: {
         path: '(^|/)src/modules/[^/]+/',
-        pathNot: ['(^|/)src/modules/$2/', '(^|/)src/modules/[^/]+/index\\.ts$'],
+        pathNot: [
+          '(^|/)src/modules/$2/',
+          '(^|/)src/modules/[^/]+/index\\.ts$',
+          '(^|/)src/modules/acceso-barberias/cuentas\\.ts$',
+        ],
       },
+    },
+    {
+      name: 'cuentas-api-confinada',
+      comment:
+        'Las cuentas por correo de M01 (acceso-barberias/cuentas.ts, CuentasApi; 010, research R02 y R05) solo las ' +
+        'usan el host (guard del correo verificado) y M05 (avisos de la cuenta). M02, M03, M04 y M06 no las ven.',
+      severity: 'error',
+      from: {
+        path: '(^|/)src/',
+        pathNot: ['(^|/)src/host/', '(^|/)src/modules/notificaciones/', '(^|/)src/modules/acceso-barberias/'],
+      },
+      to: { path: '(^|/)src/modules/acceso-barberias/cuentas\\.ts$' },
     },
     {
       name: 'm06-solo-por-interfaz-publica',
@@ -264,12 +282,17 @@ module.exports = {
       name: 'matriz-m05',
       comment:
         'Matriz de dependencias (revisión de ADR-013): M05 solo puede llamar a M01 por su index.ts (lectura de ' +
-        'canal, consentimiento y correos) y a M06.',
+        'canal, consentimiento y correos) o por acceso-barberias/cuentas.ts (010: correo de la cuenta y token del ' +
+        'enlace al enviar), y a M06.',
       severity: 'error',
       from: { path: '(^|/)src/modules/notificaciones/' },
       to: {
         path: '(^|/)src/modules/',
-        pathNot: ['(^|/)src/modules/notificaciones/', '(^|/)src/modules/acceso-barberias/index\\.ts$'],
+        pathNot: [
+          '(^|/)src/modules/notificaciones/',
+          '(^|/)src/modules/acceso-barberias/index\\.ts$',
+          '(^|/)src/modules/acceso-barberias/cuentas\\.ts$',
+        ],
       },
     },
     {

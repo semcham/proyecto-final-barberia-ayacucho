@@ -1,6 +1,23 @@
 import { Module } from '@nestjs/common';
 import { SuscripcionesPagosModule } from '../suscripciones-pagos';
-import { BarberiasApi, ClientesApi, PersonalApi } from './api-publica';
+import { BarberiasApi, ClientesApi, CuentasApi, PersonalApi } from './api-publica';
+import { CuentasApiImpl } from './identidad/application/cuentas-api';
+import {
+  BarberiasParaRetencion,
+  EnlaceDeCuentaRepository,
+  EstadoDeCuentas,
+  FuncionesDeCuenta,
+  IntentosEnlaceDeCuentaRepository,
+} from './identidad/application/ports/enlace-de-cuenta-repository';
+import { PurgarEnlacesDeCuenta } from './identidad/application/purgar-enlaces-de-cuenta';
+import { SolicitarEnlaceDeCuenta } from './identidad/application/solicitar-enlace-de-cuenta';
+import {
+  KyselyEnlaceDeCuentaRepository,
+  KyselyEstadoDeCuentas,
+  KyselyFuncionesDeCuenta,
+} from './identidad/infrastructure/kysely-enlace-de-cuenta-repository';
+import { KyselyIntentosEnlaceDeCuentaRepository } from './identidad/infrastructure/kysely-intentos-enlace-repository';
+import { BarberiasParaRetencionPlataforma } from './identidad/infrastructure/plataforma/barberias-para-retencion';
 import { ActualizarBarberia } from './barberias/application/actualizar-barberia';
 import { BarberiasApiImpl } from './barberias/application/barberias-api';
 import { ObtenerBarberia } from './barberias/application/obtener-barberia';
@@ -200,6 +217,15 @@ import { UsuariosPorTipoIndicador } from './identidad/infrastructure/plataforma/
     ConsultarIndicadores,
     // 007 (fase 2c): fuente de indicadores de la plataforma (usuarios por tipo, desde la vista de solo conteo).
     UsuariosPorTipoIndicador,
+    // 010 (fase 3): base común de los enlaces de cuenta por correo (ADR-036).
+    { provide: EnlaceDeCuentaRepository, useClass: KyselyEnlaceDeCuentaRepository },
+    { provide: FuncionesDeCuenta, useClass: KyselyFuncionesDeCuenta },
+    { provide: EstadoDeCuentas, useClass: KyselyEstadoDeCuentas },
+    { provide: IntentosEnlaceDeCuentaRepository, useClass: KyselyIntentosEnlaceDeCuentaRepository },
+    { provide: BarberiasParaRetencion, useClass: BarberiasParaRetencionPlataforma },
+    { provide: CuentasApi, useClass: CuentasApiImpl },
+    SolicitarEnlaceDeCuenta,
+    PurgarEnlacesDeCuenta,
   ],
   exports: [
     ValidarSolicitud,
@@ -207,6 +233,10 @@ import { UsuariosPorTipoIndicador } from './identidad/infrastructure/plataforma/
     BarberiasApi,
     ClientesApi,
     PersonalApi,
+    // 010: para el host (guard del correo verificado, fase 4) y M05 (avisos de la cuenta), por acceso-barberias/cuentas.ts.
+    CuentasApi,
+    // 010: la registra el host (host/tareas.ts).
+    PurgarEnlacesDeCuenta,
     // 007: la registra el host (host/indicadores.ts).
     UsuariosPorTipoIndicador,
   ],

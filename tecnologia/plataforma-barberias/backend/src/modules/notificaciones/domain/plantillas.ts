@@ -431,3 +431,78 @@ export function componerAvisoDeAdelanto(
   }
   return { asunto: asunto.slice(0, 120), texto: [...cuerpo, '', PIE].join('\n') };
 }
+
+// ---------------------------------------------------------------------------------------------------------------
+// 010 (T043; contracts/eventos-y-avisos.md §2 de 010; constitución 1.8.0, principio VII) · Avisos de la cuenta, en
+// texto simple, siempre por correo. `datosDeCuenta` arma una lista CERRADA: el nombre de la barbería, el enlace de la
+// cuenta (con el token, armado al enviar) y, en el cambio de contraseña, su fecha. Nunca el correo de la persona, la
+// contraseña, teléfonos ni datos de citas.
+
+export interface DatosDeCuenta {
+  barberia: string;
+  zonaHoraria: string;
+  /** La dirección del enlace (URL_PUBLICA/verificar#<token> o /restablecer#<token>): solo en los avisos con enlace. */
+  enlace?: string;
+  /** Instante ISO 8601 del cambio de contraseña. */
+  cambiadaEn?: string;
+}
+
+export function datosDeCuenta(
+  payload: Record<string, unknown>,
+  barberia: string,
+  zonaHoraria: string,
+  enlace?: string,
+): DatosDeCuenta {
+  const datos: DatosDeCuenta = { barberia, zonaHoraria: zonaHoraria || 'America/Lima' };
+  const cambiadaEn = texto(payload.cambiadaEn);
+  if (cambiadaEn) datos.cambiadaEn = cambiadaEn;
+  if (enlace) datos.enlace = enlace;
+  return datos;
+}
+
+/** Asunto y texto de un aviso de la cuenta. Los avisos con enlace no se componen sin él. */
+export function componerAvisoDeCuenta(tipo: TipoAviso, datos: DatosDeCuenta): MensajeCompuesto {
+  const { barberia, zonaHoraria: zona } = datos;
+  let asunto: string;
+  let cuerpo: string[];
+  switch (tipo) {
+    case 'VERIFICAR_CORREO':
+      if (!datos.enlace) throw new Error('El aviso de verificación necesita su enlace');
+      asunto = `Verifica tu correo para reservar en ${barberia}`;
+      cuerpo = [
+        `Creaste tu cuenta para reservar en ${barberia}. Para reservar, confirma que este correo es tuyo:`,
+        '',
+        `Verificar mi correo: ${datos.enlace}`,
+        '',
+        'El enlace sirve una sola vez y vence en 24 horas. Si vence, puedes pedir otro desde la barbería.',
+        'Si no fuiste tú, ignora este correo.',
+      ];
+      break;
+    case 'RECUPERAR_CONTRASENA':
+      if (!datos.enlace) throw new Error('El aviso de recuperación necesita su enlace');
+      asunto = 'Restablece tu contraseña';
+      cuerpo = [
+        'Pediste restablecer la contraseña de tu cuenta en la plataforma de reservas.',
+        '',
+        `Elegir una contraseña nueva: ${datos.enlace}`,
+        '',
+        'El enlace sirve una sola vez y vence en 1 hora.',
+        'Si no lo pediste, ignora este correo: tu contraseña no cambia.',
+      ];
+      break;
+    case 'CONTRASENA_CAMBIADA':
+      asunto = 'Tu contraseña cambió';
+      cuerpo = [
+        datos.cambiadaEn
+          ? `La contraseña de tu cuenta cambió el ${cuando(datos.cambiadaEn, zona)}.`
+          : 'La contraseña de tu cuenta cambió.',
+        '',
+        'Por seguridad, cerramos las sesiones abiertas de tu cuenta en todos los dispositivos.',
+        'Si no fuiste tú, pide otra recuperación de contraseña desde la pantalla de ingreso ("¿Olvidaste tu contraseña?").',
+      ];
+      break;
+    default:
+      throw new Error(`No hay plantilla de cuenta para el aviso ${tipo}`);
+  }
+  return { asunto: asunto.slice(0, 120), texto: [...cuerpo, '', PIE].join('\n') };
+}

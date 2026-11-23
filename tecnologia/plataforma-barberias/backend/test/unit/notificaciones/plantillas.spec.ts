@@ -1,4 +1,9 @@
-import { componerAviso, datosDelEvento } from '../../../src/modules/notificaciones/domain/plantillas';
+import {
+  componerAviso,
+  componerAvisoDeCuenta,
+  datosDeCuenta,
+  datosDelEvento,
+} from '../../../src/modules/notificaciones/domain/plantillas';
 
 // T059 · Plantillas de los avisos de cita (FR-013, FR-014; principio VII, datos mínimos). Texto simple con la
 // barbería, el servicio, el barbero, la fecha y la hora EN LA HORA DE LA BARBERÍA y, en la reprogramación, la
@@ -144,5 +149,86 @@ describe('CITA_CANCELADA con el adelanto (T059 de 008)', () => {
     const alBarbero = componerAviso('CITA_CANCELADA', 'BARBERO', conAdelanto('POR_DEVOLVER')).texto;
     expect(alBarbero).not.toMatch(/adelanto/i);
     expect(componerAviso('CITA_CANCELADA', 'CLIENTE', datos).texto).not.toMatch(/adelanto/i);
+  });
+});
+
+// T033 de 010 · Avisos de la cuenta (contracts/eventos-y-avisos.md §2 de 010; constitución 1.8.0, principio VII): el
+// nombre de la barbería, el enlace con su vigencia y, al cambiar la contraseña, la fecha. Nunca el correo de la persona,
+// la contraseña ni datos de citas, aunque el evento los trajera.
+describe('Plantillas de los avisos de la cuenta (010)', () => {
+  const ENLACE_VERIFICAR = 'https://citas.barberias.pe/verificar#token-de-prueba-0123456789';
+  const ENLACE_RESTABLECER = 'https://citas.barberias.pe/restablecer#token-de-prueba-9876543210';
+  const CONTRASENA = 'mi-clave-secreta-de-prueba';
+  /** Un payload con campos de más (nunca debe pasar), para comprobar que la lista de datos es cerrada. */
+  const conDeMas = {
+    enlaceId: '0190a1b2-0000-7000-8000-0000000000e1',
+    usuarioId: '0190a1b2-0000-7000-8000-0000000000u1',
+    proposito: 'VERIFICAR_CORREO',
+    venceEn: '2026-11-24T15:00:00.000Z',
+    cambiadaEn: '2026-11-23T15:00:00.000Z',
+    correo: CORREO,
+    telefono: TELEFONO,
+    contrasena: CONTRASENA,
+    servicio: 'Corte clásico',
+  };
+  const textoDe = (
+    tipo: 'VERIFICAR_CORREO' | 'RECUPERAR_CONTRASENA' | 'CONTRASENA_CAMBIADA',
+    enlace?: string,
+  ) => {
+    const { asunto, texto } = componerAvisoDeCuenta(
+      tipo,
+      datosDeCuenta(conDeMas, 'Barbería Huamanga', 'America/Lima', enlace),
+    );
+    return `${asunto}\n${texto}`;
+  };
+
+  it('verificar el correo: la barbería, el enlace, su vigencia de 24 h y "si no fuiste tú"', () => {
+    const texto = textoDe('VERIFICAR_CORREO', ENLACE_VERIFICAR);
+    expect(texto).toContain('Barbería Huamanga');
+    expect(texto).toContain(ENLACE_VERIFICAR);
+    expect(texto).toMatch(/24 horas/);
+    expect(texto).toMatch(/si no fuiste tú, ignora este correo/i);
+  });
+
+  it('recuperar la contraseña: el enlace, su vigencia de 1 hora y que la contraseña no cambia si no se pidió', () => {
+    const texto = textoDe('RECUPERAR_CONTRASENA', ENLACE_RESTABLECER);
+    expect(texto).toContain(ENLACE_RESTABLECER);
+    expect(texto).toMatch(/1 hora/);
+    expect(texto).toMatch(/si no lo pediste, ignora este correo: tu contraseña no cambia/i);
+  });
+
+  it('contraseña cambiada: la fecha y hora en la zona de la barbería, sesiones cerradas y qué hacer si no fue la persona', () => {
+    const texto = textoDe('CONTRASENA_CAMBIADA');
+    // 15:00 UTC = 10:00 en Lima.
+    expect(texto).toMatch(/23 de noviembre de 2026, a las 10:00/);
+    expect(texto).toMatch(/cerramos las sesiones/i);
+    expect(texto).toMatch(/si no fuiste tú, pide otra recuperación/i);
+  });
+
+  it.each(['VERIFICAR_CORREO', 'RECUPERAR_CONTRASENA', 'CONTRASENA_CAMBIADA'] as const)(
+    '%s: nunca el correo, el teléfono, la contraseña ni datos de citas',
+    (tipo) => {
+      const texto = textoDe(tipo, tipo === 'CONTRASENA_CAMBIADA' ? undefined : ENLACE_VERIFICAR);
+      for (const prohibido of [
+        CORREO,
+        TELEFONO,
+        CONTRASENA,
+        'Corte clásico',
+        conDeMas.enlaceId,
+        conDeMas.usuarioId,
+      ]) {
+        expect(texto).not.toContain(prohibido);
+      }
+      expect(Object.keys(datosDeCuenta(conDeMas, 'B', 'America/Lima'))).toEqual([
+        'barberia',
+        'zonaHoraria',
+        'cambiadaEn',
+      ]);
+    },
+  );
+
+  it('los avisos con enlace no se componen sin él', () => {
+    expect(() => textoDe('VERIFICAR_CORREO')).toThrow();
+    expect(() => textoDe('RECUPERAR_CONTRASENA')).toThrow();
   });
 });

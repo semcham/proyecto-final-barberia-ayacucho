@@ -22,6 +22,10 @@ export const TIPOS_DE_AVISO = [
   'ADELANTO_CONFIRMADO',
   'PAGO_ADELANTO_RECHAZADO',
   'ADELANTO_VENCIDO',
+  // Funcionalidad 010 (contracts/eventos-y-avisos.md §2 de 010, migración 0036).
+  'VERIFICAR_CORREO',
+  'RECUPERAR_CONTRASENA',
+  'CONTRASENA_CAMBIADA',
 ] as const;
 export type TipoAviso = (typeof TIPOS_DE_AVISO)[number];
 
@@ -38,11 +42,13 @@ export const ESTADOS_FINALES: readonly EstadoAviso[] = [
 export type CodigoErrorAviso =
   'TIEMPO_AGOTADO' | 'CANAL_NO_DISPONIBLE' | 'DESTINATARIO_INVALIDO' | 'SIN_CANAL';
 
-export type TipoDestinatario = 'CLIENTE' | 'PROPIETARIO' | 'BARBERO';
+export type TipoDestinatario = 'CLIENTE' | 'PROPIETARIO' | 'BARBERO' | 'CUENTA';
 
 /**
  * A quién va el aviso, sin datos de contacto. `ref` es el perfil del cliente, el usuario del barbero o, para el
  * propietario, la barbería (tenant): su correo se resuelve al enviar con `BarberiasApi.correoDelPropietario`.
+ * 010: `CUENTA` es la cuenta de una persona (`ref` = su usuario), sea cliente o personal; su correo se resuelve al
+ * enviar con `CuentasApi.correoDeCuenta`.
  */
 export interface Destinatario {
   tipo: TipoDestinatario;
@@ -107,3 +113,35 @@ export const DESTINATARIOS_POR_EVENTO_DE_ADELANTO: Readonly<Record<string, reado
 
 /** Plazo de un aviso del adelanto: el de los avisos que no son recordatorio, creación + 24 h. */
 export const PLAZO_AVISO_DE_ADELANTO_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * 010 (contracts/eventos-y-avisos.md §2 de 010) · Avisos de la cuenta: van a la CUENTA, siempre por correo (el canal
+ * elegido del cliente no aplica). Los del enlace llevan un token que se emite al enviar.
+ */
+export const TIPOS_DE_AVISO_DE_CUENTA: readonly TipoAviso[] = [
+  'VERIFICAR_CORREO',
+  'RECUPERAR_CONTRASENA',
+  'CONTRASENA_CAMBIADA',
+];
+
+/** Los avisos con enlace de cuenta: se descartan (no "fallan") si su enlace venció o ya no sirve. */
+export const TIPOS_DE_AVISO_CON_ENLACE_DE_CUENTA: readonly TipoAviso[] = [
+  'VERIFICAR_CORREO',
+  'RECUPERAR_CONTRASENA',
+];
+
+/** Aviso de cada propósito de `EnlaceDeCuentaSolicitado`. */
+export const AVISO_POR_PROPOSITO_DE_ENLACE: Readonly<Record<string, TipoAviso>> = {
+  VERIFICAR_CORREO: 'VERIFICAR_CORREO',
+  RECUPERAR_CONTRASENA: 'RECUPERAR_CONTRASENA',
+};
+
+/** Plazo del aviso de contraseña cambiada: creación + 24 h. Los del enlace se descartan al vencer el enlace. */
+export const PLAZO_AVISO_DE_CUENTA_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * ¿El aviso se DESCARTA (en vez de quedar FALLIDO) cuando ya no llegará a tiempo? El recordatorio (la cita empezó) y
+ * los avisos con enlace de cuenta (el enlace venció): no son un fallo del canal.
+ */
+export const seDescartaAlVencer = (tipo: TipoAviso): boolean =>
+  tipo === 'RECORDATORIO' || TIPOS_DE_AVISO_CON_ENLACE_DE_CUENTA.includes(tipo);

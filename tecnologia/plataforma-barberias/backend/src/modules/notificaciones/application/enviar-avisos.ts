@@ -1,5 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { BarberiasApi, ClientesApi, PersonalApi } from '../../acceso-barberias';
+// 010 (research R02): las cuentas por correo tienen su propia entrada pública (regla cuentas-api-confinada de PR14).
+import { CuentasApi } from '../../acceso-barberias/cuentas';
 import {
   Clock,
   Configuracion,
@@ -13,7 +15,10 @@ import { EnlacesFirmados } from '../../../shared/enlaces-firmados';
 import {
   type CodigoErrorAviso,
   type Destinatario,
+  seDescartaAlVencer,
+  TIPOS_DE_AVISO_CON_ENLACE_DE_CUENTA,
   TIPOS_DE_AVISO_DE_ADELANTO,
+  TIPOS_DE_AVISO_DE_CUENTA,
   TIPOS_DE_AVISO_DE_SUSCRIPCION,
 } from '../domain/aviso';
 import {
@@ -26,8 +31,10 @@ import {
 import {
   componerAviso,
   componerAvisoDeAdelanto,
+  componerAvisoDeCuenta,
   componerAvisoDeSuscripcion,
   datosDeAdelanto,
+  datosDeCuenta,
   datosDelEvento,
   datosDeSuscripcion,
   type EnlacesDelRecordatorio,
@@ -51,6 +58,9 @@ export const RETENCION_DIAS = 90;
 const LOTE_DE_PURGA = 200;
 const BARBERIAS_POR_PURGA = 100;
 const DIA_MS = 24 * 60 * 60 * 1000;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+/** 010 (research R09): la página de cada enlace de cuenta; el token va en el fragmento (#), que no viaja al servidor. */
+const PAGINA_DEL_ENLACE = { VERIFICAR_CORREO: 'verificar', RECUPERAR_CONTRASENA: 'restablecer' } as const;
 
 type Preparado =
   | { tipo: 'nada' }
@@ -89,6 +99,7 @@ export class EnviarAvisos {
     private readonly clientes: ClientesApi,
     private readonly personal: PersonalApi,
     private readonly barberias: BarberiasApi,
+    private readonly cuentas: CuentasApi,
     private readonly reloj: Clock,
     private readonly enlaces: EnlacesFirmados,
     private readonly tenantContext: TenantContext,
@@ -172,9 +183,10 @@ export class EnviarAvisos {
         return;
       }
       // FR-033: un recordatorio que ya no llegará antes de la hora de inicio se DESCARTA (no es un fallo del
-      // canal: la cita empezó). Sin intentos o con un error permanente, sí es FALLIDO.
+      // canal: la cita empezó); 010: igual un aviso con enlace de cuenta cuyo enlace venció. Sin intentos o con un
+      // error permanente, sí es FALLIDO.
       const porPlazo = fallo.fallo !== 'PERMANENTE' && decision.intentos < INTENTOS_MAXIMOS;
-      const estado = aviso.tipo === 'RECORDATORIO' && porPlazo ? 'DESCARTADO' : 'FALLIDO';
+      const estado = seDescartaAlVencer(aviso.tipo) && porPlazo ? 'DESCARTADO' : 'FALLIDO';
       await this.avisos.finalizar(aviso.id, estado, decision.intentos, fallo.error);
     });
     return true;
@@ -206,11 +218,11 @@ export class EnviarAvisos {
     const aviso = await this.avisos.reclamar(id, ahora, PLAZO_RECLAMO_MS);
     if (!aviso) return { tipo: 'nada' };
     // FR-033: un aviso de cita sin enviar a las 24 h queda FALLIDO (conserva el último error); un recordatorio sin
-    // enviar a la hora de inicio de la cita se DESCARTA.
+    // enviar a la hora de inicio de la cita se DESCARTA, y (010) también un aviso con enlace de cuenta ya vencido.
     if (ahora.getTime() >= aviso.descartarDespues.getTime()) {
       await this.avisos.finalizar(
         aviso.id,
-        aviso.tipo === 'RECORDATORIO' ? 'DESCARTADO' : 'FALLIDO',
+        seDescartaAlVencer(aviso.tipo) ? 'DESCARTADO' : 'FALLIDO',
         aviso.intentos,
       );
       return { tipo: 'cerrado' };
@@ -230,7 +242,20 @@ export class EnviarAvisos {
       await this.avisos.finalizar(aviso.id, 'DESCARTADO', aviso.intentos, elegido.descartar);
       return { tipo: 'cerrado' };
     }
-    const { asunto, texto } = await this.componer(aviso, aviso.evento.payload);
+    // 010 (research R02): el token del enlace de cuenta se emite AHORA, al enviar (y otra vez en cada reintento: el
+    // anterior deja de servir). Si el enlace ya no sirve (usado, anulado o vencido), el aviso se descarta sin enviar.
+    let enlaceDeCuenta: string | undefined;
+    if (TIPOS_DE_AVISO_CON_ENLACE_DE_CUENTA.includes(aviso.tipo)) {
+      const enlaceId = aviso.evento.payload.enlaceId;
+      const emitido =
+        typeof enlaceId === 'string' && UUID.test(enlaceId) ? await this.cuentas.emitirToken(enlaceId) : null;
+      if (!emitido) {
+        await this.avisos.finalizar(aviso.id, 'DESCARTADO', aviso.intentos, null);
+        return { tipo: 'cerrado' };
+      }
+      enlaceDeCuenta = `${this.urlPublica}/${PAGINA_DEL_ENLACE[emitido.proposito]}#${emitido.token}`;
+    }
+    const { asunto, texto } = await this.componer(aviso, aviso.evento.payload, enlaceDeCuenta);
     return {
       tipo: 'enviar',
       aviso,
@@ -244,7 +269,16 @@ export class EnviarAvisos {
    * El texto del aviso, con datos de una lista cerrada. Los de suscripción (fase 6, US5) llevan las fechas en la zona
    * de la barbería, leída de M01 al enviar, como el nombre.
    */
-  private async componer(aviso: AvisoReclamado, payload: Record<string, unknown>): Promise<MensajeCompuesto> {
+  private async componer(
+    aviso: AvisoReclamado,
+    payload: Record<string, unknown>,
+    enlaceDeCuenta?: string,
+  ): Promise<MensajeCompuesto> {
+    // 010: los avisos de la cuenta (verificar, recuperar y contraseña cambiada), con la zona de la barbería del enlace.
+    if (TIPOS_DE_AVISO_DE_CUENTA.includes(aviso.tipo)) {
+      const { nombre, zonaHoraria } = await this.barberias.configuracionAgenda();
+      return componerAvisoDeCuenta(aviso.tipo, datosDeCuenta(payload, nombre, zonaHoraria, enlaceDeCuenta));
+    }
     if (TIPOS_DE_AVISO_DE_SUSCRIPCION.includes(aviso.tipo)) {
       const { nombre, zonaHoraria } = await this.barberias.configuracionAgenda();
       return componerAvisoDeSuscripcion(aviso.tipo, datosDeSuscripcion(payload, nombre, zonaHoraria));
@@ -293,6 +327,9 @@ export class EnviarAvisos {
         return { correo: await this.barberias.correoDelPropietario(), canal: 'CORREO' };
       case 'BARBERO':
         return { correo: await this.personal.correoDe(destinatario.ref), canal: 'CORREO' };
+      // 010: la cuenta, siempre por correo (el canal elegido del cliente no aplica a los avisos de la cuenta).
+      case 'CUENTA':
+        return { correo: await this.cuentas.correoDeCuenta(destinatario.ref), canal: 'CORREO' };
     }
   }
 }
