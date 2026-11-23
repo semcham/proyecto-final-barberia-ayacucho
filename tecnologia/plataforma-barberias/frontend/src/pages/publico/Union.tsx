@@ -4,6 +4,7 @@ import { type FieldError, type UseFormRegisterReturn, useForm } from 'react-hook
 import { z } from 'zod';
 import { ApiError } from '../../api/client';
 import type { DatosUnion } from '../../auth/SesionProvider';
+import { EnlaceLegal } from '../../components/EnlaceLegal';
 import { Icono } from '../../components/Icono';
 import { Alerta } from '../../components/ui/Alerta';
 import { Boton } from '../../components/ui/Boton';
@@ -54,7 +55,8 @@ export function CasillaPolitica({
           {...registro}
         />
         <span>
-          Acepto la política de tratamiento de datos (versión {VERSION_POLITICA_DATOS}) de esta barbería
+          Acepto la <EnlaceLegal a="/privacidad">política de tratamiento de datos</EnlaceLegal> (versión{' '}
+          {VERSION_POLITICA_DATOS}) de esta barbería
         </span>
       </label>
       {error && (

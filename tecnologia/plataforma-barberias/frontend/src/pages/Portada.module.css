@@ -551,12 +551,6 @@
   min-height: 2.75rem;
 }
 
-.pieEnlaces span {
-  display: inline-flex;
-  align-items: center;
-  min-height: 2.75rem;
-}
-
 @media (min-width: 48rem) {
   .pieInterior {
     padding: var(--espacio-8);

@@ -33,6 +33,11 @@ const CanalAviso = lazy(() => import('./pages/cliente/CanalAviso'));
 const Clientes = lazy(() => import('./pages/panel/Clientes'));
 const RegistroCliente = lazy(() => import('./pages/publico/RegistroCliente'));
 const IngresarBarberia = lazy(() => import('./pages/publico/IngresarBarberia'));
+// Funcionalidad 010 (T012): los textos legales publicados, sin sesión.
+const Terminos = lazy(() => import('./pages/publico/DocumentoLegal').then((m) => ({ default: m.Terminos })));
+const Privacidad = lazy(() =>
+  import('./pages/publico/DocumentoLegal').then((m) => ({ default: m.Privacidad })),
+);
 // Funcionalidad 004 (T097): la página pública del enlace de acción del recordatorio (/e#<token>).
 const Enlace = lazy(() => import('./pages/publico/Enlace'));
 // Funcionalidad 003 (T051).
@@ -119,6 +124,8 @@ export function RutasApp() {
           <Route path="/registro" element={<Registro />} />
           <Route path="/ingresar" element={<Ingresar />} />
           <Route path="/activar" element={<Activar />} />
+          <Route path="/terminos" element={<Terminos />} />
+          <Route path="/privacidad" element={<Privacidad />} />
           {/* Vía pública por el enlace de la barbería (ADR-021) y cuenta de cliente. */}
           <Route path="/b/:slug" element={<CatalogoPublico />} />
           <Route path="/b/:slug/registro" element={<RegistroCliente />} />

@@ -52,6 +52,27 @@
   font-weight: var(--peso-fuerte);
 }
 
+/* Enlaces a los textos legales (010, FR-024), al pie de las pantallas de acceso. */
+.legales {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0 var(--espacio-5);
+  max-width: var(--ancho-formulario);
+  font-size: var(--texto-sm);
+}
+
+.legales a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  color: var(--color-texto-suave);
+}
+
+.legales a:hover {
+  color: var(--color-enlace-hover);
+}
+
 @media (min-width: 30rem) {
   .principal {
     padding-top: var(--espacio-8);

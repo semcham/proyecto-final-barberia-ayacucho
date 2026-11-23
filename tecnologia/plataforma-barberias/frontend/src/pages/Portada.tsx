@@ -323,12 +323,11 @@ export default function Portada() {
             <li>
               <Link to="/ingresar">Ingresar</Link>
             </li>
-            {/* Los textos legales aún no están publicados: se muestran sin enlace hasta que existan. */}
             <li>
-              <span>Términos de uso (en preparación)</span>
+              <Link to="/terminos">Términos y condiciones</Link>
             </li>
             <li>
-              <span>Política de privacidad (en preparación)</span>
+              <Link to="/privacidad">Política de privacidad</Link>
             </li>
           </ul>
         </div>

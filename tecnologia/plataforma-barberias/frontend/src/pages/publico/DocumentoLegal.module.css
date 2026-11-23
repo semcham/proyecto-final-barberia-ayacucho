@@ -1,0 +1,150 @@
+/* Páginas de los textos legales (/terminos y /privacidad, 010). Lectura cómoda: columna de ~70 caracteres. */
+
+.pagina {
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--color-fondo);
+}
+
+.barra {
+  border-bottom: 1px solid var(--color-borde);
+  background: var(--color-superficie);
+  padding: var(--espacio-3) var(--espacio-4);
+}
+
+.contenido {
+  max-width: var(--ancho-contenido);
+  margin: 0 auto;
+  padding: var(--espacio-8) var(--espacio-4) var(--espacio-12);
+}
+
+.cabecera {
+  max-width: 46rem;
+  margin-bottom: var(--espacio-8);
+}
+
+.titulo {
+  font-size: var(--texto-3xl);
+  overflow-wrap: anywhere;
+}
+
+.version {
+  margin: var(--espacio-2) 0 0;
+  font-size: var(--texto-sm);
+  color: var(--color-texto-suave);
+}
+
+.borrador {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--espacio-2) var(--espacio-3);
+  margin: var(--espacio-4) 0 0;
+  font-size: var(--texto-sm);
+  color: var(--color-texto-suave);
+}
+
+.resumen {
+  margin: var(--espacio-5) 0 0;
+  font-size: var(--texto-lg);
+  color: var(--color-texto-suave);
+}
+
+.cuerpo {
+  display: grid;
+  gap: var(--espacio-8);
+}
+
+.indice {
+  align-self: start;
+  padding: var(--espacio-4) var(--espacio-5);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio-lg);
+  background: var(--color-superficie);
+  font-size: var(--texto-sm);
+}
+
+.indiceTitulo {
+  margin: 0 0 var(--espacio-2);
+  font-weight: var(--peso-fuerte);
+}
+
+.indice ol {
+  margin: 0;
+  padding-left: var(--espacio-5);
+}
+
+.indice li {
+  padding: var(--espacio-1) 0;
+}
+
+.texto {
+  max-width: 46rem;
+  min-width: 0;
+}
+
+.texto section + section {
+  margin-top: var(--espacio-8);
+}
+
+.texto h2 {
+  font-size: var(--texto-xl);
+  scroll-margin-top: var(--espacio-6);
+}
+
+.texto p,
+.texto ul {
+  margin: var(--espacio-3) 0 0;
+}
+
+.texto ul {
+  padding-left: var(--espacio-5);
+}
+
+.texto li + li {
+  margin-top: var(--espacio-2);
+}
+
+.texto code {
+  padding: 0 var(--espacio-1);
+  border-radius: var(--radio-sm);
+  background: var(--color-superficie-hundida);
+  font-family: var(--fuente-mono);
+  font-size: 0.9em;
+  overflow-wrap: anywhere;
+}
+
+.pie {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--espacio-4);
+  max-width: 46rem;
+  margin-top: var(--espacio-12);
+  padding-top: var(--espacio-6);
+  border-top: 1px solid var(--color-borde);
+}
+
+.pie p {
+  margin: 0;
+}
+
+@media (min-width: 64rem) {
+  .contenido {
+    padding: var(--espacio-10) var(--espacio-8) var(--espacio-16);
+  }
+
+  .titulo {
+    font-size: var(--texto-4xl);
+  }
+
+  .cuerpo {
+    grid-template-columns: 16rem minmax(0, 1fr);
+    gap: var(--espacio-10);
+  }
+
+  .indice {
+    position: sticky;
+    top: var(--espacio-6);
+  }
+}

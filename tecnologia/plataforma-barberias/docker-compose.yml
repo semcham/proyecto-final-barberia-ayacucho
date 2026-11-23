@@ -351,8 +351,8 @@ services:
     environment:
       SEMILLA_API: http://nginx/api/v1
       SEMILLA_BUZON: http://${IP_MAILPIT:-172.28.0.15}:8025
-      SEMILLA_VERSION_TERMINOS: ${TERMS_VERSION:-2026-10}
-      SEMILLA_VERSION_POLITICA: ${PRIVACY_POLICY_VERSION:-2026-10}
+      SEMILLA_VERSION_TERMINOS: ${TERMS_VERSION:-2026-11}
+      SEMILLA_VERSION_POLITICA: ${PRIVACY_POLICY_VERSION:-2026-11}
     volumes:
       - ./semilla:/semilla:ro
     networks: [plataforma]

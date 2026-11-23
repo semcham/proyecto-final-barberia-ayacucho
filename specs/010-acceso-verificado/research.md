@@ -146,11 +146,14 @@ comprobaron el 2026-11-23 en la rama `main` (rutas relativas a `tecnologia/plata
   siguen saliendo de `TERMS_VERSION` y `PRIVACY_POLICY_VERSION` (backend) y de `VITE_TERMS_VERSION` y
   `VITE_PRIVACY_POLICY_VERSION` (interfaz), que ya existen (`frontend/src/legal.ts`). El registro ya rechaza una versión
   distinta de la vigente (FR-026 está construido); solo se agrega una prueba.
-- **Versión nueva**: los textos se publican como una **versión nueva** (provisionalmente `2026-12`), no como `2026-10`,
-  porque nadie pudo leer el texto de la `2026-10`. Las aceptaciones guardadas con `2026-10` no cambian (Q1: C).
+- **Versión nueva**: los textos se publican como la **versión nueva `2026-11`**, vigente desde el 2026-11-23, no como
+  `2026-10`, porque nadie pudo leer el texto de la `2026-10`. Las aceptaciones guardadas con `2026-10` no cambian (Q1: C).
   **Paso del responsable**: cambiar `TERMS_VERSION` y `PRIVACY_POLICY_VERSION` en su `.env` local (el agente no lo lee ni
-  lo cambia), además de `.env.example`, `backend/test/helpers/entorno.ts`, el valor por defecto de `legal.ts` y el de la
-  semilla en `docker-compose.yml`.
+  lo cambia), además de `.env.example`, el valor por defecto de `legal.ts` y los de la semilla en `docker-compose.yml` y
+  `semilla/cargar-semilla.mjs`.
+- **Precisión de la implementación (fase 1)**: `backend/test/helpers/entorno.ts` se queda en `2026-10`. Es solo la versión
+  "vigente" del entorno de pruebas del backend (unas 40 pruebas la escriben literal), y `version-legal.spec.ts` la lee de
+  ese mismo entorno, así que las pruebas no dependen del número. Cambiarla no prueba nada nuevo.
 - **Razón**: el texto cambia poco y debe revisarlo una persona; un sistema de gestión de documentos no se justifica.
 - **Alternativa**: guardar los textos en la base de datos con una pantalla de edición (fuera de alcance; sin ella la
   tabla no aporta nada).

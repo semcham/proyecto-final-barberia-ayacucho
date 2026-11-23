@@ -4,7 +4,7 @@
 // la propia aplicación. Es idempotente y la carga normal no cambia ninguna contraseña.
 //
 //   node semilla/cargar-semilla.mjs [--api http://localhost:3000/api/v1] [--datos semilla/datos.json]
-//                                   [--modo local] [--version-terminos 2026-10] [--version-politica 2026-10]
+//                                   [--modo local] [--version-terminos 2026-11] [--version-politica 2026-11]
 //
 // En Docker Compose: `docker compose --profile herramientas run --rm semilla` (servicio de docker-compose.yml).
 // Códigos: 0 todo existe o se creó; 1 error; 3 --reiniciar-contrasenas en el modo local (rechazado).
@@ -53,8 +53,8 @@ export async function cargarSemilla(o) {
   const api = crearApi({ base: o.api, fetch: o.fetch, espera: o.espera });
   const zona = o.datos.zonaHoraria ?? 'America/Lima';
   const hoy = o.hoy ?? new Date();
-  const versionTerminos = o.versionTerminos ?? '2026-10';
-  const versionPolitica = o.versionPolitica ?? '2026-10';
+  const versionTerminos = o.versionTerminos ?? '2026-11';
+  const versionPolitica = o.versionPolitica ?? '2026-11';
   const sumar = (tipo, creada) => (creada ? resumen[tipo].creadas++ : resumen[tipo].existentes++);
 
   try {
@@ -255,8 +255,8 @@ function argumentos(argv) {
     datos: fileURLToPath(new URL('./datos.json', import.meta.url)),
     modo: 'local',
     reiniciarContrasenas: false,
-    versionTerminos: process.env.SEMILLA_VERSION_TERMINOS ?? '2026-10',
-    versionPolitica: process.env.SEMILLA_VERSION_POLITICA ?? '2026-10',
+    versionTerminos: process.env.SEMILLA_VERSION_TERMINOS ?? '2026-11',
+    versionPolitica: process.env.SEMILLA_VERSION_POLITICA ?? '2026-11',
   };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];

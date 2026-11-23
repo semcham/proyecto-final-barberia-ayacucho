@@ -10,6 +10,7 @@ import { VERSION_POLITICA_DATOS, VERSION_TERMINOS } from '../legal';
 import { Alerta } from '../components/ui/Alerta';
 import { Boton } from '../components/ui/Boton';
 import { Campo, CampoContrasena } from '../components/ui/Campo';
+import { EnlaceLegal } from '../components/EnlaceLegal';
 import { Icono } from '../components/Icono';
 import { IndicadorFortaleza } from '../components/IndicadorFortaleza';
 import { MarcoAcceso, type PuntoValor } from '../components/MarcoAcceso';
@@ -195,7 +196,9 @@ export default function Registro() {
               aria-describedby={errors.aceptaTerminos ? 'aceptaTerminos-error' : undefined}
               {...register('aceptaTerminos')}
             />
-            <span>Acepto los términos de uso (versión {VERSION_TERMINOS})</span>
+            <span>
+              Acepto los <EnlaceLegal a="/terminos">términos de uso</EnlaceLegal> (versión {VERSION_TERMINOS})
+            </span>
           </label>
           {errors.aceptaTerminos && (
             <p id="aceptaTerminos-error" className="mensaje-error">
@@ -212,7 +215,10 @@ export default function Registro() {
               aria-describedby={errors.aceptaPolitica ? 'aceptaPolitica-error' : undefined}
               {...register('aceptaPolitica')}
             />
-            <span>Acepto la política de tratamiento de datos (versión {VERSION_POLITICA_DATOS})</span>
+            <span>
+              Acepto la <EnlaceLegal a="/privacidad">política de tratamiento de datos</EnlaceLegal> (versión{' '}
+              {VERSION_POLITICA_DATOS})
+            </span>
           </label>
           {errors.aceptaPolitica && (
             <p id="aceptaPolitica-error" className="mensaje-error">

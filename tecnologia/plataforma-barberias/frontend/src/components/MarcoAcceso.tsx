@@ -1,4 +1,5 @@
 import { lazy, type ReactNode, Suspense } from 'react';
+import { Link } from 'react-router-dom';
 import { Icono, type NombreIcono } from './Icono';
 import { Logo } from './Logo';
 import { ImagenMarca } from './marca/ImagenMarca';
@@ -82,6 +83,10 @@ export function MarcoAcceso({
         </div>
         <div className={`tarjeta ${estilos.tarjeta}`}>{children}</div>
         {pie && <div className={estilos.pie}>{pie}</div>}
+        <nav aria-label="Textos legales" className={estilos.legales}>
+          <Link to="/terminos">Términos y condiciones</Link>
+          <Link to="/privacidad">Política de privacidad</Link>
+        </nav>
       </main>
     </div>
   );

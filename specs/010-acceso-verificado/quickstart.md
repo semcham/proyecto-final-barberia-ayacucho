@@ -10,7 +10,7 @@ Guía para comprobar que la funcionalidad funciona de extremo a extremo. No cont
   009), nunca contra el volumen ni la demo del responsable. El guardián de `scripts/lib/proyecto` debe aceptar ese nombre
   de proyecto.
 - **Paso del responsable** (research R10): en su `.env` local, `TERMS_VERSION` y `PRIVACY_POLICY_VERSION` pasan a la
-  versión nueva de los textos (provisionalmente `2026-12`). El agente no lee ni cambia ese archivo.
+  versión nueva de los textos, `2026-11`. El agente no lee ni cambia ese archivo.
 - La migración `0036_acceso_verificado` aplicada (las réplicas la aplican al arrancar).
 - `CUENTA_RESPUESTA_MINIMA_MS` con su valor por defecto (400) salvo que se indique otro; está en `.env.example`.
 

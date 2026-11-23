@@ -62,42 +62,43 @@ una cuenta y comprobar que el consentimiento guarda la versión publicada (quick
 
 ### Tests for User Story 3 (MANDATORY - constitution Principle X) ⚠️
 
-- [ ] T007 [P] [US3] Prueba de las páginas `/terminos` y `/privacidad` sin sesión (título `h1`, versión, fecha de
+- [X] T007 [P] [US3] Prueba de las páginas `/terminos` y `/privacidad` sin sesión (título `h1`, versión, fecha de
   vigencia, marca "Borrador pendiente de revisión", índice de secciones, en la privacidad el enlace a "Mis datos" y las
   cookies técnicas) en `frontend/test/pages/documentos-legales.spec.tsx`
-- [ ] T008 [P] [US3] Prueba de los enlaces a los textos desde `Portada` (pie), `MarcoAcceso` (pie), `Registro`,
+- [X] T008 [P] [US3] Prueba de los enlaces a los textos desde `Portada` (pie), `MarcoAcceso` (pie), `Registro`,
   `RegistroCliente` y el formulario de unión (`Union.tsx`): enlaces reales con `target="_blank"`, `rel="noopener"` y el
   aviso "(se abre en otra pestaña)"; ningún "(en preparación)"; lo escrito en el formulario se conserva, en
   `frontend/test/pages/enlaces-legales.spec.tsx`
-- [ ] T009 [P] [US3] Prueba de integración: el registro de un cliente, el de una barbería y la unión a otra barbería con
+- [X] T009 [P] [US3] Prueba de integración: el registro de un cliente, el de una barbería y la unión a otra barbería con
   una versión distinta de la vigente se rechazan sin guardar nada, y con la vigente `consent_record` guarda esa versión
   exacta, en `backend/test/integration/clientes/version-legal.spec.ts`
 
 ### Implementation for User Story 3
 
-- [ ] T010 [P] [US3] Borrador base de los "Términos y condiciones" (objeto con `version`, `vigenteDesde`, `borrador: true`
+- [X] T010 [P] [US3] Borrador base de los "Términos y condiciones" (objeto con `version`, `vigenteDesde`, `borrador: true`
   y secciones: el servicio, cuentas y roles, prueba gratuita y planes, uso aceptable, responsabilidad de la barbería
   sobre sus datos, adelanto pagado directo a la barbería, suspensión, cambios, contacto) en `frontend/src/legal/terminos.ts`
-- [ ] T011 [P] [US3] Borrador base de la "Política de privacidad y datos personales" según la Ley N.° 29733 y su
+- [X] T011 [P] [US3] Borrador base de la "Política de privacidad y datos personales" según la Ley N.° 29733 y su
   reglamento (responsable del tratamiento y de cada barbería, finalidades, datos tratados, plazos de conservación,
   destinatarios y encargados, derechos ARCO y cómo ejercerlos con las solicitudes de 007, consentimiento de WhatsApp,
   cookies técnicas `rt`, `rtp` y `hay_sesion`, almacenamiento local `tema` y `barberias.ultimaBarberia`) en
   `frontend/src/legal/privacidad.ts`
-- [ ] T012 [US3] Página `DocumentoLegal` (encabezado, versión, fecha, marca de borrador, índice con anclas, texto legible a
+- [X] T012 [US3] Página `DocumentoLegal` (encabezado, versión, fecha, marca de borrador, índice con anclas, texto legible a
   360 px, tokens del sistema de diseño) en `frontend/src/pages/publico/DocumentoLegal.tsx` y
   `frontend/src/pages/publico/DocumentoLegal.module.css`, y las rutas públicas `/terminos` y `/privacidad` (carga diferida)
   en `frontend/src/routes.tsx`
-- [ ] T013 [US3] Versión nueva de los textos (provisionalmente `2026-12`, research R10) en `frontend/src/legal.ts` (valores
-  por defecto que salen de los archivos de T010 y T011), `.env.example`, `backend/test/helpers/entorno.ts` y los valores por
-  defecto de la semilla en `docker-compose.yml`; sin tocar el `.env` del responsable
-- [ ] T014 [P] [US3] Enlaces a los textos en las casillas de aceptación de `frontend/src/pages/Registro.tsx` y
+- [X] T013 [US3] Versión nueva de los textos (`2026-11`, research R10) en `frontend/src/legal.ts` (valores
+  por defecto que salen de los archivos de T010 y T011), `.env.example` y los valores por defecto de la semilla en
+  `docker-compose.yml` y `semilla/cargar-semilla.mjs`; sin tocar el `.env` del responsable. `backend/test/helpers/entorno.ts`
+  se queda en `2026-10` (precisión de R10: es solo la versión de prueba del backend)
+- [X] T014 [P] [US3] Enlaces a los textos en las casillas de aceptación de `frontend/src/pages/Registro.tsx` y
   `frontend/src/pages/publico/Union.tsx` (`CasillaPolitica`, que también usa `RegistroCliente`)
-- [ ] T015 [P] [US3] Enlaces reales "Términos y condiciones" y "Política de privacidad" en el pie de
+- [X] T015 [P] [US3] Enlaces reales "Términos y condiciones" y "Política de privacidad" en el pie de
   `frontend/src/pages/Portada.tsx` y en el pie de `frontend/src/components/MarcoAcceso.tsx` (ingreso, registro y
   activación)
 - [ ] T016 [US3] **Del responsable:** cambiar `TERMS_VERSION` y `PRIVACY_POLICY_VERSION` a la versión de T013 en su `.env`
   local y recrear las réplicas (el agente no lee ni cambia ese archivo)
-- [ ] T017 [US3] Verificación de la fase 1: lint, typecheck, Prettier, pruebas del frontend y `version-legal.spec.ts`;
+- [X] T017 [US3] Verificación de la fase 1: lint, typecheck, Prettier, pruebas del frontend y `version-legal.spec.ts`;
   capturas y axe de `/terminos` y `/privacidad` en claro y oscuro, a 1440 y 360 px, con el build de producción, sin
   incumplimientos ni desbordes
 - [ ] T018 [US3] **Del responsable:** commit y push de la fase 1: `feat(010): textos legales publicados y versionados
