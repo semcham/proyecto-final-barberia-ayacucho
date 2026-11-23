@@ -1,0 +1,162 @@
+openapi: 3.1.0
+info:
+  title: Barberías Ayacucho · 010 Acceso verificado
+  version: 0.10.0
+  description: >
+    Rutas nuevas y cambios de 010. Las rutas sin sesión son públicas (@Publica) y responden de forma neutra: nunca
+    revelan si un correo tiene cuenta ni por qué un enlace no sirve. El token viaja solo en el cuerpo (la interfaz lo
+    lee del fragmento #, research R09) y nunca se registra.
+servers:
+  - url: /api/v1
+paths:
+  /cuenta/verificacion:
+    post:
+      summary: Verificar el correo con el enlace (sin sesión)
+      operationId: verificarCorreo
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [token]
+              properties:
+                token: { type: string, minLength: 20, maxLength: 128 }
+      responses:
+        '200':
+          description: Cuenta verificada. Devuelve el enlace de la barbería de origen para redirigir.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [barberia]
+                properties:
+                  barberia: { type: string, description: slug de la barbería donde se registró }
+        '410': { $ref: '#/components/responses/EnlaceNoValido' }
+        '429': { $ref: '#/components/responses/DemasiadosIntentos' }
+  /cuenta/verificacion/reenvio:
+    post:
+      summary: Reenviar el correo de verificación (cliente con sesión)
+      operationId: reenviarVerificacion
+      description: >
+        Siempre 202 con el mismo cuerpo, esté o no verificada la cuenta. Si ya está verificada, no envía nada. Anula el
+        enlace anterior. Límite: 3 por hora por cuenta y 20 por hora por origen.
+      responses:
+        '202': { $ref: '#/components/responses/Neutra' }
+        '401': { description: Sin sesión }
+        '429': { $ref: '#/components/responses/DemasiadosIntentos' }
+  /cuenta/recuperacion:
+    post:
+      summary: Pedir un enlace para recuperar la contraseña (sin sesión)
+      operationId: pedirRecuperacion
+      security: []
+      description: >
+        Siempre 202 con el mismo cuerpo y un tiempo mínimo de respuesta (research R07). Si la cuenta existe, tiene
+        contraseña y no es personal pendiente de activar, se envía un enlace de 1 hora que anula el anterior. Límite: 3
+        por hora por cuenta y 10 por hora por origen.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [correo]
+              properties:
+                correo: { type: string, maxLength: 254 }
+                barberia:
+                  type: string
+                  maxLength: 140
+                  description: slug, solo si se pide desde el ingreso de una barbería (elige la barbería del aviso, R03)
+      responses:
+        '202': { $ref: '#/components/responses/Neutra' }
+        '400': { description: Cuerpo mal formado (no depende de que la cuenta exista) }
+        '429': { $ref: '#/components/responses/DemasiadosIntentos' }
+  /cuenta/recuperacion/contrasena:
+    post:
+      summary: Elegir la contraseña nueva con el enlace (sin sesión)
+      operationId: restablecerContrasena
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [token, contrasena]
+              properties:
+                token: { type: string, minLength: 20, maxLength: 128 }
+                contrasena: { type: string, minLength: 10, maxLength: 128 }
+      responses:
+        '204':
+          description: >
+            Contraseña cambiada; todas las sesiones de la cuenta quedan cerradas y se avisa por correo. La interfaz lleva a
+            ingresar de nuevo.
+        '410': { $ref: '#/components/responses/EnlaceNoValido' }
+        '422':
+          description: >
+            La contraseña no cumple las reglas (VALIDACION, campo contrasena). Solo se responde con un enlace vigente; el
+            enlace sigue sirviendo hasta su vencimiento.
+        '429': { $ref: '#/components/responses/DemasiadosIntentos' }
+# Cambios en rutas existentes: SOLO DOCUMENTACIÓN (fuera de `paths` a propósito, para que `gen:api` no genere de este
+# archivo firmas incompletas de rutas que ya tienen su contrato en 002, 005 y 008). Cada una agrega una respuesta 403
+# `CORREO_NO_VERIFICADO` (components/responses/CorreoNoVerificado) solo para actores CLIENTE; los contratos de 002, 005 y
+# 008 se actualizan con ese 403 en la fase 4 (T061).
+x-cambios-en-rutas-existentes:
+  - ruta: POST /citas
+    contrato: specs/002-catalogo-citas-cliente/contracts/openapi.yaml
+    agrega: { '403': CorreoNoVerificado }
+  - ruta: POST /asistente/mensajes
+    contrato: specs/005-asistente-ia-reportes/contracts/openapi.yaml
+    agrega: { '403': CorreoNoVerificado }
+  - ruta: POST /citas/{id}/adelanto/pago
+    contrato: specs/008-adelanto-reserva-qr/contracts/openapi.yaml
+    agrega: { '403': CorreoNoVerificado }
+  - esquema: SesionResponse.usuario (contratos de 001 y 002)
+    agrega: { correoVerificado: boolean }
+components:
+  schemas:
+    UsuarioSesion:
+      description: >
+        (001/002) Se agrega `correoVerificado` al usuario de SesionResponse (login, refresh, cambio de barbería, registro
+        de cliente y /auth/yo). Para el personal siempre es true una vez activo.
+      type: object
+      required: [correoVerificado]
+      properties:
+        correoVerificado: { type: boolean }
+    Error:
+      type: object
+      required: [codigo, mensaje, detalles]
+      properties:
+        codigo: { type: string }
+        mensaje: { type: string }
+        detalles: { type: array, items: { type: object } }
+  responses:
+    Neutra:
+      description: Respuesta neutra, idéntica exista o no la cuenta.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [mensaje]
+            properties:
+              mensaje: { type: string, example: 'Si hay una cuenta con ese correo, te enviamos un enlace.' }
+    EnlaceNoValido:
+      description: El mismo para un enlace usado, vencido, anulado o inexistente (código ENLACE_NO_VALIDO).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    CorreoNoVerificado:
+      description: >
+        Código CORREO_NO_VERIFICADO. Solo para actores CLIENTE; el propietario y el barbero no se ven afectados.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    DemasiadosIntentos:
+      description: Código DEMASIADOS_INTENTOS, con detalles[0].reintentarEnSegundos y el encabezado Retry-After.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }

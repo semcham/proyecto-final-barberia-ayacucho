@@ -1,6 +1,45 @@
 <!--
 Sync Impact Report
 ==================
+Version change: 1.7.2 → 1.8.0
+Bump rationale: MINOR. Agrega una quinta excepción acotada al principio III, "operaciones de la cuenta por
+enlace del correo", con tres operaciones exactas sin sesión sobre la propia cuenta:
+  - pedir un enlace de recuperación de la contraseña (la barbería se elige solo entre las membresías de esa
+    cuenta);
+  - verificar el correo de la cuenta;
+  - restablecer la contraseña de la cuenta (cierra sus sesiones en todas sus barberías).
+Las tres usan solo funciones de sistema acotadas del rol de autenticación antes del tenant ya existente
+(ADR-015), sin crear ningún rol nuevo con BYPASSRLS y sin cambiar ninguna política RLS. Agrega la tabla técnica
+account_link_attempt (origen solo como hash con sal, purga a las 24 h) y un ajuste mínimo del principio VII para
+que los avisos de la propia cuenta lleven el enlace de la cuenta, su vigencia y la fecha del cambio, nunca la
+contraseña. No amplía las otras cuatro excepciones.
+Aprobada por el responsable el 2026-11-23 (fase 0 de la funcionalidad 010), versión 2 del borrador, después del
+análisis de consistencia (hallazgos C1 y C2) y de comprobar contra las reglas de dependency-cruiser (PR14) que
+M05 puede llamar a la interfaz pública de M01 por su index.ts (regla matriz-m05). Borrador en
+specs/010-acceso-verificado/borradores/enmienda-iii-1.8.0-y-adr-036.md §1. Decisión registrada en ADR-036.
+
+Modified principles:
+  - III. Aislamiento por barbería: quinta excepción acotada "operaciones de la cuenta por enlace del correo";
+    tabla técnica account_link_attempt en "Tablas técnicas de intentos"; la Razón explica la quinta excepción.
+  - VII. Notificaciones con consentimiento y sin bloqueo: contenido de los avisos de la propia cuenta.
+Added principles: ninguno
+Added sections: ninguna
+Removed sections: ninguna
+
+Templates requiring updates:
+  ✅ .specify/templates/plan-template.md — puerta III (cinco excepciones, con el resumen de la quinta y la tabla
+     account_link_attempt), puerta VII (avisos de la cuenta) y versión 1.8.0
+  ✅ .specify/templates/spec-template.md y tasks-template.md — revisados; sin cambios necesarios
+  ✅ docs/05-gestion/03-sdd-spec-kit.md — versión de la constitución
+  ✅ docs/01-analisis-de-sistema/07-decisiones-arquitectonicas.md — ADR-036 (Propuesto → Aceptado el
+     2026-11-23) y la nota de la revisión obligatoria de ADR-015
+  ⏳ docs/02-arquitectura-software/seguridad-y-privacidad.md, multi-tenancy-y-datos.md (§1.3, hoy con cuatro
+     excepciones), api-rest.md y docs/trazabilidad.md — se actualizan en la fase 6 de 010 (T086 y T087), cuando
+     lo que la excepción permite esté construido. Hoy nada de eso existe y ningún documento lo afirma.
+
+Follow-up TODOs: ninguno en la constitución. La revisión obligatoria de ADR-015 queda anotada en ese ADR.
+
+--- Historial: informe de la versión 1.7.2 ---
 Version change: 1.7.1 → 1.7.2
 Bump rationale: PATCH. Aclara qué significa "construir" en la excepción de .github/workflows/ del principio
 XII, sin ampliar lo que la CI puede hacer fuera de la propia plataforma de CI:
@@ -481,7 +520,9 @@ intercambiables.
   fecha; sus filas de más de 24 h se borran de forma oportunista al registrar un fallo nuevo, y un
   ingreso correcto borra los fallos de ese par cuenta y origen (sin una purga programada).
   [Implementado en 007.] `action_link_attempt` MUST guardar el origen solo como hash con sal
-  (`ENLACES_SAL_IP`), nunca la IP en claro, con purga a las 24 h.
+  (`ENLACES_SAL_IP`), nunca la IP en claro, con purga a las 24 h. `account_link_attempt` (desde 010) MUST
+  guardar el origen solo como hash con sal (`INTENTOS_SAL_IP`), nunca la IP en claro, y la cuenta o el correo
+  solo como resumen, nunca en claro, con purga a las 24 h.
 - **Excepción acotada: acciones por enlace de la cita.** El recordatorio de una cita (RF34) MAY
   incluir enlaces que permitan al cliente, sin sesión, confirmar su asistencia, reprogramar o
   cancelar **esa** cita. La barbería y la cita MUST obtenerse **solo** del dato firmado del enlace,
@@ -495,6 +536,46 @@ intercambiables.
   los datos mínimos de la cita y MUST NOT revelar datos del cliente ni si una cita existe. Los
   intentos rechazados MUST limitarse por origen, con su contador en PostgreSQL. La decisión se
   registra en ADR-032.
+- **Excepción acotada: operaciones de la cuenta por enlace del correo.** Sin sesión, una persona
+  MAY realizar **solo** estas tres operaciones sobre **su propia cuenta**:
+  1. **Pedir un enlace de recuperación de la contraseña**, indicando su correo y, opcionalmente, el
+     enlace público (`slug`) de la barbería desde la que lo pide. El sistema MAY resolver la cuenta
+     por el correo y elegir una barbería **solo entre las membresías de esa misma cuenta**: la del
+     `slug` si la cuenta es miembro de ella; si no, la de su membresía de personal o, en su defecto,
+     la de su membresía de cliente más reciente. El `slug` MUST NOT elegir una barbería donde la
+     cuenta no tenga membresía. Solo MAY escribir, en esa barbería y con RLS, el enlace de la cuenta
+     **sin el token**, su evento de salida y la auditoría de la solicitud. Fuera de toda barbería,
+     solo MAY escribir el contador técnico de intentos.
+  2. **Verificar el correo de su cuenta** con el enlace recibido. Solo MAY escribir la marca de
+     verificación de la cuenta, el uso de ese enlace y la anulación de sus otros enlaces de
+     verificación.
+  3. **Restablecer la contraseña de su cuenta** con el enlace recibido. Solo MAY escribir el resumen
+     de la contraseña nueva, la marca de verificación de la cuenta, el uso de ese enlace, la
+     anulación de sus otros enlaces de recuperación y el cierre de **sus** sesiones en todas sus
+     barberías, más el evento que avisa del cambio.
+
+  Las dos últimas, y la resolución de la cuenta en la primera, MUST hacerse solo con funciones de
+  sistema acotadas del rol de autenticación antes del tenant ya existente (ADR-015), sin crear ni
+  conceder ningún rol nuevo con `BYPASSRLS`. Ninguna de las tres MUST leer ni modificar otros datos
+  de negocio.
+
+  **Reglas de los enlaces.** Cada enlace MUST servir para un solo propósito, una sola cuenta y un
+  solo uso. MUST vencer como máximo a las 24 horas (verificar) o a la hora (restablecer) y MUST
+  anularse al emitirse otro del mismo propósito. MUST guardarse solo de forma que no pueda
+  reconstruirse a partir de lo guardado, y su token MUST NOT guardarse en eventos, avisos ni
+  registros. Antes de validar un enlace, el sistema MUST NOT leer datos de ninguna barbería.
+
+  **Respuestas.** Pedir un enlace y usarlo MUST responder igual exista o no la cuenta, y MUST NOT
+  revelar por qué un enlace no sirve.
+
+  **Auditoría.** Se audita en la barbería del enlace **solo** cuando el enlace pertenece a una
+  cuenta. Un enlace desconocido o mal formado MUST registrarse solo en el contador técnico, nunca en
+  la auditoría.
+
+  **Límites.** Las solicitudes y los usos fallidos MUST limitarse por cuenta y por origen, con su
+  contador en PostgreSQL.
+
+  La decisión se registra en ADR-036.
 
 **Razón:** ADR-003 y ADR-010; `tenant_id` por sí solo no basta. Una fuga entre barberías (R01)
 es el riesgo más grave del sistema. La primera excepción existe porque RF10 exige mostrar el
@@ -509,7 +590,10 @@ celular sin iniciar sesión (HU28), incluso por un cliente presencial sin cuenta
 cita, una acción y un uso, verifica la firma antes de leer nada y no omite RLS. La lectura de
 conteos existe porque RF31 pide indicadores de uso de todas las barberías y el administrador no
 pertenece a ninguna; se limita a números agregados, sin filas ni identificadores de personas, y no da
-al rol de la plataforma ningún permiso sobre las tablas.
+al rol de la plataforma ningún permiso sobre las tablas. La quinta existe porque quien olvidó su
+contraseña, o quien debe demostrar que su correo es suyo, todavía no tiene una sesión; se limita a tres
+operaciones sobre la propia cuenta, elige la barbería solo entre las membresías de esa cuenta, verifica el
+enlace antes de leer nada y no crea roles nuevos.
 
 ### IV. Citas sin duplicados garantizadas por la base de datos
 
@@ -567,7 +651,9 @@ uso autorizados.
   NOT bloquear ni revertir la reserva ni ninguna otra operación.
 - Los mensajes MUST contener solo los datos mínimos. Sobre una cita: nombre de la barbería,
   servicio, nombre visible del barbero, fecha y hora, la hora anterior si se reprogramó y los
-  enlaces de acción del recordatorio. En los avisos al propietario sobre su suscripción: además, el
+  enlaces de acción del recordatorio; y, en los avisos de la propia cuenta (verificación del correo,
+  recuperación de la contraseña y aviso de contraseña cambiada), el enlace de la cuenta, su vigencia y
+  la fecha del cambio; nunca la contraseña. En los avisos al propietario sobre su suscripción: además, el
   plan, el período y el motivo (de un rechazo o de una activación manual). En los avisos del
   adelanto de reserva (principio V, ADR-033): además, el monto del adelanto, el código de la
   reserva, la hora límite para pagar y, en un rechazo, el motivo. El cuerpo de un mensaje
@@ -712,4 +798,4 @@ implementación. La excepción existe solo porque la plataforma de CI impone la 
   alternativa más simple descartada, y registrarse como ADR.
 - La guía de ejecución del proyecto está en `README.md` y en `docs/`.
 
-**Version**: 1.7.2 | **Ratified**: 2026-10-15 | **Last Amended**: 2026-11-19
+**Version**: 1.8.0 | **Ratified**: 2026-10-15 | **Last Amended**: 2026-11-23

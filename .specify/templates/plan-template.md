@@ -40,7 +40,7 @@
 
 _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
-Gates from `.specify/memory/constitution.md` (v1.7.2). Mark each ✅ / ❌ (justify ❌ in
+Gates from `.specify/memory/constitution.md` (v1.8.0). Mark each ✅ / ❌ (justify ❌ in
 Complexity Tracking and record an ADR):
 
 - [ ] **I. Six modules**: work fits in M01–M06 (no new module); cross-module calls only via
@@ -49,7 +49,7 @@ Complexity Tracking and record an ADR):
       infrastructure per submodule; domain imports no framework/DB/Redis/provider SDK
 - [ ] **III. Tenant isolation**: `tenant_id` from the signed token only (never from client
       input); RLS on every business table; repositories filter by tenant; cache keys/events include
-      tenant. Only four exceptions: (1) public read-only lookups by barbershop slug (catalog, free
+      tenant. Only five exceptions: (1) public read-only lookups by barbershop slug (catalog, free
       slots), public columns only, no writes, no RLS bypass for the app role (ADR-021); (2) membership
       selection by slug before the session exists (client sign-up, login from the barbershop link,
       joining or switching barbershop), only after verifying identity or creating the account, writing
@@ -78,7 +78,20 @@ Complexity Tracking and record an ADR):
       only from the signed link, verified before reading anything; app role without `BYPASSRLS`,
       tenant fixed and RLS; one appointment, one action, one use, expires at the start time, invalid
       once the appointment changes, never reconstructible from what is stored; minimal data; rejected
-      attempts limited per origin with a PostgreSQL counter (ADR-032)
+      attempts limited per origin with a PostgreSQL counter (ADR-032); (5) account operations by email link
+      (amendment 1.8.0, ADR-036): without a session, a person may only (a) request a password-reset link for
+      their own account, (b) verify their account's email, or (c) reset their account's password. (a) may resolve
+      the account by email and pick a barbershop only among that account's own memberships (the slug's barbershop
+      only if the account is a member; else staff, else the most recent client membership), writing only the link
+      without its token, its outbox event and the request audit in that barbershop, plus the technical attempt
+      counter; (b) and (c) consume a single-purpose, single-account, single-use link (24 h / 1 h), stored only as a
+      non-reversible digest, never in events, notices or logs, revoked when a new one is issued, through bounded
+      system functions of the existing pre-tenant auth role (ADR-015), no new `BYPASSRLS` role; (b) writes only
+      the verification mark and its links; (c) writes only the password digest, the verification mark, its links
+      and closes that account's own sessions in all its barbershops. Neutral responses; audit only in the link's
+      barbershop and only for links that belong to an account (unknown links go only to the counter); requests
+      and failed uses limited per account and origin with a PostgreSQL counter (`account_link_attempt`, salted
+      origin hash, 24 h purge)
 - [ ] **IV. No duplicate appointments**: PostgreSQL exclusion constraint + transaction;
       conflict mapped to "horario no disponible"
 - [ ] **V. Payments**: the platform processes subscription payments only; `PaymentGateway` port;
@@ -92,8 +105,10 @@ Complexity Tracking and record an ADR):
       recorded; async; failure never blocks the operation; email fallback; messages carry only
       barbershop, service, barber's visible name, date and time, previous time and action links (owner
       subscription notices: also plan, period and reason; booking deposit notices: also deposit amount,
-      booking code, payment deadline and rejection reason); never phones, emails or payment data
-      (card, account, full operation numbers, receipts)
+      booking code, payment deadline and rejection reason; the account's own notices (email verification,
+      password recovery, password changed): the account link, its validity and the change date, never the
+      password, amendment 1.8.0); never phones, emails or payment data (card, account, full operation
+      numbers, receipts)
 - [ ] **VIII. Redis**: cache (TTL + invalidation) and non-critical counters only (general
       rate limit, loss-tolerant); security or cost counters (login attempts, AI quota) and security
       state stay in PostgreSQL; never source of truth; system works if Redis is down

@@ -39,6 +39,7 @@ Un ADR registra **qué** se decidió, **por qué**, qué alternativas se descart
 | ADR-031 | Operaciones del administrador de la plataforma fuera de las barberías   | DA01, DA11             | El administrador opera sobre todas las barberías sin pertenecer a ninguna                                | Identidad y token de plataforma sin tenant, con TOTP obligatorio; lectura entre barberías con un rol `NOBYPASSRLS` por columna; escrituras con el tenant fijado. **Aceptado (2026-10-24), con la enmienda 1.3.0 y la aclaración 1.3.1 de la constitución.** Revisión de 007 (vistas de solo conteo para RF31, con la enmienda 1.7.0): **aprobada (2026-11-16) e implementada en la fase 2c de 007** |
 | ADR-032 | Acciones sobre una cita por enlace firmado, sin sesión                  | DA01, DA11             | RF34 exige confirmar, reprogramar o cancelar desde el recordatorio sin iniciar sesión                    | Enlace HMAC con tenant, cita, acción, versión y vencimiento; verificación antes de leer; `barberias_app` con RLS; uso único por hash. **Aceptado (2026-11-04), con la enmienda 1.4.0 de la constitución; implementado (004)**                              |
 | ADR-033 | Adelanto de reserva por QR de la barbería con verificación manual       | DA02, DA07, DA11       | RF35 exige un adelanto para que nadie reserve "por jugar", sin que la plataforma cobre dinero de citas   | Cita `PENDIENTE` con el horario retenido; QR de Yape o Plin de la barbería; número de operación no repetible; confirmación del propietario; vencimiento automático. **Aceptado (2026-11-12), con la enmienda 1.5.0 de la constitución; implementado (008)**   |
+| ADR-036 | Enlaces de la cuenta por correo (verificar el correo y recuperar la contraseña) y evento de M01 a M05 | DA01, DA11 | Clientes reales necesitan demostrar que el correo es suyo y recuperar su contraseña sin sesión, sin guardar el enlace ni crear roles nuevos | Enlace de un solo uso guardado solo como hash, con el token generado al enviar; tres operaciones sin sesión con funciones de `barberias_auth`; guard del host para clientes sin verificar. **Aceptado (2026-11-23), con la enmienda 1.8.0 de la constitución; pendiente de implementar (010)** |
 
 ---
 
@@ -286,6 +287,13 @@ Un ADR registra **qué** se decidió, **por qué**, qué alternativas se descart
 - **Pruebas (parte de PR09):** (1) cada función devuelve 0 o 1 fila, también con entradas inexistentes; (2) ninguna función tiene un parámetro de tenant; (3) `barberias_auth` no puede iniciar sesión y no es dueño de ninguna tabla; (4) `barberias_app` no tiene `BYPASSRLS`, no puede ejecutar otras funciones `SECURITY DEFINER` y no puede leer `user_account.password_hash`; (5) sin contexto de tenant, `SELECT` sobre `user_account` devuelve 0 filas y, con el contexto de A, no aparece ninguna cuenta de B.
 - **Drivers:** DA01, DA11.
 - **Consecuencias:** se actualizan [multi-tenancy y datos](../02-arquitectura-software/multi-tenancy-y-datos.md) (casos especiales y tablas globales) y la [trazabilidad](../trazabilidad.md); la funcionalidad 001 implementa el rol, las funciones y sus pruebas en su fase fundacional. **Cambio posterior (ADR-019, migración `0008`):** `auth_buscar_sesion` también busca por `superseded_token_hash` (misma firma, sin tenant, máximo una fila) y `barberias_auth` recibe `SELECT` solo sobre esa columna; las pruebas de PR09 se ampliaron para cubrirlo. **Cambio posterior (ADR-020, migración `0009`), revisado y aprobado el 2026-10-17 por el responsable del proyecto:** `auth_resolver_cuenta` pasa de `JOIN` a `LEFT JOIN` con la membresía de personal y con el tenant, para devolver también las cuentas solo de cliente (con las columnas de membresía en nulo) y verificar su contraseña por el mismo camino de tiempo constante. Se mantienen la firma (un parámetro, sin tenant), las 6 columnas de salida, `LIMIT 1`, el dueño `barberias_auth`, `SECURITY DEFINER`, `search_path = public, pg_temp` y `EXECUTE` solo para `barberias_app`. La función sigue devolviendo como máximo una fila (correo único y una sola membresía de personal por cuenta) y no expone las membresías de cliente, así que no revela en qué barberías está un cliente. Hasta que la funcionalidad 002 agregue el ingreso de clientes (US3), una cuenta solo de cliente recibe el mismo 401 que en 001. Pruebas en PR09 (`funciones-definer.spec.ts`: cliente con membresía en 3 barberías → 1 fila; dueño, `SECURITY DEFINER`, `search_path` y permisos tras la migración) y en `autenticacion.spec.ts`.
+- **Revisión obligatoria por ADR-036 (funcionalidad 010), aprobada por el responsable el 2026-11-23** junto con la enmienda 1.8.0 de la constitución. **Pendiente de implementar** (fase 3 de 010, migración `0036_acceso_verificado`). `barberias_auth` deja de ser dueño "únicamente" de las funciones del ingreso, la renovación y la activación: recibe **cuatro funciones de sistema más**, con el mismo patrón (`SECURITY DEFINER`, `search_path = public, pg_temp`, `REVOKE ALL ... FROM PUBLIC`, `EXECUTE` solo para `barberias_app`, sin parámetro de tenant):
+  - `auth_barberia_para_enlace`: elige la barbería del aviso de una cuenta, solo entre las membresías de esa cuenta.
+  - `auth_verificar_correo` y `auth_restablecer_contrasena`: consumen un enlace de cuenta por el hash de su token, en una sola sentencia, y escriben solo filas de esa cuenta. La segunda cierra sus sesiones en todas sus barberías.
+  - `auth_marcar_verificada_por_activacion`: la usa la activación del personal.
+  - Para eso `barberias_auth` recibe, además de `SELECT` por columna, `UPDATE` solo sobre `user_account (password_hash, email_verified_at, email_verified_via)`, `account_link (used_at, revoked_at)` y `auth_session (status, ended_at)`. Es la primera vez que este rol escribe.
+  - **Por qué se acepta:** esas escrituras son las de las tres operaciones de la quinta excepción del principio III (constitución 1.8.0), y solo tocan filas de la cuenta dueña del enlace.
+  - **Pruebas que se agregan** (fase 3 de 010): permisos exactos de las funciones nuevas en `funciones-definer.spec.ts`; ningún rol nuevo con `BYPASSRLS`; las políticas RLS existentes no cambian.
 
 ## ADR-016 Sistema de diseño propio con componentes accesibles de Radix
 
@@ -945,3 +953,57 @@ Un ADR registra **qué** se decidió, **por qué**, qué alternativas se descart
 - **Consecuencias:**
   - **Enmienda 1.5.0** (MINOR) del principio V, **aplicada** el 2026-11-12 en `.specify/memory/constitution.md`, antes de implementar 008. Texto aprobado: _"Los pagos que procesa la plataforma MUST limitarse a la suscripción de las barberías. El adelanto de una cita MAY registrarse y verificarse cuando el cliente lo paga directamente a la barbería (QR de la barbería): la plataforma MUST NOT recibir, retener ni transferir ese dinero, MUST NOT cobrar comisión y MUST NOT manejar datos de tarjeta; la confirmación la hace el propietario. Las reglas del proveedor, del webhook firmado y de la conciliación se aplican a los pagos que procesa la plataforma. Cobrar citas a través de la plataforma sigue fuera del alcance."_
   - Con la enmienda aprobada, las exclusiones del pago de citas (README, contexto, requisitos y guion) ya no llevan la nota "pendiente de la enmienda 1.5.0": el adelanto se paga a la barbería, y cobrar citas por la plataforma sigue fuera del alcance.
+
+## ADR-036 Enlaces de la cuenta por correo y evento de M01 a M05
+
+> ADR-034 y ADR-035 están aprobados en la funcionalidad 009 y se registran en este documento cuando se apliquen (fases 2 y 7 de 009). Por eso el número 036 deja ese hueco por ahora.
+
+- **Estado:** **Aceptado** (decisión del responsable, 2026-11-23), junto con la **enmienda 1.8.0** de la constitución (principio III, quinta excepción acotada "operaciones de la cuenta por enlace del correo", y ajuste mínimo del principio VII), ya aplicada en `.specify/memory/constitution.md`. Antes de aprobarlo se comprobó contra las reglas de dependency-cruiser (PR14) que M05 puede llamar a la interfaz pública de M01 por su `index.ts` (regla `matriz-m05`, como ya hace con `BarberiasApi`, `ClientesApi` y `PersonalApi`). Registrado con el plan de la funcionalidad [010](../../specs/010-acceso-verificado/plan.md). **Pendiente de implementar** (fases 3 a 5 de 010).
+- **Contexto:** la auditoría de coherencia del 2026-11-19 (`specs/auditoria-coherencia.md`) marcó como bloqueantes para clientes reales que el correo del cliente no se verifica y que no existe recuperación de contraseña. ADR-015 ya resuelve la autenticación antes del tenant con funciones de sistema de un rol `NOLOGIN BYPASSRLS` (`barberias_auth`). ADR-020 da a cada cliente una cuenta única con membresía por barbería. ADR-025 y ADR-026 envían los avisos por la salida de eventos y el puerto `NotificationChannel`. ADR-032 firma los enlaces del recordatorio al enviar, sin guardarlos.
+- **Problema:** ¿cómo enviar y consumir enlaces de un solo uso para verificar el correo y restablecer la contraseña, sin guardar el enlace, sin sesión, sin rol nuevo con `BYPASSRLS`, con el correo saliendo solo por M05 y sin revelar si una cuenta existe?
+- **Alternativas:**
+  - (a) Enlaces firmados sin estado (como ADR-032): no permiten un solo uso ni anular el anterior sin una tabla de usos.
+  - (b) Poner el token en el evento de la salida: quedaría en claro en `outbox_event` hasta su purga.
+  - (c) Cifrar el token en el evento: más piezas (llave, rotación) para un dato que puede generarse al enviar.
+  - (d) Que M01 envíe el correo: rompe las reglas `canal-solo-por-puerto` y `m05-sin-llamadas`.
+  - (e) **Un enlace de cuenta con estado, cuyo token se genera al enviar, y funciones de sistema de `barberias_auth` para resolver la cuenta y consumir el enlace.**
+- **Decisión:** opción (e).
+  1. **Datos.**
+     - `account_link` (por barbería, con RLS): propósito, cuenta, barbería de origen, SHA-256 del token, vencimiento, uso y anulación; un solo enlace vigente por cuenta y propósito.
+     - `user_account` agrega la marca de verificación: fecha y vía (`ENLACE`, `ACTIVACION` o `MIGRACION`).
+     - `account_link_attempt`: contador técnico sin barbería.
+     - Detalle en el [modelo de datos de 010](../../specs/010-acceso-verificado/data-model.md).
+  2. **Las tres operaciones sin sesión** (enmienda 1.8.0):
+     - **Pedir la recuperación.** Resuelve la cuenta con `auth_resolver_cuenta` y elige la barbería con `auth_barberia_para_enlace`, solo entre las membresías de la cuenta (el `slug` solo cuenta si la cuenta es miembro de esa barbería). Crea el enlace sin token, su evento y la auditoría en esa barbería.
+     - **Verificar** y **restablecer.** `auth_verificar_correo` y `auth_restablecer_contrasena` validan y consumen el enlace en una sola sentencia y escriben solo filas de esa cuenta. Restablecer cierra **todas** sus sesiones en todas sus barberías; como el guard comprueba la sesión en cada solicitud, los tokens de acceso dejan de servir al instante.
+     - La verificación que nace del registro y el reenvío con sesión ya tienen su barbería (la del registro o la del token) y no necesitan la excepción.
+  3. **Envío.** M01 publica `EnlaceDeCuentaSolicitado` (solo `enlaceId`, propósito, cuenta y vencimiento) con la barbería del enlace. M05 crea el aviso para el destinatario nuevo `CUENTA` y, **al enviar**, pide a M01 (`CuentasApi.emitirToken`) un token: M01 guarda su hash y lo devuelve en memoria. Cada reintento emite otro. Ningún evento, aviso ni registro guarda el token.
+  4. **Exigir la verificación.** Un guard del host (`CorreoVerificadoGuard`) actúa en reservar, preguntar al asistente y registrar el pago del adelanto, solo para clientes, con 403 `CORREO_NO_VERIFICADO`. Va en el host porque M03 y M04 no pueden llamar a M01. El `AuthGuard` no cambia.
+  5. **Respuestas neutras.**
+     - Pedir la recuperación, reenviar y usar un enlace responden igual exista o no la cuenta.
+     - Se aplica un tiempo mínimo de respuesta fijado por `CUENTA_RESPUESTA_MINIMA_MS` (400 ms por defecto).
+     - Las funciones de consumo devuelven al caso de uso `APLICADO`, `RECHAZADO` (enlace de una cuenta: usado, vencido o anulado) o nada (ningún hash coincide). Hacia fuera, los dos últimos son el mismo 410.
+  6. **Auditoría.** En la barbería del enlace se auditan la solicitud con cuenta, el uso aceptado y el rechazo de un enlace que pertenece a una cuenta. Un enlace desconocido o mal formado no tiene cuenta ni barbería: va solo a `account_link_attempt` como `USO_FALLIDO` (el principio III exige la barbería en toda auditoría).
+  7. **Cuentas existentes.** Todas quedan verificadas por la migración (vía `MIGRACION`), para no cambiar nada a quien ya usa la plataforma. El personal se verifica al activar su cuenta.
+- **Riesgos aceptados y decisiones pendientes:**
+  - **El registro revela si un correo tiene cuenta** (409 `CORREO_NO_DISPONIBLE`): se mantiene por decisión del responsable, mitigado por `REGISTRO_LIMITE_POR_MINUTO`.
+  - **El propietario no verifica su correo** en 010 (decisión del 2026-11-23): un propietario con un correo ajeno o mal escrito no podrá recuperar su contraseña ni recibir avisos. Mejora futura.
+  - **Versiones nuevas de los textos legales**: quien aceptó una anterior no tiene que volver a aceptar (decisión del 2026-11-23); se decide cuando exista una versión nueva.
+  - **Reenvío tras un error del servidor de correo**: si el servidor aceptó el envío pero respondió con error, el reintento invalida el primer enlace.
+  - **Tiempos en la CI**: la medición de tiempos de las respuestas neutras corre en la CI sin bloquearla, porque en los ejecutores compartidos varía por causas ajenas al código; se exige con el umbral estricto en la verificación local.
+- **Justificación:** reutiliza los mecanismos probados (tokens opacos y funciones de sistema de ADR-015, salida de eventos, puerto de correo, firma al enviar de ADR-032), no crea roles y deja el enlace solo en el correo.
+- **Pruebas:**
+  - Un solo uso, vencimiento y anulación, por propósito.
+  - Respuestas neutras: una prueba funcional bloqueante (el mismo estado y el mismo cuerpo, y el piso respetado) y una medición de tiempos no bloqueante en la CI (diferencia de medianas menor de 30 ms y percentil 90 dentro del piso más 50 ms, con 100 solicitudes por serie).
+  - Cierre de sesiones en dos barberías.
+  - El guard en las tres rutas (cliente sin verificar → 403; propietario → sin cambio).
+  - Permisos exactos de las funciones nuevas en `funciones-definer.spec.ts`.
+  - Contador de intentos con el origen solo como hash.
+  - Elección de la barbería: un `slug` de una barbería sin membresía no la elige.
+  - Ningún token en `outbox_event`, en `notification` ni en los registros (con datos canario).
+  - Auditoría solo de enlaces de una cuenta.
+  - Aislamiento PR09: un enlace de la barbería A no da acceso a la B.
+  - Reglas de dependencias (PR14).
+- **Revisión obligatoria:** ADR-015 (sus funciones de sistema se amplían); aprobada el 2026-11-23 y anotada en sus consecuencias.
+- **Drivers:** DA01, DA11.
+- **Consecuencias:** al cerrar 010 se actualizan [seguridad y privacidad](../02-arquitectura-software/seguridad-y-privacidad.md) (excepciones, matriz y cookies), [multi-tenancy y datos](../02-arquitectura-software/multi-tenancy-y-datos.md), [API REST](../02-arquitectura-software/api-rest.md), la [trazabilidad](../trazabilidad.md), [requisitos funcionales](03-requisitos-funcionales.md) (RF04 y RF05 ampliados, RF nuevos) y la puerta III del plan-template (ya actualizada con la enmienda).
