@@ -106,6 +106,39 @@ Todas con `IA_PROVEEDOR=falso`. Las que usan correo lo leen de Mailpit (Testcont
    recepción).
 3. **Esperado**: al menos 19 de 20 (95 %) llegan en menos de 1 minuto. Anotar la latencia mediana y la máxima.
 
+### Resultados del recorrido (T083, 2026-11-24)
+
+Hecho por el agente en la copia `barberias-verificacion` (subred `172.29.0.0/24`, semilla cargada), con el código de las
+fases 1 a 5 sin confirmar sobre el commit `58f63d6`. La interfaz se recorrió en Edge con Playwright (360 px), la API por
+HTTP y el buzón por la API de Mailpit. Entre las series de 2.2 y 2.5 se vació `account_link_attempt` en la base de la
+copia, en lugar de esperar la hora de los límites.
+
+| Paso | Resultado |
+| --- | --- |
+| 2.1.1–2.1.2 Cliente nuevo: aviso "Verifica tu correo para reservar" con `r***@ejemplo.test`, la hora sigue en pantalla y "Confirmar reserva" deshabilitado | Cumple |
+| 2.1.3–2.1.4 Correo en Mailpit con `…/verificar#…`; en otro navegador sin sesión, éxito y "Ir a la barbería" a `/b/barberia-demo-centro`; el fragmento se borra de la barra | Cumple |
+| 2.1.5 Tras "Ya lo verifiqué", la reserva se confirma | Cumple |
+| 2.1.6 El mismo enlace otra vez: "Este enlace ya no es válido" | Cumple |
+| 2.1.7 Cuatro reenvíos (esperando cada correo): 202, 202, 202 y 429; 4 correos (registro y 3 reenvíos) | Cumple. Reenvíos seguidos, sin esperar el correo, reemplazan al aviso pendiente y llega uno solo (diseño de la clave de reemplazo) |
+| 2.1.8 Cliente de la semilla (verificado por la migración o por la semilla): reserva sin pasos nuevos | Cumple (201) |
+| 2.2.1 Recuperación con el correo del propietario y con uno inventado: mismo 202 y mismo cuerpo; solo el propietario recibe correo | Cumple |
+| 2.2.2 Cliente de Centro unido a Huamanga, pedido desde `/b/barberia-demo-huamanga/ingresar`: el enlace sale de Huamanga | Cumple |
+| 2.2.3 Contraseña nueva: aviso "Tu contraseña cambió"; `/auth/yo` con las sesiones de las dos barberías da 401; la anterior no entra y la nueva sí; llega el correo "Tu contraseña cambió" | Cumple. Ese navegador no había abierto la página de la barbería, así que el aviso salió en `/ingresar` |
+| 2.2.4 El enlace otra vez: "Este enlace ya no es válido" y "Pedir un enlace nuevo" a `/recuperar` | Cumple |
+| 2.3.1 Los dos textos desde la portada, `/registro`, `/b/<slug>/registro`, `/ingresar` y `/b/<slug>/ingresar`, con la versión `2026-11` y la marca de borrador | Cumple (la apertura en otra pestaña y la unión ya tienen pruebas automáticas) |
+| 2.3.2 El consentimiento del cliente nuevo guarda `2026-11` | Cumple |
+| 2.4.1 Sin sesión, `/asistente`, `/mis-avisos`, `/mis-datos` y el pago del adelanto nunca llevan al ingreso del personal | Cumple |
+| 2.4.2 Correo "Paga el adelanto de tu cita" abierto sin sesión | **No recorrido:** exige activar el adelanto con un QR en la copia. Lo cubren la prueba de contrato del enlace del aviso y las pruebas de `ClienteSinSesion` |
+| 2.4.3 Recordatorio con enlace no válido: "Iniciar sesión" lleva a `/mis-citas` | Cumple |
+| 2.5 SC-004: 20 correos (10 de verificación con cuentas nuevas y 10 de recuperación) | Cumple: **20 de 20 en menos de 1 minuto**; mediana **14,3 s**; máxima **31,5 s** (el despacho de respaldo corre cada 15 s) |
+| SC-005 con el umbral estricto | Ver §1.1 (dos corridas del 2026-11-24) |
+| SC-003 (cronómetro de una persona) | Paso del responsable (T084) |
+
+Nota de la interfaz en desarrollo: la copia sirve la interfaz con el servidor de Vite, que carga cada módulo la primera
+vez que se pide. Un robot que escribe en `/recuperar` en el mismo instante en que llega desde "¿Olvidaste tu
+contraseña?" puede perder lo escrito mientras termina esa carga. Con el **build de producción** no pasa: 6 de 6 intentos
+escribiendo tecla por tecla sin ninguna espera conservaron el valor (2026-11-24).
+
 ## 3. Accesibilidad y diseño
 
 - Capturas en claro y oscuro, a 1440 y 360 px, de `/verificar`, `/recuperar`, `/restablecer`, `/terminos`, `/privacidad`

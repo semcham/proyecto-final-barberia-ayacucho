@@ -136,9 +136,15 @@ flowchart LR
 
 </details>
 
-Leyenda: azul grisáceo = sistema propio; azul = datos. Además existe la única omisión de RLS del sistema: las tres funciones `SECURITY DEFINER` de inicio de sesión, renovación y activación (ADR-015), que buscan por una clave exacta y no reciben `tenant_id` (ver "Casos especiales").
+Leyenda: azul grisáceo = sistema propio; azul = datos. Además existe la única omisión de RLS del sistema: las funciones `SECURITY DEFINER` del rol `barberias_auth` (ADR-015), que buscan por una clave exacta y no reciben `tenant_id`. Hasta 008 eran tres (inicio de sesión, renovación y activación); **010 agrega cuatro**, aprobadas con la enmienda 1.8.0 del principio III y la revisión de ADR-015 (ADR-036):
 
-Evidencia: ADR-021 → `backend/src/shared/persistence/lectura-publica.ts`, `migrations/0012_lectura_publica.ts`, prueba `aislamiento/lectura-publica.spec.ts`; ADR-020 → `backend/src/modules/acceso-barberias/clientes/`, prueba `aislamiento/cliente-dos-barberias.spec.ts`; ADR-031 → `shared/persistence/lectura-plataforma.ts`, `migrations/0016_plataforma.ts`, pruebas `aislamiento/lectura-plataforma.spec.ts`, `aislamiento-pagos.spec.ts` y `host/token-plataforma.spec.ts`; ADR-015 → `migrations/0003_autenticacion_sin_tenant.ts`, prueba `aislamiento/funciones-definer.spec.ts`; ADR-032 → `backend/src/shared/enlaces/enlaces-firmados.ts`, `modules/catalogo-citas/citas/` (acciones por enlace), `migrations/0023_citas_reprogramacion.ts` y `0025_intentos_enlaces.ts`, pruebas `aislamiento/aislamiento-avisos.spec.ts` (PR09) y `enlaces/*.spec.ts` (PR28); contrato en `specs/004-notificaciones-reprogramacion/contracts/enlaces-de-accion.md`.
+- `auth_verificar_correo(hash)` y `auth_restablecer_contrasena(hash, hash_argon2)`: validan y consumen el enlace en una sola sentencia y aplican su efecto **solo sobre las filas de esa cuenta**: la fecha de verificación, o la contraseña, la anulación de sus otros enlaces de recuperación y el cierre de **todas** sus sesiones, en todas sus barberías. Devuelven `APLICADO` o `RECHAZADO` con la barbería y la cuenta, o nada si ningún hash coincide;
+- `auth_barberia_para_enlace(cuenta, preferida)`: elige la barbería del aviso (la preferida si la cuenta es de ella; si no, la del personal; si no, la membresía de cliente más reciente), solo entre membresías `ACTIVA`;
+- `auth_marcar_verificada_por_activacion(cuenta)`: solo si la cuenta tiene una activación ya usada.
+
+Las cuatro son de `barberias_auth` (el único rol con `BYPASSRLS`; **no se creó ninguno nuevo**), solo `barberias_app` las ejecuta, y las políticas RLS existentes no cambiaron. Con la barbería que devuelven, el resto del trabajo (auditoría, evento del aviso) ocurre en una transacción con esa barbería y RLS (ver "Casos especiales").
+
+Evidencia: ADR-021 → `backend/src/shared/persistence/lectura-publica.ts`, `migrations/0012_lectura_publica.ts`, prueba `aislamiento/lectura-publica.spec.ts`; ADR-020 → `backend/src/modules/acceso-barberias/clientes/`, prueba `aislamiento/cliente-dos-barberias.spec.ts`; ADR-031 → `shared/persistence/lectura-plataforma.ts`, `migrations/0016_plataforma.ts`, pruebas `aislamiento/lectura-plataforma.spec.ts`, `aislamiento-pagos.spec.ts` y `host/token-plataforma.spec.ts`; ADR-015 → `migrations/0003_autenticacion_sin_tenant.ts` y, desde 010, `0036_acceso_verificado.ts`; pruebas `aislamiento/funciones-definer.spec.ts` (con el bloque de las cuatro de 010) y `aislamiento/permisos-010.spec.ts` (permisos exactos y `pg_policies` idénticas antes y después de la 0036); ADR-032 → `backend/src/shared/enlaces/enlaces-firmados.ts`, `modules/catalogo-citas/citas/` (acciones por enlace), `migrations/0023_citas_reprogramacion.ts` y `0025_intentos_enlaces.ts`, pruebas `aislamiento/aislamiento-avisos.spec.ts` (PR09) y `enlaces/*.spec.ts` (PR28); contrato en `specs/004-notificaciones-reprogramacion/contracts/enlaces-de-accion.md`.
 
 ## 2. Controles complementarios (el aislamiento no descansa solo en `tenant_id`)
 
@@ -623,6 +629,18 @@ Detalle completo en el [modelo de datos de 007](../../specs/007-indicadores-dato
 Ningún otro rol de base (`barberias_auth`, `barberias_publico`, `barberias_plataforma`) tiene permisos sobre ella: el
 administrador de la plataforma nunca llega a las solicitudes (FR-006 de 007, regla de PR14
 `solicitudes-datos-sin-plataforma`). PR09: `aislamiento-007`, `rls` y `lectura-plataforma` (en verde).
+
+### 3.6 Tablas de la funcionalidad 010 (M01, enlaces de la cuenta por correo)
+
+Detalle completo en el [modelo de datos de 010](../../specs/010-acceso-verificado/data-model.md) (migración `0036`).
+
+| Tabla o columna | Tenant y RLS | Restricciones clave |
+| --- | --- | --- |
+| `user_account.email_verified_at` y `email_verified_via` | Global (`user_account`, ADR-015) | La fecha y la vía (`ENLACE`, `ACTIVACION` o `MIGRACION`) van juntas (`CHECK`). Las cuentas anteriores quedaron con `MIGRACION`. La aplicación solo las lee: el `INSERT` de la aplicación en `user_account` pasó a ser **por columna** (las 6 de antes), así que no puede crear una cuenta ya verificada, y solo las funciones de sistema las escriben |
+| `account_link` | Sí, `rlsPorTenant()` | Un enlace de verificación (24 h) o de recuperación (1 h) de una cuenta con membresía en la barbería (clave foránea a `membership (tenant_id, user_id)`). Guarda solo el **SHA-256** del token, que se emite al enviar el correo. **Uno vigente** por barbería, cuenta y propósito (índice único parcial); al usar uno, la función anula los demás del mismo propósito en todas las barberías. La aplicación: `SELECT`, `DELETE` (retención de 30 días), `INSERT` por columna y `UPDATE (token_hash, revoked_at)` |
+| `account_link_attempt` | **No** (tabla técnica, como `login_attempt`) | Intentos de reenvío, de recuperación y usos fallidos para los límites (R08): el SHA-256 del correo o de la cuenta (nulo en un uso fallido) y el origen solo como HMAC con `INTENTOS_SAL_IP`; nunca la IP ni el correo en claro. Purga de lo que tenga más de 24 h |
+
+PR09: `rls` (`account_link` sin filas de otra barbería), `permisos-010`, `funciones-definer` y `recuperacion-limites` (un enlace emitido en A no toca datos de B), en verde.
 
 ## 4. Claves, restricciones e índices
 

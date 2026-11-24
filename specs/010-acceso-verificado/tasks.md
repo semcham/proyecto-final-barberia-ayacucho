@@ -422,27 +422,40 @@ comprobar que las sesiones abiertas se cierran (quickstart §2.2).
 
 **Purpose**: validación de extremo a extremo y documentación (plan, "Documentos de `docs/` que se actualizan al cerrar").
 
-- [ ] T083 Recorrer `specs/010-acceso-verificado/quickstart.md` §2 en la copia aparte `barberias-verificacion` (guardián
+- [X] T083 Recorrer `specs/010-acceso-verificado/quickstart.md` §2 en la copia aparte `barberias-verificacion` (guardián
   confirmado, nunca contra el volumen ni la demo del responsable) y anotar cada resultado en el quickstart, incluida la
   medición de SC-004 (20 envíos, latencia hasta el buzón, quickstart §2.5, G1) y la de SC-005 con el umbral estricto
   (`npm run test:medicion`, quickstart §1.1); bajar la copia con `down -v` solo tras la confirmación del guardián
 - [ ] T084 **Del responsable:** cronometrar SC-003 (verificación en menos de 2 min y recuperación en menos de 3 min con el
   buzón abierto) y anotarlo en el quickstart
-- [ ] T085 [P] Requisitos y actores: RF04 y RF05 ampliados y los RF nuevos (verificación, recuperación, textos legales) con su
+- [X] T085 [P] Requisitos y actores: RF04 y RF05 ampliados y los RF nuevos (verificación, recuperación, textos legales) con su
   estado, en `docs/01-analisis-de-sistema/03-requisitos-funcionales.md`; HU nuevas o ampliadas en
   `docs/01-analisis-de-sistema/02-historias-del-usuario.md`; capacidades de ACT-02 a ACT-04 en
   `docs/01-analisis-de-sistema/01-actores.md`
-- [ ] T086 [P] Arquitectura: excepciones, matriz rol × operación y declaración de cookies en
+- [X] T086 [P] Arquitectura: excepciones, matriz rol × operación y declaración de cookies en
   `docs/02-arquitectura-software/seguridad-y-privacidad.md`; casos especiales en
   `docs/02-arquitectura-software/multi-tenancy-y-datos.md`; rutas nuevas en `docs/02-arquitectura-software/api-rest.md`
-- [ ] T087 [P] Pruebas y trazabilidad: sección de 010 en `docs/05-gestion/04-pruebas.md` y fila de 010 en
+- [X] T087 [P] Pruebas y trazabilidad: sección de 010 en `docs/05-gestion/04-pruebas.md` y fila de 010 en
   `docs/trazabilidad.md`
-- [ ] T088 [P] Marcar las brechas 1 a 3 y 7 como resueltas en 010 (o parciales si se cortó alguna fase) en
+- [X] T088 [P] Marcar las brechas 1 a 3 y 7 como resueltas en 010 (o parciales si se cortó alguna fase) en
   `specs/auditoria-coherencia.md`
-- [ ] T089 Verificación final: todas las suites una vez (backend `test`, `test:int`, `test:arch`; frontend), lint, typecheck,
+- [X] T089 Verificación final: todas las suites una vez (backend `test`, `test:int`, `test:arch`; frontend), lint, typecheck,
   Prettier y enlaces de los documentos; CI en verde después del push (`.github/workflows/plataforma-barberias.yml`). El paso
   no bloqueante de la medición de SC-005 se revisa en el registro de la corrida y su resultado se anota en el quickstart,
   sin bloquear el cierre
+  *(2026-11-24, resultados de la fase 6:*
+  - *T083: recorrido del quickstart §2 en `barberias-verificacion`, todo conforme salvo 2.4.2 (el correo del adelanto
+    abierto sin sesión), no recorrido porque exige activar el adelanto con un QR en la copia; lo cubren pruebas
+    automáticas. SC-004: 20 de 20 correos en menos de 1 minuto (mediana 14,3 s). SC-005: ver quickstart §1.1. Copia bajada
+    con `down -v` tras la confirmación del guardián; los volúmenes del responsable, sin cambios.*
+  - *Fuera de las tareas, a pedido del responsable: el CSS global oculta el botón nativo de mostrar contraseña de Edge
+    (`::-ms-reveal`), para que no aparezcan dos ojos; comprobado con captura y axe sin fallos.*
+  - *T085 a T088: documentos actualizados (RF04 y RF05 ampliados con sus límites; RF36 a RF38; HU05 y HU06; ACT-02 a
+    ACT-04; seguridad, multi-tenancy, API REST, pruebas y trazabilidad); brechas 1, 2, 3 y 7 resueltas en la auditoría,
+    con sus límites; la 6 (409 del registro) sigue abierta.*
+  - *T089: backend unitarias 1 190, integración 2 303 de 2 306 (3 omitidas, sin fallos), arquitectura 52; frontend 332;
+    semilla 19; Prettier, ESLint y TypeScript en verde; enlaces relativos de los documentos cambiados sin roturas. La CI,
+    tras el push.)*
 - [ ] T090 **Del responsable:** commit y push del cierre: `docs(010): cierre del acceso verificado (fase 6)`
 
 ---

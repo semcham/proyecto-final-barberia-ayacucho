@@ -325,6 +325,41 @@ Docker) de las herramientas nuevas: **36 en verde**.
   de perfil, y `.env.example`, con un comentario). Sus totales siguen siendo los de §2.4; la CI los vuelve a ejecutar
   en el push.
 
+### 2.10 Funcionalidad 010 (acceso verificado)
+
+010 agrega la verificación del correo del cliente, la recuperación de la contraseña, los textos legales publicados y
+las pantallas del cliente sin sesión. Todas las pruebas usan el **proveedor de IA falso** y **Mailpit**: Testcontainers
+en `test:int` o el servicio de Compose en la copia aislada.
+
+| Prueba | Qué comprueba |
+| --- | --- |
+| `test/integration/aislamiento/permisos-010.spec.ts` (PR09) | Permisos exactos de las tablas y columnas nuevas; `pg_policies` idénticas antes y después de la migración 0036 (ninguna política RLS existente cambió) |
+| `test/integration/aislamiento/funciones-definer.spec.ts`, bloque 7 | Las 4 funciones nuevas son de `barberias_auth`, solo `barberias_app` las ejecuta, y `BYPASSRLS` sigue siendo solo de `barberias_auth`; su comportamiento (consumo atómico, un solo uso, cierre de sesiones en todas las barberías) |
+| `test/integration/identidad/migracion-verificacion.spec.ts` | Las cuentas anteriores quedan verificadas (`MIGRACION`); la aplicación no puede crear ni marcar una cuenta verificada; `down` y `up` |
+| `test/integration/notificaciones/avisos-cuenta.spec.ts` | El token se emite al enviar y solo su hash queda en la base; un **canario** comprueba que el token no aparece en `outbox_event`, `notification`, la auditoría ni los registros; reintento con token nuevo; correo caído y recuperado |
+| `test/integration/cuenta/verificacion-correo.spec.ts`, `correo-verificado-guard.spec.ts`, `reenvio-verificacion.spec.ts` | US1: registro → correo en el buzón → verificar sin sesión; el mismo 410 para usado, vencido, reemplazado o desconocido; 403 `CORREO_NO_VERIFICADO` en las 3 rutas solo para el cliente; límites del reenvío (3/h por cuenta, 20/h por origen) |
+| `test/integration/cuenta/recuperacion.spec.ts`, `recuperacion-limites.spec.ts` | US2: respuesta neutra; el personal pendiente no recibe enlace; enlace de 1 h, de un solo uso y reemplazable; reglas de la contraseña (422 con el enlace aún vigente); cierre de sesiones en dos barberías; barbería del aviso según R03; límites; PR09 |
+| `test/integration/cuenta/respuestas-neutras.spec.ts` (bloqueante) | SC-005, parte funcional: mismo estado y mismo cuerpo con y sin cuenta, y ninguna respuesta bajo el piso de tiempo |
+| `test/integration/cuenta/respuestas-neutras.medicion.spec.ts` (`npm run test:medicion`) | SC-005, medición: 100 solicitudes por serie; **no** la recoge `test:int`, y en la CI corre en un paso no bloqueante |
+| `test/contract/cuenta.contract.spec.ts` | Contrato de las 4 rutas `/cuenta/*` y `correoVerificado` en la sesión |
+| `test/integration/auditoria.spec.ts` (010) | Se audita solo lo que tiene cuenta y barbería; un token desconocido o un correo sin cuenta no crean registros; nunca el token ni la contraseña |
+| `test/architecture/reglas.spec.ts` (PR14) | Regla nueva `cuentas-api-confinada`: `CuentasApi` solo la usan el host y M05; M03 y M04 siguen sin llamar a M01 |
+| Frontend: `verificar`, `aviso-verificacion`, `recuperar`, `restablecer`, `documentos-legales`, `enlaces-legales`, `cliente-sin-sesion`, `sesion` y `cliente-reserva` | Pantallas nuevas, el aviso en la reserva, el asistente y el adelanto, el enlace "¿Olvidaste tu contraseña?" y las pantallas del cliente sin sesión |
+| Semilla: `semilla.test.mjs`, `lib.test.mjs` | La semilla verifica a cada cliente con el enlace del buzón antes de reservar; una segunda carga no repite nada |
+
+**Mediciones (2026-11-24, quickstart de 010):**
+
+- **SC-004:** 20 correos en la copia aislada (10 de verificación y 10 de recuperación), **20 de 20 en menos de 1 minuto**;
+  mediana 14,3 s y máxima 31,5 s (el despacho de respaldo corre cada 15 s).
+- **SC-005:** diferencia de medianas con y sin cuenta de 0 a 2 ms en las tres series. Percentil 90: dentro de 450 ms en
+  la corrida sin otras cargas (426–445 ms); en la que siguió a la suite completa, 451–458 ms en dos series. El margen es
+  estrecho porque el piso de 400 ms cubre el caso de uso y no la validación de la sesión ni el viaje HTTP.
+- **Accesibilidad:** capturas en claro y oscuro, a 1440 y 360 px, con axe (WCAG 2.2 A y AA) **sin fallos** y sin desbordes
+  en `/verificar`, el aviso de verificación, `/recuperar`, `/restablecer`, `/terminos`, `/privacidad`, las pantallas sin
+  sesión y los dos ingresos.
+
+**Totales de la verificación final (T089, 2026-11-24):** Backend: unitarias **1 190** de 1 190, integración **2 303** de 2 306 (3 omitidas sin credenciales ni llave, **sin fallos**, 166 archivos en 34 min), arquitectura **52** (461 módulos, 2 152 dependencias, sin violaciones); frontend **332** (42 archivos); semilla **19**. Prettier, ESLint y TypeScript en verde en backend, frontend y semilla. La CI se comprueba tras el push del responsable.
+
 ## 3. Datos y entornos
 
 - Datos de prueba **ficticios**; nunca datos reales de clientes.

@@ -374,19 +374,21 @@ Notas:
 
 ### Bloqueantes para un cliente real
 
-1. **El correo del cliente no se verifica.** Cualquiera se registra con un correo ajeno y obtiene la sesión al instante, y los avisos de citas le llegan a esa persona (`registrar-cliente.ts:64-93`). Quedó como "mejora por evaluar" en `specs/002/spec.md:311` y ningún documento posterior la retomó.
-2. **No hay recuperación de contraseña**, para nadie: cliente, propietario ni barbero. Quien la olvida no tiene salida (`specs/001/spec.md:191`, "se tratará por separado"; no está en el backlog).
-3. **No se publica el texto de los términos ni de la política de tratamiento de datos.** El usuario acepta "la política (versión 2026-10)" sin poder leerla (`Union.tsx:57`, `Registro.tsx:198,215`). Es un problema de consentimiento informado (Ley 29733).
+1. **El correo del cliente no se verifica.** Cualquiera se registra con un correo ajeno y obtiene la sesión al instante, y los avisos de citas le llegan a esa persona (`registrar-cliente.ts:64-93`). Quedó como "mejora por evaluar" en `specs/002/spec.md:311` y ningún documento posterior la retomó. **Resuelta en 010 (2026-11-23):** el cliente verifica su correo con un enlace de un solo uso antes de reservar, usar el asistente o pagar un adelanto (RF36). Límite: el propietario que registra su barbería no verifica su correo (mejora anotada en ADR-036).
+2. **No hay recuperación de contraseña**, para nadie: cliente, propietario ni barbero. Quien la olvida no tiene salida (`specs/001/spec.md:191`, "se tratará por separado"; no está en el backlog). **Resuelta en 010 (2026-11-24):** cualquier cuenta con contraseña recupera el acceso con un enlace de 1 hora, con respuestas neutras, límites y cierre de todas sus sesiones (RF37).
+3. **No se publica el texto de los términos ni de la política de tratamiento de datos.** El usuario acepta "la política (versión 2026-10)" sin poder leerla (`Union.tsx:57`, `Registro.tsx:198,215`). Es un problema de consentimiento informado (Ley 29733). **Resuelta en 010 (2026-11-23):** `/terminos` y `/privacidad` publican los textos con versión y fecha, enlazados desde la portada, los registros, la unión y los ingresos (RF38). Límites: los textos siguen marcados como borrador pendiente de revisión, y una versión nueva no pide volver a aceptar.
 4. **No hay despliegue real.** Solo existe el Compose local; la nube está "documentada, no ejecutada", y la publicación por túnel de 009 (ADR-035) está pendiente.
 5. **El Compose arranca en `NODE_ENV=production` con secretos de desarrollo y la pasarela simulada, sin ninguna guarda** (`docker-compose.yml:58-61,83,105`; `configuracion.ts:128`). Si se publica tal cual, quien conozca los secretos de desarrollo del repositorio podría firmar notificaciones de pago falsas.
 
 ### Importantes
 
-6. **Enumeración de cuentas en el registro:** responde 409 `CORREO_NO_DISPONIBLE` con el texto "Ya tienes una cuenta con ese correo". El límite por minuto lo frena, pero no lo evita.
+6. **Enumeración de cuentas en el registro:** responde 409 `CORREO_NO_DISPONIBLE` con el texto "Ya tienes una cuenta con ese correo". El límite por minuto lo frena, pero no lo evita. **Sigue abierta** (fuera de 010 por decisión del responsable, research R14); la recuperación y la verificación de 010 sí responden de forma neutra.
 7. **El cliente queda sin salida en la navegación:**
    - en `/b/<slug>` no hay "Ingresar" ni "Crear cuenta" hasta elegir una hora;
    - con la sesión abierta no hay "Mis citas" ni "Cerrar sesión";
    - al abrir `/mis-citas` sin sesión llega a `/ingresar`, que solo responde "Ingresa desde el enlace de tu barbería", sin decir cuál es.
+
+   **Resuelta en 010 (2026-11-23):** las pantallas del cliente sin sesión (`/mis-citas`, `/asistente`, `/mis-avisos`, `/mis-datos` y el pago del adelanto) muestran "Ingresar" en la última barbería visitada o cómo llegar a ella, y vuelven a la pantalla pedida; nunca llevan al ingreso del personal (US4 de 010).
 8. **El enlace de activación del barbero se entrega a mano**, aunque el correo (M05) ya existe.
 9. **Proveedores externos solo simulados o falsos:**
    - pagos: Culqi lanza un error, aunque la transferencia con comprobante sí funciona;
@@ -420,12 +422,12 @@ Notas:
    - **línea 80:** "292 módulos, 1334 dependencias" está desactualizado (hoy son 440 y 2030);
    - **EQ-11 y gitleaks:** falta mencionar `revisar-secretos.mjs` cuando se haga el commit de 009.
 4. **`docs/01-analisis-de-sistema/03-requisitos-funcionales.md`:**
-   - **RF05:** falta decir "sin verificación del correo y sin el texto de la política publicado";
-   - **RF04:** falta decir "sin recuperación de contraseña";
+   - **RF05:** falta decir "sin verificación del correo y sin el texto de la política publicado"; **corregido en 010** (RF05 ampliado y RF36 y RF38 nuevos);
+   - **RF04:** falta decir "sin recuperación de contraseña"; **corregido en 010** (RF04 ampliado y RF37 nuevo);
    - **RF30:** dice "Implementado (004)" sin aclarar que WhatsApp está simulado;
    - **RF02:** aclarar qué significa "activar";
    - **conteo:** "34 implementados" no distingue lo que solo funciona con un simulador (RF23, RF24, RF26, RF27, RF28 y RF30).
-5. **`docs/02-arquitectura-software/seguridad-y-privacidad.md:139`:** pide declarar las cookies "en la política de privacidad", pero esa política no existe. Hay que dejarlo como pendiente.
+5. **`docs/02-arquitectura-software/seguridad-y-privacidad.md:139`:** pide declarar las cookies "en la política de privacidad", pero esa política no existe. Hay que dejarlo como pendiente. **Corregido en 010:** la política existe (`/privacidad`) y declara las cookies.
 6. **Rutas viejas en `tasks.md`:**
    - 001 (T089 y T112): `BarraSuperior.tsx`; el botón está en `MenuUsuario.tsx`;
    - 003 (T022) y 006 (T011): `shared/cache/interruptor.ts`; está en `shared/resiliencia/`;

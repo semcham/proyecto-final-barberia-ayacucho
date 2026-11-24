@@ -99,6 +99,13 @@ textarea {
   color: inherit;
 }
 
+/* Los campos de contraseña ya traen su propio botón "Mostrar contraseña" (CampoContrasena): se oculta el del navegador
+   (Edge, y Chromium donde lo muestra) para que no aparezcan dos ojos. */
+input[type='password']::-ms-reveal,
+input[type='password']::-ms-clear {
+  display: none;
+}
+
 /* ---------- Utilidades de diseño ---------- */
 
 .contenedor {
