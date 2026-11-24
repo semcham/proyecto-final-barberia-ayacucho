@@ -124,6 +124,18 @@ export class CorreoNoVerificado extends ErrorDeAplicacion {
   }
 }
 
+/**
+ * 010 (contracts/openapi.yaml, POST /cuenta/recuperacion/contrasena): la contraseña nueva no cumple las reglas. Es
+ * VALIDACION en el campo `contrasena`, con 422 (y no 400): solo se responde con un enlace vigente, que sigue sirviendo.
+ */
+export class ContrasenaNuevaNoValida extends ErrorDeAplicacion {
+  readonly codigo = 'VALIDACION';
+  readonly estadoHttp = 422;
+  constructor(detalles: Record<string, unknown>[]) {
+    super('Revisa la contraseña nueva.', detalles);
+  }
+}
+
 export class DemasiadosIntentos extends ErrorDeAplicacion {
   readonly codigo = 'DEMASIADOS_INTENTOS';
   constructor(readonly reintentarEnSegundos: number) {

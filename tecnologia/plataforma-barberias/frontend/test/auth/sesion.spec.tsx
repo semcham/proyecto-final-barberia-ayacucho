@@ -237,4 +237,16 @@ describe('Sesión en la interfaz', () => {
     await ingresar('rosa@prueba.pe', 'equivocada');
     expect(await screen.findByRole('alert')).toHaveTextContent('Correo o contraseña incorrectos.');
   });
+
+  // T075 de 010 (FR-018): el ingreso del personal ofrece recuperar la contraseña.
+  it('"¿Olvidaste tu contraseña?" en /ingresar lleva a /recuperar', async () => {
+    indicadorSesion.quitar();
+    renderizar('/ingresar');
+    const enlace = await screen.findByRole('link', { name: '¿Olvidaste tu contraseña?' });
+    await userEvent.setup().click(enlace);
+    expect(
+      await screen.findByRole('heading', { level: 1, name: '¿Olvidaste tu contraseña?' }),
+    ).toBeInTheDocument();
+    expect(rutaActual()).toBe('/recuperar');
+  });
 });

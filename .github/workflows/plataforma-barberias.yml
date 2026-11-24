@@ -33,6 +33,12 @@ jobs:
       # Testcontainers usa el Docker del runner de GitHub (ubuntu-latest lo trae instalado).
       - run: npm run test:int
       - run: npm run test:arch
+      # 010 (T072; research R07; SC-005): medición de tiempos de las respuestas neutras de los enlaces de cuenta, con el
+      # mismo umbral que la verificación local. NO bloquea: los tiempos de los ejecutores compartidos varían por causas
+      # ajenas al código. Sus resultados quedan en el registro de la corrida.
+      - name: Medición de tiempos de las respuestas neutras (no bloqueante)
+        run: npm run test:medicion
+        continue-on-error: true
 
   frontend:
     runs-on: ubuntu-latest

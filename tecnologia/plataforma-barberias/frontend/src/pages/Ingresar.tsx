@@ -112,6 +112,10 @@ export default function Ingresar() {
           registro={register('contrasena')}
           error={errors.contrasena?.message}
         />
+        {/* 010 (T080, FR-018): recuperar la contraseña. */}
+        <p className={estilos.olvido}>
+          <Link to="/recuperar">¿Olvidaste tu contraseña?</Link>
+        </p>
 
         {error && <Alerta>{error}</Alerta>}
 

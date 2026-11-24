@@ -5,6 +5,7 @@ import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-route
 import { z } from 'zod';
 import { ApiError } from '../../api/client';
 import { type DatosUnion, useSesion } from '../../auth/SesionProvider';
+import { Icono } from '../../components/Icono';
 import { MarcoAcceso } from '../../components/MarcoAcceso';
 import { Alerta } from '../../components/ui/Alerta';
 import { Boton } from '../../components/ui/Boton';
@@ -25,7 +26,8 @@ type Formulario = z.infer<typeof esquema>;
  */
 export default function IngresarBarberia() {
   const { slug = '' } = useParams();
-  const desde = (useLocation().state as { desde?: string } | null)?.desde ?? `/b/${slug}`;
+  const estadoNavegacion = useLocation().state as { desde?: string; mensaje?: string } | null;
+  const desde = estadoNavegacion?.desde ?? `/b/${slug}`;
   const navegar = useNavigate();
   const { estado, usuario, iniciarSesion } = useSesion();
   const [error, setError] = useState<string | null>(null);
@@ -83,6 +85,14 @@ export default function IngresarBarberia() {
         </p>
       </div>
 
+      {/* 010 (T079): el aviso tras cambiar la contraseña con el enlace del correo. */}
+      {!union && estadoNavegacion?.mensaje && (
+        <p role="status" className={estilos.aviso}>
+          <Icono nombre="check" tamano={18} />
+          <span>{estadoNavegacion.mensaje}</span>
+        </p>
+      )}
+
       {union ? (
         <FormularioUnion mensaje={union.mensaje} alUnirse={unirse} />
       ) : (
@@ -106,6 +116,12 @@ export default function IngresarBarberia() {
             registro={register('contrasena')}
             error={errors.contrasena?.message}
           />
+          {/* 010 (T080, FR-018): con el enlace de esta barbería, para que el aviso salga de ella (R03). */}
+          <p className={estilos.olvido}>
+            <Link to="/recuperar" state={{ barberia: slug }}>
+              ¿Olvidaste tu contraseña?
+            </Link>
+          </p>
           {error && <Alerta>{error}</Alerta>}
           <Boton type="submit" bloque iconoFinal="flecha" cargando={isSubmitting} textoCargando="Ingresando…">
             Ingresar

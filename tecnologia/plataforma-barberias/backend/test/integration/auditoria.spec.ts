@@ -88,7 +88,7 @@ describe('PR13 · Auditoría de acciones sensibles', () => {
   // T053 de 010 (research R15; data-model §7; FR-007): auditoría de la verificación en la barbería del enlace. Se audita
   // la solicitud con cuenta, la verificación aceptada y el rechazo de un enlace QUE PERTENECE a una cuenta (usado,
   // vencido o anulado); un token desconocido no crea ningún registro. Nunca el token.
-  describe('verificación del correo (010)', () => {
+  describe('enlaces de cuenta: verificación y recuperación (010)', () => {
     const ipPropia = () => `198.51.${randomBytes(1)[0]}.${1 + (randomBytes(1)[0] % 254)}`;
 
     /** Un enlace con un token conocido (como si ya se hubiera enviado el correo). */
@@ -96,16 +96,17 @@ describe('PR13 · Auditoría de acciones sensibles', () => {
       tenantId: string,
       usuarioId: string,
       estado: 'VIGENTE' | 'USADO' | 'VENCIDO' | 'ANULADO' = 'VIGENTE',
+      proposito: 'VERIFICAR_CORREO' | 'RECUPERAR_CONTRASENA' = 'VERIFICAR_CORREO',
     ): Promise<string> {
       const token = randomBytes(32).toString('base64url');
       const hash = createHash('sha256').update(token).digest('hex');
       await poolDe('seed').query(
         `INSERT INTO account_link (id, tenant_id, user_id, purpose, token_hash, requested_at, expires_at, used_at, revoked_at)
-         VALUES ($1, $2, $3, 'VERIFICAR_CORREO', $4,
+         VALUES ($1, $2, $3, $6, $4,
                  now() - CASE WHEN $5::text = 'VENCIDO' THEN interval '30 hours' ELSE interval '1 minute' END,
                  now() + CASE WHEN $5::text = 'VENCIDO' THEN interval '-6 hours' ELSE interval '23 hours' END,
                  CASE WHEN $5::text = 'USADO' THEN now() END, CASE WHEN $5::text = 'ANULADO' THEN now() END)`,
-        [uuidv7(), tenantId, usuarioId, hash, estado],
+        [uuidv7(), tenantId, usuarioId, hash, estado, proposito],
       );
       return token;
     }
@@ -182,6 +183,99 @@ describe('PR13 · Auditoría de acciones sensibles', () => {
         (await poolDe('seed').query<{ n: number }>('SELECT count(*)::int AS n FROM audit_log')).rows[0].n;
       const antes = await contar();
       await verificar(randomBytes(32).toString('base64url'), correlacion()).expect(410);
+      expect(await contar()).toBe(antes);
+    });
+
+    // T073 de 010 (research R15): la recuperación se audita en la barbería del enlace. Una solicitud con un correo sin
+    // cuenta y un token desconocido no crean registros. Nunca el token ni la contraseña.
+    const restablecer = (token: string, contrasena: string, correlacionId: string) =>
+      prueba.agente
+        .post('/api/v1/cuenta/recuperacion/contrasena')
+        .set({ 'X-Correlation-Id': correlacionId, 'X-Forwarded-For': ipPropia() })
+        .send({ token, contrasena });
+
+    it('recuperación con cuenta → RECUPERACION_SOLICITADA; restablecer → CONTRASENA_RESTABLECIDA', async () => {
+      const e = await crearEscenario();
+      const cliente = await sembrarCliente({ tenantId: e.barberia.tenantId });
+      const usuarioId = cliente.usuarioId as string;
+
+      const id1 = correlacion();
+      const solicitud = await registrosNuevos(e.barberia.tenantId, () =>
+        prueba.agente
+          .post('/api/v1/cuenta/recuperacion')
+          .set({ 'X-Correlation-Id': id1, 'X-Forwarded-For': ipPropia() })
+          .send({ correo: cliente.correo })
+          .expect(202),
+      );
+      expect(solicitud).toHaveLength(1);
+      esCompleto(solicitud[0], {
+        tenantId: e.barberia.tenantId,
+        actorId: usuarioId,
+        accion: 'RECUPERACION_SOLICITADA',
+        resultado: 'PERMITIDO',
+      });
+      vieneDeLaSolicitud(solicitud[0], id1);
+
+      // El enlace que creó la solicitud se reemplaza por uno con token conocido.
+      await poolDe('seed').query('UPDATE account_link SET revoked_at = now() WHERE user_id = $1', [
+        usuarioId,
+      ]);
+      const token = await enlaceConToken(e.barberia.tenantId, usuarioId, 'VIGENTE', 'RECUPERAR_CONTRASENA');
+      const contrasena = 'clave-auditada-nueva-2026';
+      const id2 = correlacion();
+      const restablecida = await registrosNuevos(e.barberia.tenantId, () =>
+        restablecer(token, contrasena, id2).expect(204),
+      );
+      expect(restablecida).toHaveLength(1);
+      esCompleto(restablecida[0], {
+        tenantId: e.barberia.tenantId,
+        actorId: usuarioId,
+        accion: 'CONTRASENA_RESTABLECIDA',
+        resultado: 'PERMITIDO',
+      });
+      vieneDeLaSolicitud(restablecida[0], id2);
+      const todo = JSON.stringify([...solicitud, ...restablecida]);
+      expect(todo).not.toContain(token);
+      expect(todo).not.toContain(contrasena);
+    });
+
+    it('un enlace de recuperación ya usado de una cuenta → ENLACE_DE_CUENTA_RECHAZADO', async () => {
+      const e = await crearEscenario();
+      const cliente = await sembrarCliente({ tenantId: e.barberia.tenantId });
+      const token = await enlaceConToken(
+        e.barberia.tenantId,
+        cliente.usuarioId as string,
+        'USADO',
+        'RECUPERAR_CONTRASENA',
+      );
+      const id = correlacion();
+      const nuevos = await registrosNuevos(e.barberia.tenantId, () =>
+        restablecer(token, 'clave-que-no-se-aplica', id).expect(410),
+      );
+      expect(nuevos).toHaveLength(1);
+      esCompleto(nuevos[0], {
+        tenantId: e.barberia.tenantId,
+        actorId: cliente.usuarioId as string,
+        accion: 'ENLACE_DE_CUENTA_RECHAZADO',
+        resultado: 'DENEGADO',
+      });
+      expect(JSON.stringify(nuevos)).not.toContain(token);
+    });
+
+    it('un correo sin cuenta y un token de recuperación desconocido no crean ningún registro', async () => {
+      const contar = async () =>
+        (await poolDe('seed').query<{ n: number }>('SELECT count(*)::int AS n FROM audit_log')).rows[0].n;
+      const antes = await contar();
+      await prueba.agente
+        .post('/api/v1/cuenta/recuperacion')
+        .set('X-Forwarded-For', ipPropia())
+        .send({ correo: `nadie-${randomBytes(4).toString('hex')}@prueba.pe` })
+        .expect(202);
+      await restablecer(
+        randomBytes(32).toString('base64url'),
+        'clave-que-no-se-aplica',
+        correlacion(),
+      ).expect(410);
       expect(await contar()).toBe(antes);
     });
   });

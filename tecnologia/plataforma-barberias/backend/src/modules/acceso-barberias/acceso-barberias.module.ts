@@ -13,6 +13,8 @@ import { PurgarEnlacesDeCuenta } from './identidad/application/purgar-enlaces-de
 import { SolicitarEnlaceDeCuenta } from './identidad/application/solicitar-enlace-de-cuenta';
 import { SolicitarVerificacion } from './identidad/application/solicitar-verificacion';
 import { VerificarCorreo } from './identidad/application/verificar-correo';
+import { PedirRecuperacion } from './identidad/application/pedir-recuperacion';
+import { RestablecerContrasena } from './identidad/application/restablecer-contrasena';
 import { CuentaController } from './identidad/presentation/cuenta.controller';
 import {
   KyselyEnlaceDeCuentaRepository,
@@ -234,6 +236,9 @@ import { UsuariosPorTipoIndicador } from './identidad/infrastructure/plataforma/
     // 010 (fase 4, US1): verificación del correo del cliente.
     SolicitarVerificacion,
     VerificarCorreo,
+    // 010 (fase 5, US2): recuperación de la contraseña.
+    PedirRecuperacion,
+    RestablecerContrasena,
   ],
   exports: [
     ValidarSolicitud,

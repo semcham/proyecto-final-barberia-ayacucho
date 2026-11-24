@@ -43,6 +43,9 @@ const Privacidad = lazy(() =>
 const Enlace = lazy(() => import('./pages/publico/Enlace'));
 // Funcionalidad 010 (T062): verificar el correo con el enlace del correo (/verificar#<token>).
 const Verificar = lazy(() => import('./pages/publico/Verificar'));
+// Funcionalidad 010 (T079): recuperar la contraseña (/recuperar) y elegir la nueva (/restablecer#<token>).
+const Recuperar = lazy(() => import('./pages/publico/Recuperar'));
+const Restablecer = lazy(() => import('./pages/publico/Restablecer'));
 // Funcionalidad 003 (T051).
 const Suscripcion = lazy(() => import('./pages/panel/Suscripcion'));
 // Funcionalidad 008 (T018): configuración del adelanto de reserva con QR.
@@ -141,6 +144,8 @@ export function RutasApp() {
           <Route path="/b/:slug/reservar" element={<ReservarProtegida />} />
           <Route path="/e" element={<Enlace />} />
           <Route path="/verificar" element={<Verificar />} />
+          <Route path="/recuperar" element={<Recuperar />} />
+          <Route path="/restablecer" element={<Restablecer />} />
           <Route
             path="/mis-citas"
             element={

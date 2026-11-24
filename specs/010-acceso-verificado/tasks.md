@@ -349,17 +349,17 @@ comprobar que las sesiones abiertas se cierran (quickstart §2.2).
 
 ### Tests for User Story 2 (MANDATORY - constitution Principle X) ⚠️
 
-- [ ] T069 [P] [US2] Contrato de `POST /cuenta/recuperacion` y `POST /cuenta/recuperacion/contrasena` en
+- [X] T069 [P] [US2] Contrato de `POST /cuenta/recuperacion` y `POST /cuenta/recuperacion/contrasena` en
   `backend/test/contract/cuenta.contract.spec.ts`
-- [ ] T070 [P] [US2] Integración de la recuperación: correo con y sin cuenta → la misma respuesta; personal pendiente → sin
+- [X] T070 [P] [US2] Integración de la recuperación: correo con y sin cuenta → la misma respuesta; personal pendiente → sin
   enlace; el enlace vence a la hora, sirve una vez y reemplaza al anterior; la contraseña nueva cumple las reglas (incluida
   la del propio correo); al cambiarla se cierran las sesiones en dos barberías (renovación y acceso fallan al siguiente uso),
   la cuenta queda verificada y llega `CONTRASENA_CAMBIADA`; la barbería del aviso sigue research R03 (slug con y sin
   membresía, personal, solo cliente), en `backend/test/integration/cuenta/recuperacion.spec.ts`
-- [ ] T071 [P] [US2] Límites de la recuperación (3/h por cuenta, 10/h por origen, usos fallidos por origen) y aislamiento
+- [X] T071 [P] [US2] Límites de la recuperación (3/h por cuenta, 10/h por origen, usos fallidos por origen) y aislamiento
   (un enlace emitido con la barbería A no da acceso a datos de B; PR09), en
   `backend/test/integration/cuenta/recuperacion-limites.spec.ts`
-- [ ] T072 [P] [US2] Respuestas neutras (SC-005, research R07), en dos partes:
+- [X] T072 [P] [US2] Respuestas neutras (SC-005, research R07), en dos partes:
   (a) **funcional, bloqueante**: con y sin cuenta, en recuperación, reenvío y verificación, el mismo estado y el mismo cuerpo,
   y ninguna respuesta por debajo de `CUENTA_RESPUESTA_MINIMA_MS`, en `backend/test/integration/cuenta/respuestas-neutras.spec.ts`
   (la recoge `npm run test:int`);
@@ -368,33 +368,50 @@ comprobar que las sesiones abiertas se cierran (quickstart §2.2).
   `test:int` **no** la recoge: lleva su propio script `test:medicion` en `backend/package.json` y su configuración de Jest.
   Corre como paso propio con `continue-on-error: true` en `.github/workflows/plataforma-barberias.yml` y se exige con el
   umbral estricto en la verificación local (quickstart §1.1)
-- [ ] T073 [P] [US2] Auditoría de la recuperación en la barbería del enlace: solicitud con cuenta, restablecimiento y
+- [X] T073 [P] [US2] Auditoría de la recuperación en la barbería del enlace: solicitud con cuenta, restablecimiento y
   rechazo **solo de un enlace que pertenece a una cuenta**; una solicitud con correo sin cuenta y un token desconocido
   **no** crean registro de auditoría (el segundo queda como `USO_FALLIDO`, R15); nunca el token ni la contraseña, en
   `backend/test/integration/auditoria.spec.ts`
-- [ ] T074 [P] [US2] Pantallas `/recuperar` (mensaje neutro, 429, envía `barberia` si viene del ingreso de una barbería) y
+- [X] T074 [P] [US2] Pantallas `/recuperar` (mensaje neutro, 429, envía `barberia` si viene del ingreso de una barbería) y
   `/restablecer#token` (fragmento borrado, reglas e indicador de fortaleza, éxito → ingreso con aviso, 410 → enlace a
   `/recuperar`), en `frontend/test/pages/recuperar.spec.tsx` y `frontend/test/pages/restablecer.spec.tsx`
-- [ ] T075 [P] [US2] Enlace "¿Olvidaste tu contraseña?" en `/ingresar` y en `/b/<slug>/ingresar` (con `state.barberia`), en
+- [X] T075 [P] [US2] Enlace "¿Olvidaste tu contraseña?" en `/ingresar` y en `/b/<slug>/ingresar` (con `state.barberia`), en
   `frontend/test/auth/sesion.spec.tsx` y `frontend/test/pages/cliente-reserva.spec.tsx`
 
 ### Implementation for User Story 2
 
-- [ ] T076 [US2] Caso de uso `PedirRecuperacion` (resolver la cuenta con la función existente, elegir la barbería con
+- [X] T076 [US2] Caso de uso `PedirRecuperacion` (resolver la cuenta con la función existente, elegir la barbería con
   `auth_barberia_para_enlace`, límites, crear el enlace y publicar el evento solo si la cuenta puede recuperarse, tiempo
   mínimo) en `backend/src/modules/acceso-barberias/identidad/application/pedir-recuperacion.ts`
-- [ ] T077 [US2] Caso de uso `RestablecerContrasena` (reglas de `Contrasena`, hash con argon2 fuera de la transacción,
+- [X] T077 [US2] Caso de uso `RestablecerContrasena` (reglas de `Contrasena`, hash con argon2 fuera de la transacción,
   `auth_restablecer_contrasena`, evento `ContrasenaCambiada`, auditoría) en
   `backend/src/modules/acceso-barberias/identidad/application/restablecer-contrasena.ts`
-- [ ] T078 [US2] Rutas públicas `POST /cuenta/recuperacion` y `POST /cuenta/recuperacion/contrasena` en
+- [X] T078 [US2] Rutas públicas `POST /cuenta/recuperacion` y `POST /cuenta/recuperacion/contrasena` en
   `backend/src/modules/acceso-barberias/identidad/presentation/cuenta.controller.ts`
-- [ ] T079 [P] [US2] Pantallas `Recuperar` y `Restablecer` en `frontend/src/pages/publico/Recuperar.tsx` y
+- [X] T079 [P] [US2] Pantallas `Recuperar` y `Restablecer` en `frontend/src/pages/publico/Recuperar.tsx` y
   `frontend/src/pages/publico/Restablecer.tsx` (dentro de `MarcoAcceso`, con iconos en los campos), y las rutas
   `/recuperar` y `/restablecer` en `frontend/src/routes.tsx`
-- [ ] T080 [P] [US2] Enlace "¿Olvidaste tu contraseña?" en `frontend/src/pages/Ingresar.tsx` y
+- [X] T080 [P] [US2] Enlace "¿Olvidaste tu contraseña?" en `frontend/src/pages/Ingresar.tsx` y
   `frontend/src/pages/publico/IngresarBarberia.tsx`
-- [ ] T081 [US2] Verificación de la fase 5: todas las suites del backend y del frontend, lint, typecheck y Prettier; capturas y
+- [X] T081 [US2] Verificación de la fase 5: todas las suites del backend y del frontend, lint, typecheck y Prettier; capturas y
   axe de `/recuperar` y `/restablecer` en claro y oscuro, a 1440 y 360 px
+  *(2026-11-24, precisiones de la fase 5:*
+  - *T076: el límite por cuenta usa el SHA-256 del correo normalizado, así que vale igual para un correo sin cuenta
+    (no revela si existe). Un `barberia` inexistente o suspendido se ignora. El intento se registra siempre.*
+  - *T077: el hash Argon2id se calcula antes de saber si el enlace sirve. Si la contraseña no cumple las reglas básicas,
+    se hashea un marcador al azar solo para consultar el enlace, y la transacción se revierte siempre: 422 con un
+    enlace vigente (que sigue sirviendo), 410 si no. La regla "no contiene tu correo" se comprueba después de la función
+    de sistema, con el correo de la cuenta, y si falla también se revierte todo (sesiones, contraseña y enlace). El 422
+    lo da el error `ContrasenaNuevaNoValida` (código VALIDACION, estado propio 422). Una contraseña de menos de 10
+    caracteres da 400 (esquema del contrato). Esta ruta también tiene el piso de tiempo.*
+  - *T072: `test:int` ignora `*.medicion.spec.ts`; `test:medicion` usa `jest.medicion.config.ts`, el piso de 400 ms y
+    un origen y una cuenta por solicitud (los límites de R08 no entran). En la CI: paso propio con `continue-on-error`.*
+  - *T079: `/restablecer` lleva al ingreso de la última barbería conocida (o a `/ingresar`) con el aviso; el ingreso de
+    la barbería ahora también muestra ese aviso.*
+  - *T081: `test:int` 2293 de 2306 (3 omitidas); 10 fallos en 7 archivos de escalado y tiempo (`redis-caido`,
+    `balanceador`, `salida-eventos-dos-instancias`, `cache-catalogo`, `cuotas-asistente`, `proveedor-caido`,
+    `conciliacion`) que pasan todos solos (58 de 58). Frontend 332 de 332; axe 0 en las 6 pantallas nuevas y en los
+    dos ingresos.)*
 - [ ] T082 [US2] **Del responsable:** commit y push de la fase 5: `feat(010): recuperación de contraseña (fase 5, US2)`
 
 **Checkpoint**: US2 completa (brecha bloqueante 2 cerrada). Las cuatro historias funcionan por separado.

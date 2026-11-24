@@ -110,4 +110,57 @@ describe('Contrato 010: verificación del correo', () => {
     expect(erroresDeEsquema010('UsuarioSesion', yo.body)).toEqual([]);
     expect(yo.body.correoVerificado).toBe(true);
   });
+
+  // T069 de 010: las dos rutas de la recuperación.
+  it('POST /cuenta/recuperacion: 202 neutra (con y sin cuenta), 400 y 429 según el contrato', async () => {
+    const cliente = await sembrarCliente({ tenantId: a.tenantId });
+    const pedir = (cuerpo: object, ip = ipUnica()) =>
+      prueba.agente.post('/api/v1/cuenta/recuperacion').set('X-Forwarded-For', ip).send(cuerpo);
+    for (const correo of [cliente.correo, `nadie-${Date.now()}@prueba.pe`]) {
+      const neutra = await pedir({ correo, barberia: a.slug }).expect(202);
+      expect(erroresDeContrato010('/cuenta/recuperacion', 'post', 202, neutra.body)).toEqual([]);
+    }
+    await pedir({}).expect(400);
+    await pedir({ correo: 'x@prueba.pe', tenantId: a.tenantId }).expect(400);
+    const ip = ipUnica();
+    for (let i = 0; i < 10; i++)
+      await pedir({ correo: `limite-${i}-${Date.now()}@prueba.pe` }, ip).expect(202);
+    const limite = await pedir({ correo: `limite-11-${Date.now()}@prueba.pe` }, ip).expect(429);
+    expect(erroresDeContrato010('/cuenta/recuperacion', 'post', 429, limite.body)).toEqual([]);
+  });
+
+  it('POST /cuenta/recuperacion/contrasena: 204, 410, 422 y 429 según el contrato', async () => {
+    const cliente = await sembrarCliente({ tenantId: a.tenantId, correo: `marisol-${Date.now()}@prueba.pe` });
+    const token = randomBytes(32).toString('base64url');
+    await poolDe('seed').query(
+      `INSERT INTO account_link (id, tenant_id, user_id, purpose, token_hash, requested_at, expires_at)
+       VALUES ($1, $2, $3, 'RECUPERAR_CONTRASENA', $4, now(), now() + interval '1 hour')`,
+      [uuidv7(), a.tenantId, cliente.usuarioId, createHash('sha256').update(token).digest('hex')],
+    );
+    const restablecer = (cuerpo: object, ip = ipUnica()) =>
+      prueba.agente.post('/api/v1/cuenta/recuperacion/contrasena').set('X-Forwarded-For', ip).send(cuerpo);
+
+    const local = (cliente.correo as string).split('@')[0];
+    const debil = await restablecer({ token, contrasena: `${local}-segura` }).expect(422);
+    expect(debil.body).toMatchObject({ codigo: 'VALIDACION', detalles: [{ campo: 'contrasena' }] });
+    const ok = await restablecer({ token, contrasena: 'una-clave-nueva-y-larga' }).expect(204);
+    expect(ok.body).toEqual({});
+    const usado = await restablecer({ token, contrasena: 'una-clave-nueva-y-larga' }).expect(410);
+    expect(erroresDeEsquema010('Error', usado.body)).toEqual([]);
+    expect(usado.body.codigo).toBe('ENLACE_NO_VALIDO');
+    await restablecer({ token, contrasena: 'corta' }).expect(400);
+
+    const ip = ipUnica();
+    for (let i = 0; i < 20; i++) {
+      await restablecer(
+        { token: randomBytes(32).toString('base64url'), contrasena: 'una-clave-larga-1' },
+        ip,
+      ).expect(410);
+    }
+    const limite = await restablecer(
+      { token: randomBytes(32).toString('base64url'), contrasena: 'una-clave-larga-1' },
+      ip,
+    ).expect(429);
+    expect(erroresDeContrato010('/cuenta/recuperacion/contrasena', 'post', 429, limite.body)).toEqual([]);
+  });
 });

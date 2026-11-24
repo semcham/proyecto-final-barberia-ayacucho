@@ -9,6 +9,8 @@ const config: Config = {
   transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: 'tsconfig.json' }] },
   moduleFileExtensions: ['ts', 'js', 'json'],
   testMatch: ['<rootDir>/test/integration/**/*.spec.ts', '<rootDir>/test/contract/**/*.spec.ts'],
+  // 010 (T072, research R07): la medición de tiempos de SC-005 no es parte de test:int; corre con test:medicion.
+  testPathIgnorePatterns: ['/node_modules/', '\\.medicion\\.spec\\.ts$'],
   globalSetup: '<rootDir>/test/helpers/global-setup.ts',
   globalTeardown: '<rootDir>/test/helpers/global-teardown.ts',
   setupFiles: ['reflect-metadata', '<rootDir>/test/helpers/entorno.ts'],

@@ -109,6 +109,8 @@ function renderizar(
             <Route path="/b/:slug" element={<h1>Catálogo de la barbería</h1>} />
             <Route path="/b/:slug/registro" element={<RegistroCliente />} />
             <Route path="/b/:slug/ingresar" element={<IngresarBarberia />} />
+            {/* 010 (T075): adónde lleva "¿Olvidaste tu contraseña?" y con qué barbería. */}
+            <Route path="/recuperar" element={<EstadoRecuperar />} />
             <Route path="/b/:slug/reservar" element={<ReservarProtegida />} />
             <Route path="/mis-citas" element={<h1>Mis citas</h1>} />
             {/* Como en routes.tsx: sin sesión, la pantalla que explica cómo ingresar (010, US4). */}
@@ -134,6 +136,11 @@ function renderizar(
 }
 
 const rutaActual = () => screen.getByTestId('ruta').textContent;
+
+function EstadoRecuperar() {
+  const estado = useLocation().state as { barberia?: string } | null;
+  return <h1>Recuperar con {estado?.barberia ?? 'ninguna barbería'}</h1>;
+}
 
 afterEach(() => {
   tokenEnMemoria.limpiar();
@@ -214,6 +221,15 @@ describe('Registro de cliente desde el enlace (/b/:slug/registro)', () => {
 });
 
 describe('Ingreso desde el enlace (/b/:slug/ingresar)', () => {
+  // T075 de 010 (FR-018; research R03): el enlace lleva el slug de esta barbería para que el aviso salga de ella.
+  it('"¿Olvidaste tu contraseña?" lleva a /recuperar con esta barbería', async () => {
+    indicadorSesion.quitar();
+    renderizar(`/b/${SLUG}/ingresar`);
+    await userEvent.setup().click(await screen.findByRole('link', { name: '¿Olvidaste tu contraseña?' }));
+    expect(await screen.findByRole('heading', { name: `Recuperar con ${SLUG}` })).toBeInTheDocument();
+    expect(rutaActual()).toBe('/recuperar');
+  });
+
   it('si la cuenta no es cliente de esta barbería, pide el consentimiento y el teléfono y se une', async () => {
     indicadorSesion.quitar();
     const cuerpos: Record<string, unknown>[] = [];

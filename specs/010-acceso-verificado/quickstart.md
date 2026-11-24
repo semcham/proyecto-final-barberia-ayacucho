@@ -34,6 +34,22 @@ Todas con `IA_PROVEEDOR=falso`. Las que usan correo lo leen de Mailpit (Testcont
   - diferencia de medianas menor de 30 ms;
   - percentil 90 de ambas series dentro de `CUENTA_RESPUESTA_MINIMA_MS` (400 por defecto) más 50 ms.
 - Anotar aquí las medianas y los percentiles 90 medidos, con la fecha y el commit.
+
+  **Mediciones del 2026-11-24** (agente; sobre el commit `58f63d6` más los cambios sin confirmar de la fase 5; piso de
+  400 ms; 100 solicitudes por serie; en ms, "con cuenta / sin cuenta"):
+
+  | Corrida | Serie | Medianas | Percentil 90 | Resultado |
+  | --- | --- | --- | --- | --- |
+  | 1 (justo después de la suite completa de integración) | Recuperación | 422 / 422 | 444 / 437 | Cumple |
+  | 1 | Reenvío | 432 / 433 | **458** / **454** | No cumple el percentil 90 (450) |
+  | 1 | Verificación | 431 / 430 | **451** / **454** | No cumple el percentil 90 (450) |
+  | 2 (sola, sin otras cargas) | Recuperación | 424 / 425 | 432 / 436 | Cumple |
+  | 2 | Reenvío | 432 / 434 | 445 / 442 | Cumple |
+  | 2 | Verificación | 420 / 420 | 428 / 426 | Cumple |
+
+  En las dos corridas la diferencia de medianas fue de 0 a 2 ms. La primera superó el percentil 90 por 1 a 8 ms en dos
+  series: la máquina venía de la suite completa. El piso envuelve el caso de uso; la validación de la sesión y el viaje
+  HTTP suman unos 20 a 35 ms encima, así que el margen del percentil 90 es de unos 15 ms.
 - En la CI esta misma medición corre en un paso **no bloqueante** (research R07). Su resultado se lee en el registro de la
   corrida.
 

@@ -53,3 +53,10 @@
   display: inline-flex;
   margin-top: var(--espacio-5);
 }
+
+/* 010 (T080): "¿Olvidaste tu contraseña?" bajo el campo de contraseña, alineado al final. */
+.olvido {
+  margin: calc(-1 * var(--espacio-2)) 0 0;
+  text-align: end;
+  font-size: var(--texto-sm);
+}

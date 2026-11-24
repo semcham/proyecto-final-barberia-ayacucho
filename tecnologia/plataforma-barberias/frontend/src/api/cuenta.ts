@@ -33,3 +33,19 @@ export function correoConParteOculta(correo: string): string {
   if (arroba < 1) return '***';
   return `${correo[0]}***${correo.slice(arroba)}`;
 }
+
+/** POST /cuenta/recuperacion (sin sesión): siempre la misma respuesta neutra, o 429. `barberia`: el slug del ingreso. */
+export const pedirRecuperacion = (correo: string, barberia?: string) =>
+  llamarApi<Neutra>('/cuenta/recuperacion', {
+    metodo: 'POST',
+    cuerpo: { correo, ...(barberia && { barberia }) },
+    sinRenovar: true,
+  });
+
+/** POST /cuenta/recuperacion/contrasena (sin sesión): 204, 410 (enlace no válido), 422 (reglas) o 429. */
+export const restablecerContrasena = (token: string, contrasena: string) =>
+  llamarApi<void>('/cuenta/recuperacion/contrasena', {
+    metodo: 'POST',
+    cuerpo: { token, contrasena },
+    sinRenovar: true,
+  });
