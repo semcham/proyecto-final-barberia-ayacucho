@@ -455,13 +455,18 @@ components:
 
     UsuarioActual:
       type: object
-      required: [id, nombre, correo, rol, barberia]
+      required: [id, nombre, correo, rol, barberia, correoVerificado]
       properties:
         id: { type: string, format: uuid }
         nombre: { type: string }
         correo: { type: string }
         rol: { $ref: '#/components/schemas/Rol' }
         barberia: { $ref: '#/components/schemas/Barberia' }
+        correoVerificado:
+          type: boolean
+          description: >
+            (010, research R06) Si el correo de la cuenta está verificado. Solo se le exige al cliente; el personal queda
+            verificado al activar su cuenta, y el propietario que registra su barbería empieza sin verificar.
 
     ActivacionRequest:
       type: object

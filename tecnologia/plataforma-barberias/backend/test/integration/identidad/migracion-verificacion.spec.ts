@@ -133,7 +133,12 @@ describe('Migración 0036: verificación del correo', () => {
 
     it('user_account: la fecha y la vía van juntas, y la vía es ENLACE, ACTIVACION o MIGRACION', async () => {
       const seed = poolDe('seed');
-      // La cuenta sembrada después de 0036 nace sin verificar: una vía sin fecha, o una fecha sin vía, se rechazan.
+      // Desde la fase 4 los ayudantes siembran cuentas verificadas (T064): se parte de una sin verificar. Una vía sin
+      // fecha, o una fecha sin vía, se rechazan.
+      await seed.query(
+        'UPDATE user_account SET email_verified_at = NULL, email_verified_via = NULL WHERE id = $1',
+        [a.propietarioId],
+      );
       await expect(
         seed.query(`UPDATE user_account SET email_verified_via = 'ENLACE' WHERE id = $1`, [a.propietarioId]),
       ).rejects.toThrow(/user_account_verificacion_coherente/);

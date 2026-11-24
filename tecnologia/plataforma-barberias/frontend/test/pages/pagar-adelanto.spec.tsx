@@ -102,6 +102,7 @@ function servidorDelPago(inicial: ReturnType<typeof adelanto>) {
         tipo: 'Bearer',
         expiraEn: 900,
         usuario: {
+          correoVerificado: true,
           id: '0190a1b2-0000-7000-8000-000000000010',
           nombre: 'Luis Huamán',
           correo: 'luis@prueba.pe',

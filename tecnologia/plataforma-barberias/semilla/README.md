@@ -21,6 +21,11 @@ node semilla/cargar-semilla.mjs --api http://localhost:3000/api/v1
 
 La semilla **no** se carga sola al levantar la demo: se carga con este comando explícito.
 
+Desde 010, un cliente necesita su correo **verificado** para reservar. La semilla verifica a cada cliente como lo haría
+la persona: lee el enlace de `/verificar#…` del buzón de desarrollo (Mailpit) y lo usa. Por eso necesita Mailpit en
+marcha. Desde el equipo, su dirección se indica con `--buzon` (por defecto `http://localhost:8025`); en Docker Compose
+la toma de `SEMILLA_BUZON`.
+
 ## Cuentas de la demo LOCAL
 
 Estas contraseñas son **valores de desarrollo**, versionados a propósito en `datos.json`. Solo sirven en la demo que

@@ -136,6 +136,7 @@ export class KyselyUsuarioRepository extends UsuarioRepository {
         'user_account.id',
         'user_account.full_name',
         'user_account.email',
+        'user_account.email_verified_at',
         'membership.role_code',
         'tenant.id as tenant_id',
         'tenant.name as tenant_name',
@@ -151,6 +152,7 @@ export class KyselyUsuarioRepository extends UsuarioRepository {
           correo: fila.email,
           rol: fila.role_code,
           barberia: { id: fila.tenant_id, nombre: fila.tenant_name, slug: fila.tenant_slug },
+          correoVerificado: fila.email_verified_at !== null,
         }
       : null;
   }

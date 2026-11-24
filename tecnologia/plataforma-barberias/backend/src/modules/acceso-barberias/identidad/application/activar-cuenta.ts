@@ -4,6 +4,7 @@ import { Contrasena } from '../domain/contrasena';
 import { Correo } from '../domain/correo';
 import { EnlaceInvalido } from '../domain/errores';
 import { ActivacionRepository } from './ports/activacion-repository';
+import { FuncionesDeCuenta } from './ports/enlace-de-cuenta-repository';
 import { PasswordHasher } from './ports/password-hasher';
 import { UsuarioRepository } from './ports/usuario-repository';
 import { hashDeToken } from './tokens-opacos';
@@ -20,6 +21,7 @@ export class ActivarCuenta {
     private readonly usuarios: UsuarioRepository,
     private readonly hasher: PasswordHasher,
     private readonly reloj: Clock,
+    private readonly funciones: FuncionesDeCuenta,
   ) {}
 
   async ejecutar(token: string, contrasenaTexto: string): Promise<void> {
@@ -41,6 +43,8 @@ export class ActivarCuenta {
       await this.usuarios.fijarContrasena(activacion.usuarioId, await this.hasher.hash(contrasena));
       membresia.activar();
       await this.usuarios.actualizarEstado(membresia);
+      // 010 (T057, FR-017; research R12): activar la cuenta demuestra la posesión del correo.
+      await this.funciones.marcarVerificadaPorActivacion(activacion.usuarioId);
     });
   }
 }

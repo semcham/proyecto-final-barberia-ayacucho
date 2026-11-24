@@ -12,13 +12,15 @@ import { ErrorFilter } from './error.filter';
 import { SuscripcionesDeEventos } from './eventos';
 import { IndicadoresDeLaPlataforma } from './indicadores';
 import { RolesGuard } from './roles.guard';
+import { CorreoVerificadoGuard } from './correo-verificado.guard';
 import { SaludController } from './salud.controller';
 import { TareasProgramadas } from './tareas';
 import { TenantHeaderInterceptor } from './tenant-header.interceptor';
 
 /**
  * Raíz de composición: único lugar que ensambla los módulos y aplica guards, filtros e interceptores.
- * Orden de los guards globales: límite general de solicitudes → autenticación → autorización por rol.
+ * Orden de los guards globales: límite general de solicitudes → autenticación → autorización por rol → correo
+ * verificado del cliente (010).
  */
 @Module({
   imports: [
@@ -45,6 +47,8 @@ import { TenantHeaderInterceptor } from './tenant-header.interceptor';
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: AuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
+    // 010 (research R05): después de la autorización por rol, el correo verificado del cliente en tres rutas.
+    { provide: APP_GUARD, useClass: CorreoVerificadoGuard },
     { provide: APP_INTERCEPTOR, useClass: TenantHeaderInterceptor },
     { provide: APP_FILTER, useClass: ErrorFilter },
     TareasProgramadas,

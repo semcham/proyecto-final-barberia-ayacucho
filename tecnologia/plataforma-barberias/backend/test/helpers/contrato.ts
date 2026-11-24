@@ -94,6 +94,19 @@ const CONTRATOS = {
     'contracts',
     'openapi.yaml',
   ),
+  // 010 (T048): enlaces de cuenta por correo (verificación y recuperación).
+  '010': join(
+    __dirname,
+    '..',
+    '..',
+    '..',
+    '..',
+    '..',
+    'specs',
+    '010-acceso-verificado',
+    'contracts',
+    'openapi.yaml',
+  ),
 } as const;
 
 type Contrato = keyof typeof CONTRATOS;
@@ -250,6 +263,30 @@ export function erroresDeContrato007(
  */
 export function erroresDeEsquema007(nombre: string, cuerpo: unknown): string[] {
   const { ajv, compilados } = validadorDe('007');
+  const clave = `esquema ${nombre}`;
+  let validar = compilados.get(clave);
+  if (!validar) {
+    validar = ajv.compile({ $ref: `openapi#/components/schemas/${nombre}` });
+    compilados.set(clave, validar);
+  }
+  return validar(cuerpo)
+    ? []
+    : (validar.errors ?? []).map((error) => `${error.instancePath || '/'} ${error.message ?? ''}`.trim());
+}
+
+/** Igual que `erroresDeContrato`, contra el contrato de la funcionalidad 010 (enlaces de cuenta por correo). */
+export function erroresDeContrato010(
+  ruta: string,
+  metodo: string,
+  estado: number,
+  cuerpo: unknown,
+): string[] {
+  return erroresDeContrato(ruta, metodo, estado, cuerpo, '010');
+}
+
+/** Errores de `cuerpo` frente a un esquema con nombre del contrato de 010 (p. ej. `UsuarioSesion`). */
+export function erroresDeEsquema010(nombre: string, cuerpo: unknown): string[] {
+  const { ajv, compilados } = validadorDe('010');
   const clave = `esquema ${nombre}`;
   let validar = compilados.get(clave);
   if (!validar) {

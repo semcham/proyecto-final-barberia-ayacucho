@@ -9,6 +9,8 @@ import { clavesConsulta } from '../../api/claves';
 import { ApiError, llamarApi } from '../../api/client';
 import type { components } from '../../api/schema-002';
 import { useSesion } from '../../auth/SesionProvider';
+import { AvisoVerificacion } from '../../components/app/AvisoVerificacion';
+import { esCorreoNoVerificado } from '../../api/cuenta';
 import { Icono } from '../../components/Icono';
 import { Logo } from '../../components/Logo';
 import {
@@ -321,6 +323,7 @@ function Instrucciones({
 
 function FormularioDePago({ citaId }: { citaId: string }) {
   const avisar = useAvisos();
+  const { usuario } = useSesion();
   const consultas = useQueryClient();
   const {
     register,
@@ -347,6 +350,9 @@ function FormularioDePago({ citaId }: { citaId: string }) {
     },
   });
 
+  // 010 (T063, research R06): sin el correo verificado no se registra el pago; lo escrito no se pierde.
+  const sinVerificar = usuario?.correoVerificado === false || esCorreoNoVerificado(registrar.error);
+
   return (
     <form
       className={panel.formulario}
@@ -370,9 +376,19 @@ function FormularioDePago({ citaId }: { citaId: string }) {
         registro={register('captura')}
         error={errors.captura?.message as string | undefined}
       />
-      {registrar.isError && <Alerta>{mensajeDeRegistro(registrar.error)}</Alerta>}
+      {sinVerificar ? (
+        <AvisoVerificacion accion="pagar el adelanto" alVerificar={() => registrar.reset()} />
+      ) : (
+        registrar.isError && <Alerta>{mensajeDeRegistro(registrar.error)}</Alerta>
+      )}
       <div className={panel.acciones}>
-        <Boton type="submit" icono="subir" cargando={registrar.isPending} textoCargando="Registrando…">
+        <Boton
+          type="submit"
+          icono="subir"
+          disabled={sinVerificar}
+          cargando={registrar.isPending}
+          textoCargando="Registrando…"
+        >
           Registrar pago
         </Boton>
       </div>

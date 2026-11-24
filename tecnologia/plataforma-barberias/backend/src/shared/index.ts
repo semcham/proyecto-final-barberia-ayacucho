@@ -50,4 +50,6 @@ export {
   CLAVE_PUBLICA,
   CLAVE_OPERACION,
   CLAVE_PLATAFORMA,
+  RequiereCorreoVerificado,
+  CLAVE_CORREO_VERIFICADO,
 } from './http/decoradores';

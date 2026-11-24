@@ -41,6 +41,8 @@ const Privacidad = lazy(() =>
 );
 // Funcionalidad 004 (T097): la página pública del enlace de acción del recordatorio (/e#<token>).
 const Enlace = lazy(() => import('./pages/publico/Enlace'));
+// Funcionalidad 010 (T062): verificar el correo con el enlace del correo (/verificar#<token>).
+const Verificar = lazy(() => import('./pages/publico/Verificar'));
 // Funcionalidad 003 (T051).
 const Suscripcion = lazy(() => import('./pages/panel/Suscripcion'));
 // Funcionalidad 008 (T018): configuración del adelanto de reserva con QR.
@@ -138,6 +140,7 @@ export function RutasApp() {
           <Route path="/b/:slug/ingresar" element={<IngresarBarberia />} />
           <Route path="/b/:slug/reservar" element={<ReservarProtegida />} />
           <Route path="/e" element={<Enlace />} />
+          <Route path="/verificar" element={<Verificar />} />
           <Route
             path="/mis-citas"
             element={

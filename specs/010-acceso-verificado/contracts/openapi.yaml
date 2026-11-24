@@ -24,6 +24,9 @@ paths:
               required: [token]
               properties:
                 token: { type: string, minLength: 20, maxLength: 128 }
+      description: >
+        (Fase 4) Un token fuera de ese largo es un cuerpo mal formado (400 VALIDACION, como en /auth/activar). Dentro del
+        largo, uno con caracteres que no son de un token, uno desconocido y uno usado, vencido o anulado dan el mismo 410.
       responses:
         '200':
           description: Cuenta verificada. Devuelve el enlace de la barbería de origen para redirigir.
@@ -42,7 +45,9 @@ paths:
       operationId: reenviarVerificacion
       description: >
         Siempre 202 con el mismo cuerpo, esté o no verificada la cuenta. Si ya está verificada, no envía nada. Anula el
-        enlace anterior. Límite: 3 por hora por cuenta y 20 por hora por origen.
+        enlace anterior. Límite: 3 por hora por cuenta y 20 por hora por origen. (Fase 4) Exige sesión pero no tiene
+        operación de la matriz de permisos: cualquier sesión recibe la misma respuesta neutra, y solo la de un CLIENTE
+        sin verificar envía el correo (en 010 solo se verifica el cliente).
       responses:
         '202': { $ref: '#/components/responses/Neutra' }
         '401': { description: Sin sesión }
@@ -122,7 +127,9 @@ components:
     UsuarioSesion:
       description: >
         (001/002) Se agrega `correoVerificado` al usuario de SesionResponse (login, refresh, cambio de barbería, registro
-        de cliente y /auth/yo). Para el personal siempre es true una vez activo.
+        de cliente y /auth/yo). Para el barbero es true una vez activo (la activación lo verifica). (Fase 4) El
+        propietario que registra su barbería empieza en false: en 010 no se le exige (spec, supuestos) y la interfaz
+        solo usa el dato en las pantallas del cliente.
       type: object
       required: [correoVerificado]
       properties:

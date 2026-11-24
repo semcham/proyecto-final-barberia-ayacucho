@@ -478,6 +478,8 @@ export interface components {
         nombre: string;
         slug: string;
       };
+      /** @description (010, research R06) Si el correo de la cuenta está verificado. La interfaz muestra el aviso de verificación al cliente que no lo tiene antes de reservar, usar el asistente o pagar el adelanto. */
+      correoVerificado: boolean;
     };
     TramoHorario: {
       /** @description 0 = domingo */
@@ -1490,7 +1492,18 @@ export interface operations {
       };
       400: components['responses']['Validacion'];
       401: components['responses']['NoAutenticado'];
-      403: components['responses']['AccesoDenegado'];
+      /**
+       * @description `ACCESO_DENEGADO` (como en 001; se audita) o, desde 010, `CORREO_NO_VERIFICADO`: un CLIENTE con el correo sin
+       *     verificar no puede reservar (specs/010-acceso-verificado, research R05). El propietario no se ve afectado.
+       */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['Error'];
+        };
+      };
       404: components['responses']['NoEncontrado'];
       /**
        * @description `HORARIO_NO_DISPONIBLE` (restricción de exclusión del barbero) o

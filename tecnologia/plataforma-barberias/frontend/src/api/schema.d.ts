@@ -255,6 +255,8 @@ export interface components {
             correo: string;
             rol: components["schemas"]["Rol"];
             barberia: components["schemas"]["Barberia"];
+            /** @description (010, research R06) Si el correo de la cuenta está verificado. Solo se le exige al cliente; el personal queda verificado al activar su cuenta, y el propietario que registra su barbería empieza sin verificar. */
+            correoVerificado: boolean;
         };
         ActivacionRequest: {
             token: string;

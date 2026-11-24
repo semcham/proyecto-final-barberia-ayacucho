@@ -13,7 +13,7 @@ import {
 } from '@nestjs/common';
 import { IsOptional, IsString, MaxLength } from 'class-validator';
 import type { Response } from 'express';
-import { ActorActual, RequiereOperacion } from '../../../../shared';
+import { ActorActual, RequiereCorreoVerificado, RequiereOperacion } from '../../../../shared';
 import type { ResumenDeAdelanto } from '../../adelantos-api';
 import { type ArchivoEnMemoria, InterceptorDeArchivo } from '../../pagos/presentation/archivo.interceptor';
 import type { ActorDeBarberia } from '../../suscripciones/application/autorizacion';
@@ -123,6 +123,8 @@ export class AdelantoCitaController {
   @Post('pago')
   @HttpCode(201)
   @OperacionM03('PAGAR_ADELANTO')
+  // 010 (R05): el cliente necesita el correo verificado para pagar el adelanto.
+  @RequiereCorreoVerificado()
   @UseInterceptors(CapturaInterceptor)
   registrarPago(
     @ActorActual() actor: ActorDeBarberia,

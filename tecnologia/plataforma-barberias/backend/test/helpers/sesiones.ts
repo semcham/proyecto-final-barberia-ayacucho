@@ -54,8 +54,14 @@ export async function tokenPlataformaPara(
 export async function sesionCliente(
   tenantId: string,
   cuenta?: { usuarioId: string },
+  /** 010 (T064): la cuenta nueva nace verificada salvo `{ verificado: false }`. */
+  opciones: { verificado?: boolean } = {},
 ): Promise<{ cliente: ClienteSembrado; token: string }> {
-  const cliente = await sembrarCliente({ tenantId, usuarioId: cuenta?.usuarioId });
+  const cliente = await sembrarCliente({
+    tenantId,
+    usuarioId: cuenta?.usuarioId,
+    verificado: opciones.verificado,
+  });
   const token = await tokenPara(tenantId, cliente.usuarioId as string, 'CLIENTE');
   return { cliente, token };
 }

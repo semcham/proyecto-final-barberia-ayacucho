@@ -32,7 +32,7 @@ const sesionDe = (persona: typeof PROPIETARIO, rol: 'PROPIETARIO' | 'BARBERO') =
     tokenAcceso: `token-${rol}`,
     tipo: 'Bearer',
     expiraEn: 900,
-    usuario: { ...persona, rol, barberia: BARBERIA },
+    usuario: { correoVerificado: true, ...persona, rol, barberia: BARBERIA },
   });
 
 const usuario = (persona: typeof PROPIETARIO, rol: string, estado: string) => ({

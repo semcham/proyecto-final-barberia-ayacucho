@@ -50,8 +50,11 @@ type CodigoError007 =
   | 'SOLICITUD_YA_EN_ATENCION'
   | 'SOLICITUD_NO_ENCONTRADA'
   | 'CLIENTE_NO_ENCONTRADO';
+/** Códigos de la funcionalidad 010 (specs/010-acceso-verificado/contracts/openapi.yaml). ENLACE_NO_VALIDO ya está en 004. */
+type CodigoError010 = 'CORREO_NO_VERIFICADO';
 export type CodigoError =
   | CuerpoError['codigo']
+  | CodigoError010
   | CodigoError002
   | CodigoError006
   | CodigoError003

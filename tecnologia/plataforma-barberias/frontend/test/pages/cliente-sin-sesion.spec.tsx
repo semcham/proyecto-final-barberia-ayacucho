@@ -24,6 +24,7 @@ const SESION_CLIENTE = {
   tipo: 'Bearer',
   expiraEn: 900,
   usuario: {
+    correoVerificado: true,
     id: '0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5c',
     nombre: 'Luis Huamán',
     correo: 'luis@prueba.pe',
@@ -142,6 +143,7 @@ describe('/mis-citas sin sesión', () => {
           tipo: 'Bearer',
           expiraEn: 900,
           usuario: {
+            correoVerificado: true,
             id: '0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5c',
             nombre: 'Luis Huamán',
             correo: 'luis@prueba.pe',

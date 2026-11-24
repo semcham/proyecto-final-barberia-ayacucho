@@ -359,6 +359,13 @@ export class Configuracion {
    * de la de los enlaces. Fuera del entorno de desarrollo, un secreto fuera del repositorio (FR-020).
    */
   readonly intentos = Configuracion.leerIntentos(this.enlaces.salIp);
+  /**
+   * 010 (research R07): piso de tiempo de las respuestas neutras de los enlaces de cuenta (verificación y reenvío; y
+   * la recuperación en la fase 5), para que la escritura extra cuando la cuenta existe no se note. De 100 a 2000 ms.
+   */
+  readonly cuentas = {
+    respuestaMinimaMs: enteroEnRango('CUENTA_RESPUESTA_MINIMA_MS', 400, 100, 2000),
+  };
   /** Correo por SMTP detrás de NotificationChannel (ADR-026): Mailpit en desarrollo y pruebas. */
   readonly correo = {
     smtp: {

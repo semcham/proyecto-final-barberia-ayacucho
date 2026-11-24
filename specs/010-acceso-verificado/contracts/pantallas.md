@@ -27,6 +27,11 @@ Todas con los tokens y componentes del sistema de diseño (`frontend/src/styles/
   `CORREO_NO_VERIFICADO`. Texto: "Verifica tu correo para reservar", el correo con parte oculta (`l***@correo.com`), el
   botón "Reenviar correo de verificación" y, tras pulsarlo, "Te enviamos un correo nuevo" o el tiempo de espera. En la
   reserva no se pierde la hora elegida.
+  *Precisión de la fase 4*: el aviso agrega "Ya lo verifiqué", que vuelve a leer la sesión (`GET /auth/yo`) por si la
+  persona verificó en otro dispositivo; si sigue sin verificar, lo dice. En la reserva y en el pago del adelanto, los
+  datos quedan en pantalla y el botón de confirmar queda deshabilitado; en el asistente, el aviso reemplaza a la
+  conversación. En `/verificar`, el éxito muestra el mensaje y un botón "Ir a la barbería" hacia `/b/<slug>` (no se
+  redirige solo, para que se lea la confirmación).
 - **Pantallas del cliente sin sesión** (`RutaProtegida` con `sinSesion` y `ClienteSinSesion`): `/asistente`
   ("Asistente"), `/mis-avisos` ("Cómo recibo mis avisos", el título de esa pantalla con sesión), `/mis-datos` ("Mis datos") y `/mis-citas/:citaId/adelanto` ("Pagar
   adelanto"), además de `/mis-citas`. Tras ingresar, vuelven a la dirección pedida (FR-029).

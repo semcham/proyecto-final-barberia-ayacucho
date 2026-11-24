@@ -90,7 +90,7 @@ function lecturas(opciones: { usuarios?: number; barberos?: number; suscripcion?
         tokenAcceso: 'token-propietario',
         tipo: 'Bearer',
         expiraEn: 900,
-        usuario: { ...PROPIETARIO, rol: 'PROPIETARIO', barberia: BARBERIA },
+        usuario: { correoVerificado: true, ...PROPIETARIO, rol: 'PROPIETARIO', barberia: BARBERIA },
       }),
     ),
     http.get('/api/v1/suscripcion', () => HttpResponse.json({ ...SUSCRIPCION, ...opciones.suscripcion })),

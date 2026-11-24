@@ -1,7 +1,7 @@
 import { Body, Controller, Headers, HttpCode, Param, ParseUUIDPipe, Post, Res } from '@nestjs/common';
 import type { Response } from 'express';
 import type { Actor } from '../../../acceso-barberias';
-import { ActorActual } from '../../../../shared';
+import { ActorActual, RequiereCorreoVerificado } from '../../../../shared';
 import { DatoInvalido } from '../../catalogo/domain/errores';
 import { OperacionM02 } from '../../catalogo/presentation/operacion.decorator';
 import { CambiarEstadoCita } from '../application/cambiar-estado-cita';
@@ -64,6 +64,8 @@ export class CitasController {
 
   @Post()
   @OperacionM02('RESERVAR_CITA')
+  // 010 (R05): el cliente necesita el correo verificado para reservar; la cita presencial del propietario no.
+  @RequiereCorreoVerificado()
   async reservar(
     @ActorActual() actor: Actor,
     @Body() dto: ReservarCitaDto,

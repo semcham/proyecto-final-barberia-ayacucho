@@ -3,7 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { crearApi } from '../lib/api.mjs';
-import { leerEnlace } from '../lib/buzon.mjs';
+import { leerEnlace, leerTokenDeCuenta } from '../lib/buzon.mjs';
 import { contrasenaAlAzar } from '../lib/contrasenas.mjs';
 import { buscarCitaExistente, diaDeAtencion, horaLocal, inicioIso } from '../lib/idempotencia.mjs';
 
@@ -81,6 +81,31 @@ test('leerEnlace devuelve el enlace con token del último correo, y falla claro 
     }),
     /No llegó/,
   );
+});
+
+// T066 de 010: el enlace de la cuenta va en el fragmento (`/verificar#<token>`), no en `token=`.
+test('leerTokenDeCuenta devuelve el token de /verificar#…, espera uno distinto y falla claro si no llega', async () => {
+  let texto = 'Verifica tu correo: http://localhost:5173/verificar#AbC_def-0123456789abcdefg (24 horas)';
+  const falso = async (url) => {
+    if (url.includes('/api/v1/search')) {
+      assert.match(decodeURIComponent(url), /query=to:x@ejemplo\.test/);
+      return Response.json({ messages: [{ ID: 'm1' }] });
+    }
+    return Response.json({ Text: texto });
+  };
+  const opciones = { buzon: 'http://buzon/', correo: 'x@ejemplo.test', fetch: falso, intervaloMs: 10 };
+  assert.equal(await leerTokenDeCuenta(opciones), 'AbC_def-0123456789abcdefg');
+  // Con `distintoDe`, sigue esperando hasta que llegue otro token (el de un reenvío).
+  setTimeout(() => {
+    texto = 'http://localhost:5173/verificar#NUEVO0123456789abcdefghij';
+  }, 30);
+  assert.equal(
+    await leerTokenDeCuenta({ ...opciones, distintoDe: 'AbC_def-0123456789abcdefg', esperaMaximaMs: 2000 }),
+    'NUEVO0123456789abcdefghij',
+  );
+  // Un correo sin ese enlace (p. ej. el de activación) no sirve.
+  texto = 'Activa tu cuenta: http://localhost:5173/activar?token=abcdefghijklmnopqrstu';
+  await assert.rejects(leerTokenDeCuenta({ ...opciones, esperaMaximaMs: 50 }), /No llegó.*\/verificar/);
 });
 
 test('la API reintenta un 429 respetando Retry-After y no lo cuenta como error', async () => {

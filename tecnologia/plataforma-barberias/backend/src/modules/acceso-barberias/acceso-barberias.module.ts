@@ -11,6 +11,9 @@ import {
 } from './identidad/application/ports/enlace-de-cuenta-repository';
 import { PurgarEnlacesDeCuenta } from './identidad/application/purgar-enlaces-de-cuenta';
 import { SolicitarEnlaceDeCuenta } from './identidad/application/solicitar-enlace-de-cuenta';
+import { SolicitarVerificacion } from './identidad/application/solicitar-verificacion';
+import { VerificarCorreo } from './identidad/application/verificar-correo';
+import { CuentaController } from './identidad/presentation/cuenta.controller';
 import {
   KyselyEnlaceDeCuentaRepository,
   KyselyEstadoDeCuentas,
@@ -139,6 +142,8 @@ import { UsuariosPorTipoIndicador } from './identidad/infrastructure/plataforma/
     SolicitudesDatosController,
     // Indicadores agregados de la plataforma (007, US2).
     IndicadoresPlataformaController,
+    // Enlaces de cuenta por correo (010): verificación (fase 4).
+    CuentaController,
   ],
   providers: [
     // Puertos → adaptadores
@@ -226,6 +231,9 @@ import { UsuariosPorTipoIndicador } from './identidad/infrastructure/plataforma/
     { provide: CuentasApi, useClass: CuentasApiImpl },
     SolicitarEnlaceDeCuenta,
     PurgarEnlacesDeCuenta,
+    // 010 (fase 4, US1): verificación del correo del cliente.
+    SolicitarVerificacion,
+    VerificarCorreo,
   ],
   exports: [
     ValidarSolicitud,

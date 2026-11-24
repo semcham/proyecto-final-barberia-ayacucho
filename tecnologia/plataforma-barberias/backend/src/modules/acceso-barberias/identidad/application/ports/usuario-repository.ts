@@ -43,6 +43,11 @@ export interface PerfilUsuario {
   correo: string;
   rol: CodigoRol;
   barberia: { id: string; nombre: string; slug: string };
+  /**
+   * 010 (research R06): si el correo de la cuenta está verificado. La interfaz lo usa en las pantallas del cliente para
+   * mostrar el aviso antes de intentar reservar; el servidor decide igual (guard del correo verificado).
+   */
+  correoVerificado: boolean;
 }
 
 export interface NuevaCuenta {

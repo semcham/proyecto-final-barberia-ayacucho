@@ -89,6 +89,8 @@ x-backend-entorno: &backend-entorno
   # 007 (US3): sal del origen de los intentos de inicio de sesión. Valor SOLO de desarrollo, distinto de ENLACES_SAL_IP;
   # en cualquier otro entorno, un secreto propio fuera del repositorio (FR-020).
   INTENTOS_SAL_IP: ${INTENTOS_SAL_IP:-O0tPQhxNWRzUmuBI567p9VlDH48KwbyS}
+  # 010 (research R07): piso de tiempo de las respuestas neutras de los enlaces de cuenta (100 a 2000 ms).
+  CUENTA_RESPUESTA_MINIMA_MS: ${CUENTA_RESPUESTA_MINIMA_MS:-400}
   URL_PUBLICA: ${URL_PUBLICA:-http://localhost:5173}
   # 004 (ADR-025): tarea despachar-eventos, respaldo del despacho tras confirmar.
   EVENTOS_INTERVALO_MS: ${EVENTOS_INTERVALO_MS:-15000}

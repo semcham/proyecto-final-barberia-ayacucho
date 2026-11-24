@@ -5,6 +5,7 @@
 //
 //   node semilla/cargar-semilla.mjs [--api http://localhost:3000/api/v1] [--datos semilla/datos.json]
 //                                   [--modo local] [--version-terminos 2026-11] [--version-politica 2026-11]
+//                                   [--buzon http://localhost:8025]
 //
 // En Docker Compose: `docker compose --profile herramientas run --rm semilla` (servicio de docker-compose.yml).
 // Códigos: 0 todo existe o se creó; 1 error; 3 --reiniciar-contrasenas en el modo local (rechazado).
@@ -13,6 +14,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { crearApi, ErrorApi } from './lib/api.mjs';
+import { leerTokenDeCuenta } from './lib/buzon.mjs';
 import { buscarCitaExistente, diaDeAtencion, inicioIso, mismosTramos } from './lib/idempotencia.mjs';
 
 export const CODIGOS = { OK: 0, ERROR: 1, REINICIO_RECHAZADO: 3 };
@@ -26,7 +28,8 @@ function resumenVacio() {
  * @param {{
  *   api: string, datos: object, fetch?: typeof fetch, modo?: 'local' | 'publicacion',
  *   reiniciarContrasenas?: boolean, hoy?: Date, log?: (texto: string) => void,
- *   versionTerminos?: string, versionPolitica?: string, espera?: (ms: number) => Promise<void>
+ *   versionTerminos?: string, versionPolitica?: string, espera?: (ms: number) => Promise<void>,
+ *   buzon?: string, esperaBuzonMs?: number
  * }} o
  */
 export async function cargarSemilla(o) {
@@ -56,6 +59,23 @@ export async function cargarSemilla(o) {
   const versionTerminos = o.versionTerminos ?? '2026-11';
   const versionPolitica = o.versionPolitica ?? '2026-11';
   const sumar = (tipo, creada) => (creada ? resumen[tipo].creadas++ : resumen[tipo].existentes++);
+  // 010 (T066): el buzón de desarrollo (Mailpit), de donde se lee el enlace de verificación de cada cliente.
+  const buzon = o.buzon ?? 'http://localhost:8025';
+  const leerToken = (correo, distintoDe) =>
+    leerTokenDeCuenta({ buzon, correo, distintoDe, fetch: o.fetch, esperaMaximaMs: o.esperaBuzonMs });
+
+  /**
+   * 010 (FR-009, research R13): sin el correo verificado el cliente no puede reservar. Se verifica como lo haría la
+   * persona: con el enlace del último correo y POST /cuenta/verificacion. Si ese enlace ya no sirve (una carga anterior
+   * interrumpida), se pide otro con el reenvío y se usa el nuevo.
+   */
+  async function verificarCliente(correo, tokenSesion) {
+    const primero = await leerToken(correo);
+    const intento = await api.post('/cuenta/verificacion', { token: primero }, { aceptar: [410] });
+    if (intento.estado === 200) return;
+    await api.post('/cuenta/verificacion/reenvio', undefined, { token: tokenSesion });
+    await api.post('/cuenta/verificacion', { token: await leerToken(correo, primero) });
+  }
 
   try {
     for (const b of o.datos.barberias) {
@@ -176,6 +196,9 @@ export async function cargarSemilla(o) {
         if (ingresoCliente.estado === 200) {
           tokensClientes.set(c.correo, ingresoCliente.datos.tokenAcceso);
           sumar('clientes', false);
+          if (ingresoCliente.datos.usuario.correoVerificado === false) {
+            await verificarCliente(c.correo, ingresoCliente.datos.tokenAcceso);
+          }
           continue;
         }
         const registro = await api.post(
@@ -198,6 +221,9 @@ export async function cargarSemilla(o) {
         }
         tokensClientes.set(c.correo, registro.datos.tokenAcceso);
         sumar('clientes', true);
+        if (registro.datos.usuario.correoVerificado === false) {
+          await verificarCliente(c.correo, registro.datos.tokenAcceso);
+        }
       }
 
       // 7. Citas reservadas por cada cliente; algunas se cancelan. Idempotencia: mismo barbero, servicio y hora local.
@@ -257,6 +283,7 @@ function argumentos(argv) {
     reiniciarContrasenas: false,
     versionTerminos: process.env.SEMILLA_VERSION_TERMINOS ?? '2026-11',
     versionPolitica: process.env.SEMILLA_VERSION_POLITICA ?? '2026-11',
+    buzon: process.env.SEMILLA_BUZON ?? 'http://localhost:8025',
   };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
@@ -266,6 +293,7 @@ function argumentos(argv) {
     else if (a === '--reiniciar-contrasenas') o.reiniciarContrasenas = true;
     else if (a === '--version-terminos') o.versionTerminos = argv[++i];
     else if (a === '--version-politica') o.versionPolitica = argv[++i];
+    else if (a === '--buzon') o.buzon = argv[++i];
     else throw new Error(`Argumento desconocido: ${a}`);
   }
   return o;

@@ -340,6 +340,15 @@ export interface paths {
             'application/json': components['schemas']['Adelanto'];
           };
         };
+        /** @description (010) CORREO_NO_VERIFICADO: el cliente con el correo sin verificar no puede pagar el adelanto (specs/010-acceso-verificado, research R05). También ACCESO_DENEGADO para otro rol. */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
         404: components['responses']['NoEncontrado'];
         /** @description NUMERO_OPERACION_REPETIDO (ya usado en la barbería) o PAGO_YA_REGISTRADO (ya hay un registro vigente) o ADELANTO_RESUELTO (confirmado, vencido o anulado) */
         409: {

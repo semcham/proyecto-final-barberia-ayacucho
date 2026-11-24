@@ -6,6 +6,7 @@ import { createParamDecorator, type ExecutionContext, SetMetadata } from '@nestj
 export const CLAVE_PUBLICA = 'ruta-publica';
 export const CLAVE_OPERACION = 'operacion-protegida';
 export const CLAVE_PLATAFORMA = 'ruta-de-plataforma';
+export const CLAVE_CORREO_VERIFICADO = 'requiere-correo-verificado';
 
 /** Marca una ruta como pública: el AuthGuard no exige token. */
 export const Publica = () => SetMetadata(CLAVE_PUBLICA, true);
@@ -25,6 +26,12 @@ export const AdminActual = createParamDecorator((_dato: unknown, contexto: Execu
 
 /** Operación de la matriz de permisos que exige la ruta (primera barrera HTTP, R22). */
 export const RequiereOperacion = (operacion: string) => SetMetadata(CLAVE_OPERACION, operacion);
+
+/**
+ * 010 (research R05): la ruta exige que un actor CLIENTE tenga el correo verificado (403 CORREO_NO_VERIFICADO). La
+ * comprueba el guard del host; el propietario y el barbero no se ven afectados.
+ */
+export const RequiereCorreoVerificado = () => SetMetadata(CLAVE_CORREO_VERIFICADO, true);
 
 /** Inyecta el actor autenticado que adjuntó el AuthGuard a la solicitud. */
 export const ActorActual = createParamDecorator((_dato: unknown, contexto: ExecutionContext): unknown => {

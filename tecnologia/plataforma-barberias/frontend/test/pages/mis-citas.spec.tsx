@@ -45,6 +45,7 @@ function conSesionYCatalogo() {
         tipo: 'Bearer',
         expiraEn: 900,
         usuario: {
+          correoVerificado: true,
           id: '0190a1b2-0000-7000-8000-000000000009',
           nombre: 'Luis Huamán',
           correo: 'luis@prueba.pe',

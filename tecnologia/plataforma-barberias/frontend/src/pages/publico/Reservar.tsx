@@ -5,10 +5,12 @@ import type { AdelantoDeCita } from '../../api/adelanto';
 import { clavesConsulta } from '../../api/claves';
 import { ApiError, esRestriccionDeSuscripcion, llamarApi } from '../../api/client';
 import type { components } from '../../api/schema-002';
+import { esCorreoNoVerificado } from '../../api/cuenta';
 import { apiSuscripcion } from '../../api/suscripcion';
 import { PantallaCarga } from '../../auth/PantallaCarga';
 import { RutaProtegida } from '../../auth/RutaProtegida';
 import { useSesion } from '../../auth/SesionProvider';
+import { AvisoVerificacion } from '../../components/app/AvisoVerificacion';
 import { ConfirmarCancelacion } from '../../components/app/ConfirmarCancelacion';
 import { Icono, type NombreIcono } from '../../components/Icono';
 import { MarcoAcceso } from '../../components/MarcoAcceso';
@@ -106,6 +108,7 @@ export default function Reservar() {
 
 function ConfirmarReserva({ slug, seleccion }: { slug: string; seleccion: SolicitudReserva }) {
   const navegar = useNavigate();
+  const { usuario } = useSesion();
   const consultas = useQueryClient();
   // Se genera al abrir la confirmación y se reutiliza en cada reintento: el servidor no duplica la cita (R09).
   const [clave] = useState(() => crypto.randomUUID());
@@ -213,6 +216,9 @@ function ConfirmarReserva({ slug, seleccion }: { slug: string; seleccion: Solici
     );
   }
 
+  // 010 (research R06): el aviso se muestra antes de intentar y también ante el 403 (verificación de otra sesión).
+  const sinVerificar = usuario?.correoVerificado === false || esCorreoNoVerificado(reserva.error);
+
   return (
     <SeccionCita titulo="Confirma tu cita" icono="calendario">
       <DatosCita
@@ -226,12 +232,18 @@ function ConfirmarReserva({ slug, seleccion }: { slug: string; seleccion: Solici
           ['Precio', `S/ ${servicio.precio}`],
         ]}
       />
-      {reserva.isError && <Alerta>{mensajeDeError(reserva.error)}</Alerta>}
+      {/* 010 (T063): sin el correo verificado no se reserva; la selección sigue en pantalla (FR-011). */}
+      {sinVerificar ? (
+        <AvisoVerificacion accion="reservar" alVerificar={() => reserva.reset()} />
+      ) : (
+        reserva.isError && <Alerta>{mensajeDeError(reserva.error)}</Alerta>
+      )}
       <div className={estilos.acciones}>
         <Boton
           type="button"
           bloque
           icono="calendarioCheck"
+          disabled={sinVerificar}
           cargando={reserva.isPending}
           textoCargando="Reservando…"
           onClick={() => reserva.mutate()}

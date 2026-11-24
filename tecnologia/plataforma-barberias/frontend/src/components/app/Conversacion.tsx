@@ -9,6 +9,7 @@ import {
   type RespuestaAsistente,
 } from '../../api/asistente';
 import { ApiError } from '../../api/client';
+import { esCorreoNoVerificado } from '../../api/cuenta';
 import { Alerta, Boton, clasesBoton } from '../ui';
 import estilos from './Conversacion.module.css';
 
@@ -100,10 +101,13 @@ function Respuesta({ respuesta }: { respuesta: RespuestaAsistente }) {
 export function Conversacion({
   ejemplo,
   alternativa,
+  alCorreoNoVerificado,
 }: {
   /** El ejemplo del campo (placeholder). */
   ejemplo: string;
   alternativa: AlternativaDelAsistente;
+  /** 010 (T063): el servidor respondió 403 CORREO_NO_VERIFICADO (el cliente verá el aviso de verificación). */
+  alCorreoNoVerificado?: () => void;
 }) {
   const idCampo = useId();
   const [turnos, setTurnos] = useState<Turno[]>([]);
@@ -115,6 +119,9 @@ export function Conversacion({
       apiAsistente.preguntar(mensaje, contexto),
     onSuccess: (respuesta) =>
       setTurnos((previos) => [...previos, { de: 'ASISTENTE', texto: respuesta.texto, respuesta }]),
+    onError: (error) => {
+      if (alCorreoNoVerificado && esCorreoNoVerificado(error)) alCorreoNoVerificado();
+    },
   });
 
   const enviar = (evento: FormEvent) => {

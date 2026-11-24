@@ -101,7 +101,7 @@ una cuenta y comprobar que el consentimiento guarda la versión publicada (quick
 - [X] T017 [US3] Verificación de la fase 1: lint, typecheck, Prettier, pruebas del frontend y `version-legal.spec.ts`;
   capturas y axe de `/terminos` y `/privacidad` en claro y oscuro, a 1440 y 360 px, con el build de producción, sin
   incumplimientos ni desbordes
-- [ ] T018 [US3] **Del responsable:** commit y push de la fase 1: `feat(010): textos legales publicados y versionados
+- [X] T018 [US3] **Del responsable:** commit y push de la fase 1: `feat(010): textos legales publicados y versionados
   (fase 1, US3)`
 
 **Checkpoint**: US3 completa e independiente (brecha bloqueante 3 cerrada).
@@ -137,7 +137,7 @@ FR-031, sin el enlace de verificación, que llega con US1).
 - [X] T025 [P] [US4] "Iniciar sesión" del enlace no válido → `/mis-citas`, en `frontend/src/pages/publico/Enlace.tsx`
 - [X] T026 [US4] Verificación de la fase 2: lint, typecheck, Prettier y todas las pruebas del frontend; `avisos-adelanto.spec.ts`;
   capturas y axe de las cuatro pantallas sin sesión a 360 px y en escritorio
-- [ ] T027 [US4] **Del responsable:** commit y push de la fase 2: `feat(010): pantallas del cliente sin sesión (fase 2,
+- [X] T027 [US4] **Del responsable:** commit y push de la fase 2: `feat(010): pantallas del cliente sin sesión (fase 2,
   US4)`
 
 **Checkpoint**: US4 completa (brecha importante 7 cerrada para todas las pantallas del cliente).
@@ -234,64 +234,64 @@ navegador, reservar; una cuenta anterior reserva sin pasos nuevos (quickstart §
 
 ### Tests for User Story 1 (MANDATORY - constitution Principle X) ⚠️
 
-- [ ] T048 [P] [US1] Contrato de `POST /cuenta/verificacion`, `POST /cuenta/verificacion/reenvio` y de `correoVerificado`
+- [X] T048 [P] [US1] Contrato de `POST /cuenta/verificacion`, `POST /cuenta/verificacion/reenvio` y de `correoVerificado`
   en `SesionResponse` (contracts/openapi.yaml), en `backend/test/contract/cuenta.contract.spec.ts`
-- [ ] T049 [P] [US1] Integración de la verificación: el registro deja la cuenta sin verificar y envía el correo; el enlace
+- [X] T049 [P] [US1] Integración de la verificación: el registro deja la cuenta sin verificar y envía el correo; el enlace
   verifica sin sesión y devuelve la barbería de origen; usado, vencido (reloj controlado) o reemplazado → el mismo 410; la
   verificación vale para todas las barberías del cliente; un token desconocido o mal formado da el mismo 410 y se registra
   **solo** como `USO_FALLIDO` en `account_link_attempt`, sin auditoría (R15); el uso fallido n.º 21 desde un mismo origen
   en una hora → 429 (G3), en `backend/test/integration/cuenta/verificacion-correo.spec.ts`
-- [ ] T050 [P] [US1] Integración del guard: un cliente sin verificar recibe 403 `CORREO_NO_VERIFICADO` en `POST /citas`,
+- [X] T050 [P] [US1] Integración del guard: un cliente sin verificar recibe 403 `CORREO_NO_VERIFICADO` en `POST /citas`,
   `POST /asistente/mensajes` y `POST /citas/{id}/adelanto/pago`; verificado, pasa; el propietario (cita presencial y
   asistente) no se ve afectado; el estado se lee con el tenant del token (PR09), en
   `backend/test/integration/cuenta/correo-verificado-guard.spec.ts`
-- [ ] T051 [P] [US1] Integración del reenvío: respuesta idéntica con la cuenta verificada o no; una cuenta verificada no
+- [X] T051 [P] [US1] Integración del reenvío: respuesta idéntica con la cuenta verificada o no; una cuenta verificada no
   recibe correo; el anterior queda anulado; el 4.º en una hora por cuenta → 429 sin correo; el 21.º en una hora desde un
   mismo origen (con cuentas distintas) → 429 (G4); el origen se guarda solo como hash, en
   `backend/test/integration/cuenta/reenvio-verificacion.spec.ts`
-- [ ] T052 [P] [US1] La activación del personal marca la cuenta como verificada (`ACTIVACION`), en
+- [X] T052 [P] [US1] La activación del personal marca la cuenta como verificada (`ACTIVACION`), en
   `backend/test/integration/identidad/usuarios.spec.ts`
-- [ ] T053 [P] [US1] Auditoría de la verificación en la barbería del enlace: solicitud con cuenta, verificación aceptada y
+- [X] T053 [P] [US1] Auditoría de la verificación en la barbería del enlace: solicitud con cuenta, verificación aceptada y
   rechazo **solo de un enlace que pertenece a una cuenta** (usado, vencido o anulado); un token desconocido **no** crea
   registro de auditoría (R15, FR-007); nunca el token, en `backend/test/integration/auditoria.spec.ts`
-- [ ] T054 [P] [US1] Pantalla `/verificar#token`: lee el fragmento y lo borra de la barra, no envía nada hasta pulsar
+- [X] T054 [P] [US1] Pantalla `/verificar#token`: lee el fragmento y lo borra de la barra, no envía nada hasta pulsar
   "Verificar mi correo", éxito → `/b/<slug>`, 410 → mensaje neutro, en `frontend/test/pages/verificar.spec.tsx`
-- [ ] T055 [P] [US1] Aviso de verificación en `/b/<slug>/reservar`, `/asistente` y `/mis-citas/:id/adelanto` (con
+- [X] T055 [P] [US1] Aviso de verificación en `/b/<slug>/reservar`, `/asistente` y `/mis-citas/:id/adelanto` (con
   `correoVerificado: false` y ante el 403): correo con parte oculta, "Reenviar correo de verificación", confirmación y 429;
   la hora elegida no se pierde, en `frontend/test/pages/aviso-verificacion.spec.tsx`
 
 ### Implementation for User Story 1
 
-- [ ] T056 [US1] Casos de uso `SolicitarVerificacion` (registro y reenvío, con límites y anulación) y `VerificarCorreo`
+- [X] T056 [US1] Casos de uso `SolicitarVerificacion` (registro y reenvío, con límites y anulación) y `VerificarCorreo`
   (función de sistema, auditoría) en `backend/src/modules/acceso-barberias/identidad/application/solicitar-verificacion.ts`
   y `verificar-correo.ts`
-- [ ] T057 [US1] El registro de cliente crea el enlace y publica `EnlaceDeCuentaSolicitado` en la misma transacción, en
+- [X] T057 [US1] El registro de cliente crea el enlace y publica `EnlaceDeCuentaSolicitado` en la misma transacción, en
   `backend/src/modules/acceso-barberias/clientes/application/registrar-cliente.ts`; la activación del personal marca
   `ACTIVACION` en `identidad/application/activar-cuenta.ts`
-- [ ] T058 [US1] Rutas `POST /cuenta/verificacion` (pública) y `POST /cuenta/verificacion/reenvio` (con sesión), con DTO y
+- [X] T058 [US1] Rutas `POST /cuenta/verificacion` (pública) y `POST /cuenta/verificacion/reenvio` (con sesión), con DTO y
   tiempo mínimo de respuesta (research R07), en `backend/src/modules/acceso-barberias/identidad/presentation/cuenta.controller.ts`;
   la variable `CUENTA_RESPUESTA_MINIMA_MS` (entero, por defecto 400, rango de 100 a 2000) en
   `backend/src/shared/config/configuracion.ts` con su prueba en `backend/test/unit/shared/configuracion.spec.ts`, documentada en
   `.env.example` y fijada en `backend/test/helpers/entorno.ts` (U1)
-- [ ] T059 [US1] `correoVerificado` en el usuario de la sesión (login, renovación, cambio de barbería, registro y
+- [X] T059 [US1] `correoVerificado` en el usuario de la sesión (login, renovación, cambio de barbería, registro y
   `/auth/yo`) en `identidad/application/sesion-iniciada.ts`, el repositorio de usuarios y el DTO de respuesta
-- [ ] T060 [US1] Decorador `@RequiereCorreoVerificado()` (metadato en `backend/src/shared/`), guard
+- [X] T060 [US1] Decorador `@RequiereCorreoVerificado()` (metadato en `backend/src/shared/`), guard
   `backend/src/host/correo-verificado.guard.ts` registrado en `backend/src/host/app.module.ts`, y el decorador en las rutas
   de `catalogo-citas/citas/presentation/citas.controller.ts` (`POST /citas`),
   `asistente-reportes/asistente/presentation/asistente.controller.ts` y
   `suscripciones-pagos/adelantos/presentation/adelanto-cita.controller.ts` (`POST pago`)
-- [ ] T061 [US1] Contratos: agregar `specs/010-acceso-verificado/contracts/openapi.yaml` (solo las rutas `/cuenta/*`; los
+- [X] T061 [US1] Contratos: agregar `specs/010-acceso-verificado/contracts/openapi.yaml` (solo las rutas `/cuenta/*`; los
   cambios en rutas existentes van en `x-cambios-en-rutas-existentes` y no se generan, I2) al script `gen:api` de
   `frontend/package.json` (salida `src/api/schema-010.d.ts`); agregar el 403 `CORREO_NO_VERIFICADO` en los contratos de
   `specs/002-catalogo-citas-cliente/contracts/openapi.yaml` (`POST /citas`), `specs/005-asistente-ia-reportes/contracts/openapi.yaml`
   (`POST /asistente/mensajes`) y `specs/008-adelanto-reserva-qr/contracts/openapi.yaml` (`POST /citas/{id}/adelanto/pago`), y
   `correoVerificado` en `SesionResponse` de los contratos de 001 y 002; regenerar los tipos; el código
   `CORREO_NO_VERIFICADO` en `frontend/src/api/client.ts` y `correoVerificado` en `frontend/src/auth/SesionProvider.tsx`
-- [ ] T062 [P] [US1] Pantalla `Verificar` en `frontend/src/pages/publico/Verificar.tsx` (con su CSS de tokens) y la ruta
+- [X] T062 [P] [US1] Pantalla `Verificar` en `frontend/src/pages/publico/Verificar.tsx` (con su CSS de tokens) y la ruta
   `/verificar` en `frontend/src/routes.tsx`
-- [ ] T063 [US1] Componente `AvisoVerificacion` en `frontend/src/components/app/AvisoVerificacion.tsx`, integrado en
+- [X] T063 [US1] Componente `AvisoVerificacion` en `frontend/src/components/app/AvisoVerificacion.tsx`, integrado en
   `frontend/src/pages/publico/Reservar.tsx`, `pages/cliente/Asistente.tsx` y `pages/cliente/PagarAdelanto.tsx`
-- [ ] T064 [US1] Pruebas existentes (research R13, lista de los 13 archivos que llaman a `POST /clientes/registro`):
+- [X] T064 [US1] Pruebas existentes (research R13, lista de los 13 archivos que llaman a `POST /clientes/registro`):
   (1) los ayudantes que crean cuentas por SQL, `sesionCliente` y `sembrarCliente`, las crean **verificadas** (`MIGRACION`),
   con una opción para crearlas sin verificar, en `backend/test/helpers/fixtures.ts` (líneas 86 y 373) y
   `backend/test/helpers/sesiones.ts`. Es lo que usan las pruebas que reservan, preguntan al asistente o pagan el
@@ -301,17 +301,37 @@ navegador, reservar; una cuenta anterior reserva sin pasos nuevos (quickstart §
   (3) `backend/test/integration/clientes/cuenta-cliente.spec.ts` comprueba que la cuenta nueva nace sin verificar;
   (4) `backend/test/contract/clientes.contract.spec.ts` agrega `correoVerificado` a la forma de la respuesta.
   `limite-compartido.spec.ts` no necesita cambios. Al terminar, `npm run test:int` en verde sin excepciones
-- [ ] T065 [P] [US1] Sesiones simuladas del frontend con `correoVerificado: true` (salvo las pruebas del aviso) en
+- [X] T065 [P] [US1] Sesiones simuladas del frontend con `correoVerificado: true` (salvo las pruebas del aviso) en
   `frontend/test/` (manejadores de MSW y pruebas que arman `SesionResponse`)
-- [ ] T066 [US1] Semilla: verificar a cada cliente leyendo el enlace en Mailpit con `semilla/lib/buzon.mjs` y
+- [X] T066 [US1] Semilla: verificar a cada cliente leyendo el enlace en Mailpit con `semilla/lib/buzon.mjs` y
   `POST /cuenta/verificacion` antes de reservar, en `semilla/cargar-semilla.mjs`, con sus pruebas en
   `semilla/test/semilla.test.mjs` y `semilla/test/lib.test.mjs`
-- [ ] T067 [US1] Verificación de la fase 4: todas las suites del backend (`test`, `test:int`, `test:arch`) y del frontend,
+- [X] T067 [US1] Verificación de la fase 4: todas las suites del backend (`test`, `test:int`, `test:arch`) y del frontend,
   lint, typecheck y Prettier en verde, incluidas **sin cambios** las pruebas existentes de la unión a otra barbería (409
   `UNIRSE_REQUIERE_CONSENTIMIENTO`: `backend/test/integration/aislamiento/cliente-dos-barberias.spec.ts` y
   `frontend/test/pages/cliente-reserva.spec.tsx`) como regresión de FR-033 (G5); la semilla dos veces contra la API real en
   la copia aparte `barberias-verificacion` (como T025 de 009: crea, luego 0 creadas); capturas y axe de `/verificar` y del
   aviso
+  *(2026-11-23, precisiones de la fase 4:*
+  - *T049: el vencimiento lo decide la función de sistema con `now()` de la base; el "reloj controlado" es mover 25 h
+    atrás las fechas del enlace en la base.*
+  - *T050: el caso "token de B sin membresía en B" no se puede construir (la sesión exige la membresía, FK); el tenant
+    del token se prueba con un cliente de A y de B.*
+  - *T058: el reenvío exige sesión pero no lleva operación de la matriz: responde igual a cualquier sesión y solo envía
+    al CLIENTE sin verificar. Un token fuera de 20 a 128 caracteres da 400 (como `/auth/activar`); dentro, 410.*
+  - *T059: el propietario que registra su barbería recibe `correoVerificado: false` (no se le exige en 010).*
+  - *T060: el guard recuerda en memoria solo el "sí está verificada" (no puede volver atrás) y une las consultas
+    simultáneas de una cuenta. Sin eso, la prueba PR06 del asistente con 5 propietarios y 5 clientes a la vez pasaba de
+    3 s, porque el presupuesto del asistente se cuenta desde el caso de uso.*
+  - *T061: al regenerar los tipos, `schema-007.d.ts` recoge un cambio de descripción de su contrato que ya estaba.*
+  - *T063: el aviso suma "Ya lo verifiqué" (vuelve a leer `/auth/yo`); la interfaz muestra el aviso solo si
+    `correoVerificado` es `false` explícito.*
+  - *T064: `sembrarUsuario` deja sin verificar al personal PENDIENTE (lo verifica su activación).*
+  - *T066: la semilla toma el buzón de `--buzon` o `SEMILLA_BUZON`; la primera carga real tardó 191 s (espera los
+    correos), la segunda 9 s con 0 creadas.*
+  - *T067: `test:int` 2277 de 2282 (3 omitidas); `cuotas-asistente` falló por 1 s en la suite y pasa sola;
+    `degradacion-asistente` ("10 preguntas simultáneas de la misma barbería") falla también sola y también sin el
+    guard en esta máquina: es una de las pruebas de tiempo frágiles de la lista de 009.)*
 - [ ] T068 [US1] **Del responsable:** commit y push de la fase 4: `feat(010): verificación del correo del cliente (fase 4,
   US1)`
 

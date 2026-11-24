@@ -73,7 +73,7 @@ function sesion(rol: 'PROPIETARIO' | 'BARBERO') {
       tokenAcceso: `token-${rol}`,
       tipo: 'Bearer',
       expiraEn: 900,
-      usuario: { ...persona, rol, barberia: BARBERIA },
+      usuario: { correoVerificado: true, ...persona, rol, barberia: BARBERIA },
     }),
   );
 }

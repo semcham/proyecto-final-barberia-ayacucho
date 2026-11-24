@@ -20,6 +20,7 @@ const sesion = (token: string) => ({
   tipo: 'Bearer',
   expiraEn: 900,
   usuario: {
+    correoVerificado: true,
     id: '0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5c',
     nombre: 'Rosa Quispe',
     correo: 'rosa@prueba.pe',

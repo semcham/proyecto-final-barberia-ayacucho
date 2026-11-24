@@ -566,3 +566,31 @@ describe('Configuracion: sal de los intentos de inicio de sesión (007)', () => 
     expect(errorAlIniciar()).toContain('INTENTOS_SAL_IP');
   });
 });
+
+// T058 de 010 · research R07: piso de tiempo de las respuestas neutras de los enlaces de cuenta.
+describe('Configuracion: tiempo mínimo de respuesta de los enlaces de cuenta (010)', () => {
+  const original = { ...process.env };
+
+  beforeEach(() => {
+    process.env = { ...original, ...MINIMAS };
+    delete process.env.CUENTA_RESPUESTA_MINIMA_MS;
+  });
+
+  afterAll(() => {
+    process.env = original;
+  });
+
+  it('por defecto, 400 ms', () => {
+    expect(new Configuracion().cuentas).toEqual({ respuestaMinimaMs: 400 });
+  });
+
+  it.each(['100', '2000', '750'])('acepta %s', (valor) => {
+    process.env.CUENTA_RESPUESTA_MINIMA_MS = valor;
+    expect(new Configuracion().cuentas.respuestaMinimaMs).toBe(Number(valor));
+  });
+
+  it.each(['99', '2001', '0', '-5', '400.5', 'rapido'])('rechaza %s', (valor) => {
+    process.env.CUENTA_RESPUESTA_MINIMA_MS = valor;
+    expect(() => new Configuracion()).toThrow(/CUENTA_RESPUESTA_MINIMA_MS.*entre 100 y 2000/);
+  });
+});

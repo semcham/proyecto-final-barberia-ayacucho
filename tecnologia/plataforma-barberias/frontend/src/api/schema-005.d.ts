@@ -43,7 +43,7 @@ export interface paths {
           };
           content?: never;
         };
-        /** @description ACCESO_DENEGADO: el barbero, en el guardia (operación de ruta USAR_ASISTENTE); el propietario, en el caso de uso si US3 no está */
+        /** @description ACCESO_DENEGADO: el barbero, en el guardia (operación de ruta USAR_ASISTENTE); el propietario, en el caso de uso si US3 no está. Desde 010, CORREO_NO_VERIFICADO: el cliente con el correo sin verificar (specs/010-acceso-verificado, research R05); el propietario no se ve afectado */
         403: {
           headers: {
             [name: string]: unknown;

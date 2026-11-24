@@ -34,7 +34,8 @@ export class BarberiasController {
         tokenAcceso: resultado.sesion.tokenAcceso,
         tipo: 'Bearer',
         expiraEn: resultado.sesion.expiraEn,
-        usuario: { ...resultado.propietario, rol: 'PROPIETARIO', barberia },
+        // 010 (R06): la cuenta del propietario nace sin verificar; en 010 solo se le exige al cliente (spec, supuestos).
+        usuario: { ...resultado.propietario, rol: 'PROPIETARIO', barberia, correoVerificado: false },
       },
     };
   }

@@ -84,7 +84,7 @@ function lecturas() {
         tokenAcceso: 'token-propietario',
         tipo: 'Bearer',
         expiraEn: 900,
-        usuario: { ...PROPIETARIO, rol: 'PROPIETARIO', barberia: BARBERIA },
+        usuario: { correoVerificado: true, ...PROPIETARIO, rol: 'PROPIETARIO', barberia: BARBERIA },
       }),
     ),
     http.get('/api/v1/barberia', () =>

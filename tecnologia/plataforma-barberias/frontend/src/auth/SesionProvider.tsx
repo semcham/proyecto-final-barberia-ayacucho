@@ -42,6 +42,11 @@ interface ValorSesion {
   cerrarSesion(): Promise<void>;
   /** Guarda una sesión recibida del servidor (inicio de sesión o registro). */
   establecer(sesion: SesionResponse): void;
+  /**
+   * 010 (research R06): vuelve a leer el usuario con GET /auth/yo (p. ej. tras verificar el correo en otro dispositivo)
+   * y devuelve el actualizado, o null si no hay sesión.
+   */
+  refrescarUsuario(): Promise<UsuarioActual | null>;
 }
 
 const ContextoSesion = createContext<ValorSesion | null>(null);
@@ -140,9 +145,16 @@ export function SesionProvider({ children }: { children: ReactNode }) {
     }
   }, [quedarAnonimo]);
 
+  const refrescarUsuario = useCallback(async () => {
+    if (!tokenEnMemoria.obtener()) return null;
+    const actual = await llamarApi<UsuarioActual>('/auth/yo');
+    setUsuario(actual);
+    return actual;
+  }, []);
+
   const valor = useMemo(
-    () => ({ estado, usuario, iniciarSesion, asegurarBarberia, cerrarSesion, establecer }),
-    [estado, usuario, iniciarSesion, asegurarBarberia, cerrarSesion, establecer],
+    () => ({ estado, usuario, iniciarSesion, asegurarBarberia, cerrarSesion, establecer, refrescarUsuario }),
+    [estado, usuario, iniciarSesion, asegurarBarberia, cerrarSesion, establecer, refrescarUsuario],
   );
   return <ContextoSesion.Provider value={valor}>{children}</ContextoSesion.Provider>;
 }

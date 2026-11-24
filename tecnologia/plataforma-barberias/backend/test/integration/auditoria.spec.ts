@@ -1,4 +1,4 @@
-import { randomBytes } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { v7 as uuidv7 } from 'uuid';
 import { CrearUsuario } from '../../src/modules/acceso-barberias/identidad/application/crear-usuario';
 import { AccesoDenegado } from '../../src/modules/acceso-barberias';
@@ -84,6 +84,107 @@ describe('PR13 · Auditoría de acciones sensibles', () => {
   }
 
   const correlacion = () => `prueba-${randomBytes(6).toString('hex')}`;
+
+  // T053 de 010 (research R15; data-model §7; FR-007): auditoría de la verificación en la barbería del enlace. Se audita
+  // la solicitud con cuenta, la verificación aceptada y el rechazo de un enlace QUE PERTENECE a una cuenta (usado,
+  // vencido o anulado); un token desconocido no crea ningún registro. Nunca el token.
+  describe('verificación del correo (010)', () => {
+    const ipPropia = () => `198.51.${randomBytes(1)[0]}.${1 + (randomBytes(1)[0] % 254)}`;
+
+    /** Un enlace con un token conocido (como si ya se hubiera enviado el correo). */
+    async function enlaceConToken(
+      tenantId: string,
+      usuarioId: string,
+      estado: 'VIGENTE' | 'USADO' | 'VENCIDO' | 'ANULADO' = 'VIGENTE',
+    ): Promise<string> {
+      const token = randomBytes(32).toString('base64url');
+      const hash = createHash('sha256').update(token).digest('hex');
+      await poolDe('seed').query(
+        `INSERT INTO account_link (id, tenant_id, user_id, purpose, token_hash, requested_at, expires_at, used_at, revoked_at)
+         VALUES ($1, $2, $3, 'VERIFICAR_CORREO', $4,
+                 now() - CASE WHEN $5::text = 'VENCIDO' THEN interval '30 hours' ELSE interval '1 minute' END,
+                 now() + CASE WHEN $5::text = 'VENCIDO' THEN interval '-6 hours' ELSE interval '23 hours' END,
+                 CASE WHEN $5::text = 'USADO' THEN now() END, CASE WHEN $5::text = 'ANULADO' THEN now() END)`,
+        [uuidv7(), tenantId, usuarioId, hash, estado],
+      );
+      return token;
+    }
+
+    const verificar = (token: string, correlacionId: string) =>
+      prueba.agente
+        .post('/api/v1/cuenta/verificacion')
+        .set({ 'X-Correlation-Id': correlacionId, 'X-Forwarded-For': ipPropia() })
+        .send({ token });
+
+    it('reenvío con cuenta → CORREO_VERIFICACION_SOLICITADA, y verificación aceptada → CORREO_VERIFICADO', async () => {
+      const e = await crearEscenario();
+      const { cliente, token: sesion } = await sesionCliente(e.barberia.tenantId, undefined, {
+        verificado: false,
+      });
+      const usuarioId = cliente.usuarioId as string;
+
+      const id1 = correlacion();
+      const solicitud = await registrosNuevos(e.barberia.tenantId, () =>
+        prueba.agente
+          .post('/api/v1/cuenta/verificacion/reenvio')
+          .set({ Authorization: `Bearer ${sesion}`, 'X-Correlation-Id': id1, 'X-Forwarded-For': ipPropia() })
+          .expect(202),
+      );
+      expect(solicitud).toHaveLength(1);
+      esCompleto(solicitud[0], {
+        tenantId: e.barberia.tenantId,
+        actorId: usuarioId,
+        accion: 'CORREO_VERIFICACION_SOLICITADA',
+        resultado: 'PERMITIDO',
+      });
+      vieneDeLaSolicitud(solicitud[0], id1);
+
+      // El enlace que pidió el reenvío se anula al sembrar uno con token conocido en su lugar.
+      await poolDe('seed').query('UPDATE account_link SET revoked_at = now() WHERE user_id = $1', [
+        usuarioId,
+      ]);
+      const token = await enlaceConToken(e.barberia.tenantId, usuarioId);
+      const id2 = correlacion();
+      const aceptada = await registrosNuevos(e.barberia.tenantId, () => verificar(token, id2).expect(200));
+      expect(aceptada).toHaveLength(1);
+      esCompleto(aceptada[0], {
+        tenantId: e.barberia.tenantId,
+        actorId: usuarioId,
+        accion: 'CORREO_VERIFICADO',
+        resultado: 'PERMITIDO',
+      });
+      vieneDeLaSolicitud(aceptada[0], id2);
+      expect(JSON.stringify([...solicitud, ...aceptada])).not.toContain(token);
+    });
+
+    it.each(['USADO', 'VENCIDO', 'ANULADO'] as const)(
+      'enlace %s de una cuenta → ENLACE_DE_CUENTA_RECHAZADO en la barbería del enlace',
+      async (estado) => {
+        const e = await crearEscenario();
+        const { cliente } = await sesionCliente(e.barberia.tenantId, undefined, { verificado: false });
+        const token = await enlaceConToken(e.barberia.tenantId, cliente.usuarioId as string, estado);
+        const id = correlacion();
+        const nuevos = await registrosNuevos(e.barberia.tenantId, () => verificar(token, id).expect(410));
+        expect(nuevos).toHaveLength(1);
+        esCompleto(nuevos[0], {
+          tenantId: e.barberia.tenantId,
+          actorId: cliente.usuarioId as string,
+          accion: 'ENLACE_DE_CUENTA_RECHAZADO',
+          resultado: 'DENEGADO',
+        });
+        vieneDeLaSolicitud(nuevos[0], id);
+        expect(JSON.stringify(nuevos)).not.toContain(token);
+      },
+    );
+
+    it('un token desconocido no crea ningún registro de auditoría en ninguna barbería', async () => {
+      const contar = async () =>
+        (await poolDe('seed').query<{ n: number }>('SELECT count(*)::int AS n FROM audit_log')).rows[0].n;
+      const antes = await contar();
+      await verificar(randomBytes(32).toString('base64url'), correlacion()).expect(410);
+      expect(await contar()).toBe(antes);
+    });
+  });
   const conPropietario = (e: Escenario, id: string) => ({
     Authorization: `Bearer ${e.tokenPropietario}`,
     'X-Correlation-Id': id,

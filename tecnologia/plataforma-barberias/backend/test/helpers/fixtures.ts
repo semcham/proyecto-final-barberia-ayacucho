@@ -71,6 +71,18 @@ export async function sembrarBarberia(
   };
 }
 
+/** Alta de una cuenta por SQL (rol de la semilla), verificada con `MIGRACION` o sin verificar. */
+async function insertarCuenta(
+  seed: ReturnType<typeof poolDe>,
+  cuenta: { id: string; correo: string; nombre: string; hash: string | null; verificado: boolean },
+): Promise<void> {
+  await seed.query(
+    `INSERT INTO user_account (id, email, full_name, password_hash, email_verified_at, email_verified_via)
+     VALUES ($1, $2, $3, $4, CASE WHEN $5 THEN now() END, CASE WHEN $5 THEN 'MIGRACION' END)`,
+    [cuenta.id, cuenta.correo, cuenta.nombre, cuenta.hash, cuenta.verificado],
+  );
+}
+
 export async function sembrarUsuario(opciones: {
   tenantId: string;
   rol: 'PROPIETARIO' | 'BARBERO';
@@ -78,17 +90,23 @@ export async function sembrarUsuario(opciones: {
   correo?: string;
   nombre?: string;
   contrasena?: string | null;
+  /**
+   * 010 (T064; research R12 y R13): si la cuenta nace con el correo verificado (`MIGRACION`, como las cuentas
+   * anteriores a 010). Por defecto, sí, salvo el personal PENDIENTE: su activación es la que la verifica.
+   */
+  verificado?: boolean;
 }): Promise<UsuarioSembrado> {
   const seed = poolDe('seed');
   const usuarioId = uuidv7();
   const correo = (opciones.correo ?? correoUnico(opciones.rol.toLowerCase())).trim().toLowerCase();
   const contrasena = opciones.contrasena === undefined ? 'clave-de-prueba-segura' : opciones.contrasena;
-  await seed.query('INSERT INTO user_account (id, email, full_name, password_hash) VALUES ($1, $2, $3, $4)', [
-    usuarioId,
+  await insertarCuenta(seed, {
+    id: usuarioId,
     correo,
-    opciones.nombre ?? 'Usuario de Prueba',
-    contrasena === null ? null : await hashArgon2(contrasena),
-  ]);
+    nombre: opciones.nombre ?? 'Usuario de Prueba',
+    hash: contrasena === null ? null : await hashArgon2(contrasena),
+    verificado: opciones.verificado ?? opciones.estado !== 'PENDIENTE',
+  });
   await seed.query(
     'INSERT INTO membership (id, tenant_id, user_id, role_code, status) VALUES ($1, $2, $3, $4, $5)',
     [uuidv7(), opciones.tenantId, usuarioId, opciones.rol, opciones.estado],
@@ -348,6 +366,11 @@ export async function sembrarCliente(opciones: {
   nombre?: string;
   contrasena?: string;
   creadoPor?: string;
+  /**
+   * 010 (T064): si la cuenta NUEVA nace con el correo verificado (`MIGRACION`). Por defecto, sí: las pruebas que
+   * reservan, preguntan al asistente o pagan el adelanto lo necesitan. `false` para probar el aviso o el 403.
+   */
+  verificado?: boolean;
 }): Promise<ClienteSembrado> {
   const seed = poolDe('seed');
   const conCuenta = opciones.conCuenta ?? true;
@@ -369,10 +392,13 @@ export async function sembrarCliente(opciones: {
       usuarioId = uuidv7();
       correo = correo ?? correoUnico('cliente');
       contrasena = opciones.contrasena ?? 'clave-de-cliente-segura';
-      await seed.query(
-        'INSERT INTO user_account (id, email, full_name, password_hash) VALUES ($1, $2, $3, $4)',
-        [usuarioId, correo, nombre, await hashArgon2(contrasena)],
-      );
+      await insertarCuenta(seed, {
+        id: usuarioId,
+        correo,
+        nombre,
+        hash: await hashArgon2(contrasena),
+        verificado: opciones.verificado ?? true,
+      });
     }
     await seed.query(
       `INSERT INTO membership (id, tenant_id, user_id, role_code, status) VALUES ($1, $2, $3, 'CLIENTE', 'ACTIVA')`,

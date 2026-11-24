@@ -160,6 +160,11 @@ paths:
         "201":
           description: Pago registrado; el adelanto queda POR_REVISAR
           content: { application/json: { schema: { $ref: "#/components/schemas/Adelanto" } } }
+        "403":
+          description: >
+            (010) CORREO_NO_VERIFICADO: el cliente con el correo sin verificar no puede pagar el adelanto
+            (specs/010-acceso-verificado, research R05). También ACCESO_DENEGADO para otro rol.
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
         "404": { $ref: "#/components/responses/NoEncontrado" }
         "409":
           description: >

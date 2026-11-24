@@ -6,6 +6,7 @@ import { EmitirSesion } from '../../identidad/application/emitir-sesion';
 import { PasswordHasher } from '../../identidad/application/ports/password-hasher';
 import { UsuarioRepository } from '../../identidad/application/ports/usuario-repository';
 import type { SesionIniciada } from '../../identidad/application/sesion-iniciada';
+import { SolicitarVerificacion } from '../../identidad/application/solicitar-verificacion';
 import { Contrasena } from '../../identidad/domain/contrasena';
 import { Correo } from '../../identidad/domain/correo';
 import { Membresia } from '../../identidad/domain/membresia';
@@ -44,6 +45,7 @@ export class RegistrarCliente {
     private readonly auditoria: AuditLog,
     private readonly configuracion: Configuracion,
     private readonly tenantContext: TenantContext,
+    private readonly verificacion: SolicitarVerificacion,
   ) {}
 
   async ejecutar(comando: ComandoRegistrarCliente): Promise<SesionIniciada> {
@@ -86,6 +88,8 @@ export class RegistrarCliente {
         recurso: `cliente:${perfil.id}`,
         resultado: 'PERMITIDO',
       });
+      // 010 (T057): la cuenta nace sin verificar; el enlace y su evento, en esta transacción y en esta barbería (R03).
+      await this.verificacion.alRegistrarse(usuarioId);
       const sesion = await this.emitirSesion.ejecutar(usuarioId, 'CLIENTE');
       const usuario = await this.usuarios.perfil(usuarioId);
       if (!usuario) throw new Error('El cliente recién registrado no es visible en su barbería');

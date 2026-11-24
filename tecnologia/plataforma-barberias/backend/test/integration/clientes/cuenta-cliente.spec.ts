@@ -102,6 +102,18 @@ describe('Cuenta de cliente', () => {
         usuario.id,
       ]);
       expect(auditoria.map((fila) => fila.action)).toContain('CLIENTE_REGISTRADO');
+
+      // 010 (T064): la cuenta nueva nace SIN verificar, y la sesión lo dice; queda pedido un enlace de verificación.
+      expect(usuario.correoVerificado).toBe(false);
+      const [cuenta] = await filas(
+        'SELECT email_verified_at, email_verified_via FROM user_account WHERE id = $1',
+        [usuario.id],
+      );
+      expect(cuenta).toEqual({ email_verified_at: null, email_verified_via: null });
+      const enlaces = await filas('SELECT tenant_id, purpose FROM account_link WHERE user_id = $1', [
+        usuario.id,
+      ]);
+      expect(enlaces).toEqual([{ tenant_id: a.tenantId, purpose: 'VERIFICAR_CORREO' }]);
     });
 
     it('sin aceptar la política de datos → 400 y no se guarda nada', async () => {

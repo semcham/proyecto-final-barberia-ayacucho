@@ -1,6 +1,6 @@
 import { Body, Controller, HttpCode, Post } from '@nestjs/common';
 import { Allow } from 'class-validator';
-import { ActorActual, RequiereOperacion } from '../../../../shared';
+import { ActorActual, RequiereCorreoVerificado, RequiereOperacion } from '../../../../shared';
 import type { ActorDeBarberia } from '../../comun/application/autorizacion';
 import type { OperacionAsistenteReportes } from '../../comun/domain/permisos';
 import { PreguntarAlAsistente, type RespuestaDelAsistente } from '../application/preguntar-al-asistente';
@@ -29,6 +29,8 @@ export class AsistenteController {
   @Post('mensajes')
   @HttpCode(200)
   @OperacionM04('USAR_ASISTENTE')
+  // 010 (R05): el cliente necesita el correo verificado; el propietario no.
+  @RequiereCorreoVerificado()
   preguntar(
     @ActorActual() actor: ActorDeBarberia,
     @Body() cuerpo: PreguntaAsistenteDto,

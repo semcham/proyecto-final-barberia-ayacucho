@@ -155,6 +155,32 @@ describe('Usuarios del personal (integración)', () => {
     expect(inicio.body.usuario.barberia.id).toBe(e.barberia.tenantId);
   });
 
+  // T052 de 010 (FR-017; research R12): activar la cuenta del personal cuenta como verificar su correo.
+  it('activar marca el correo como verificado (ACTIVACION); antes de activar, la cuenta no lo está', async () => {
+    const e = await crearEscenario();
+    const correo = correoNuevo('verifica');
+    const creado = await crearBarbero(e, correo).expect(201);
+    const usuarioId = creado.body.usuario.id as string;
+    const verificacion = async () =>
+      (
+        await poolDe('seed').query(
+          'SELECT email_verified_via AS via, email_verified_at IS NOT NULL AS con_fecha FROM user_account WHERE id = $1',
+          [usuarioId],
+        )
+      ).rows[0];
+    expect(await verificacion()).toEqual({ via: null, con_fecha: false });
+
+    const token = tokenDelEnlace(creado.body.activacion.enlace);
+    await prueba.agente.post('/api/v1/auth/activar').send({ token, contrasena: CLAVE }).expect(204);
+    expect(await verificacion()).toEqual({ via: 'ACTIVACION', con_fecha: true });
+
+    const inicio = await prueba.agente
+      .post('/api/v1/auth/login')
+      .send({ correo, contrasena: CLAVE })
+      .expect(200);
+    expect(inicio.body.usuario.correoVerificado).toBe(true);
+  });
+
   it('el enlace no sirve dos veces, vencido ni revocado (mismo 400 ENLACE_INVALIDO)', async () => {
     const e = await crearEscenario();
     const creado = await crearBarbero(e).expect(201);

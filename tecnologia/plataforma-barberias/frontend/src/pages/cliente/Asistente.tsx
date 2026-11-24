@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useSesion } from '../../auth/SesionProvider';
+import { AvisoVerificacion } from '../../components/app/AvisoVerificacion';
 import { Conversacion } from '../../components/app/Conversacion';
 import { Logo } from '../../components/Logo';
 import { clasesBoton } from '../../components/ui';
@@ -16,6 +18,9 @@ import estilos from './Asistente.module.css';
 export default function Asistente() {
   const { usuario } = useSesion();
   const barberia = usuario?.barberia;
+  // 010 (T063, research R06): sin el correo verificado no se pregunta; también ante el 403 de otra sesión.
+  const [rechazado, setRechazado] = useState(false);
+  const sinVerificar = usuario?.correoVerificado === false || rechazado;
 
   return (
     <main className={estilos.pagina}>
@@ -34,20 +39,25 @@ export default function Asistente() {
         </p>
       </div>
 
-      <Conversacion
-        ejemplo="Por ejemplo: ¿hay horario mañana para un corte?"
-        alternativa={{
-          tipo: 'RESERVAR',
-          contenido: barberia && (
-            <Link
-              to={`/b/${barberia.slug}`}
-              className={clasesBoton({ variante: 'secundario', tamano: 'sm' })}
-            >
-              Ir a reservar
-            </Link>
-          ),
-        }}
-      />
+      {sinVerificar ? (
+        <AvisoVerificacion accion="usar el asistente" alVerificar={() => setRechazado(false)} />
+      ) : (
+        <Conversacion
+          ejemplo="Por ejemplo: ¿hay horario mañana para un corte?"
+          alCorreoNoVerificado={() => setRechazado(true)}
+          alternativa={{
+            tipo: 'RESERVAR',
+            contenido: barberia && (
+              <Link
+                to={`/b/${barberia.slug}`}
+                className={clasesBoton({ variante: 'secundario', tamano: 'sm' })}
+              >
+                Ir a reservar
+              </Link>
+            ),
+          }}
+        />
+      )}
     </main>
   );
 }

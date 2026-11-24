@@ -17,6 +17,9 @@ class ApiFalsa {
     this.citas = new Map(); // id → cita
     this.tokens = new Map(); // token → correo
     this.activaciones = new Map(); // token → correo
+    // 010 (T066): el buzón (como Mailpit) y los enlaces de verificación vigentes.
+    this.correos = []; // { id, para, texto }, del más viejo al más nuevo
+    this.verificaciones = new Map(); // token → correo
     this.siguiente = 1;
   }
 
@@ -39,8 +42,33 @@ class ApiFalsa {
         correo,
         rol: c.rol,
         barberia: { id: b.id, nombre: b.nombre, slug: b.slug },
+        correoVerificado: c.verificado !== false,
       },
     };
+  }
+
+  /** Como M05 al enviar: un enlace nuevo de verificación (anula los anteriores) y su correo en el buzón. */
+  enviarVerificacion(correo) {
+    for (const [token, para] of this.verificaciones) if (para === correo) this.verificaciones.delete(token);
+    const token = `v${this.id().replace(/-/g, '')}abcdefghij`;
+    this.verificaciones.set(token, correo);
+    this.correos.push({
+      id: `m${this.correos.length + 1}`,
+      para: correo,
+      texto: `Verifica tu correo: http://localhost:5173/verificar#${token} (vale 24 horas).`,
+    });
+  }
+
+  /** El buzón de desarrollo (API HTTP de Mailpit): búsqueda por destinatario, el más nuevo primero. */
+  atenderBuzon(ruta, searchParams) {
+    if (ruta === '/api/v1/search') {
+      const para = (searchParams.get('query') ?? '').replace(/^to:/, '');
+      const propios = this.correos.filter((c) => c.para === para).reverse();
+      return { estado: 200, cuerpo: { messages: propios.slice(0, 1).map((c) => ({ ID: c.id })) } };
+    }
+    const mensaje = /^\/api\/v1\/message\/(.+)$/.exec(ruta);
+    const correo = mensaje && this.correos.find((c) => c.id === mensaje[1]);
+    return correo ? { estado: 200, cuerpo: { Text: correo.texto } } : { estado: 404, cuerpo: {} };
   }
 
   quien(headers) {
@@ -52,12 +80,15 @@ class ApiFalsa {
   }
 
   fetch = async (url, init = {}) => {
-    const { pathname, searchParams } = new URL(url);
-    const ruta = pathname.replace(/^\/api\/v1/, '');
+    const { host, pathname, searchParams } = new URL(url);
+    const deBuzon = host === 'buzon.prueba';
+    const ruta = deBuzon ? pathname : pathname.replace(/^\/api\/v1/, '');
     const metodo = (init.method ?? 'GET').toUpperCase();
     const cuerpo = init.body ? JSON.parse(init.body) : undefined;
-    this.llamadas.push({ metodo, ruta, cuerpo });
-    const r = this.atender(metodo, ruta, cuerpo, init.headers ?? {}, searchParams);
+    if (!deBuzon) this.llamadas.push({ metodo, ruta, cuerpo });
+    const r = deBuzon
+      ? this.atenderBuzon(ruta, searchParams)
+      : this.atender(metodo, ruta, cuerpo, init.headers ?? {}, searchParams);
     return new Response(r.cuerpo === undefined ? null : JSON.stringify(r.cuerpo), {
       status: r.estado,
       headers: { 'content-type': 'application/json' },
@@ -128,7 +159,10 @@ class ApiFalsa {
         rol: 'CLIENTE',
         barberia: b.id,
         estado: 'ACTIVA',
+        // 010: la cuenta nueva nace sin verificar y recibe su correo.
+        verificado: false,
       });
+      this.enviarVerificacion(cuerpo.correo);
       return { estado: 201, cuerpo: this.sesion(cuerpo.correo) };
     }
     if (metodo === 'POST' && ruta === '/auth/activar') {
@@ -142,7 +176,23 @@ class ApiFalsa {
       this.activaciones.delete(cuerpo.token);
       return { estado: 200, cuerpo: {} };
     }
+    if (metodo === 'POST' && ruta === '/cuenta/verificacion') {
+      const correo = this.verificaciones.get(cuerpo.token);
+      if (!correo) return { estado: 410, cuerpo: { codigo: 'ENLACE_NO_VALIDO' } };
+      this.verificaciones.delete(cuerpo.token);
+      const c = this.cuentas.get(correo);
+      c.verificado = true;
+      const b = [...this.barberias.values()].find((x) => x.id === c.barberia);
+      return { estado: 200, cuerpo: { barberia: b.slug } };
+    }
     if (!yo) return { estado: 401, cuerpo: { codigo: 'NO_AUTENTICADO' } };
+    if (metodo === 'POST' && ruta === '/cuenta/verificacion/reenvio') {
+      if (yo.cuenta.verificado === false) this.enviarVerificacion(yo.correo);
+      return {
+        estado: 202,
+        cuerpo: { mensaje: 'Si tu correo aún no está verificado, te enviamos un enlace nuevo.' },
+      };
+    }
     const b = yo.barberia;
     if (metodo === 'GET' && ruta === '/barberia/horario')
       return { estado: 200, cuerpo: { tramos: b.horario } };
@@ -202,6 +252,9 @@ class ApiFalsa {
       return { estado: 200, cuerpo: { total: propias.length, pagina: 1, tamano: 50, elementos: propias } };
     }
     if (metodo === 'POST' && ruta === '/citas') {
+      // 010 (FR-009): sin el correo verificado, el cliente no reserva.
+      if (yo.cuenta.rol === 'CLIENTE' && yo.cuenta.verificado === false)
+        return { estado: 403, cuerpo: { codigo: 'CORREO_NO_VERIFICADO' } };
       const servicio = b.servicios.find((s) => s.id === cuerpo.servicioId);
       const barbero = b.barberos.find((x) => x.id === cuerpo.barberoId);
       const ocupado = [...this.citas.values()].some(
@@ -238,6 +291,8 @@ const opciones = (api, extra = {}) => ({
   fetch: api.fetch,
   hoy: HOY,
   log: () => {},
+  buzon: 'http://buzon.prueba',
+  esperaBuzonMs: 50,
   ...extra,
 });
 const totalCreadas = (resumen) => Object.values(resumen).reduce((s, t) => s + t.creadas, 0);
@@ -361,4 +416,57 @@ test('datos.json: solo datos inventados, sin administrador, dos barberías y los
     [b.slugEsperado, b.servicios.length, b.barberos.length, b.clientes.length, b.citas.length],
     ['barberia-demo-huamanga', 3, 2, 4, 8],
   );
+});
+
+// T066 de 010 (research R13): sin el correo verificado el cliente no reserva; la semilla lo verifica con el enlace del
+// buzón (como Mailpit) antes de reservar, y una segunda carga no vuelve a hacerlo.
+test('verifica a cada cliente con el enlace del buzón antes de su primera reserva', async () => {
+  const api = new ApiFalsa();
+  const r = await cargarSemilla(opciones(api));
+  assert.equal(r.codigo, CODIGOS.OK, r.mensaje);
+  const clientes = DATOS.barberias.flatMap((b) => b.clientes.map((c) => c.correo));
+  for (const correo of clientes) assert.equal(api.cuentas.get(correo).verificado, true, correo);
+  const verificaciones = api.llamadas.filter((l) => l.ruta === '/cuenta/verificacion');
+  assert.equal(verificaciones.length, clientes.length);
+  const primeraReserva = api.llamadas.findIndex((l) => l.ruta === '/citas' && l.metodo === 'POST');
+  const ultimaVerificacion = api.llamadas.findLastIndex((l) => l.ruta === '/cuenta/verificacion');
+  // En cada barbería, sus clientes se verifican antes de que reserven.
+  assert.ok(primeraReserva > api.llamadas.findIndex((l) => l.ruta === '/cuenta/verificacion'));
+  assert.ok(ultimaVerificacion > 0);
+});
+
+test('segunda corrida: no vuelve a verificar ni pide reenvíos', async () => {
+  const api = new ApiFalsa();
+  await cargarSemilla(opciones(api));
+  api.llamadas = [];
+  await cargarSemilla(opciones(api));
+  assert.equal(api.llamadas.filter((l) => l.ruta.startsWith('/cuenta/')).length, 0);
+});
+
+test('un cliente que quedó sin verificar con un enlace ya inválido: pide el reenvío y usa el nuevo', async () => {
+  const api = new ApiFalsa();
+  const [cliente] = DATOS.barberias[0].clientes;
+  // Una carga anterior lo registró, pero se cortó antes de verificar y su enlace ya no sirve.
+  const original = api.atender.bind(api);
+  let cortar = true;
+  api.atender = (metodo, ruta, cuerpo, ...resto) => {
+    const r = original(metodo, ruta, cuerpo, ...resto);
+    if (cortar && metodo === 'POST' && ruta === '/clientes/registro' && cuerpo.correo === cliente.correo) {
+      api.verificaciones.clear();
+      cortar = false;
+    }
+    return r;
+  };
+  const r = await cargarSemilla(opciones(api));
+  assert.equal(r.codigo, CODIGOS.OK, r.mensaje);
+  assert.equal(api.cuentas.get(cliente.correo).verificado, true);
+  assert.equal(api.llamadas.filter((l) => l.ruta === '/cuenta/verificacion/reenvio').length, 1);
+});
+
+test('si el correo de verificación no llega al buzón, termina con un error claro (sin token en el mensaje)', async () => {
+  const api = new ApiFalsa();
+  api.enviarVerificacion = () => {};
+  const r = await cargarSemilla(opciones(api));
+  assert.equal(r.codigo, CODIGOS.ERROR);
+  assert.match(r.mensaje, /No llegó al buzón de desarrollo un correo con el enlace de \/verificar/);
 });

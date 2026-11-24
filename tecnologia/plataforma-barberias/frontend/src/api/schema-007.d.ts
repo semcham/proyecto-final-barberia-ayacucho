@@ -289,7 +289,7 @@ export interface paths {
           };
           content?: never;
         };
-        /** @description SOLICITUD_CERRADA, o ya en atención */
+        /** @description SOLICITUD_CERRADA (ya atendida o rechazada) o SOLICITUD_YA_EN_ATENCION (ya estaba en atención) */
         409: {
           headers: {
             [name: string]: unknown;
