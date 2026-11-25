@@ -23,6 +23,8 @@ export abstract class ServicioRepository {
   abstract nombresExistentes(nombres: readonly string[]): Promise<Set<string>>;
   /** 011: crea varios en una sola instrucción. Lanza `NombreDuplicado` como `crear` (y no crea ninguno). */
   abstract crearVarios(servicios: readonly Servicio[]): Promise<void>;
+  /** 011 (US2): id (en minúsculas) → activo, de todos los servicios de la barbería. */
+  abstract estados(): Promise<Map<string, boolean>>;
 }
 
 /** 011 (research R06): una carga en lote ya guardada, para responder igual a sus reintentos. */
@@ -61,6 +63,10 @@ export abstract class BarberoRepository {
   abstract crear(barbero: Barbero): Promise<void>;
   /** Guarda nombre, vínculo, estado y reemplaza los servicios. Lanza `UsuarioYaVinculado` como `crear`. */
   abstract actualizar(barbero: Barbero): Promise<void>;
+  /** 011 (US2): claves (`claveDeNombre`) de los nombres de todos los barberos de la barbería, activos o no. */
+  abstract nombres(): Promise<Set<string>>;
+  /** 011 (US2): crea varios (con sus servicios) en la transacción en curso. */
+  abstract crearVarios(barberos: readonly Barbero[]): Promise<void>;
 }
 
 /** Horario de atención de la barbería y disponibilidad de cada barbero: se reemplaza la semana completa. */

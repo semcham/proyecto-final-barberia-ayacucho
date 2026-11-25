@@ -2,9 +2,11 @@ import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
   ArrayMinSize,
+  ArrayUnique,
   IsArray,
   IsNumber,
   IsString,
+  IsUUID,
   MaxLength,
   ValidateIf,
   ValidateNested,
@@ -46,4 +48,26 @@ export class CargaServiciosDto {
   @ValidateNested({ each: true })
   @Type(() => FilaServicioDto)
   filas!: FilaServicioDto[];
+}
+
+export class FilaBarberoDto {
+  @IsString()
+  @MaxLength(200)
+  nombre!: string;
+
+  /** Servicios que ofrece (vacío si ninguno). Que existan y estén activos lo revisa el dominio. */
+  @IsArray()
+  @ArrayMaxSize(100)
+  @ArrayUnique()
+  @IsUUID('all', { each: true })
+  servicioIds: string[] = [];
+}
+
+export class CargaBarberosDto {
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(MAX_FILAS_LOTE)
+  @ValidateNested({ each: true })
+  @Type(() => FilaBarberoDto)
+  filas!: FilaBarberoDto[];
 }

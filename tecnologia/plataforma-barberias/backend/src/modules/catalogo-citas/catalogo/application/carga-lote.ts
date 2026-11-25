@@ -4,19 +4,25 @@ import { v7 as uuidv7 } from 'uuid';
 import type { Actor } from '../../../acceso-barberias';
 import { SuscripcionesApi } from '../../../suscripciones-pagos';
 import { AuditLog, TenantId, UnitOfWork } from '../../../../shared';
+import { Barbero } from '../domain/barbero';
 import {
+  type CupoDeBarberos,
+  type FilaBarbero,
   type FilaServicio,
   MAX_FILAS_LOTE,
   type RevisionDeCarga,
+  revisarBarberos,
   revisarServicios,
 } from '../domain/carga-lote';
 import { CargaInvalida, DatoInvalido, IdempotenciaDeCargaConflicto } from '../domain/errores';
+import { LimiteBarberos } from '../domain/limite-barberos';
 import { Servicio } from '../domain/servicio';
 import { AutorizacionCatalogoCitas } from './autorizacion';
 import { InvalidadorCatalogoPublico } from './invalidador-catalogo-publico';
 import {
   type CargaGuardada,
   CargaLoteRepository,
+  BarberoRepository,
   ClaveDeCargaEnUso,
   ServicioRepository,
 } from './ports/catalogo-repositorios';
@@ -39,6 +45,9 @@ export interface ResumenCarga {
 }
 
 export type RevisionVista = RevisionDeCarga;
+
+/** Revisión de barberos: también el cupo del plan (contracts/openapi.yaml). */
+export type RevisionBarberosVista = RevisionDeCarga & { cupo: CupoDeBarberos };
 
 function exigirTamano(filas: readonly unknown[]): void {
   if (filas.length < 1 || filas.length > MAX_FILAS_LOTE) throw new DatoInvalido('filas', 'cantidad');
@@ -152,6 +161,117 @@ export class CargarServicios {
     });
     this.invalidador.catalogoCambio(tenantId);
     return { tipo: 'SERVICIOS', creados: nuevos.length, ids: carga.ids, creada: true };
+  }
+}
+
+/** T038 · Revisa una carga de barberos sin guardar nada: errores, advertencias y cupo del plan (US2). */
+@Injectable()
+export class RevisarCargaBarberos {
+  constructor(
+    private readonly autorizacion: AutorizacionCatalogoCitas,
+    private readonly uow: UnitOfWork,
+    private readonly barberos: BarberoRepository,
+    private readonly servicios: ServicioRepository,
+    private readonly suscripciones: SuscripcionesApi,
+  ) {}
+
+  async ejecutar(actor: Actor, filas: readonly FilaBarbero[]): Promise<RevisionBarberosVista> {
+    await this.autorizacion.exigir(actor, 'GESTIONAR_BARBEROS');
+    exigirTamano(filas);
+    const tenantId = TenantId.de(actor.tenantId);
+    return this.uow.ejecutar(tenantId, async () => {
+      await this.suscripciones.exigirOperacion(tenantId, 'CONFIGURAR_CATALOGO');
+      // El mismo máximo que la creación; en una transacción de solo revisión el bloqueo dura lo que dura esta lectura.
+      const maximo = await this.suscripciones.obtenerLimiteBarberos(tenantId);
+      const activos = await this.barberos.contarActivos();
+      const r = revisarBarberos(filas, await this.barberos.nombres(), await this.servicios.estados(), {
+        maximo,
+        activos,
+      });
+      return { filas: r.filas, errores: r.errores, advertencias: r.advertencias, cupo: r.cupo };
+    });
+  }
+}
+
+/**
+ * T038 · Crea todos los barberos de una carga o ninguno (US2, US3; FR-006 a FR-009, FR-015): activos, sin usuario
+ * vinculado y con sus servicios, dentro del cupo del plan con EL MISMO bloqueo que la creación individual (la fila de la
+ * suscripción, research R04). Los nombres repetidos no impiden guardar (son advertencias de la revisión).
+ */
+@Injectable()
+export class CargarBarberos {
+  constructor(
+    private readonly autorizacion: AutorizacionCatalogoCitas,
+    private readonly uow: UnitOfWork,
+    private readonly barberos: BarberoRepository,
+    private readonly servicios: ServicioRepository,
+    private readonly cargas: CargaLoteRepository,
+    private readonly suscripciones: SuscripcionesApi,
+    private readonly auditoria: AuditLog,
+    private readonly invalidador: InvalidadorCatalogoPublico,
+  ) {}
+
+  async ejecutar(
+    actor: Actor,
+    filas: readonly FilaBarbero[],
+    claveRecibida: string | undefined,
+  ): Promise<ResumenCarga> {
+    await this.autorizacion.exigir(actor, 'GESTIONAR_BARBEROS');
+    const clave = exigirClave(claveRecibida);
+    exigirTamano(filas);
+    const tenantId = TenantId.de(actor.tenantId);
+    const huella = huellaDe('BARBEROS', filas);
+    try {
+      return await this.uow.ejecutar(tenantId, () => this.cargar(actor, tenantId, filas, clave, huella));
+    } catch (error) {
+      if (error instanceof ClaveDeCargaEnUso) {
+        const previa = await this.uow.ejecutar(tenantId, () => this.cargas.buscar(actor.usuarioId, clave));
+        if (previa) return resumenDePrevia(previa, 'BARBEROS', huella);
+      }
+      throw error;
+    }
+  }
+
+  private async cargar(
+    actor: Actor,
+    tenantId: TenantId,
+    filas: readonly FilaBarbero[],
+    clave: string,
+    huella: string,
+  ): Promise<ResumenCarga> {
+    const previa = await this.cargas.buscar(actor.usuarioId, clave);
+    if (previa) return resumenDePrevia(previa, 'BARBEROS', huella);
+
+    await this.suscripciones.exigirOperacion(tenantId, 'CONFIGURAR_CATALOGO');
+    // Primero el bloqueo de la suscripción y DESPUÉS contar: así dos cargas (o una carga y una creación) se ordenan.
+    const maximo = await this.suscripciones.obtenerLimiteBarberos(tenantId);
+    const activos = await this.barberos.contarActivos();
+    const revision = revisarBarberos(filas, new Set(), await this.servicios.estados(), { maximo, activos });
+    // El cupo con su error de siempre (403 SUSCRIPCION_NO_PERMITE, LIMITE_BARBEROS) y los datos del lote.
+    if (revision.utiles.length > 0) LimiteBarberos.exigir(activos, maximo, revision.utiles.length);
+    if (revision.errores.length > 0) throw new CargaInvalida(revision.errores);
+
+    const nuevos = revision.utiles.map((u) =>
+      Barbero.crear(uuidv7(), { nombre: u.datos.nombre, usuarioId: null, servicioIds: u.datos.servicioIds }),
+    );
+    await this.barberos.crearVarios(nuevos);
+    const carga: CargaGuardada = {
+      id: uuidv7(),
+      autorId: actor.usuarioId,
+      clave,
+      tipo: 'BARBEROS',
+      huella,
+      ids: nuevos.map((b) => b.id),
+    };
+    await this.cargas.guardar(carga);
+    await this.auditoria.registrar({
+      accion: 'BARBEROS_CARGADOS_EN_LOTE',
+      actorId: actor.usuarioId,
+      recurso: `lote:${carga.id};cantidad=${nuevos.length}`,
+      resultado: 'PERMITIDO',
+    });
+    this.invalidador.catalogoCambio(tenantId);
+    return { tipo: 'BARBEROS', creados: nuevos.length, ids: carga.ids, creada: true };
   }
 }
 

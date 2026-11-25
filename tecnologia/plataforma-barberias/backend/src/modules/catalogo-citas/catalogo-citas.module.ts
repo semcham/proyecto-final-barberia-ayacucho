@@ -2,7 +2,12 @@ import { Module } from '@nestjs/common';
 import { AccesoBarberiasModule } from '../acceso-barberias';
 import { SuscripcionesPagosModule } from '../suscripciones-pagos';
 import { AutorizacionCatalogoCitas } from './catalogo/application/autorizacion';
-import { CargarServicios, RevisarCargaServicios } from './catalogo/application/carga-lote';
+import {
+  CargarBarberos,
+  CargarServicios,
+  RevisarCargaBarberos,
+  RevisarCargaServicios,
+} from './catalogo/application/carga-lote';
 import {
   ActualizarBarbero,
   CrearBarbero,
@@ -118,6 +123,9 @@ import { KyselyReportesDeCitasQuery } from './citas/infrastructure/reportes-de-c
     // 011 (US1): servicios en lote.
     RevisarCargaServicios,
     CargarServicios,
+    // 011 (US2): barberos en lote.
+    RevisarCargaBarberos,
+    CargarBarberos,
     ReglasBarbero,
     ListarBarberos,
     CrearBarbero,

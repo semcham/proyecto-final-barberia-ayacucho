@@ -1,4 +1,6 @@
+import { problemasDeBarbero } from './barbero';
 import type { ProblemaDeFila } from './errores';
+import { LimiteBarberos } from './limite-barberos';
 import { type DatosServicio, problemasDeServicio } from './servicio';
 
 /**
@@ -89,6 +91,87 @@ export function revisarServicios(
   if (utiles.length === 0) errores.push({ fila: null, campo: 'filas', problema: 'vacia' });
 
   return { filas: utiles.length, errores: ordenar(errores), advertencias: [], utiles };
+}
+
+export interface FilaBarbero {
+  nombre: string;
+  /** Servicios que ofrece (puede ser vacío). */
+  servicioIds: string[];
+}
+
+/** Datos de una fila de barbero lista para crear: nombre y servicios, sin usuario vinculado (FR-007). */
+export interface DatosBarberoDeCarga {
+  nombre: string;
+  servicioIds: string[];
+}
+
+/** Cupo de barberos activos del plan para la carga (FR-015). */
+export interface CupoDeBarberos {
+  maximo: number;
+  activos: number;
+  disponibles: number;
+}
+
+/**
+ * Revisa una carga de barberos (US2; data-model §2). Errores: nombre (la regla de `Barbero`), servicios que no existen
+ * en la barbería o están inactivos, y la carga entera si supera el cupo del plan. Un nombre repetido dentro de la carga
+ * o igual al de un barbero existente es solo una ADVERTENCIA (Q2: la creación individual lo permite).
+ *
+ * @param nombresExistentes claves (`claveDeNombre`) de los barberos de la barbería, activos o no.
+ * @param serviciosDeLaBarberia ids de los servicios de la barbería → si está activo.
+ */
+export function revisarBarberos(
+  filas: readonly FilaBarbero[],
+  nombresExistentes: ReadonlySet<string>,
+  serviciosDeLaBarberia: ReadonlyMap<string, boolean>,
+  cupo: { maximo: number; activos: number },
+): RevisionDeCarga & { utiles: FilaUtil<DatosBarberoDeCarga>[]; cupo: CupoDeBarberos } {
+  const errores: ProblemaDeFila[] = [];
+  const advertencias: ProblemaDeFila[] = [];
+  const utiles: FilaUtil<DatosBarberoDeCarga>[] = [];
+  const porNombre = new Map<string, number[]>();
+
+  filas.forEach((fila, indice) => {
+    const servicioIds = [...new Set(fila.servicioIds.map((id) => id.toLowerCase()))];
+    if (vacio(fila.nombre) && servicioIds.length === 0) return;
+    const numero = indice + 1;
+    utiles.push({ fila: numero, datos: { nombre: fila.nombre, servicioIds } });
+
+    for (const p of problemasDeBarbero({ nombre: fila.nombre })) errores.push({ fila: numero, ...p });
+    if (servicioIds.some((id) => !serviciosDeLaBarberia.has(id))) {
+      errores.push({ fila: numero, campo: 'servicioIds', problema: 'no_existe' });
+    } else if (servicioIds.some((id) => serviciosDeLaBarberia.get(id) === false)) {
+      errores.push({ fila: numero, campo: 'servicioIds', problema: 'inactivo' });
+    }
+
+    if (!vacio(fila.nombre)) {
+      const clave = claveDeNombre(fila.nombre);
+      porNombre.set(clave, [...(porNombre.get(clave) ?? []), numero]);
+      if (nombresExistentes.has(clave))
+        advertencias.push({ fila: numero, campo: 'nombre', problema: 'ya_existe' });
+    }
+  });
+
+  for (const numeros of porNombre.values()) {
+    if (numeros.length < 2) continue;
+    for (const numero of numeros) {
+      advertencias.push({ fila: numero, campo: 'nombre', problema: 'repetido_en_carga' });
+    }
+  }
+
+  const disponibles = Math.max(0, cupo.maximo - cupo.activos);
+  if (utiles.length === 0) errores.push({ fila: null, campo: 'filas', problema: 'vacia' });
+  else if (!LimiteBarberos.puedeAgregar(cupo.activos, cupo.maximo, utiles.length)) {
+    errores.push({ fila: null, campo: 'filas', problema: 'supera_cupo' });
+  }
+
+  return {
+    filas: utiles.length,
+    errores: ordenar(errores),
+    advertencias: ordenar(advertencias),
+    utiles,
+    cupo: { maximo: cupo.maximo, activos: cupo.activos, disponibles },
+  };
 }
 
 /** Por fila y, dentro de la fila, en el orden de las columnas de la tabla. */

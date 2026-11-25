@@ -114,6 +114,15 @@ export class KyselyServicioRepository extends RepositorioDelTenant implements Se
     }
   }
 
+  async estados(): Promise<Map<string, boolean>> {
+    const filas = await this.tx
+      .selectFrom('service')
+      .select(['id', 'active'])
+      .where('tenant_id', '=', this.tenantId)
+      .execute();
+    return new Map(filas.map((f) => [f.id.toLowerCase(), f.active]));
+  }
+
   async nombresExistentes(nombres: readonly string[]): Promise<Set<string>> {
     const claves = [...new Set(nombres.map(claveDeNombre).filter((c) => c !== ''))];
     if (claves.length === 0) return new Set();
@@ -263,6 +272,43 @@ export class KyselyBarberoRepository extends RepositorioDelTenant implements Bar
       .where('barber_id', '=', barbero.id)
       .execute();
     await this.insertarServicios(barbero);
+  }
+
+  async nombres(): Promise<Set<string>> {
+    const filas = await this.tx
+      .selectFrom('barber')
+      .select('display_name')
+      .where('tenant_id', '=', this.tenantId)
+      .execute();
+    return new Set(filas.map((f) => claveDeNombre(f.display_name)));
+  }
+
+  async crearVarios(barberos: readonly Barbero[]): Promise<void> {
+    if (barberos.length === 0) return;
+    try {
+      await this.tx
+        .insertInto('barber')
+        .values(
+          barberos.map((barbero) => ({
+            id: barbero.id,
+            tenant_id: this.tenantId,
+            user_id: barbero.usuarioId,
+            display_name: barbero.nombre,
+            active: barbero.activo,
+          })),
+        )
+        .execute();
+    } catch (error) {
+      throw traducirUnicidad(error);
+    }
+    const asignaciones = barberos.flatMap((barbero) =>
+      barbero.servicioIds.map((servicioId) => ({
+        tenant_id: this.tenantId,
+        barber_id: barbero.id,
+        service_id: servicioId,
+      })),
+    );
+    if (asignaciones.length > 0) await this.tx.insertInto('barber_service').values(asignaciones).execute();
   }
 
   private async insertarServicios(barbero: Barbero): Promise<void> {
