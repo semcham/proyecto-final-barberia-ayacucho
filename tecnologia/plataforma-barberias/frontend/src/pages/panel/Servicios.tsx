@@ -2,13 +2,24 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { Link } from 'react-router-dom';
 import { z } from 'zod';
 import { clavesConsulta } from '../../api/claves';
 import { llamarApi } from '../../api/client';
 import type { components } from '../../api/schema-002';
 import { EncabezadoPagina } from '../../components/app/EncabezadoPagina';
 import { type CitaAfectada, citasEnConflicto, ModalConflictos } from '../../components/app/ModalConflictos';
-import { Alerta, Boton, Campo, EstadoVacio, EtiquetaEstado, Tarjeta, useAvisos } from '../../components/ui';
+import { Icono } from '../../components/Icono';
+import {
+  Alerta,
+  Boton,
+  Campo,
+  clasesBoton,
+  EstadoVacio,
+  EtiquetaEstado,
+  Tarjeta,
+  useAvisos,
+} from '../../components/ui';
 import { CargandoLista } from './Cargando';
 import { mensajeDeError, useZonaBarberia } from './datos-barberia';
 import estilos from './Panel.module.css';
@@ -134,6 +145,13 @@ export default function Servicios() {
         migas={[{ etiqueta: 'Inicio', a: '/app' }, { etiqueta: 'Servicios' }]}
         titulo="Servicios"
         descripcion="Lo que ofreces, con su precio y su duración. Las citas ya reservadas conservan sus datos."
+        acciones={
+          // 011 (US1): cargar varios servicios a la vez.
+          <Link to="/app/servicios/agregar-varios" className={clasesBoton({ variante: 'secundario' })}>
+            <Icono nombre="documento" tamano={18} />
+            Agregar varios
+          </Link>
+        }
       />
       <div className={estilos.distribucion}>
         <Tarjeta titulo={titulo} icono="tijeras">

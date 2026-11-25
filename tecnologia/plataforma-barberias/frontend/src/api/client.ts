@@ -52,9 +52,12 @@ type CodigoError007 =
   | 'CLIENTE_NO_ENCONTRADO';
 /** Códigos de la funcionalidad 010 (specs/010-acceso-verificado/contracts/openapi.yaml). ENLACE_NO_VALIDO ya está en 004. */
 type CodigoError010 = 'CORREO_NO_VERIFICADO';
+/** Código de la funcionalidad 011 (specs/011-carga-masiva-catalogo/contracts/openapi.yaml). */
+type CodigoError011 = 'CARGA_INVALIDA';
 export type CodigoError =
   | CuerpoError['codigo']
   | CodigoError010
+  | CodigoError011
   | CodigoError002
   | CodigoError006
   | CodigoError003

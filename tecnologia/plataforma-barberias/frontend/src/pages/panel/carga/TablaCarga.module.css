@@ -1,0 +1,244 @@
+/* 011 · Tabla editable de la carga en lote: fichas a 360 px, tabla desde 48rem. */
+
+.tabla {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-2);
+}
+
+.encabezado {
+  display: none;
+}
+
+.filas {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Ficha (celular). */
+.fila {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--espacio-3);
+  padding: var(--espacio-4);
+  padding-top: var(--espacio-3);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio-lg);
+  background: var(--color-superficie);
+  box-shadow: var(--sombra-xs);
+  transition: border-color var(--transicion);
+}
+
+.fila[data-estado='error'] {
+  border-color: var(--color-error-borde);
+  box-shadow: inset 3px 0 0 var(--color-error);
+}
+
+.fila[data-estado='aviso'] {
+  border-color: var(--color-aviso-borde);
+  box-shadow: inset 3px 0 0 var(--color-aviso);
+}
+
+.numero {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: var(--espacio-2);
+  min-height: 2.75rem;
+  padding-right: 3rem;
+  color: var(--color-texto-suave);
+  font-size: var(--texto-sm);
+  font-weight: var(--peso-fuerte);
+}
+
+.palabraFila {
+  white-space: pre;
+}
+
+.estadoFila {
+  display: inline-flex;
+  color: var(--color-error);
+}
+
+.celda {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-1);
+  min-width: 0;
+}
+
+/* En la ficha, nombre y descripción ocupan el ancho completo; duración y precio van lado a lado. */
+.celda[data-campo='nombre'],
+.celda[data-campo='descripcion'],
+.celda[data-campo='servicioIds'] {
+  grid-column: 1 / -1;
+}
+
+.etiqueta {
+  color: var(--color-texto);
+  font-size: var(--texto-sm);
+  font-weight: var(--peso-fuerte);
+}
+
+.control {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.control :global(.entrada[data-con-prefijo]) {
+  padding-left: 2.25rem;
+}
+
+.control :global(.entrada[data-con-sufijo]) {
+  padding-right: 2.75rem;
+}
+
+.prefijo,
+.sufijo {
+  position: absolute;
+  color: var(--color-texto-suave);
+  font-size: var(--texto-sm);
+  pointer-events: none;
+}
+
+.prefijo {
+  left: var(--espacio-3);
+}
+
+.sufijo {
+  right: var(--espacio-3);
+}
+
+.marcas {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-1);
+}
+
+.marca {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--espacio-1);
+  margin: 0;
+  font-size: var(--texto-sm);
+  line-height: var(--interlineado-ajustado);
+}
+
+.marca > svg {
+  flex-shrink: 0;
+  margin-top: 0.125rem;
+}
+
+.marca[data-tono='error'] {
+  color: var(--color-error);
+}
+
+.marca[data-tono='aviso'] {
+  color: var(--color-aviso);
+}
+
+.quitar {
+  position: absolute;
+  top: var(--espacio-2);
+  right: var(--espacio-2);
+}
+
+/* Tabla (escritorio). */
+@media (min-width: 48rem) {
+  .encabezado {
+    display: grid;
+    grid-template-columns: var(--columnas);
+    gap: var(--espacio-3);
+    padding: 0 var(--espacio-3);
+    color: var(--color-texto-suave);
+    font-size: var(--texto-xs);
+    font-weight: var(--peso-fuerte);
+    letter-spacing: var(--tracking-mayusculas);
+    text-transform: uppercase;
+  }
+
+  .encabezado > span:first-child {
+    text-align: center;
+  }
+
+  .filas {
+    gap: 0;
+    border: 1px solid var(--color-borde);
+    border-radius: var(--radio-lg);
+    background: var(--color-superficie);
+    box-shadow: var(--sombra-tarjeta);
+    overflow: hidden;
+  }
+
+  .fila {
+    grid-template-columns: var(--columnas);
+    align-items: start;
+    gap: var(--espacio-3);
+    padding: var(--espacio-2) var(--espacio-3);
+    border: 0;
+    border-bottom: 1px solid var(--color-borde);
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .fila:last-child {
+    border-bottom: 0;
+  }
+
+  .fila[data-estado='error'] {
+    background: var(--color-error-fondo);
+    box-shadow: inset 3px 0 0 var(--color-error);
+  }
+
+  .fila[data-estado='aviso'] {
+    background: var(--color-aviso-fondo);
+    box-shadow: inset 3px 0 0 var(--color-aviso);
+  }
+
+  .numero {
+    grid-column: auto;
+    justify-content: center;
+    min-height: var(--alto-control);
+    padding-right: 0;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* En la tabla basta el número; "Fila" queda para lectores de pantalla. */
+  .palabraFila {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .celda[data-campo='nombre'],
+  .celda[data-campo='descripcion'],
+  .celda[data-campo='servicioIds'] {
+    grid-column: auto;
+  }
+
+  /* En la tabla, la etiqueta la da el encabezado de la columna (la del campo queda para lectores de pantalla). */
+  .etiqueta {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .quitar {
+    position: static;
+    display: flex;
+    align-items: center;
+    min-height: var(--alto-control);
+  }
+}
