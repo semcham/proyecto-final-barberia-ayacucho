@@ -1,0 +1,218 @@
+[
+  {
+    "nombre": "carga-vacia-claro-360",
+    "axe": [],
+    "desborde": 0,
+    "errores": [],
+    "sinManejar": [
+      "GET /api/v1/suscripcion"
+    ]
+  },
+  {
+    "nombre": "carga-vacia-claro-1440",
+    "axe": [],
+    "desborde": 0,
+    "errores": [],
+    "sinManejar": [
+      "GET /api/v1/suscripcion"
+    ]
+  },
+  {
+    "nombre": "carga-vacia-oscuro-360",
+    "axe": [],
+    "desborde": 0,
+    "errores": [],
+    "sinManejar": [
+      "GET /api/v1/suscripcion"
+    ]
+  },
+  {
+    "nombre": "carga-vacia-oscuro-1440",
+    "axe": [],
+    "desborde": 0,
+    "errores": [],
+    "sinManejar": [
+      "GET /api/v1/suscripcion"
+    ]
+  },
+  {
+    "nombre": "carga-tipicos-claro-360",
+    "axe": [],
+    "desborde": 0,
+    "errores": [],
+    "sinManejar": [
+      "GET /api/v1/suscripcion"
+    ]
+  },
+  {
+    "nombre": "carga-tipicos-claro-1440",
+    "axe": [],
+    "desborde": 0,
+    "errores": [],
+    "sinManejar": [
+      "GET /api/v1/suscripcion"
+    ]
+  },
+  {
+    "nombre": "carga-tipicos-oscuro-360",
+    "axe": [],
+    "desborde": 0,
+    "errores": [],
+    "sinManejar": [
+      "GET /api/v1/suscripcion"
+    ]
+  },
+  {
+    "nombre": "carga-tipicos-oscuro-1440",
+    "axe": [],
+    "desborde": 0,
+    "errores": [],
+    "sinManejar": [
+      "GET /api/v1/suscripcion"
+    ]
+  },
+  {
+    "nombre": "carga-tipicos-revisados-claro-360",
+    "axe": [],
+    "desborde": 0,
+    "errores": [],
+    "sinManejar": [
+      "GET /api/v1/suscripcion"
+    ]
+  },
+  {
+    "nombre": "carga-tipicos-revisados-claro-1440",
+    "axe": [],
+    "desborde": 0,
+    "errores": [],
+    "sinManejar": [
+      "GET /api/v1/suscripcion"
+    ]
+  },
+  {
+    "nombre": "carga-tipicos-revisados-oscuro-360",
+    "axe": [],
+    "desborde": 0,
+    "errores": [],
+    "sinManejar": [
+      "GET /api/v1/suscripcion"
+    ]
+  },
+  {
+    "nombre": "carga-tipicos-revisados-oscuro-1440",
+    "axe": [],
+    "desborde": 0,
+    "errores": [],
+    "sinManejar": [
+      "GET /api/v1/suscripcion"
+    ]
+  },
+  {
+    "nombre": "carga-errores-claro-360",
+    "axe": [],
+    "desborde": 0,
+    "errores": [],
+    "sinManejar": [
+      "GET /api/v1/suscripcion"
+    ]
+  },
+  {
+    "nombre": "carga-errores-claro-1440",
+    "axe": [],
+    "desborde": 0,
+    "errores": [],
+    "sinManejar": [
+      "GET /api/v1/suscripcion"
+    ]
+  },
+  {
+    "nombre": "carga-errores-oscuro-360",
+    "axe": [],
+    "desborde": 0,
+    "errores": [],
+    "sinManejar": [
+      "GET /api/v1/suscripcion"
+    ]
+  },
+  {
+    "nombre": "carga-errores-oscuro-1440",
+    "axe": [],
+    "desborde": 0,
+    "errores": [],
+    "sinManejar": [
+      "GET /api/v1/suscripcion"
+    ]
+  },
+  {
+    "nombre": "carga-lista-claro-360",
+    "axe": [],
+    "desborde": 0,
+    "errores": [],
+    "sinManejar": [
+      "GET /api/v1/suscripcion"
+    ]
+  },
+  {
+    "nombre": "carga-lista-claro-1440",
+    "axe": [],
+    "desborde": 0,
+    "errores": [],
+    "sinManejar": [
+      "GET /api/v1/suscripcion"
+    ]
+  },
+  {
+    "nombre": "carga-lista-oscuro-360",
+    "axe": [],
+    "desborde": 0,
+    "errores": [],
+    "sinManejar": [
+      "GET /api/v1/suscripcion"
+    ]
+  },
+  {
+    "nombre": "carga-lista-oscuro-1440",
+    "axe": [],
+    "desborde": 0,
+    "errores": [],
+    "sinManejar": [
+      "GET /api/v1/suscripcion"
+    ]
+  },
+  {
+    "nombre": "carga-pegado-claro-360",
+    "axe": [],
+    "desborde": 0,
+    "errores": [],
+    "sinManejar": [
+      "GET /api/v1/suscripcion"
+    ]
+  },
+  {
+    "nombre": "carga-pegado-claro-1440",
+    "axe": [],
+    "desborde": 0,
+    "errores": [],
+    "sinManejar": [
+      "GET /api/v1/suscripcion"
+    ]
+  },
+  {
+    "nombre": "carga-pegado-oscuro-360",
+    "axe": [],
+    "desborde": 0,
+    "errores": [],
+    "sinManejar": [
+      "GET /api/v1/suscripcion"
+    ]
+  },
+  {
+    "nombre": "carga-pegado-oscuro-1440",
+    "axe": [],
+    "desborde": 0,
+    "errores": [],
+    "sinManejar": [
+      "GET /api/v1/suscripcion"
+    ]
+  }
+]
