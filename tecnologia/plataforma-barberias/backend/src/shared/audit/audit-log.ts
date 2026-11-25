@@ -22,6 +22,9 @@ export type AccionAuditada =
   | 'ENLACE_CAMBIADO'
   | 'SERVICIO_DESACTIVADO'
   | 'BARBERO_DESACTIVADO'
+  // Funcionalidad 011 (research R07): recurso `lote:<id>;cantidad=<n>`. Nunca los nombres de lo creado.
+  | 'SERVICIOS_CARGADOS_EN_LOTE'
+  | 'BARBEROS_CARGADOS_EN_LOTE'
   | 'BLOQUEO_CON_CONFLICTO'
   | 'CAMBIO_CON_CONFLICTO'
   | 'CITA_RESERVADA'

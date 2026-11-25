@@ -58,8 +58,27 @@ export class FueraDelHorarioDeAtencion extends ErrorDeAplicacion {
 
 export class LimiteBarberosAlcanzado extends ErrorDeAplicacion {
   readonly codigo = 'SUSCRIPCION_NO_PERMITE';
-  constructor(maximo: number) {
-    super('Tu plan no permite más barberos activos.', [{ motivo: 'LIMITE_BARBEROS', maximo }]);
+  /** `lote` (011): con la carga en lote, también cuántos activos hay y cuántos se pidieron. */
+  constructor(maximo: number, lote?: { activos: number; solicitados: number }) {
+    super('Tu plan no permite más barberos activos.', [{ motivo: 'LIMITE_BARBEROS', maximo, ...lote }]);
+  }
+}
+
+/** Un problema de una fila de una carga en lote (011). `fila` es null si el problema es de la carga entera. */
+export interface ProblemaDeFila {
+  fila: number | null;
+  campo: string;
+  problema: string;
+}
+
+/** 011 (FR-011): la carga tiene errores en sus filas; no se creó nada. Detalles: los problemas por fila. */
+export class CargaInvalida extends ErrorDeAplicacion {
+  readonly codigo = 'CARGA_INVALIDA';
+  constructor(errores: readonly ProblemaDeFila[]) {
+    super(
+      'Hay filas con errores. Corrígelas y vuelve a intentar.',
+      errores.map((e) => ({ ...e })),
+    );
   }
 }
 
@@ -159,5 +178,13 @@ export class TransicionInvalida extends ErrorDeAplicacion {
   readonly codigo = 'TRANSICION_INVALIDA';
   constructor(desde: string, hacia: string) {
     super('Ese cambio de estado no es válido para la cita.', [{ desde, hacia }]);
+  }
+}
+
+/** 011 (research R06): la Idempotency-Key ya se usó con otra carga (otro tipo u otras filas). No se creó nada. */
+export class IdempotenciaDeCargaConflicto extends ErrorDeAplicacion {
+  readonly codigo = 'IDEMPOTENCIA_CONFLICTO';
+  constructor() {
+    super('Esa clave ya se usó con otra carga. Revisa la carga y vuelve a guardarla.');
   }
 }

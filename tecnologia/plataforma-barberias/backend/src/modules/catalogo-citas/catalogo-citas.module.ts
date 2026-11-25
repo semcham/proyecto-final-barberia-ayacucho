@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { AccesoBarberiasModule } from '../acceso-barberias';
 import { SuscripcionesPagosModule } from '../suscripciones-pagos';
 import { AutorizacionCatalogoCitas } from './catalogo/application/autorizacion';
+import { CargarServicios, RevisarCargaServicios } from './catalogo/application/carga-lote';
 import {
   ActualizarBarbero,
   CrearBarbero,
@@ -23,6 +24,7 @@ import {
 import {
   BarberoRepository,
   BloqueoRepository,
+  CargaLoteRepository,
   CitasActivasQuery,
   HorarioRepository,
   ServicioRepository,
@@ -35,6 +37,7 @@ import {
   KyselyHorarioRepository,
   KyselyServicioRepository,
 } from './catalogo/infrastructure/kysely-catalogo-repositorios';
+import { KyselyCargaLoteRepository } from './catalogo/infrastructure/kysely-carga-lote-repository';
 import { BarberosController } from './catalogo/presentation/barberos.controller';
 import { DisponibilidadController } from './catalogo/presentation/disponibilidad.controller';
 import { HorarioAtencionController } from './catalogo/presentation/horario-atencion.controller';
@@ -107,9 +110,14 @@ import { KyselyReportesDeCitasQuery } from './citas/infrastructure/reportes-de-c
     { provide: HorarioRepository, useClass: KyselyHorarioRepository },
     { provide: BloqueoRepository, useClass: KyselyBloqueoRepository },
     { provide: CitasActivasQuery, useClass: KyselyCitasActivasQuery },
+    // 011: cargas en lote guardadas (idempotencia).
+    { provide: CargaLoteRepository, useClass: KyselyCargaLoteRepository },
     ListarServicios,
     CrearServicio,
     ActualizarServicio,
+    // 011 (US1): servicios en lote.
+    RevisarCargaServicios,
+    CargarServicios,
     ReglasBarbero,
     ListarBarberos,
     CrearBarbero,

@@ -40,6 +40,8 @@ export const ESTADO_POR_CODIGO: Record<string, number> = {
   IDEMPOTENCIA_CONFLICTO: 422,
   TRANSICION_INVALIDA: 422,
   FUERA_DEL_HORARIO_DE_ATENCION: 422,
+  // Funcionalidad 011 (specs/011-carga-masiva-catalogo/contracts/openapi.yaml): errores por fila de una carga en lote.
+  CARGA_INVALIDA: 400,
   // Funcionalidad 003 (specs/003-suscripciones-pagos/contracts/openapi.yaml).
   PAGO_ADELANTADO_NO_PERMITIDO: 409,
   COMPROBANTE_YA_EN_REVISION: 409,

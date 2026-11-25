@@ -10,31 +10,74 @@ export interface DatosServicio {
   duracionMin: number;
 }
 
+/** Un problema de un campo: el mismo par que lleva `DatoInvalido` en sus detalles. */
+export interface ProblemaDeCampo {
+  campo: string;
+  problema: string;
+}
+
+// Cada regla devuelve su problema o null. Son la ÚNICA fuente de las reglas de un servicio: las usan la creación y la
+// edición (que fallan con el primer problema) y la carga en lote de 011 (que los muestra todos).
+
+function problemaDeNombre(nombre: string): ProblemaDeCampo | null {
+  const largo = [...nombre.trim()].length;
+  return largo < 2 || largo > 80 ? { campo: 'nombre', problema: 'longitud' } : null;
+}
+
+function problemaDeDescripcion(descripcion: string | null | undefined): ProblemaDeCampo | null {
+  return [...(descripcion?.trim() ?? '')].length > 300
+    ? { campo: 'descripcion', problema: 'longitud' }
+    : null;
+}
+
+function problemaDePrecio(precio: string): ProblemaDeCampo | null {
+  return PRECIO.test(precio) ? null : { campo: 'precio', problema: 'formato' };
+}
+
+function problemaDeDuracion(duracion: number): ProblemaDeCampo | null {
+  if (!Number.isInteger(duracion) || duracion < 5 || duracion > 480) {
+    return { campo: 'duracionMinutos', problema: 'rango' };
+  }
+  return duracion % 5 !== 0 ? { campo: 'duracionMinutos', problema: 'multiplo_de_5' } : null;
+}
+
+/**
+ * 011 (research R02): todos los problemas de unos datos de servicio, en el orden en que se comprueban al crear uno.
+ * Lista vacía = datos válidos.
+ */
+export function problemasDeServicio(datos: DatosServicio): ProblemaDeCampo[] {
+  return [
+    problemaDeNombre(datos.nombre),
+    problemaDeDescripcion(datos.descripcion),
+    problemaDePrecio(datos.precio),
+    problemaDeDuracion(datos.duracionMin),
+  ].filter((p): p is ProblemaDeCampo => p !== null);
+}
+
+function exigir(problema: ProblemaDeCampo | null): void {
+  if (problema) throw new DatoInvalido(problema.campo, problema.problema);
+}
+
 function nombreValido(nombre: string): string {
-  const limpio = nombre.trim();
-  const largo = [...limpio].length;
-  if (largo < 2 || largo > 80) throw new DatoInvalido('nombre', 'longitud');
-  return limpio;
+  exigir(problemaDeNombre(nombre));
+  return nombre.trim();
 }
 
 function descripcionValida(descripcion: string | null | undefined): string | null {
+  exigir(problemaDeDescripcion(descripcion));
   const limpia = descripcion?.trim() ?? '';
-  if ([...limpia].length > 300) throw new DatoInvalido('descripcion', 'longitud');
   return limpia === '' ? null : limpia;
 }
 
 /** Precio normalizado a dos decimales, como lo guarda `numeric(10,2)`: "25.5" → "25.50". */
 function precioValido(precio: string): string {
-  if (!PRECIO.test(precio)) throw new DatoInvalido('precio', 'formato');
+  exigir(problemaDePrecio(precio));
   const [enteros, decimales = ''] = precio.split('.');
   return `${Number(enteros)}.${decimales.padEnd(2, '0')}`;
 }
 
 function duracionValida(duracion: number): number {
-  if (!Number.isInteger(duracion) || duracion < 5 || duracion > 480) {
-    throw new DatoInvalido('duracionMinutos', 'rango');
-  }
-  if (duracion % 5 !== 0) throw new DatoInvalido('duracionMinutos', 'multiplo_de_5');
+  exigir(problemaDeDuracion(duracion));
   return duracion;
 }
 

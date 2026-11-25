@@ -16,6 +16,38 @@ export abstract class ServicioRepository {
   abstract crear(servicio: Servicio): Promise<void>;
   /** Lanza `NombreDuplicado` como `crear`. */
   abstract actualizar(servicio: Servicio): Promise<void>;
+  /**
+   * 011: de los nombres dados, las claves (`claveDeNombre`) de los que ya usa un servicio de la barbería, activo o no
+   * (la misma comparación que el índice `service_nombre_unico`).
+   */
+  abstract nombresExistentes(nombres: readonly string[]): Promise<Set<string>>;
+  /** 011: crea varios en una sola instrucción. Lanza `NombreDuplicado` como `crear` (y no crea ninguno). */
+  abstract crearVarios(servicios: readonly Servicio[]): Promise<void>;
+}
+
+/** 011 (research R06): una carga en lote ya guardada, para responder igual a sus reintentos. */
+export interface CargaGuardada {
+  id: string;
+  autorId: string;
+  clave: string;
+  tipo: 'SERVICIOS' | 'BARBEROS';
+  huella: string;
+  ids: string[];
+}
+
+/** La clave ya la usó otra carga del mismo autor, guardada mientras esta se procesaba (índice único). */
+export class ClaveDeCargaEnUso extends Error {
+  constructor() {
+    super('La clave de idempotencia de la carga ya está en uso');
+    this.name = 'ClaveDeCargaEnUso';
+  }
+}
+
+/** 011 · Cargas en lote guardadas (tabla catalog_batch), en la transacción del caso de uso. */
+export abstract class CargaLoteRepository {
+  abstract buscar(autorId: string, clave: string): Promise<CargaGuardada | null>;
+  /** Lanza `ClaveDeCargaEnUso` si el autor ya guardó una carga con esa clave. */
+  abstract guardar(carga: CargaGuardada): Promise<void>;
 }
 
 export abstract class BarberoRepository {

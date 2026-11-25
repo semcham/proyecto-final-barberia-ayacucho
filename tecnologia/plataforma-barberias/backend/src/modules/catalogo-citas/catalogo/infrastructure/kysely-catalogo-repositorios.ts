@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { sql } from 'kysely';
 import { v7 as uuidv7 } from 'uuid';
 import { HorarioSemanal, KyselyUnitOfWork, TenantContext } from '../../../../shared';
 import { ESTADOS_ACTIVOS } from '../../citas/domain/estado-cita';
@@ -12,6 +13,7 @@ import {
 } from '../application/ports/catalogo-repositorios';
 import { Barbero } from '../domain/barbero';
 import { Bloqueo } from '../domain/bloqueo';
+import { claveDeNombre } from '../domain/carga-lote';
 import { NombreDuplicado, UsuarioYaVinculado } from '../domain/errores';
 import { Servicio } from '../domain/servicio';
 
@@ -106,6 +108,40 @@ export class KyselyServicioRepository extends RepositorioDelTenant implements Se
           duration_min: servicio.duracionMin,
           active: servicio.activo,
         })
+        .execute();
+    } catch (error) {
+      throw traducirUnicidad(error);
+    }
+  }
+
+  async nombresExistentes(nombres: readonly string[]): Promise<Set<string>> {
+    const claves = [...new Set(nombres.map(claveDeNombre).filter((c) => c !== ''))];
+    if (claves.length === 0) return new Set();
+    const filas = await this.tx
+      .selectFrom('service')
+      .select(sql<string>`lower(name)`.as('clave'))
+      .where('tenant_id', '=', this.tenantId)
+      .where(sql<string>`lower(name)`, 'in', claves)
+      .execute();
+    return new Set(filas.map((f) => f.clave));
+  }
+
+  async crearVarios(servicios: readonly Servicio[]): Promise<void> {
+    if (servicios.length === 0) return;
+    try {
+      await this.tx
+        .insertInto('service')
+        .values(
+          servicios.map((servicio) => ({
+            id: servicio.id,
+            tenant_id: this.tenantId,
+            name: servicio.nombre,
+            description: servicio.descripcion,
+            price: servicio.precio,
+            duration_min: servicio.duracionMin,
+            active: servicio.activo,
+          })),
+        )
         .execute();
     } catch (error) {
       throw traducirUnicidad(error);

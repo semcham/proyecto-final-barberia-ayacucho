@@ -6,11 +6,19 @@ export interface DatosBarbero {
   servicioIds: readonly string[];
 }
 
+/**
+ * 011 (research R02): todos los problemas de los datos propios de un barbero (hoy, solo el nombre visible). Es la única
+ * fuente de la regla: la usan la creación y el cambio de nombre (que fallan con el primero) y la carga en lote.
+ */
+export function problemasDeBarbero(datos: { nombre: string }): { campo: string; problema: string }[] {
+  const largo = [...datos.nombre.trim()].length;
+  return largo < 2 || largo > 80 ? [{ campo: 'nombre', problema: 'longitud' }] : [];
+}
+
 function nombreValido(nombre: string): string {
-  const limpio = nombre.trim();
-  const largo = [...limpio].length;
-  if (largo < 2 || largo > 80) throw new DatoInvalido('nombre', 'longitud');
-  return limpio;
+  const [problema] = problemasDeBarbero({ nombre });
+  if (problema) throw new DatoInvalido(problema.campo, problema.problema);
+  return nombre.trim();
 }
 
 /**

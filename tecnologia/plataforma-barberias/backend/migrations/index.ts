@@ -35,6 +35,7 @@ import * as m0033 from './0033_auditoria_indicadores';
 import * as m0034 from './0034_vistas_de_conteo';
 import * as m0035 from './0035_intentos_con_hash';
 import * as m0036 from './0036_acceso_verificado';
+import * as m0037 from './0037_carga_lote';
 
 // Registro explícito de migraciones, en orden. Cada historia agrega aquí las suyas.
 // (Un proveedor estático evita depender de importaciones dinámicas de archivos .ts.)
@@ -81,6 +82,8 @@ const MIGRACIONES: Record<string, Migration> = {
   // 010 (T037): verificación del correo, enlaces de cuenta, sus intentos, las funciones de sistema y los avisos de la
   // cuenta (constitución 1.8.0, ADR-036).
   '0036_acceso_verificado': m0036,
+  // 011 (T012): cargas en lote del catálogo (idempotencia de la carga de servicios y barberos).
+  '0037_carga_lote': m0037,
 };
 
 /** Nombre de la última migración que conoce el código (GET /salud/listo, 006). */

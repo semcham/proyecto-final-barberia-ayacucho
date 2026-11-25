@@ -708,6 +708,19 @@ export interface PlatformMembershipCountsView {
   users: number;
 }
 
+/** 011 (migración 0037): una carga en lote del catálogo ya guardada (idempotencia de la carga). */
+export interface CatalogBatchTable {
+  id: string;
+  tenant_id: string;
+  author_user_id: string;
+  idempotency_key: string;
+  kind: 'SERVICIOS' | 'BARBEROS';
+  rows_digest: string;
+  created_count: number;
+  created_ids: string[];
+  created_at: Generated<Date>;
+}
+
 export interface Database {
   tenant: TenantTable;
   role: RoleTable;
@@ -750,6 +763,7 @@ export interface Database {
   action_link_attempt: ActionLinkAttemptTable;
   account_link: AccountLinkTable;
   account_link_attempt: AccountLinkAttemptTable;
+  catalog_batch: CatalogBatchTable;
   booking_deposit_file: BookingDepositFileTable;
   booking_deposit_settings: BookingDepositSettingsTable;
   booking_deposit: BookingDepositTable;
