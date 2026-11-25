@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -72,10 +72,12 @@ function renderizar(ruta: string) {
 afterEach(() => tokenEnMemoria.limpiar());
 
 describe('Enlace "Preguntar al asistente" (T039)', () => {
-  it('en Mis citas, para el cliente con sesión, lleva a /asistente', async () => {
+  it('en Mis citas, para el cliente con sesión, la pestaña «Asistente» del panel lleva a /asistente', async () => {
     servidor.use(sesion('CLIENTE'), catalogo, historial);
     renderizar('/mis-citas');
-    expect(await screen.findByRole('link', { name: ENLACE })).toHaveAttribute('href', '/asistente');
+    // Rediseño del 2026-11-24: el enlace vive en el menú del panel del cliente.
+    const menu = await screen.findByRole('navigation', { name: /panel del cliente/i });
+    expect(within(menu).getByRole('link', { name: 'Asistente' })).toHaveAttribute('href', '/asistente');
   });
 
   it('en el catálogo de SU barbería, para el cliente con sesión, lleva a /asistente', async () => {
@@ -116,7 +118,12 @@ describe('Enlace "Preguntar al asistente" (T039)', () => {
     servidor.use(sesion('CLIENTE'), catalogo);
     const { container: cliente } = renderizar(`/b/${SLUG}`);
     await screen.findByRole('link', { name: ENLACE });
-    expect([...cliente.querySelectorAll('h1, h2')].map((h) => h.textContent)).toEqual(encabezadosVisitante);
+    // Solo cambia el título de la invitación final (al visitante le pide ingresar; al cliente, reservar).
+    const sinInvitacion = (titulos: (string | null)[]) => titulos.filter((t) => !/reserva/i.test(t ?? ''));
+    const encabezadosCliente = [...cliente.querySelectorAll('h1, h2')].map((h) => h.textContent);
+    expect(sinInvitacion(encabezadosCliente)).toEqual(sinInvitacion(encabezadosVisitante));
+    expect(encabezadosCliente).toContain('Reserva tu próxima cita');
+    expect(encabezadosVisitante).toContain('Para reservar tu cita, ingresa o crea tu cuenta');
     expect(cliente.querySelectorAll('a[href="/asistente"]')).toHaveLength(1);
   });
 });

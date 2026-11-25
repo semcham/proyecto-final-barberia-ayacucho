@@ -27,7 +27,7 @@ type Formulario = z.infer<typeof esquema>;
 export default function IngresarBarberia() {
   const { slug = '' } = useParams();
   const estadoNavegacion = useLocation().state as { desde?: string; mensaje?: string } | null;
-  const desde = estadoNavegacion?.desde ?? `/b/${slug}`;
+  const desde = estadoNavegacion?.desde ?? '/mis-citas';
   const navegar = useNavigate();
   const { estado, usuario, iniciarSesion } = useSesion();
   const [error, setError] = useState<string | null>(null);

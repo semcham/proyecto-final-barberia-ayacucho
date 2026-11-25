@@ -39,7 +39,7 @@ type Formulario = z.infer<typeof esquema>;
 /** Registro de cliente desde el enlace de la barbería (HU06, RF05): deja la sesión abierta en ella. */
 export default function RegistroCliente() {
   const { slug = '' } = useParams();
-  const desde = (useLocation().state as { desde?: string } | null)?.desde ?? `/b/${slug}`;
+  const desde = (useLocation().state as { desde?: string } | null)?.desde ?? '/mis-citas';
   const navegar = useNavigate();
   const { establecer } = useSesion();
   const {

@@ -1,5 +1,5 @@
-/* Asistente del cliente (/asistente, 005): una columna centrada, cómoda a 360 px, con los tokens de tema. La
-   conversación tiene sus estilos en components/app/Conversacion.module.css. */
+/* Asistente del cliente (/asistente, 005): dentro del panel del cliente, una columna cómoda a 360 px. La conversación
+   tiene sus estilos en components/app/Conversacion.module.css. */
 
 .pagina {
   display: flex;
@@ -7,21 +7,4 @@
   gap: var(--espacio-5);
   width: 100%;
   max-width: 48rem;
-  margin: 0 auto;
-  padding: var(--espacio-6) var(--espacio-4) var(--espacio-12);
-}
-
-.cabecera {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--espacio-4);
-}
-
-.titulo h1 {
-  margin: 0 0 var(--espacio-1);
-}
-
-.titulo p {
-  margin: 0;
 }

@@ -162,7 +162,7 @@ describe('Registro de cliente desde el enlace (/b/:slug/registro)', () => {
     expect(screen.getByText(/ingresa un teléfono válido/i)).toBeInTheDocument();
   });
 
-  it('con datos válidos registra en esa barbería, guarda el token y vuelve al catálogo', async () => {
+  it('con datos válidos registra en esa barbería, guarda el token y aterriza en su panel (Mis citas)', async () => {
     indicadorSesion.quitar();
     let cuerpo: unknown;
     servidor.use(
@@ -180,8 +180,8 @@ describe('Registro de cliente desde el enlace (/b/:slug/registro)', () => {
     await usuario.click(screen.getByLabelText(/política de tratamiento de datos/i));
     await usuario.click(screen.getByRole('button', { name: /crear mi cuenta/i }));
 
-    expect(await screen.findByRole('heading', { name: /catálogo de la barbería/i })).toBeInTheDocument();
-    expect(rutaActual()).toBe(`/b/${SLUG}`);
+    expect(await screen.findByRole('heading', { name: 'Mis citas' })).toBeInTheDocument();
+    expect(rutaActual()).toBe('/mis-citas');
     expect(tokenEnMemoria.obtener()).toBe(`token-${SLUG}`);
     expect(cuerpo).toEqual({
       barberia: SLUG,
@@ -259,7 +259,9 @@ describe('Ingreso desde el enlace (/b/:slug/ingresar)', () => {
     await usuario.click(casilla);
     await usuario.click(screen.getByRole('button', { name: /unirme y continuar/i }));
 
-    expect(await screen.findByRole('heading', { name: /catálogo de la barbería/i })).toBeInTheDocument();
+    // Sin trámite pendiente, tras unirse aterriza en su panel.
+    expect(await screen.findByRole('heading', { name: 'Mis citas' })).toBeInTheDocument();
+    expect(rutaActual()).toBe('/mis-citas');
     expect(cuerpos).toEqual([
       { correo: 'luis@prueba.pe', contrasena: 'mi corte de los sabados', barberia: SLUG },
       {
@@ -351,7 +353,8 @@ describe('Reserva (/b/:slug/reservar)', () => {
     conSesionYCatalogo();
     renderizar(`/b/${SLUG}/reservar?${SELECCION}`);
     const resumen = await screen.findByRole('region', { name: /confirma tu cita/i });
-    expect(resumen).toHaveTextContent('Barbería Huamanga');
+    expect(screen.getByRole('heading', { level: 1, name: 'Reservar una cita' })).toBeInTheDocument();
+    expect(screen.getAllByText('Barbería Huamanga').length).toBeGreaterThan(0);
     expect(resumen).toHaveTextContent('Corte clásico');
     expect(resumen).toHaveTextContent('Carlos Ñaupa');
     expect(resumen).toHaveTextContent(/martes,? 20 de octubre/i);
@@ -374,9 +377,9 @@ describe('Reserva (/b/:slug/reservar)', () => {
     );
     renderizar(`/b/${SLUG}/reservar?${SELECCION}`);
     const usuario = userEvent.setup();
-    await usuario.click(await screen.findByRole('button', { name: /confirmar reserva/i }));
+    await usuario.click(await screen.findByRole('button', { name: /confirmar cita/i }));
     expect(await screen.findByRole('alert')).toHaveTextContent(/no pudimos conectar/i);
-    await usuario.click(screen.getByRole('button', { name: /confirmar reserva/i }));
+    await usuario.click(screen.getByRole('button', { name: /confirmar cita/i }));
 
     const hecho = await screen.findByRole('region', { name: /tu cita está confirmada/i });
     expect(claves).toHaveLength(2);
@@ -417,7 +420,7 @@ describe('Reserva (/b/:slug/reservar)', () => {
       ),
     );
     renderizar(`/b/${SLUG}/reservar?${SELECCION}`);
-    await userEvent.setup().click(await screen.findByRole('button', { name: /confirmar reserva/i }));
+    await userEvent.setup().click(await screen.findByRole('button', { name: /confirmar cita/i }));
     expect(await screen.findByRole('heading', { name: 'Pagar adelanto' })).toBeInTheDocument();
     expect(rutaActual()).toBe(`/mis-citas/${CITA.id}/adelanto`);
   });
@@ -433,18 +436,20 @@ describe('Reserva (/b/:slug/reservar)', () => {
     );
     renderizar(`/b/${SLUG}/reservar?${SELECCION}`);
     const usuario = userEvent.setup();
-    await usuario.click(await screen.findByRole('button', { name: /confirmar reserva/i }));
+    await usuario.click(await screen.findByRole('button', { name: /confirmar cita/i }));
     await screen.findByRole('alert');
     await usuario.click(screen.getByRole('button', { name: /elegir otra hora/i }));
     expect(await screen.findByText('11:00 (hora de la barbería)')).toBeInTheDocument();
-    await usuario.click(screen.getByRole('button', { name: /confirmar reserva/i }));
+    await usuario.click(screen.getByRole('button', { name: /confirmar cita/i }));
     await screen.findByRole('alert');
 
     expect(claves).toHaveLength(2);
     expect(claves[1]).not.toBe(claves[0]);
   });
 
-  it('ante 409 HORARIO_NO_DISPONIBLE vuelve al catálogo del mismo día y pide de nuevo los horarios', async () => {
+  // Rediseño del 2026-11-24: la reserva guiada ya no vuelve al catálogo; se queda en la reserva con el servicio y el
+  // barbero, y "Elegir otra hora" lleva al paso 3 del mismo día, con los horarios vueltos a pedir.
+  it('ante 409 HORARIO_NO_DISPONIBLE lo explica y "Elegir otra hora" vuelve al paso 3 del mismo día', async () => {
     conSesionYCatalogo();
     servidor.use(
       http.post('/api/v1/citas', () =>
@@ -455,12 +460,93 @@ describe('Reserva (/b/:slug/reservar)', () => {
     const claveHorarios = clavesConsulta.horarios(SLUG, SERVICIO, '2026-10-20');
     consultas.setQueryData(claveHorarios, { horas: [] });
     renderizar(`/b/${SLUG}/reservar?${SELECCION}`, consultas);
-    await userEvent.setup().click(await screen.findByRole('button', { name: /confirmar reserva/i }));
+    const usuario = userEvent.setup();
+    await usuario.click(await screen.findByRole('button', { name: /confirmar cita/i }));
 
-    expect(await screen.findByRole('heading', { name: /catálogo de la barbería/i })).toBeInTheDocument();
-    expect(rutaActual()).toBe(`/b/${SLUG}?servicio=${SERVICIO}&fecha=2026-10-20`);
-    // Los horarios guardados de ese día quedan vencidos: el catálogo los vuelve a pedir al montarse.
+    expect(await screen.findByRole('alert')).toHaveTextContent('Ese horario acaba de ocuparse. Elige otro.');
+    expect(screen.getByRole('button', { name: /confirmar cita/i })).toBeDisabled();
+    // Los horarios guardados de ese día quedan vencidos: el paso 3 los vuelve a pedir.
     expect(consultas.getQueryState(claveHorarios)?.isInvalidated).toBe(true);
+
+    const enPagina = screen.getAllByRole('button', { name: /elegir otra hora/i });
+    await usuario.click(enPagina[0]);
+    expect(await screen.findByRole('heading', { name: /qué día y a qué hora/i })).toBeInTheDocument();
+    const ruta = new URLSearchParams(rutaActual()?.split('?')[1]);
+    expect(ruta.get('servicio')).toBe(SERVICIO);
+    expect(ruta.get('barbero')).toBe(BARBERO);
+    expect(ruta.get('fecha')).toBe('2026-10-20');
+    expect(ruta.get('inicio')).toBeNull();
+  });
+
+  // Rediseño del 2026-11-24: reserva guiada de punta a punta (1 Servicio, 2 Barbero, 3 Día y hora, 4 Confirmar).
+  it('reserva guiada: servicio, barbero, día y hora, y confirmar, sin perder lo elegido', async () => {
+    const abiertoSiempre: Catalogo = {
+      ...CATALOGO,
+      horario: {
+        tramos: [0, 1, 2, 3, 4, 5, 6].map((d) => ({ diaSemana: d, inicio: '09:00', fin: '19:00' })),
+      },
+    };
+    const consultasHorarios: string[] = [];
+    let cuerpo: Record<string, unknown> | undefined;
+    servidor.use(
+      http.post('/api/v1/auth/refresh', () => HttpResponse.json(sesionCliente())),
+      http.get(`/api/v1/publico/${SLUG}`, () => HttpResponse.json(abiertoSiempre)),
+      http.get(`/api/v1/publico/${SLUG}/horarios`, ({ request }) => {
+        const parametros = new URL(request.url).searchParams;
+        consultasHorarios.push(parametros.toString());
+        const fecha = parametros.get('fecha') as string;
+        return HttpResponse.json({
+          fecha,
+          zonaHoraria: 'America/Lima',
+          calculadoEn: new Date().toISOString(),
+          servicioId: SERVICIO,
+          horas: [
+            { inicio: `${fecha}T10:00:00-05:00`, barberoIds: [BARBERO] },
+            { inicio: `${fecha}T15:30:00-05:00`, barberoIds: [BARBERO] },
+          ],
+        });
+      }),
+      http.post('/api/v1/citas', async ({ request }) => {
+        cuerpo = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json({ ...CITA, inicio: cuerpo.inicio as string }, { status: 201 });
+      }),
+    );
+    renderizar(`/b/${SLUG}/reservar`);
+    const usuario = userEvent.setup();
+
+    // Paso 1: el servicio.
+    const progreso = await screen.findByRole('navigation', { name: /pasos de la reserva/i });
+    expect(within(progreso).getByText('Servicio').closest('[aria-current]')).toHaveAttribute(
+      'aria-current',
+      'step',
+    );
+    await usuario.click(screen.getByRole('button', { name: /corte clásico/i }));
+
+    // Paso 2: el barbero.
+    await usuario.click(await screen.findByRole('button', { name: /carlos ñaupa/i }));
+
+    // Paso 3: el día (el primero abierto viene elegido) y la hora; nada se reserva todavía.
+    expect(await screen.findByRole('heading', { name: /qué día y a qué hora/i })).toBeInTheDocument();
+    const tarde = await screen.findByRole('group', { name: /horas libres de la tarde/i });
+    await usuario.click(within(tarde).getByRole('button', { name: '15:30' }));
+    expect(within(tarde).getByRole('button', { name: '15:30' })).toHaveAttribute('aria-pressed', 'true');
+    expect(consultasHorarios[0]).toContain(`servicio=${SERVICIO}`);
+    const seleccion = screen.getByRole('region', { name: 'Tu selección' });
+    expect(seleccion).toHaveTextContent('Corte clásico · S/ 25.00');
+    expect(seleccion).toHaveTextContent('15:30');
+    await usuario.click(within(seleccion).getByRole('button', { name: /continuar/i }));
+
+    // Paso 4: confirmar, con todo lo elegido.
+    const resumen = await screen.findByRole('region', { name: /confirma tu cita/i });
+    expect(resumen).toHaveTextContent('Corte clásico · 30 min');
+    expect(resumen).toHaveTextContent('Carlos Ñaupa');
+    expect(resumen).toHaveTextContent('15:30 (hora de la barbería)');
+    expect(resumen).toHaveTextContent('S/ 25.00');
+    await usuario.click(screen.getByRole('button', { name: /confirmar cita/i }));
+
+    expect(await screen.findByRole('region', { name: /tu cita está confirmada/i })).toBeInTheDocument();
+    expect(cuerpo).toMatchObject({ servicioId: SERVICIO, barberoId: BARBERO });
+    expect(String(cuerpo?.inicio)).toMatch(/T15:30:00-05:00$/);
   });
 
   it('con la sesión en otra barbería cambia de barbería; si no es cliente de ella, pide unirse', async () => {

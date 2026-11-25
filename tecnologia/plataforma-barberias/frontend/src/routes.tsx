@@ -60,6 +60,11 @@ const Asistente = lazy(() => import('./pages/cliente/Asistente'));
 const PagarAdelanto = lazy(() => import('./pages/cliente/PagarAdelanto'));
 // Funcionalidad 007 (T015): solicitudes sobre datos personales del cliente, del barbero y bandeja del propietario.
 const MisDatos = lazy(() => import('./pages/cliente/MisDatos'));
+const MiCuenta = lazy(() => import('./pages/cliente/MiCuenta'));
+// Rediseño del 2026-11-24: el marco del panel del cliente (encabezado y navegación de 4 pestañas).
+const DisenoCliente = lazy(() =>
+  import('./components/app/DisenoCliente').then((m) => ({ default: m.DisenoCliente })),
+);
 const MisDatosBarbero = lazy(() => import('./pages/panel/MisDatos'));
 const SolicitudesDatos = lazy(() => import('./pages/panel/SolicitudesDatos'));
 const ReservarProtegida = lazy(() =>
@@ -150,7 +155,9 @@ export function RutasApp() {
             path="/mis-citas"
             element={
               <RutaProtegida roles={['CLIENTE']} sinSesion={sinSesionDe('mis-citas')}>
-                <MisCitas />
+                <DisenoCliente>
+                  <MisCitas />
+                </DisenoCliente>
               </RutaProtegida>
             }
           />
@@ -159,7 +166,9 @@ export function RutasApp() {
             path="/mis-citas/:citaId/adelanto"
             element={
               <RutaProtegida roles={['CLIENTE']} sinSesion={sinSesionDe('adelanto')}>
-                <PagarAdelanto />
+                <DisenoCliente>
+                  <PagarAdelanto />
+                </DisenoCliente>
               </RutaProtegida>
             }
           />
@@ -167,7 +176,9 @@ export function RutasApp() {
             path="/asistente"
             element={
               <RutaProtegida roles={['CLIENTE']} sinSesion={sinSesionDe('asistente')}>
-                <Asistente />
+                <DisenoCliente>
+                  <Asistente />
+                </DisenoCliente>
               </RutaProtegida>
             }
           />
@@ -175,7 +186,20 @@ export function RutasApp() {
             path="/mis-avisos"
             element={
               <RutaProtegida roles={['CLIENTE']} sinSesion={sinSesionDe('mis-avisos')}>
-                <CanalAviso />
+                <DisenoCliente>
+                  <CanalAviso />
+                </DisenoCliente>
+              </RutaProtegida>
+            }
+          />
+          {/* Rediseño del 2026-11-24: "Mi cuenta" reúne Mis datos y Cómo recibo mis avisos. */}
+          <Route
+            path="/mi-cuenta"
+            element={
+              <RutaProtegida roles={['CLIENTE']} sinSesion={sinSesionDe('mi-cuenta')}>
+                <DisenoCliente>
+                  <MiCuenta />
+                </DisenoCliente>
               </RutaProtegida>
             }
           />
@@ -183,7 +207,9 @@ export function RutasApp() {
             path="/mis-datos"
             element={
               <RutaProtegida roles={['CLIENTE']} sinSesion={sinSesionDe('mis-datos')}>
-                <MisDatos />
+                <DisenoCliente>
+                  <MisDatos />
+                </DisenoCliente>
               </RutaProtegida>
             }
           />

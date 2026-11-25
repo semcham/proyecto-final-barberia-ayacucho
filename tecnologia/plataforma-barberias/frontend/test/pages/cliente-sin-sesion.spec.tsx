@@ -111,7 +111,7 @@ describe('/mis-citas sin sesión', () => {
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Mis citas' })).toBeInTheDocument();
     expect(screen.getByText(/abre el enlace de tu barbería/i)).toBeInTheDocument();
-    expect(screen.getByText(/pulsa «ingresar»/i)).toBeInTheDocument();
+    expect(screen.getByText(/pulsa «ingresar para reservar»/i)).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Ingresar' })).not.toBeInTheDocument();
     // El personal tiene su propio ingreso.
     expect(screen.getByRole('link', { name: /ingresa al panel/i })).toHaveAttribute('href', '/ingresar');
@@ -163,7 +163,7 @@ describe('/mis-citas sin sesión', () => {
 // de la aplicación (RutasApp), para fijar también que cada ruta usa `sinSesion`.
 const CITA_ID = '0190a1b2-c3d4-7e5f-8a9b-000000000099';
 const PANTALLAS: { ruta: string; titulo: string; ultimoPaso: RegExp }[] = [
-  { ruta: '/asistente', titulo: 'Asistente', ultimoPaso: /«preguntar al asistente»/i },
+  { ruta: '/asistente', titulo: 'Asistente', ultimoPaso: /toca «asistente» en el menú de tu panel/i },
   { ruta: '/mis-avisos', titulo: 'Cómo recibo mis avisos', ultimoPaso: /«cómo recibo mis avisos»/i },
   { ruta: '/mis-datos', titulo: 'Mis datos', ultimoPaso: /«mis datos»/i },
   { ruta: `/mis-citas/${CITA_ID}/adelanto`, titulo: 'Pagar adelanto', ultimoPaso: /«pagar adelanto»/i },

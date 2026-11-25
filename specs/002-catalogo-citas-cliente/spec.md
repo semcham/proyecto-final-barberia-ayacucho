@@ -50,6 +50,8 @@ Una persona recibe el enlace de una barbería (por WhatsApp, redes o un cartel) 
 
 **Why this priority**: Es lo que convierte el catálogo en reservas: el cliente decide antes de registrarse. RF10 exige verlo sin autenticación.
 
+> **Cambio de interfaz del 2026-11-24 (decisión de producto):** sin sesión, la página de la barbería muestra solo la presentación (datos, horario de atención, servicios y barberos) y pide ingresar o crear la cuenta para reservar. Los horarios libres y la elección de hora se ven solo con sesión de cliente, en la reserva guiada. El backend no cambió: la ruta pública de horarios (escenario 2) sigue existiendo y sus garantías (escenarios 2 a 4) siguen vigentes, pero la interfaz ya no la usa sin sesión.
+
 **Independent Test**: Con una barbería configurada, abrir su enlace sin sesión, consultar servicios, barberos y horarios libres de una fecha, y verificar que coinciden con disponibilidad, bloqueos y citas existentes, y que la respuesta no contiene ningún dato personal.
 
 **Acceptance Scenarios**:

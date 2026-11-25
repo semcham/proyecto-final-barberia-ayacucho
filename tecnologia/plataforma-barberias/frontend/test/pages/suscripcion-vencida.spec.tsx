@@ -131,7 +131,7 @@ describe('Reserva con la barbería vencida', () => {
     );
     reservar();
     expect(await screen.findByText(NO_ACEPTA)).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /confirmar reserva/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /confirmar cita/i })).not.toBeInTheDocument();
     expect(screen.queryByText(/horario no disponible/i)).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: /volver a la barbería/i })).toHaveAttribute('href', `/b/${SLUG}`);
     expect(reservas).toBe(0);
@@ -151,9 +151,9 @@ describe('Reserva con la barbería vencida', () => {
       }),
     );
     reservar();
-    await userEvent.setup().click(await screen.findByRole('button', { name: /confirmar reserva/i }));
+    await userEvent.setup().click(await screen.findByRole('button', { name: /confirmar cita/i }));
     expect(await screen.findByText(NO_ACEPTA)).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /confirmar reserva/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /confirmar cita/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: /catálogo de la barbería/i })).not.toBeInTheDocument();
   });
 });

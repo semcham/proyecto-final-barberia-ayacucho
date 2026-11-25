@@ -145,8 +145,8 @@ describe('Aviso de verificación pendiente', () => {
     expect(region).not.toHaveTextContent('lucia@correo.pe');
     // La selección sigue en pantalla y no se puede confirmar todavía.
     expect(screen.getByText('Carlos Ñaupa')).toBeInTheDocument();
-    expect(screen.getByText('Corte clásico')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Confirmar reserva' })).toBeDisabled();
+    expect(screen.getByText('Corte clásico · 30 min')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Confirmar cita' })).toBeDisabled();
     expect(llamadas.citas).toBe(0);
 
     await userEvent
@@ -160,7 +160,7 @@ describe('Aviso de verificación pendiente', () => {
     const llamadas = servidorDelCliente({ verificado: true, verificadoAlComprobar: false });
     renderizar(RESERVA);
     const usuario = userEvent.setup();
-    await usuario.click(await screen.findByRole('button', { name: 'Confirmar reserva' }));
+    await usuario.click(await screen.findByRole('button', { name: 'Confirmar cita' }));
     const region = await aviso('reservar');
     expect(llamadas.citas).toBe(1);
     expect(screen.getByText('Carlos Ñaupa')).toBeInTheDocument();
@@ -175,7 +175,7 @@ describe('Aviso de verificación pendiente', () => {
     const usuario = userEvent.setup();
     const region = await aviso('reservar');
     await usuario.click(within(region).getByRole('button', { name: 'Ya lo verifiqué' }));
-    expect(await screen.findByRole('button', { name: 'Confirmar reserva' })).toBeEnabled();
+    expect(await screen.findByRole('button', { name: 'Confirmar cita' })).toBeEnabled();
     expect(
       screen.queryByRole('region', { name: 'Verifica tu correo para reservar' }),
     ).not.toBeInTheDocument();

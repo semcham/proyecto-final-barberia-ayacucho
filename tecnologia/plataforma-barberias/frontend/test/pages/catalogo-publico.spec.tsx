@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
@@ -8,17 +8,16 @@ import { tokenEnMemoria } from '../../src/api/client';
 import type { components } from '../../src/api/schema-002';
 import { indicadorSesion } from '../../src/auth/indicadorSesion';
 import { SesionProvider } from '../../src/auth/SesionProvider';
-import { fechaIsoDeBarberia } from '../../src/hora-barberia';
 import CatalogoPublico from '../../src/pages/publico/CatalogoPublico';
-import IngresarBarberia from '../../src/pages/publico/IngresarBarberia';
+import { diasDeAtencion } from '../../src/pages/publico/horario-atencion';
 import { ultimaBarberia } from '../../src/ultima-barberia';
 import { servidor } from '../setup';
 
-// T067 · Catálogo público por enlace (/b/:slug, RF10 y RF11): sin sesión, una solicitud para el catálogo y
-// una por fecha, horas en la hora de la barbería y acceso a la reserva.
+// Presentación pública de la barbería (/b/:slug; RF10; decisión de producto del 2026-11-24): sin sesión de cliente
+// solo se ve la barbería (datos, horario de atención, servicios y equipo). Los horarios libres y la reserva están en el
+// panel del cliente: aquí solo se invita a ingresar o crear la cuenta, y nunca se piden horarios libres.
 
 type Catalogo = components['schemas']['CatalogoPublico'];
-type Horarios = components['schemas']['HorariosLibres'];
 
 const SLUG = 'barberia-huamanga';
 const CORTE = '0190a1b2-c3d4-7e5f-8a9b-000000000001';
@@ -26,8 +25,6 @@ const BARBA = '0190a1b2-c3d4-7e5f-8a9b-000000000003';
 const CARLOS = '0190a1b2-c3d4-7e5f-8a9b-000000000002';
 const ROSA = '0190a1b2-c3d4-7e5f-8a9b-000000000004';
 const ZONA = 'America/Lima';
-const DIA_MS = 24 * 60 * 60 * 1000;
-const fechaEnDias = (dias: number) => fechaIsoDeBarberia(new Date(Date.now() + dias * DIA_MS), ZONA);
 
 const CATALOGO: Catalogo = {
   barberia: {
@@ -38,7 +35,13 @@ const CATALOGO: Catalogo = {
     descripcion: 'Cortes clásicos y modernos.',
     zonaHoraria: ZONA,
   },
-  horario: { tramos: [{ diaSemana: 2, inicio: '09:00', fin: '19:00' }] },
+  horario: {
+    tramos: [
+      { diaSemana: 2, inicio: '15:00', fin: '19:00' },
+      { diaSemana: 2, inicio: '09:00', fin: '13:00' },
+      { diaSemana: 6, inicio: '09:00', fin: '18:00' },
+    ],
+  },
   servicios: [
     {
       id: CORTE,
@@ -55,44 +58,36 @@ const CATALOGO: Catalogo = {
   ],
 };
 
-/** 10:00 libre con los dos barberos; 10:15, solo con Rosa (hora de Lima = UTC−5). */
-const horariosDe = (fecha: string, servicioId: string): Horarios => ({
-  fecha,
-  zonaHoraria: ZONA,
-  calculadoEn: `${fecha}T08:00:00-05:00`,
-  servicioId,
-  horas: [
-    { inicio: `${fecha}T10:00:00-05:00`, barberoIds: [CARLOS, ROSA] },
-    { inicio: `${fecha}T10:15:00-05:00`, barberoIds: [ROSA] },
-  ],
+const sesionCliente = (slug = SLUG) => ({
+  tokenAcceso: 'token-cliente',
+  tipo: 'Bearer',
+  expiraEn: 900,
+  usuario: {
+    correoVerificado: true,
+    id: '0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5c',
+    nombre: 'Luis Huamán',
+    correo: 'luis@prueba.pe',
+    rol: 'CLIENTE',
+    barberia: { id: '0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b', nombre: 'Otra o esta', slug },
+  },
 });
 
 function RutaActual() {
   const { pathname, search } = useLocation();
-  return <output data-testid="ruta">{pathname + search}</output>;
+  return <span data-testid="ruta">{pathname + search}</span>;
 }
 
-/** Pantalla de ingreso simulada: muestra a dónde volverá tras ingresar. */
-function IngresoSimulado() {
-  const estado = useLocation().state as { desde?: string } | null;
-  return (
-    <>
-      <h1>Ingreso de cliente</h1>
-      <output data-testid="desde">{estado?.desde}</output>
-    </>
-  );
-}
-
-function renderizar(ruta = `/b/${SLUG}`) {
+function renderizar() {
   render(
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-      <MemoryRouter initialEntries={[ruta]}>
+      <MemoryRouter initialEntries={[`/b/${SLUG}`]}>
         <SesionProvider>
           <Routes>
             <Route path="/b/:slug" element={<CatalogoPublico />} />
             <Route path="/b/:slug/registro" element={<h1>Registro de cliente</h1>} />
-            <Route path="/b/:slug/ingresar" element={<IngresoSimulado />} />
+            <Route path="/b/:slug/ingresar" element={<h1>Ingreso de cliente</h1>} />
             <Route path="/b/:slug/reservar" element={<h1>Reserva</h1>} />
+            <Route path="/mis-citas" element={<h1>Mis citas</h1>} />
           </Routes>
           <RutaActual />
         </SesionProvider>
@@ -101,322 +96,184 @@ function renderizar(ruta = `/b/${SLUG}`) {
   );
 }
 
-/** Registra las solicitudes de la vía pública y responde con el catálogo y los horarios de prueba. */
-function simularApi() {
-  const solicitudes: string[] = [];
+/** El catálogo de prueba; cuenta las solicitudes de horarios libres (la presentación no debe pedir ninguna). */
+function simularApi(catalogo: Catalogo = CATALOGO) {
+  const horarios: string[] = [];
   servidor.use(
-    http.get(`/api/v1/publico/${SLUG}`, ({ request }) => {
-      solicitudes.push(new URL(request.url).pathname);
-      return HttpResponse.json(CATALOGO);
-    }),
+    http.get(`/api/v1/publico/${SLUG}`, () => HttpResponse.json(catalogo)),
     http.get(`/api/v1/publico/${SLUG}/horarios`, ({ request }) => {
-      const url = new URL(request.url);
-      solicitudes.push(url.pathname + url.search);
-      return HttpResponse.json(
-        horariosDe(url.searchParams.get('fecha') as string, url.searchParams.get('servicio') as string),
-      );
+      horarios.push(request.url);
+      return HttpResponse.json({});
     }),
   );
-  return solicitudes;
+  return horarios;
 }
 
-const elegirFecha = (fecha: string) =>
-  fireEvent.change(screen.getByLabelText(/fecha/i), { target: { value: fecha } });
+const titulo = () => screen.findByRole('heading', { level: 1, name: 'Barbería Huamanga' });
 
 afterEach(() => {
   tokenEnMemoria.limpiar();
   ultimaBarberia.olvidar();
 });
 
-describe('Catálogo público (/b/:slug)', () => {
-  it('muestra la barbería, sus servicios con precio y duración y sus barberos', async () => {
+describe('Presentación pública (/b/:slug) sin sesión', () => {
+  it('muestra la barbería, sus datos, el horario de atención, los servicios y el equipo', async () => {
     indicadorSesion.quitar();
     simularApi();
     renderizar();
-    expect(await screen.findByRole('heading', { level: 1, name: 'Barbería Huamanga' })).toBeInTheDocument();
-    expect(screen.getByText('Jr. Asamblea 120, Ayacucho')).toBeInTheDocument();
-    const servicios = screen.getByRole('radiogroup', { name: /servicio/i });
-    expect(within(servicios).getByRole('radio', { name: /corte clásico/i })).toBeInTheDocument();
+    await titulo();
+    expect(screen.getByText('Cortes clásicos y modernos.')).toBeInTheDocument();
+    const contacto = screen.getByRole('list', { name: 'Datos de contacto' });
+    expect(contacto).toHaveTextContent('Jr. Asamblea 120, Ayacucho');
+    expect(within(contacto).getByRole('link', { name: '066 312345' })).toHaveAttribute(
+      'href',
+      'tel:066312345',
+    );
+
+    const servicios = screen.getByRole('region', { name: 'Servicios' });
+    expect(within(servicios).getByRole('heading', { name: 'Corte clásico' })).toBeInTheDocument();
     expect(servicios).toHaveTextContent('S/ 25.00');
     expect(servicios).toHaveTextContent('30 min');
-    expect(within(servicios).getByRole('radio', { name: /arreglo de barba/i })).toBeInTheDocument();
-    const barberos = screen.getByRole('combobox', { name: /barbero/i });
-    expect(within(barberos).getByRole('option', { name: /cualquier barbero/i })).toBeInTheDocument();
-    expect(within(barberos).getByRole('option', { name: 'Carlos Ñaupa' })).toBeInTheDocument();
-    expect(within(barberos).getByRole('option', { name: 'Rosa Quispe' })).toBeInTheDocument();
+    expect(servicios).toHaveTextContent('Con tijera y máquina.');
+
+    const equipo = screen.getByRole('region', { name: 'Nuestro equipo' });
+    expect(equipo).toHaveTextContent('Carlos Ñaupa');
+    expect(equipo).toHaveTextContent('CÑ');
+    expect(equipo).toHaveTextContent('Corte clásico · Arreglo de barba');
+
+    const horario = screen.getByRole('region', { name: 'Horario de atención' });
+    expect(horario).toHaveTextContent('Martes');
+    expect(horario).toHaveTextContent('09:00 – 13:00');
+    expect(horario).toHaveTextContent('15:00 – 19:00');
+    expect(horario).toHaveTextContent('Cerrado');
   });
 
-  it('al elegir servicio y fecha pide los horarios una vez por fecha y los muestra en la hora de la barbería', async () => {
+  it('no muestra el formulario de reserva ni pide horarios libres', async () => {
     indicadorSesion.quitar();
-    const solicitudes = simularApi();
+    const horarios = simularApi();
     renderizar();
-    const usuario = userEvent.setup();
-    await usuario.click(await screen.findByRole('radio', { name: /corte clásico/i }));
-    const fecha = fechaEnDias(3);
-    elegirFecha(fecha);
-
-    const horas = await screen.findByRole('group', { name: /horas libres/i });
-    expect(within(horas).getByRole('button', { name: '10:00' })).toBeInTheDocument();
-    expect(within(horas).getByRole('button', { name: '10:15' })).toBeInTheDocument();
-    expect(screen.getAllByText(/hora de la barbería/i).length).toBeGreaterThan(0);
-
-    // Elegir un barbero filtra en la interfaz, sin otra solicitud: 10:15 solo es de Rosa.
-    await usuario.selectOptions(screen.getByRole('combobox', { name: /barbero/i }), 'Carlos Ñaupa');
-    expect(within(horas).getByRole('button', { name: '10:00' })).toBeInTheDocument();
-    expect(within(horas).queryByRole('button', { name: '10:15' })).not.toBeInTheDocument();
-
-    // Una por fecha: hoy (la fecha por defecto al elegir el servicio) y la elegida; el barbero no pide nada.
-    expect(solicitudes.filter((s) => s.includes('/horarios'))).toEqual([
-      `/api/v1/publico/${SLUG}/horarios?servicio=${CORTE}&fecha=${fechaEnDias(0)}`,
-      `/api/v1/publico/${SLUG}/horarios?servicio=${CORTE}&fecha=${fecha}`,
-    ]);
-    expect(solicitudes.filter((s) => !s.includes('/horarios'))).toHaveLength(1);
-
-    // Otra fecha, otra solicitud.
-    elegirFecha(fechaEnDias(4));
-    await screen.findByRole('button', { name: '10:00' });
-    expect(solicitudes.filter((s) => s.includes('/horarios'))).toHaveLength(3);
+    await titulo();
+    expect(screen.queryByRole('radiogroup')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/fecha/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: 'Horas libres' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+    expect(horarios).toEqual([]);
   });
 
-  it('el selector de fecha se limita al horizonte de reserva desde hoy en la barbería', async () => {
+  it('invita a ingresar o crear la cuenta de ESTA barbería', async () => {
     indicadorSesion.quitar();
     simularApi();
     renderizar();
-    const campo = (await screen.findByLabelText(/fecha/i)) as HTMLInputElement;
-    expect(campo.min).toBe(fechaEnDias(0));
-    expect(campo.max).toBe(fechaEnDias(30));
+    await titulo();
+    expect(
+      screen.getByRole('heading', { name: 'Para reservar tu cita, ingresa o crea tu cuenta' }),
+    ).toBeInTheDocument();
+    for (const enlace of screen.getAllByRole('link', { name: /Ingresar para reservar/ })) {
+      expect(enlace).toHaveAttribute('href', `/b/${SLUG}/ingresar`);
+    }
+    for (const enlace of screen.getAllByRole('link', { name: 'Crear cuenta' })) {
+      expect(enlace).toHaveAttribute('href', `/b/${SLUG}/registro`);
+    }
+    await userEvent.setup().click(screen.getAllByRole('link', { name: /Ingresar para reservar/ })[0]);
+    expect(await screen.findByRole('heading', { name: 'Ingreso de cliente' })).toBeInTheDocument();
   });
 
-  it('un 404 muestra "barbería no disponible"', async () => {
+  it('sin servicios: "Esta barbería está preparando su catálogo. Vuelve pronto."', async () => {
+    indicadorSesion.quitar();
+    simularApi({ ...CATALOGO, servicios: [], barberos: [] });
+    renderizar();
+    await titulo();
+    expect(screen.getByText('Esta barbería está preparando su catálogo. Vuelve pronto.')).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Nuestro equipo' })).not.toBeInTheDocument();
+  });
+
+  it('sin horario en la API no inventa uno', async () => {
+    indicadorSesion.quitar();
+    simularApi({ ...CATALOGO, horario: { tramos: [] } });
+    renderizar();
+    await titulo();
+    expect(screen.queryByRole('region', { name: 'Horario de atención' })).not.toBeInTheDocument();
+  });
+
+  it('un 404 muestra "Barbería no disponible"', async () => {
     indicadorSesion.quitar();
     servidor.use(
       http.get(`/api/v1/publico/${SLUG}`, () =>
-        HttpResponse.json(
-          { codigo: 'BARBERIA_NO_DISPONIBLE', mensaje: 'Esta barbería no está disponible.', detalles: [] },
-          { status: 404 },
-        ),
+        HttpResponse.json({ codigo: 'BARBERIA_NO_DISPONIBLE', mensaje: 'x', detalles: [] }, { status: 404 }),
       ),
     );
     renderizar();
-    expect(await screen.findByRole('heading', { name: /barbería no disponible/i })).toBeInTheDocument();
-    expect(screen.queryByRole('radiogroup')).not.toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Barbería no disponible' })).toBeInTheDocument();
   });
-
-  it('sin sesión, reservar lleva al registro o al ingreso de la misma barbería con la selección', async () => {
-    indicadorSesion.quitar();
-    simularApi();
-    const fecha = fechaEnDias(3);
-    // Llega desde un 409 de la reserva: servicio y fecha ya elegidos, con el aviso.
-    renderizar(`/b/${SLUG}?servicio=${CORTE}&fecha=${fecha}`);
-    const usuario = userEvent.setup();
-    await usuario.click(await screen.findByRole('button', { name: '10:15' }));
-
-    const reservar = screen.getByRole('region', { name: /tu selección/i });
-    expect(reservar).toHaveTextContent('Rosa Quispe');
-    const destino = `/b/${SLUG}/reservar?servicio=${CORTE}&barbero=${ROSA}&inicio=${encodeURIComponent(`${fecha}T10:15:00-05:00`)}`;
-    expect(within(reservar).getByRole('link', { name: /crear cuenta/i })).toHaveAttribute(
-      'href',
-      `/b/${SLUG}/registro`,
-    );
-    await usuario.click(within(reservar).getByRole('link', { name: /ya tengo cuenta/i }));
-    expect(await screen.findByRole('heading', { name: /ingreso de cliente/i })).toBeInTheDocument();
-    expect(screen.getByTestId('ruta').textContent).toBe(`/b/${SLUG}/ingresar`);
-    // Tras ingresar vuelve directo a la confirmación de esa hora.
-    expect(screen.getByTestId('desde').textContent).toBe(destino);
-  });
-
-  it('con sesión de cliente, reservar abre la confirmación con el primer barbero libre si se eligió "cualquiera"', async () => {
-    simularApi();
-    servidor.use(
-      http.post('/api/v1/auth/refresh', () =>
-        HttpResponse.json({
-          tokenAcceso: 'token-cliente',
-          tipo: 'Bearer',
-          expiraEn: 900,
-          usuario: {
-            correoVerificado: true,
-            id: '0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5c',
-            nombre: 'Luis Huamán',
-            correo: 'luis@prueba.pe',
-            rol: 'CLIENTE',
-            barberia: { id: '0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b', nombre: 'Barbería Huamanga', slug: SLUG },
-          },
-        }),
-      ),
-    );
-    const fecha = fechaEnDias(3);
-    renderizar(`/b/${SLUG}?servicio=${CORTE}&fecha=${fecha}`);
-    const usuario = userEvent.setup();
-    await usuario.click(await screen.findByRole('button', { name: '10:00' }));
-    await usuario.click(screen.getByRole('button', { name: /reservar esta hora/i }));
-
-    expect(await screen.findByRole('heading', { name: 'Reserva' })).toBeInTheDocument();
-    const inicio = encodeURIComponent(`${fecha}T10:00:00-05:00`);
-    expect(screen.getByTestId('ruta').textContent).toBe(
-      `/b/${SLUG}/reservar?servicio=${CORTE}&barbero=${CARLOS}&inicio=${inicio}`,
-    );
-  });
-});
-
-// Acceso del cliente en el encabezado de /b/:slug: sin sesión, "Ingresar" y "Crear cuenta" desde el inicio;
-// con sesión de cliente de esta barbería, "Mis citas", "Preguntar al asistente" y "Cerrar sesión".
-
-/** Respuesta de sesión (renovación o ingreso) de una persona con ese rol en la barbería del `slug`. */
-const sesionDe = (rol: 'CLIENTE' | 'PROPIETARIO' | 'BARBERO', slug = SLUG) => ({
-  tokenAcceso: `token-${rol.toLowerCase()}`,
-  tipo: 'Bearer',
-  expiraEn: 900,
-  usuario: {
-    correoVerificado: true,
-    id: '0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5c',
-    nombre: 'Luis Huamán',
-    correo: 'luis@prueba.pe',
-    rol,
-    barberia: { id: '0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b', nombre: 'Barbería Huamanga', slug },
-  },
-});
-
-const conSesion = (rol: 'CLIENTE' | 'PROPIETARIO' | 'BARBERO', slug = SLUG) =>
-  servidor.use(http.post('/api/v1/auth/refresh', () => HttpResponse.json(sesionDe(rol, slug))));
-
-const encabezado = () => screen.getByRole('navigation', { name: 'Tu cuenta' });
-
-describe('Catálogo público · acceso del cliente en el encabezado', () => {
-  it('sin sesión muestra "Ingresar" y "Crear cuenta" de esta barbería, sin elegir hora', async () => {
-    indicadorSesion.quitar();
-    simularApi();
-    renderizar();
-    await screen.findByRole('heading', { level: 1, name: 'Barbería Huamanga' });
-    const cuenta = encabezado();
-    expect(within(cuenta).getByRole('link', { name: 'Ingresar' })).toHaveAttribute(
-      'href',
-      `/b/${SLUG}/ingresar`,
-    );
-    expect(within(cuenta).getByRole('link', { name: 'Crear cuenta' })).toHaveAttribute(
-      'href',
-      `/b/${SLUG}/registro`,
-    );
-    expect(within(cuenta).queryByRole('link', { name: /mis citas/i })).not.toBeInTheDocument();
-    expect(within(cuenta).queryByRole('button', { name: /cerrar sesión/i })).not.toBeInTheDocument();
-    // Sin hora elegida, aún no hay tarjeta de reserva: el acceso no depende de ella.
-    expect(screen.queryByRole('region', { name: /tu selección/i })).not.toBeInTheDocument();
-  });
-
-  it('"Ingresar" del encabezado vuelve a esta misma página (con lo ya elegido en la dirección)', async () => {
-    indicadorSesion.quitar();
-    simularApi();
-    renderizar(`/b/${SLUG}?servicio=${CORTE}`);
-    await screen.findByRole('heading', { level: 1, name: 'Barbería Huamanga' });
-    await userEvent.setup().click(within(encabezado()).getByRole('link', { name: 'Ingresar' }));
-    expect(await screen.findByRole('heading', { name: /ingreso de cliente/i })).toBeInTheDocument();
-    expect(screen.getByTestId('desde').textContent).toBe(`/b/${SLUG}?servicio=${CORTE}`);
-  });
-
-  it('tras ingresar sin haber elegido hora, el cliente queda en /b/:slug con su acceso en el encabezado', async () => {
-    indicadorSesion.quitar();
-    simularApi();
-    let cuerpoIngreso: unknown;
-    servidor.use(
-      http.post('/api/v1/auth/login', async ({ request }) => {
-        cuerpoIngreso = await request.json();
-        return HttpResponse.json(sesionDe('CLIENTE'));
-      }),
-    );
-    render(
-      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-        <MemoryRouter initialEntries={[`/b/${SLUG}`]}>
-          <SesionProvider>
-            <Routes>
-              <Route path="/b/:slug" element={<CatalogoPublico />} />
-              <Route path="/b/:slug/ingresar" element={<IngresarBarberia />} />
-            </Routes>
-            <RutaActual />
-          </SesionProvider>
-        </MemoryRouter>
-      </QueryClientProvider>,
-    );
-    const usuario = userEvent.setup();
-    await screen.findByRole('heading', { level: 1, name: 'Barbería Huamanga' });
-    await usuario.click(within(encabezado()).getByRole('link', { name: 'Ingresar' }));
-    await usuario.type(await screen.findByLabelText(/correo/i), 'luis@prueba.pe');
-    await usuario.type(screen.getByLabelText(/contraseña/i), 'una-clave-segura');
-    await usuario.click(screen.getByRole('button', { name: /^ingresar$/i }));
-
-    // Vuelve al catálogo de la misma barbería, con el flujo de elegir hora intacto.
-    expect(await screen.findByRole('link', { name: /mis citas/i })).toHaveAttribute('href', '/mis-citas');
-    expect(screen.getByTestId('ruta').textContent).toBe(`/b/${SLUG}`);
-    expect(cuerpoIngreso).toMatchObject({ correo: 'luis@prueba.pe', barberia: SLUG });
-    expect(screen.getByRole('radiogroup', { name: /servicio/i })).toBeInTheDocument();
-  });
-
-  it('con sesión de cliente de esta barbería muestra "Mis citas", "Preguntar al asistente" y "Cerrar sesión"', async () => {
-    conSesion('CLIENTE');
-    simularApi();
-    renderizar();
-    const misCitas = await screen.findByRole('link', { name: /mis citas/i });
-    const cuenta = encabezado();
-    expect(cuenta).toContainElement(misCitas);
-    expect(misCitas).toHaveAttribute('href', '/mis-citas');
-    expect(within(cuenta).getByRole('link', { name: 'Preguntar al asistente' })).toHaveAttribute(
-      'href',
-      '/asistente',
-    );
-    expect(within(cuenta).getByRole('button', { name: /cerrar sesión/i })).toBeInTheDocument();
-    expect(within(cuenta).queryByRole('link', { name: 'Ingresar' })).not.toBeInTheDocument();
-    expect(within(cuenta).queryByRole('link', { name: 'Crear cuenta' })).not.toBeInTheDocument();
-  });
-
-  it('"Cerrar sesión" cierra la sesión en el servidor, vuelve a "Ingresar" y deja el foco en él', async () => {
-    conSesion('CLIENTE');
-    simularApi();
-    let salidas = 0;
-    servidor.use(
-      http.post('/api/v1/auth/logout', () => {
-        salidas++;
-        return new HttpResponse(null, { status: 204 });
-      }),
-    );
-    renderizar();
-    const usuario = userEvent.setup();
-    await usuario.click(await screen.findByRole('button', { name: /cerrar sesión/i }));
-
-    const ingresar = await within(encabezado()).findByRole('link', { name: 'Ingresar' });
-    expect(salidas).toBe(1);
-    expect(ingresar).toHaveFocus();
-    expect(screen.queryByRole('link', { name: /mis citas/i })).not.toBeInTheDocument();
-    // Sigue en la misma página.
-    expect(screen.getByTestId('ruta').textContent).toBe(`/b/${SLUG}`);
-  });
-
-  it('un cliente con sesión en otra barbería solo ve "Cerrar sesión" (no sus citas ni su asistente de la otra)', async () => {
-    conSesion('CLIENTE', 'otra-barberia');
-    simularApi();
-    renderizar();
-    const salir = await screen.findByRole('button', { name: /cerrar sesión/i });
-    const cuenta = encabezado();
-    expect(cuenta).toContainElement(salir);
-    expect(within(cuenta).queryByRole('link', { name: /mis citas/i })).not.toBeInTheDocument();
-    expect(within(cuenta).queryByRole('link', { name: 'Preguntar al asistente' })).not.toBeInTheDocument();
-    expect(within(cuenta).queryByRole('link', { name: 'Ingresar' })).not.toBeInTheDocument();
-  });
-
-  it.each(['PROPIETARIO', 'BARBERO'] as const)(
-    'con sesión de %s (personal) se muestra el acceso del cliente: "Ingresar" y "Crear cuenta"',
-    async (rol) => {
-      conSesion(rol);
-      simularApi();
-      renderizar();
-      const ingresar = await screen.findByRole('link', { name: 'Ingresar' });
-      expect(encabezado()).toContainElement(ingresar);
-      expect(screen.queryByRole('link', { name: /mis citas/i })).not.toBeInTheDocument();
-    },
-  );
 
   it('recuerda esta barbería (solo enlace y nombre) para ofrecer "Ingresar" desde /mis-citas', async () => {
     indicadorSesion.quitar();
     simularApi();
     renderizar();
-    await screen.findByRole('heading', { level: 1, name: 'Barbería Huamanga' });
+    await titulo();
     expect(ultimaBarberia.leer()).toEqual({ slug: SLUG, nombre: 'Barbería Huamanga' });
+  });
+});
+
+describe('Presentación pública (/b/:slug) con sesión de cliente', () => {
+  it('de esta barbería: "Reservar una cita" al panel y "Ir a mis citas"', async () => {
+    simularApi();
+    servidor.use(http.post('/api/v1/auth/refresh', () => HttpResponse.json(sesionCliente())));
+    renderizar();
+    await titulo();
+    const reservar = await screen.findAllByRole('link', { name: 'Reservar una cita' });
+    expect(reservar[0]).toHaveAttribute('href', `/b/${SLUG}/reservar`);
+    expect(screen.getAllByRole('link', { name: 'Ir a mis citas' })[0]).toHaveAttribute('href', '/mis-citas');
+    expect(screen.queryByRole('link', { name: /Ingresar para reservar/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Cerrar sesión' })).toBeInTheDocument();
+  });
+
+  it('de otra barbería: "Reservar aquí" (la unión pide su consentimiento en la reserva), sin sus citas de la otra', async () => {
+    simularApi();
+    servidor.use(http.post('/api/v1/auth/refresh', () => HttpResponse.json(sesionCliente('otra-barberia'))));
+    renderizar();
+    await titulo();
+    expect((await screen.findAllByRole('link', { name: 'Reservar aquí' }))[0]).toHaveAttribute(
+      'href',
+      `/b/${SLUG}/reservar`,
+    );
+    expect(screen.queryByRole('link', { name: 'Ir a mis citas' })).not.toBeInTheDocument();
+  });
+
+  it('"Cerrar sesión" vuelve a "Ingresar" y deja el foco en él', async () => {
+    simularApi();
+    servidor.use(
+      http.post('/api/v1/auth/refresh', () => HttpResponse.json(sesionCliente())),
+      http.post('/api/v1/auth/logout', () => new HttpResponse(null, { status: 204 })),
+    );
+    renderizar();
+    await titulo();
+    await userEvent.setup().click(await screen.findByRole('button', { name: 'Cerrar sesión' }));
+    const ingresar = await screen.findByRole('link', { name: 'Ingresar' });
+    expect(ingresar).toHaveFocus();
+  });
+});
+
+describe('Horario de atención (helper)', () => {
+  it('ordena de lunes a domingo, une los tramos de cada día y marca hoy en la zona de la barbería', () => {
+    // Un martes a las 23:30 en Lima ya es miércoles en UTC: "hoy" sigue siendo martes.
+    const dias = diasDeAtencion(CATALOGO.horario.tramos, ZONA, new Date('2026-11-25T04:30:00Z'));
+    expect(dias.map((d) => d.nombre)).toEqual([
+      'Lunes',
+      'Martes',
+      'Miércoles',
+      'Jueves',
+      'Viernes',
+      'Sábado',
+      'Domingo',
+    ]);
+    expect(dias[1]).toEqual({
+      dia: 2,
+      nombre: 'Martes',
+      tramos: ['09:00 – 13:00', '15:00 – 19:00'],
+      esHoy: true,
+    });
+    expect(dias[0].tramos).toEqual([]);
+    expect(diasDeAtencion([], ZONA)).toEqual([]);
   });
 });

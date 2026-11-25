@@ -1,31 +1,30 @@
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
-import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useParams } from 'react-router-dom';
 import { clavesConsulta } from '../../api/claves';
 import { ApiError, llamarApi } from '../../api/client';
 import type { components } from '../../api/schema-002';
-import { PantallaCarga } from '../../auth/PantallaCarga';
 import { useSesion } from '../../auth/SesionProvider';
-import { SelectorDeHora } from '../../components/app/SelectorDeHora';
 import { Icono } from '../../components/Icono';
+import { iniciales } from '../../components/iniciales';
 import { Logo } from '../../components/Logo';
 import { Alerta } from '../../components/ui/Alerta';
 import { Boton, clasesBoton } from '../../components/ui/Boton';
+import { Esqueleto, EsqueletoTexto } from '../../components/ui/Esqueleto';
 import { EstadoVacio } from '../../components/ui/EstadoVacio';
-import { Tarjeta } from '../../components/ui/Tarjeta';
-import { fechaDeBarberia, fechaIsoDeBarberia, horaConEtiqueta, sumarDiasIso } from '../../hora-barberia';
-import { HORIZONTE_RESERVA_DIAS } from '../../legal';
+import { ConmutadorTema } from '../../components/ui/ConmutadorTema';
 import { ultimaBarberia } from '../../ultima-barberia';
 import estilos from './CatalogoPublico.module.css';
+import { diasDeAtencion } from './horario-atencion';
 import { mensajeDeError } from './Union';
 
 type Catalogo = components['schemas']['CatalogoPublico'];
-type Horarios = components['schemas']['HorariosLibres'];
 
 /**
- * Catálogo público por el enlace de la barbería (HU08, HU09; RF10, RF11; ADR-021). Sin sesión. Hace una
- * solicitud para el catálogo y una por fecha (la de "cualquier barbero"); elegir un barbero filtra esas
- * horas en la interfaz. Las horas se muestran siempre en la hora de la barbería.
+ * Presentación pública de la barbería por su enlace (`/b/<slug>`; RF10; ADR-021). Sin sesión de cliente solo muestra
+ * la barbería: datos, horario de atención, servicios y equipo, para mirar. Los horarios libres y la reserva se hacen
+ * dentro del panel del cliente, con su sesión (decisión de producto del 2026-11-24): aquí solo se invita a ingresar o
+ * crear la cuenta.
  */
 export default function CatalogoPublico() {
   const { slug = '' } = useParams();
@@ -34,267 +33,272 @@ export default function CatalogoPublico() {
     queryFn: () => llamarApi<Catalogo>(`/publico/${encodeURIComponent(slug)}`, { sinRenovar: true }),
   });
 
-  if (catalogo.isPending) return <PantallaCarga />;
+  if (catalogo.isPending) return <PresentacionCargando />;
   if (catalogo.isError) {
     const noDisponible = catalogo.error instanceof ApiError && catalogo.error.estado === 404;
     return (
       <main className={estilos.pagina}>
-        <header className={estilos.cabecera}>
-          <Logo />
-        </header>
-        <section className={estilos.noDisponible} aria-labelledby="titulo-no-disponible">
-          <h1 id="titulo-no-disponible">
-            {noDisponible ? 'Barbería no disponible' : 'No pudimos cargar la barbería'}
-          </h1>
-          <p>
-            {noDisponible
-              ? 'El enlace no existe, cambió o la barbería no está atendiendo reservas. Pide el enlace actualizado a la barbería.'
-              : mensajeDeError(catalogo.error)}
-          </p>
-          {!noDisponible && (
-            <Boton
-              type="button"
-              variante="secundario"
-              icono="recargar"
-              cargando={catalogo.isFetching}
-              textoCargando="Intentando…"
-              onClick={() => void catalogo.refetch()}
-            >
-              Intentar de nuevo
-            </Boton>
-          )}
-        </section>
+        <div className={estilos.portada}>
+          <header className={estilos.cabecera}>
+            <Logo compacto />
+            <ConmutadorTema />
+          </header>
+          <section className={estilos.noDisponible} aria-labelledby="titulo-no-disponible">
+            <span className={estilos.iconoNoDisponible}>
+              <Icono nombre="tienda" tamano={28} />
+            </span>
+            <h1 id="titulo-no-disponible">
+              {noDisponible ? 'Barbería no disponible' : 'No pudimos cargar la barbería'}
+            </h1>
+            <p>
+              {noDisponible
+                ? 'El enlace no existe, cambió o la barbería no está atendiendo por ahora. Pide el enlace actualizado a la barbería.'
+                : mensajeDeError(catalogo.error)}
+            </p>
+            {!noDisponible && (
+              <Boton
+                type="button"
+                icono="recargar"
+                cargando={catalogo.isFetching}
+                textoCargando="Intentando…"
+                onClick={() => void catalogo.refetch()}
+              >
+                Intentar de nuevo
+              </Boton>
+            )}
+          </section>
+        </div>
       </main>
     );
   }
-  return <ContenidoCatalogo catalogo={catalogo.data} slug={slug} />;
+  return <Presentacion catalogo={catalogo.data} slug={slug} />;
 }
 
-function ContenidoCatalogo({ catalogo, slug }: { catalogo: Catalogo; slug: string }) {
-  const { barberia, servicios, barberos } = catalogo;
-  const zona = barberia.zonaHoraria;
-  const [parametros] = useSearchParams();
+function Presentacion({ catalogo, slug }: { catalogo: Catalogo; slug: string }) {
+  const { barberia, servicios, barberos, horario } = catalogo;
   const aviso = (useLocation().state as { mensaje?: string } | null)?.mensaje;
-  const navegar = useNavigate();
-  const { estado, usuario } = useSesion();
-
-  const hoy = fechaIsoDeBarberia(new Date(), zona);
-  const ultimoDia = sumarDiasIso(hoy, HORIZONTE_RESERVA_DIAS);
-  const servicioInicial = parametros.get('servicio');
-  const fechaInicial = parametros.get('fecha');
-  const [servicioId, setServicioId] = useState(
-    servicios.some((s) => s.id === servicioInicial) ? (servicioInicial as string) : '',
-  );
-  const [barberoId, setBarberoId] = useState('');
-  const [fecha, setFecha] = useState(fechaInicial && fechaInicial >= hoy ? fechaInicial : hoy);
-  const [inicio, setInicio] = useState<string | null>(null);
-
-  const horarios = useQuery({
-    queryKey: clavesConsulta.horarios(slug, servicioId, fecha),
-    queryFn: () =>
-      llamarApi<Horarios>(
-        `/publico/${encodeURIComponent(slug)}/horarios?${new URLSearchParams({ servicio: servicioId, fecha })}`,
-        { sinRenovar: true },
-      ),
-    enabled: servicioId !== '' && /^\d{4}-\d{2}-\d{2}$/.test(fecha),
-  });
-
-  const servicio = servicios.find((s) => s.id === servicioId);
-  const barberosDelServicio = servicio
-    ? barberos.filter((b) => b.servicioIds.includes(servicio.id))
-    : barberos;
-  const horas = (horarios.data?.horas ?? []).filter((h) => !barberoId || h.barberoIds.includes(barberoId));
-  const hora = horas.find((h) => h.inicio === inicio);
-  // Con "cualquier barbero", la reserva va con el primero libre a esa hora (R08); la reserva lo revalida.
-  const barberoElegido = hora ? barberos.find((b) => b.id === (barberoId || hora.barberoIds[0])) : undefined;
-  const destino =
-    servicio && hora && barberoElegido
-      ? `/b/${slug}/reservar?${new URLSearchParams({ servicio: servicio.id, barbero: barberoElegido.id, inicio: hora.inicio })}`
-      : null;
-  const esCliente = estado === 'autenticado' && usuario?.rol === 'CLIENTE';
+  const dias = diasDeAtencion(horario.tramos, barberia.zonaHoraria);
 
   // Recuerda esta barbería (solo su enlace y su nombre públicos) para ofrecer "Ingresar" aquí desde /mis-citas.
   useEffect(() => {
     ultimaBarberia.guardar({ slug, nombre: barberia.nombre });
   }, [slug, barberia.nombre]);
 
-  const elegirServicio = (id: string) => {
-    setServicioId(id);
-    setInicio(null);
-    if (barberoId && !barberos.find((b) => b.id === barberoId)?.servicioIds.includes(id)) setBarberoId('');
-  };
+  const nombreServicio = new Map(servicios.map((s) => [s.id, s.nombre]));
 
   return (
     <main className={estilos.pagina}>
-      <header className={estilos.cabecera}>
-        {/* Compacto: el protagonista de esta página es la barbería, no la plataforma. */}
-        <Logo compacto />
-        <AccesoCliente slug={slug} />
-      </header>
-
-      <section className={estilos.barberia} aria-labelledby="nombre-barberia">
-        <p className="antetitulo">Reserva en línea</p>
-        <h1 id="nombre-barberia">{barberia.nombre}</h1>
-        {barberia.descripcion && <p className={estilos.descripcion}>{barberia.descripcion}</p>}
-        <ul className={estilos.datos}>
-          {barberia.direccion && (
-            <li>
-              <Icono nombre="tienda" tamano={16} />
-              {barberia.direccion}
-            </li>
-          )}
-          {barberia.telefono && (
-            <li>
-              <Icono nombre="celular" tamano={16} />
-              {barberia.telefono}
-            </li>
-          )}
-        </ul>
-      </section>
-
-      {aviso && <Alerta>{aviso}</Alerta>}
-
-      <div className={estilos.columnas}>
-        <section aria-labelledby="titulo-servicios" className={estilos.bloque}>
-          <h2 id="titulo-servicios">1. Elige un servicio</h2>
-          {servicios.length === 0 ? (
-            <EstadoVacio icono="tijeras" titulo="Esta barbería aún no publica servicios" />
-          ) : (
-            <div role="radiogroup" aria-labelledby="titulo-servicios" className={estilos.servicios}>
-              {servicios.map((s) => (
-                <label
-                  key={s.id}
-                  className={estilos.servicio}
-                  data-elegido={s.id === servicioId || undefined}
-                >
-                  <input
-                    type="radio"
-                    name="servicio"
-                    value={s.id}
-                    checked={s.id === servicioId}
-                    onChange={() => elegirServicio(s.id)}
-                  />
-                  <span className={estilos.servicioNombre}>{s.nombre}</span>
-                  <span className={estilos.servicioDetalle}>
-                    S/ {s.precio} · {s.duracionMinutos} min
-                  </span>
-                  {s.descripcion && <span className={estilos.servicioDescripcion}>{s.descripcion}</span>}
-                </label>
-              ))}
-            </div>
-          )}
-        </section>
-
-        <section aria-labelledby="titulo-horario" className={estilos.bloque}>
-          <h2 id="titulo-horario">2. Elige barbero, día y hora</h2>
-          <div className={estilos.filtros}>
-            <div className="campo">
-              <label htmlFor="barbero" className="campo__etiqueta">
-                Barbero
-              </label>
-              <select
-                id="barbero"
-                className="entrada"
-                value={barberoId}
-                onChange={(evento) => {
-                  setBarberoId(evento.target.value);
-                  setInicio(null);
-                }}
-              >
-                <option value="">Cualquier barbero</option>
-                {barberosDelServicio.map((b) => (
-                  <option key={b.id} value={b.id}>
-                    {b.nombre}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="campo">
-              <label htmlFor="fecha" className="campo__etiqueta">
-                Fecha
-              </label>
-              <input
-                id="fecha"
-                type="date"
-                className="entrada"
-                min={hoy}
-                max={ultimoDia}
-                value={fecha}
-                onChange={(evento) => {
-                  setFecha(evento.target.value);
-                  setInicio(null);
-                }}
-              />
-            </div>
+      <div className={estilos.portada}>
+        <header className={estilos.cabecera}>
+          {/* Compacto: la protagonista es la barbería, no la plataforma. */}
+          <Logo compacto />
+          <div className={estilos.cabeceraAcciones}>
+            <ConmutadorTema />
+            <AccesoCliente slug={slug} />
           </div>
+        </header>
 
-          {!servicio ? (
-            <p className={estilos.ayuda}>Elige un servicio para ver las horas libres.</p>
-          ) : (
-            <SelectorDeHora
-              cargando={horarios.isPending}
-              error={horarios.isError ? mensajeDeError(horarios.error) : null}
-              horas={horas}
-              zona={zona}
-              elegida={inicio}
-              onElegir={setInicio}
-            />
+        <section className={estilos.heroe} aria-labelledby="nombre-barberia">
+          <p className={estilos.antetitulo}>Barbería</p>
+          <h1 id="nombre-barberia" className={estilos.nombre}>
+            {barberia.nombre}
+          </h1>
+          {barberia.descripcion && <p className={estilos.descripcion}>{barberia.descripcion}</p>}
+          {(barberia.direccion || barberia.telefono) && (
+            <ul className={estilos.datos} aria-label="Datos de contacto">
+              {barberia.direccion && (
+                <li>
+                  <Icono nombre="tienda" tamano={18} />
+                  <span>{barberia.direccion}</span>
+                </li>
+              )}
+              {barberia.telefono && (
+                <li>
+                  <Icono nombre="celular" tamano={18} />
+                  <a href={`tel:${barberia.telefono.replace(/[^\d+]/g, '')}`}>{barberia.telefono}</a>
+                </li>
+              )}
+            </ul>
           )}
+          <LlamadoAReservar slug={slug} enPortada />
         </section>
       </div>
 
-      {servicio && hora && barberoElegido && destino && (
-        // En el celular queda fija abajo: el botón para reservar se ve apenas se elige la hora.
-        <Tarjeta titulo="Tu selección" icono="calendario" destacada className={estilos.seleccion}>
-          <p className={estilos.resumen}>
-            {servicio.nombre} con {barberoElegido.nombre}, {fechaDeBarberia(hora.inicio, zona)} a las{' '}
-            {horaConEtiqueta(hora.inicio, zona)}.
-          </p>
-          <div className={estilos.acciones}>
-            {esCliente ? (
-              <Boton type="button" icono="calendarioCheck" onClick={() => navegar(destino)}>
-                Reservar esta hora
-              </Boton>
-            ) : (
-              <>
-                <Link to={`/b/${slug}/registro`} state={{ desde: destino }} className={clasesBoton()}>
-                  <Icono nombre="calendarioCheck" tamano={18} />
-                  Crear cuenta y reservar
-                </Link>
-                <Link
-                  to={`/b/${slug}/ingresar`}
-                  state={{ desde: destino }}
-                  className={clasesBoton({ variante: 'secundario' })}
-                >
-                  <Icono nombre="usuario" tamano={18} />
-                  Ya tengo cuenta
-                </Link>
-              </>
-            )}
+      <div className={estilos.contenido}>
+        {aviso && <Alerta>{aviso}</Alerta>}
+
+        <section className={estilos.seccion} aria-labelledby="titulo-servicios">
+          <div className={estilos.seccionEncabezado}>
+            <h2 id="titulo-servicios">Servicios</h2>
+            {servicios.length > 0 && <p>Precios en soles. La duración es aproximada.</p>}
           </div>
-        </Tarjeta>
-      )}
+          {servicios.length === 0 ? (
+            <EstadoVacio icono="tijeras" titulo="Esta barbería está preparando su catálogo. Vuelve pronto." />
+          ) : (
+            <ul className={estilos.servicios}>
+              {servicios.map((s) => (
+                <li key={s.id} className={estilos.servicio}>
+                  <div className={estilos.servicioCabeza}>
+                    <h3>{s.nombre}</h3>
+                    <span className={estilos.precio}>S/ {s.precio}</span>
+                  </div>
+                  {s.descripcion && <p className={estilos.servicioDescripcion}>{s.descripcion}</p>}
+                  <p className={estilos.duracion}>
+                    <Icono nombre="reloj" tamano={16} />
+                    {s.duracionMinutos} min
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        {barberos.length > 0 && (
+          <section className={estilos.seccion} aria-labelledby="titulo-equipo">
+            <div className={estilos.seccionEncabezado}>
+              <h2 id="titulo-equipo">Nuestro equipo</h2>
+            </div>
+            <ul className={estilos.equipo}>
+              {barberos.map((b) => {
+                const ofrece = b.servicioIds.map((id) => nombreServicio.get(id)).filter(Boolean);
+                return (
+                  <li key={b.id} className={estilos.barbero}>
+                    <span className={estilos.avatar} aria-hidden="true">
+                      {iniciales(b.nombre)}
+                    </span>
+                    <div>
+                      <p className={estilos.barberoNombre}>{b.nombre}</p>
+                      {ofrece.length > 0 && <p className={estilos.barberoServicios}>{ofrece.join(' · ')}</p>}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        )}
+
+        {dias.length > 0 && (
+          <section className={estilos.seccion} aria-labelledby="titulo-horario">
+            <div className={estilos.seccionEncabezado}>
+              <h2 id="titulo-horario">Horario de atención</h2>
+            </div>
+            <dl className={estilos.horario}>
+              {dias.map((d) => (
+                <div key={d.dia} className={estilos.dia} data-hoy={d.esHoy || undefined}>
+                  <dt>
+                    {d.nombre}
+                    {d.esHoy && <span className={estilos.hoy}>Hoy</span>}
+                  </dt>
+                  <dd>
+                    {d.tramos.length > 0
+                      ? d.tramos.map((tramo) => <span key={tramo}>{tramo}</span>)
+                      : 'Cerrado'}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </section>
+        )}
+
+        {servicios.length > 0 && (
+          <section className={estilos.invitacion} aria-labelledby="titulo-invitacion">
+            <span className={estilos.invitacionIcono}>
+              <Icono nombre="calendarioCheck" tamano={24} />
+            </span>
+            <TextoInvitacion />
+            <LlamadoAReservar slug={slug} />
+          </section>
+        )}
+      </div>
+
+      <footer className={estilos.pie}>
+        <nav aria-label="Textos legales">
+          <Link to="/terminos">Términos y condiciones</Link>
+          <Link to="/privacidad">Política de privacidad</Link>
+        </nav>
+      </footer>
     </main>
   );
 }
 
 /**
- * Acceso del cliente en el encabezado de la página pública. Solo navegación: la sesión, la unión a la barbería y
- * los permisos siguen en el servidor y en las pantallas de ingreso, registro y reserva.
- * - Sin sesión de cliente (visitante, o personal de alguna barbería): "Ingresar" y "Crear cuenta" de ESTA barbería.
- * - Cliente con sesión en ESTA barbería: "Mis citas", "Preguntar al asistente" y "Cerrar sesión".
- * - Cliente con sesión en OTRA barbería: solo "Cerrar sesión" (sus citas y su asistente son de la otra barbería;
- *   para reservar aquí, "Reservar esta hora" lo une a esta con su consentimiento, como antes).
+ * Los botones para reservar según la sesión (solo navegación: la unión y los permisos los decide el servidor):
+ * - visitante (o personal de otra barbería): "Ingresar para reservar" y "Crear cuenta" de ESTA barbería;
+ * - cliente con sesión en esta barbería: "Reservar una cita" y "Ir a mis citas";
+ * - cliente con sesión en otra barbería: "Reservar aquí", que pasa por la unión con su consentimiento.
  */
+/** Texto de la invitación final: al visitante le pide ingresar; al cliente con sesión le invita a reservar. */
+function TextoInvitacion() {
+  const { estado, usuario } = useSesion();
+  const conSesion = estado === 'autenticado' && usuario?.rol === 'CLIENTE';
+  return (
+    <div>
+      <h2 id="titulo-invitacion">
+        {conSesion ? 'Reserva tu próxima cita' : 'Para reservar tu cita, ingresa o crea tu cuenta'}
+      </h2>
+      <p>
+        {conSesion
+          ? 'Elige servicio, barbero y hora en pocos pasos, y gestiona tus citas desde el celular.'
+          : 'Con tu cuenta eliges servicio, barbero y hora, y ves y gestionas tus citas desde el celular.'}
+      </p>
+    </div>
+  );
+}
+
+function LlamadoAReservar({ slug, enPortada = false }: { slug: string; enPortada?: boolean }) {
+  const { estado, usuario } = useSesion();
+  const esCliente = estado === 'autenticado' && usuario?.rol === 'CLIENTE';
+  const esDeEstaBarberia = esCliente && usuario?.barberia.slug === slug;
+  const secundario = clasesBoton({
+    variante: 'secundario',
+    className: enPortada ? estilos.botonSobreOscuro : undefined,
+  });
+
+  if (estado === 'cargando') return <div className={estilos.acciones} aria-hidden="true" />;
+  return (
+    <div className={estilos.acciones}>
+      {esCliente ? (
+        <>
+          <Link to={`/b/${slug}/reservar`} className={clasesBoton()}>
+            <Icono nombre="calendarioCheck" tamano={18} />
+            {esDeEstaBarberia ? 'Reservar una cita' : 'Reservar aquí'}
+          </Link>
+          {esDeEstaBarberia && (
+            <Link to="/mis-citas" className={secundario}>
+              <Icono nombre="calendario" tamano={18} />
+              Ir a mis citas
+            </Link>
+          )}
+          {/* 005 (FR-016): el cliente de esta barbería también llega al asistente desde su página (una sola vez). */}
+          {esDeEstaBarberia && enPortada && (
+            <Link to="/asistente" className={secundario}>
+              <Icono nombre="conversacion" tamano={18} />
+              Preguntar al asistente
+            </Link>
+          )}
+        </>
+      ) : (
+        <>
+          <Link to={`/b/${slug}/ingresar`} className={clasesBoton()}>
+            <Icono nombre="usuario" tamano={18} />
+            Ingresar para reservar
+          </Link>
+          <Link to={`/b/${slug}/registro`} className={secundario}>
+            Crear cuenta
+          </Link>
+        </>
+      )}
+    </div>
+  );
+}
+
+/** La cuenta en el encabezado: "Ingresar" sin sesión de cliente; con ella, "Cerrar sesión". */
 function AccesoCliente({ slug }: { slug: string }) {
   const { estado, usuario, cerrarSesion } = useSesion();
-  const { pathname, search } = useLocation();
   const [saliendo, setSaliendo] = useState(false);
   const [recienSalio, setRecienSalio] = useState(false);
   const ingresar = useRef<HTMLAnchorElement>(null);
-
   const esCliente = estado === 'autenticado' && usuario?.rol === 'CLIENTE';
-  const esDeEstaBarberia = esCliente && usuario?.barberia.slug === slug;
 
   // Al cerrar la sesión, el botón pulsado desaparece: el foco pasa a "Ingresar" para no perderse con teclado.
   useEffect(() => {
@@ -304,66 +308,66 @@ function AccesoCliente({ slug }: { slug: string }) {
   // Mientras se comprueba la sesión no se muestra nada, para no enseñar "Ingresar" a quien ya tiene sesión.
   if (estado === 'cargando') return null;
 
-  const salir = async () => {
-    setSaliendo(true);
-    try {
-      await cerrarSesion();
-      setRecienSalio(true);
-    } finally {
-      setSaliendo(false);
-    }
-  };
-
-  const botonSalir = (
-    <Boton
-      type="button"
-      variante="fantasma"
-      tamano="sm"
-      icono="salir"
-      cargando={saliendo}
-      textoCargando="Cerrando sesión…"
-      onClick={() => void salir()}
-    >
-      Cerrar sesión
-    </Boton>
-  );
-
+  if (esCliente) {
+    return (
+      <Boton
+        type="button"
+        variante="fantasma"
+        tamano="sm"
+        icono="salir"
+        className={estilos.botonCabecera}
+        cargando={saliendo}
+        textoCargando="Saliendo…"
+        onClick={() => {
+          setSaliendo(true);
+          void cerrarSesion().finally(() => {
+            setSaliendo(false);
+            setRecienSalio(true);
+          });
+        }}
+      >
+        Cerrar sesión
+      </Boton>
+    );
+  }
   return (
-    <nav aria-label="Tu cuenta" className={estilos.acceso}>
-      {esDeEstaBarberia ? (
-        <>
-          <Link to="/mis-citas" className={clasesBoton({ variante: 'secundario', tamano: 'sm' })}>
-            <Icono nombre="calendario" tamano={16} />
-            Mis citas
-          </Link>
-          <Link to="/asistente" className={clasesBoton({ variante: 'secundario', tamano: 'sm' })}>
-            Preguntar al asistente
-          </Link>
-          {botonSalir}
-        </>
-      ) : esCliente ? (
-        botonSalir
-      ) : (
-        <>
-          {/* Tras ingresar o crear la cuenta vuelve a esta misma página, con lo que ya estaba elegido. */}
-          <Link
-            to={`/b/${slug}/registro`}
-            state={{ desde: pathname + search }}
-            className={clasesBoton({ variante: 'fantasma', tamano: 'sm' })}
-          >
-            Crear cuenta
-          </Link>
-          <Link
-            ref={ingresar}
-            to={`/b/${slug}/ingresar`}
-            state={{ desde: pathname + search }}
-            className={clasesBoton({ tamano: 'sm' })}
-          >
-            <Icono nombre="usuario" tamano={16} />
-            Ingresar
-          </Link>
-        </>
-      )}
-    </nav>
+    <Link
+      ref={ingresar}
+      to={`/b/${slug}/ingresar`}
+      className={clasesBoton({ variante: 'fantasma', tamano: 'sm', className: estilos.botonCabecera })}
+    >
+      <Icono nombre="usuario" tamano={16} />
+      Ingresar
+    </Link>
+  );
+}
+
+/** Mientras llega el catálogo: la forma de la portada y de las tarjetas, sin saltos al cargar. */
+function PresentacionCargando() {
+  return (
+    <main className={estilos.pagina} aria-busy="true">
+      <span className="sr-only">Cargando la barbería…</span>
+      <div className={estilos.portada}>
+        <header className={estilos.cabecera}>
+          <Logo compacto />
+        </header>
+        <div className={estilos.heroe}>
+          <Esqueleto ancho="40%" alto="0.875rem" />
+          <Esqueleto ancho="75%" alto="2.75rem" />
+          <Esqueleto ancho="60%" alto="1rem" />
+          <Esqueleto ancho="14rem" alto="var(--alto-control)" />
+        </div>
+      </div>
+      <div className={estilos.contenido}>
+        <ul className={estilos.servicios}>
+          {Array.from({ length: 3 }, (_, i) => (
+            <li key={i} className={estilos.servicio}>
+              <Esqueleto ancho="60%" alto="1.25rem" />
+              <EsqueletoTexto lineas={2} />
+            </li>
+          ))}
+        </ul>
+      </div>
+    </main>
   );
 }

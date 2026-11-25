@@ -1,14 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { type FormEvent, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { llamarApi } from '../../api/client';
 import type { components } from '../../api/schema-004';
-import { useSesion } from '../../auth/SesionProvider';
-import { Logo } from '../../components/Logo';
-import { Alerta, Boton, clasesBoton, ModalConfirmacion } from '../../components/ui';
+import { Alerta, Boton, ModalConfirmacion } from '../../components/ui';
 import { Cargando } from '../panel/Cargando';
 import { mensajeDeError } from '../panel/datos-barberia';
-import estilosCitas from './MisCitas.module.css';
+import { EncabezadoCliente } from './EncabezadoCliente';
+import estilosCuenta from './MiCuenta.module.css';
 import estilos from './CanalAviso.module.css';
 
 type PreferenciaAviso = components['schemas']['PreferenciaAviso'];
@@ -28,42 +26,22 @@ type Mensaje = { tono: 'error' | 'exito'; texto: string } | null;
  * marcar la casilla; cambiar el número exige aceptar de nuevo. El consentimiento se puede retirar.
  */
 export default function CanalAviso() {
-  const { usuario, cerrarSesion } = useSesion();
   const preferencia = useQuery({
     queryKey: CLAVE,
     queryFn: () => llamarApi<PreferenciaAviso>(RUTA),
   });
 
   return (
-    <main className={estilosCitas.pagina}>
-      <header className={estilosCitas.cabecera}>
-        <Logo />
-        <Boton
-          type="button"
-          variante="fantasma"
-          tamano="sm"
-          icono="salir"
-          onClick={() => void cerrarSesion()}
-        >
-          Salir
-        </Boton>
-      </header>
+    <div className={estilosCuenta.pagina}>
       {preferencia.isPending ? (
         <Cargando texto="Cargando tu canal de aviso…" />
       ) : (
-        <>
-          {/* El título aparece con el contenido: al anunciarse, la pantalla ya se puede usar. */}
-          <div className={estilosCitas.titulo}>
-            <p className="antetitulo">{usuario?.barberia?.nombre}</p>
-            <h1>Cómo recibo mis avisos</h1>
-            <p>Confirmaciones, cambios y recordatorios de tus citas en esta barbería.</p>
-          </div>
-          <div>
-            <Link to="/mis-citas" className={clasesBoton({ variante: 'secundario', tamano: 'sm' })}>
-              Volver a mis citas
-            </Link>
-          </div>
-        </>
+        // El título aparece con el contenido: al anunciarse, la pantalla ya se puede usar.
+        <EncabezadoCliente
+          antetitulo="Mi cuenta"
+          titulo="Cómo recibo mis avisos"
+          descripcion="Confirmaciones, cambios y recordatorios de tus citas en esta barbería."
+        />
       )}
 
       <section aria-label="Canal de aviso">
@@ -85,7 +63,7 @@ export default function CanalAviso() {
           <FormularioCanal preferencia={preferencia.data} />
         )}
       </section>
-    </main>
+    </div>
   );
 }
 

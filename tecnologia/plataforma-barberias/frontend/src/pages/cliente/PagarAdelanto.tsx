@@ -12,7 +12,6 @@ import { useSesion } from '../../auth/SesionProvider';
 import { AvisoVerificacion } from '../../components/app/AvisoVerificacion';
 import { esCorreoNoVerificado } from '../../api/cuenta';
 import { Icono } from '../../components/Icono';
-import { Logo } from '../../components/Logo';
 import {
   Alerta,
   Boton,
@@ -28,7 +27,8 @@ import { Cargando } from '../panel/Cargando';
 import { mensajeDeError } from '../panel/datos-barberia';
 import panel from '../panel/Panel.module.css';
 import estilosPago from './PagarAdelanto.module.css';
-import estilos from './MisCitas.module.css';
+import { EncabezadoCliente } from './EncabezadoCliente';
+import estilosCuenta from './MiCuenta.module.css';
 import { ESTADO_ADELANTO, soles } from './textos-adelanto';
 
 // T033 de 008 · El cliente paga el adelanto de su cita (US2; FR-008 a FR-011): ve el QR de la barbería, el monto, el
@@ -119,22 +119,18 @@ export default function PagarAdelanto() {
   });
 
   return (
-    <main className={estilos.pagina}>
-      <header className={estilos.cabecera}>
-        <Logo />
+    <div className={estilosCuenta.pagina}>
+      <div>
         <Link to="/mis-citas" className={clasesBoton({ variante: 'fantasma', tamano: 'sm' })}>
           <Icono nombre="chevronIzquierda" tamano={18} />
           Volver a mis citas
         </Link>
-      </header>
-      <div className={estilos.titulo}>
-        <p className="antetitulo">{barberia?.nombre}</p>
-        <h1>Pagar adelanto</h1>
-        <p className={panel.aviso}>
-          El adelanto lo pagas directo a la barbería con su QR de Yape o Plin. La plataforma no recibe tu
-          dinero.
-        </p>
       </div>
+      <EncabezadoCliente
+        antetitulo={barberia?.nombre}
+        titulo="Pagar adelanto"
+        descripcion="El adelanto lo pagas directo a la barbería con su QR de Yape o Plin. La plataforma no recibe tu dinero."
+      />
       {adelanto.data ? (
         <ContenidoDelAdelanto citaId={citaId} adelanto={adelanto.data} zona={zona} />
       ) : adelanto.isError ? (
@@ -142,7 +138,7 @@ export default function PagarAdelanto() {
       ) : (
         <Cargando texto="Cargando el adelanto de tu cita…" />
       )}
-    </main>
+    </div>
   );
 }
 

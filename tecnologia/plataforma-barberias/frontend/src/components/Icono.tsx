@@ -160,6 +160,15 @@ const TRAZOS = {
       <path d="M12 7.6v.3" />
     </>
   ),
+  // Globo de conversación (el asistente del cliente).
+  conversacion: (
+    <>
+      <path d="M20 12.5a7.5 7.5 0 0 1-11 6.6L4 20l1.2-4.3A7.5 7.5 0 1 1 20 12.5Z" />
+      <path d="M9 12h.01" />
+      <path d="M12.5 12h.01" />
+      <path d="M16 12h.01" />
+    </>
+  ),
   cerrar: (
     <>
       <path d="M18 6 6 18" />

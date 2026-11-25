@@ -1,204 +1,482 @@
-/* Catálogo público por enlace: una columna en el celular y dos (servicios | horario) en pantallas anchas. */
+/*
+ * Presentación pública de la barbería (/b/<slug>). Primero el celular (360 px) y luego el escritorio. La portada va
+ * sobre azul noche en ambos temas: dentro de ella se redefinen los tokens de texto con los del menú azul noche
+ * (contrastes medidos en tokens.css), así el logo, los textos y los iconos se leen igual en claro y en oscuro.
+ */
 
 .pagina {
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
-  gap: var(--espacio-6);
-  width: 100%;
-  max-width: 64rem;
-  margin: 0 auto;
-  padding: var(--espacio-6) var(--espacio-4) var(--espacio-12);
+  background: var(--color-fondo);
+}
+
+/* ---------- Portada azul noche ---------- */
+
+.portada {
+  --color-texto: var(--color-menu-texto-fuerte);
+  --color-texto-suave: var(--color-menu-texto);
+  --color-texto-tenue: var(--color-menu-grupo);
+  --color-enlace: var(--color-acento);
+  --color-enlace-hover: var(--color-acento-hover);
+  --color-fondo-logo: var(--color-menu);
+
+  position: relative;
+  overflow: hidden;
+  color: var(--color-texto);
+  background:
+    radial-gradient(120% 80% at 100% 0%, var(--color-acento-brillo), transparent 60%),
+    radial-gradient(90% 70% at 0% 100%, var(--color-menu-hover), transparent 70%), var(--color-menu);
+  border-bottom: 1px solid var(--color-menu-borde);
 }
 
 .cabecera {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--espacio-4);
+  gap: var(--espacio-3);
+  width: min(var(--ancho-contenido), 100%);
+  margin: 0 auto;
+  padding: var(--espacio-4) var(--espacio-4) 0;
 }
 
-/* Acceso del cliente: a la derecha del logo; en el celular, si no cabe, baja bajo el logo y ocupa el ancho. */
-.cabecera {
-  flex-wrap: wrap;
-}
-
-.acceso {
+.cabeceraAcciones {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  justify-content: flex-end;
   gap: var(--espacio-2);
 }
 
-@media (max-width: 29.99rem) {
-  .acceso {
-    flex: 1 1 100%;
-    justify-content: flex-start;
-  }
+.botonCabecera {
+  color: var(--color-menu-texto-fuerte);
 }
 
-.barberia :global(.antetitulo) {
-  margin: 0 0 var(--espacio-1);
+/* El conmutador de tema es un botón secundario: sobre azul noche, con contorno claro y su icono visible. */
+.cabeceraAcciones :global(.boton--secundario) {
+  background: transparent;
+  border-color: var(--color-menu-texto);
+  color: var(--color-menu-texto-fuerte);
 }
 
-.barberia h1 {
-  margin: 0 0 var(--espacio-2);
+.cabeceraAcciones :global(.boton--secundario:hover) {
+  background: var(--color-menu-hover);
+}
+
+.botonCabecera:hover:not(:disabled) {
+  color: var(--color-menu-texto-fuerte);
+  background: var(--color-menu-hover);
+}
+
+.heroe {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-4);
+  width: min(var(--ancho-contenido), 100%);
+  margin: 0 auto;
+  padding: var(--espacio-10) var(--espacio-4) var(--espacio-12);
+}
+
+.antetitulo {
+  margin: 0;
+  color: var(--color-acento);
+  font-size: var(--texto-xs);
+  font-weight: var(--peso-fuerte);
+  letter-spacing: var(--tracking-mayusculas);
+  text-transform: uppercase;
+}
+
+.nombre {
+  margin: 0;
+  font-family: var(--fuente-titulos);
+  font-size: var(--texto-5xl);
+  font-weight: var(--peso-titulo);
+  line-height: var(--interlineado-titulos);
+  letter-spacing: var(--tracking-titulos);
+  overflow-wrap: anywhere;
 }
 
 .descripcion {
-  margin: 0 0 var(--espacio-3);
+  margin: 0;
+  max-width: 40rem;
   color: var(--color-texto-suave);
+  font-size: var(--texto-lg);
 }
 
 .datos {
   display: flex;
-  flex-wrap: wrap;
-  gap: var(--espacio-2) var(--espacio-5);
+  flex-direction: column;
+  gap: var(--espacio-2);
   margin: 0;
   padding: 0;
   list-style: none;
   color: var(--color-texto-suave);
-  font-size: var(--texto-sm);
 }
 
 .datos li {
-  display: inline-flex;
-  align-items: center;
+  display: flex;
+  align-items: flex-start;
   gap: var(--espacio-2);
+  overflow-wrap: anywhere;
 }
 
-.columnas {
-  display: grid;
-  gap: var(--espacio-6);
+.datos svg {
+  flex-shrink: 0;
+  margin-top: 0.15em;
+  color: var(--color-acento);
 }
 
-@media (min-width: 48rem) {
-  .columnas {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
-    align-items: start;
-  }
+.datos a {
+  color: var(--color-texto);
+  text-decoration-color: var(--color-acento);
+  text-underline-offset: 0.2em;
 }
 
-.bloque {
-  display: flex;
-  flex-direction: column;
-  gap: var(--espacio-4);
-  min-width: 0;
-}
-
-.bloque h2 {
-  margin: 0;
-  font-size: var(--texto-lg);
-}
-
-.servicios {
-  display: flex;
-  flex-direction: column;
-  gap: var(--espacio-3);
-}
-
-.servicio {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  column-gap: var(--espacio-3);
-  row-gap: var(--espacio-1);
-  padding: var(--espacio-3) var(--espacio-4);
-  border: 1px solid var(--color-borde);
-  border-radius: var(--radio);
-  background: var(--color-superficie);
-  cursor: pointer;
-}
-
-.servicio:hover {
-  border-color: var(--color-borde-fuerte);
-}
-
-.servicio[data-elegido] {
-  border-color: var(--color-acento-borde);
-  background: var(--color-acento-suave);
-}
-
-/* Con teclado, el foco del radio se ve en toda la tarjeta del servicio. */
-.servicio:has(input:focus-visible) {
-  border-color: var(--color-enlace);
-  box-shadow: var(--anillo-foco);
-}
-
-.servicio input {
-  grid-row: span 3;
-  margin-top: 0.2rem;
-  accent-color: var(--color-enlace);
-}
-
-.servicio input:focus-visible {
-  outline: none;
-}
-
-.servicioNombre {
-  font-weight: var(--peso-fuerte);
-}
-
-.servicioDetalle,
-.servicioDescripcion {
-  color: var(--color-texto-suave);
-  font-size: var(--texto-sm);
-}
-
-.filtros {
-  display: grid;
-  gap: var(--espacio-4);
-}
-
-@media (min-width: 30rem) {
-  .filtros {
-    grid-template-columns: 1fr 1fr;
-  }
-}
-
-.ayuda {
-  margin: 0;
-  color: var(--color-texto-suave);
-  font-size: var(--texto-sm);
-}
-
-.resumen {
-  margin: 0;
-}
-
-/* En el celular los botones ocupan todo el ancho (uno por fila si no caben dos). */
 .acciones {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: var(--espacio-3);
+  margin-top: var(--espacio-2);
+  min-height: var(--alto-control);
 }
 
 .acciones > * {
-  flex: 1 1 12rem;
+  width: 100%;
 }
 
-/* Tu selección: en el celular queda fija sobre el borde inferior mientras se baja por la lista de horas. */
-@media (max-width: 47.99rem) {
-  .seleccion {
-    position: sticky;
-    bottom: var(--espacio-3);
-    z-index: var(--capa-cabecera);
-    box-shadow: var(--sombra-lg);
-  }
+/* Botón secundario sobre azul noche: contorno claro, sin el fondo blanco de la superficie. */
+.botonSobreOscuro {
+  background: transparent;
+  border-color: var(--color-menu-texto);
+  color: var(--color-menu-texto-fuerte);
 }
 
-@media (min-width: 48rem) {
-  .acciones > * {
-    flex: 0 0 auto;
-  }
+.botonSobreOscuro:hover:not(:disabled) {
+  background: var(--color-menu-hover);
+  border-color: var(--color-menu-texto-fuerte);
+  color: var(--color-menu-texto-fuerte);
 }
+
+/* ---------- Contenido sobre marfil ---------- */
+
+.contenido {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-10);
+  width: min(var(--ancho-contenido), 100%);
+  margin: 0 auto;
+  padding: var(--espacio-8) var(--espacio-4) var(--espacio-12);
+}
+
+.seccion {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-4);
+}
+
+.seccionEncabezado h2 {
+  margin: 0;
+  font-family: var(--fuente-titulos);
+  font-size: var(--texto-2xl);
+  font-weight: var(--peso-titulo);
+  letter-spacing: var(--tracking-titulos);
+}
+
+.seccionEncabezado p {
+  margin: var(--espacio-1) 0 0;
+  color: var(--color-texto-suave);
+  font-size: var(--texto-sm);
+}
+
+.servicios,
+.equipo {
+  display: grid;
+  gap: var(--espacio-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.servicio {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-2);
+  padding: var(--espacio-5);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio-lg);
+  background: var(--color-superficie);
+  box-shadow: var(--sombra-tarjeta);
+}
+
+.servicioCabeza {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--espacio-3);
+}
+
+.servicioCabeza h3 {
+  margin: 0;
+  font-size: var(--texto-lg);
+  font-weight: var(--peso-fuerte);
+  overflow-wrap: anywhere;
+}
+
+.precio {
+  flex-shrink: 0;
+  font-family: var(--fuente-titulos);
+  font-size: var(--texto-xl);
+  font-weight: var(--peso-titulo);
+  color: var(--color-enlace);
+  white-space: nowrap;
+}
+
+.servicioDescripcion {
+  margin: 0;
+  color: var(--color-texto-suave);
+  font-size: var(--texto-sm);
+}
+
+.duracion {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--espacio-2);
+  margin: 0;
+  color: var(--color-texto-suave);
+  font-size: var(--texto-sm);
+}
+
+.barbero {
+  display: flex;
+  align-items: center;
+  gap: var(--espacio-4);
+  padding: var(--espacio-4);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio-lg);
+  background: var(--color-superficie);
+  box-shadow: var(--sombra-tarjeta);
+}
+
+.avatar {
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 50%;
+  background: var(--color-acento-suave);
+  border: 1px solid var(--color-acento-borde);
+  color: var(--color-enlace);
+  font-family: var(--fuente-titulos);
+  font-size: var(--texto-lg);
+  font-weight: var(--peso-titulo);
+}
+
+.barberoNombre {
+  margin: 0;
+  font-weight: var(--peso-fuerte);
+}
+
+.barberoServicios {
+  margin: var(--espacio-1) 0 0;
+  color: var(--color-texto-suave);
+  font-size: var(--texto-sm);
+}
+
+.horario {
+  margin: 0;
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio-lg);
+  background: var(--color-superficie);
+  box-shadow: var(--sombra-tarjeta);
+  overflow: hidden;
+}
+
+.dia {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--espacio-4);
+  padding: var(--espacio-3) var(--espacio-5);
+}
+
+.dia + .dia {
+  border-top: 1px solid var(--color-borde);
+}
+
+.dia[data-hoy] {
+  background: var(--color-acento-suave);
+}
+
+.dia dt {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--espacio-2);
+  font-weight: var(--peso-medio);
+}
+
+.dia dd {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  margin: 0;
+  color: var(--color-texto-suave);
+  text-align: end;
+}
+
+/* Cada tramo entero en su línea (nunca "15:00 –" arriba y "20:00" abajo); en escritorio, en una sola fila. */
+.dia dd span {
+  white-space: nowrap;
+}
+
+.hoy {
+  padding: 0 var(--espacio-2);
+  border-radius: var(--radio-pildora);
+  background: var(--color-acento);
+  color: var(--color-acento-texto);
+  font-size: var(--texto-xs);
+  font-weight: var(--peso-fuerte);
+}
+
+/* Invitación a reservar, en un bloque claro al final. */
+.invitacion {
+  display: grid;
+  gap: var(--espacio-4);
+  padding: var(--espacio-6);
+  border: 1px solid var(--color-acento-borde);
+  border-radius: var(--radio-xl);
+  background: var(--color-superficie);
+  box-shadow: var(--sombra-tarjeta);
+}
+
+.invitacion h2 {
+  margin: 0;
+  font-family: var(--fuente-titulos);
+  font-size: var(--texto-xl);
+  font-weight: var(--peso-titulo);
+}
+
+.invitacion p {
+  margin: var(--espacio-2) 0 0;
+  color: var(--color-texto-suave);
+}
+
+.invitacionIcono {
+  display: inline-grid;
+  place-items: center;
+  width: var(--tamano-circulo-icono);
+  height: var(--tamano-circulo-icono);
+  border-radius: 50%;
+  background: var(--color-acento-suave);
+  color: var(--color-enlace);
+}
+
+.pie {
+  margin-top: auto;
+  padding: var(--espacio-6) var(--espacio-4) var(--espacio-8);
+  border-top: 1px solid var(--color-borde);
+}
+
+.pie nav {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--espacio-3) var(--espacio-6);
+  font-size: var(--texto-sm);
+}
+
+/* ---------- Barbería no disponible ---------- */
 
 .noDisponible {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  max-width: 36rem;
+  gap: var(--espacio-4);
+  width: min(40rem, 100%);
+  margin: 0 auto;
+  padding: var(--espacio-12) var(--espacio-4) var(--espacio-16);
+}
+
+.noDisponible h1 {
+  margin: 0;
+  font-family: var(--fuente-titulos);
+  font-size: var(--texto-3xl);
+  font-weight: var(--peso-titulo);
 }
 
 .noDisponible p {
+  margin: 0;
   color: var(--color-texto-suave);
+}
+
+.iconoNoDisponible {
+  display: inline-grid;
+  place-items: center;
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 50%;
+  background: var(--color-menu-hover);
+  color: var(--color-acento);
+}
+
+/* ---------- Escritorio ---------- */
+
+@media (min-width: 40rem) {
+  .acciones {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .acciones > * {
+    width: auto;
+  }
+
+  .servicios,
+  .equipo {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .dia dd {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0 var(--espacio-4);
+  }
+
+  .invitacion {
+    grid-template-columns: auto 1fr;
+    align-items: center;
+  }
+
+  .invitacion .acciones {
+    grid-column: 1 / -1;
+    margin-top: 0;
+  }
+}
+
+@media (min-width: 64rem) {
+  .cabecera {
+    padding: var(--espacio-6) var(--espacio-8) 0;
+  }
+
+  .heroe {
+    padding: var(--espacio-16) var(--espacio-8) var(--espacio-20);
+  }
+
+  .contenido {
+    padding: var(--espacio-12) var(--espacio-8) var(--espacio-16);
+  }
+
+  .servicios {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .equipo {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .invitacion {
+    grid-template-columns: auto 1fr auto;
+  }
+
+  .invitacion .acciones {
+    grid-column: auto;
+  }
 }

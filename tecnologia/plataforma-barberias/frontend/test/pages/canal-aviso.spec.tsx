@@ -52,7 +52,7 @@ const titulo = () => screen.findByRole('heading', { level: 1, name: /cómo recib
 afterEach(() => tokenEnMemoria.limpiar());
 
 describe('Canal de aviso (/mis-avisos, T111)', () => {
-  it('se llega desde Mis citas con el enlace "Cómo recibo mis avisos"', async () => {
+  it('se llega desde Mis citas por la pestaña «Mi cuenta» y su opción "Cómo recibo mis avisos"', async () => {
     servidor.use(
       sesion('CLIENTE'),
       ...canalDeAviso(),
@@ -76,7 +76,9 @@ describe('Canal de aviso (/mis-avisos, T111)', () => {
       ),
     );
     renderizar('/mis-citas');
-    await userEvent.setup().click(await screen.findByRole('link', { name: /cómo recibo mis avisos/i }));
+    const usuario = userEvent.setup();
+    await usuario.click(await screen.findByRole('link', { name: 'Mi cuenta' }));
+    await usuario.click(await screen.findByRole('link', { name: /cómo recibo mis avisos/i }));
     expect(await titulo()).toBeInTheDocument();
   });
 

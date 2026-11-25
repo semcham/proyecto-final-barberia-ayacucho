@@ -59,7 +59,7 @@ Roles: **ADM** administrador de la plataforma · **PRO** propietario · **BAR** 
 | Método y ruta                                              | Propósito                                                                   | RF   | Roles                 |
 | ---------------------------------------------------------- | --------------------------------------------------------------------------- | ---- | --------------------- |
 | `GET /publico/{slug}`                                      | Catálogo público: barbería, horario, servicios y barberos activos (ADR-021) | RF10 | PUB                   |
-| `GET /publico/{slug}/horarios?servicio=&fecha=&barbero=`   | Horarios libres por el enlace, sin sesión (ADR-021)                         | RF11 | PUB                   |
+| `GET /publico/{slug}/horarios?servicio=&fecha=&barbero=`   | Horarios libres por el enlace, sin sesión (ADR-021). Desde el 2026-11-24 la interfaz solo los pide con sesión de cliente, en la reserva guiada; la ruta sigue pública | RF11 | PUB                   |
 | `GET/PUT /barberia/horario`                                | Horario de atención semanal (M02)                                           | RF03 | PRO (BAR lectura)     |
 | `GET/POST /servicios`, `PATCH /servicios/{id}`             | Gestionar servicios (se desactivan, no se eliminan)                         | RF07 | PRO (BAR lectura)     |
 | `GET/POST /barberos`, `PATCH /barberos/{id}`               | Gestionar barberos, servicios asignados y vínculo con un usuario            | RF08 | PRO (BAR lectura)     |

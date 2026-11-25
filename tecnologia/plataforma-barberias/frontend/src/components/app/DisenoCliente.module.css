@@ -1,0 +1,283 @@
+/*
+ * Panel del cliente. Celular primero: encabezado compacto azul noche arriba y barra de navegación fija abajo (4
+ * pestañas con icono, 44 px o más). Desde 48rem la barra pasa a pestañas bajo el encabezado. El encabezado redefine los
+ * tokens de texto con los del menú azul noche (contrastes medidos en tokens.css).
+ */
+
+.marco {
+  --alto-barra-inferior: 4.25rem;
+
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-fondo);
+}
+
+.saltar {
+  position: absolute;
+  left: var(--espacio-4);
+  top: var(--espacio-2);
+  z-index: var(--capa-flotante);
+  transform: translateY(-200%);
+  padding: var(--espacio-2) var(--espacio-4);
+  border-radius: var(--radio);
+  background: var(--color-acento);
+  color: var(--color-acento-texto);
+  font-weight: var(--peso-fuerte);
+}
+
+.saltar:focus {
+  transform: none;
+}
+
+/* ---------- Encabezado ---------- */
+
+.cabecera {
+  --color-texto: var(--color-menu-texto-fuerte);
+  --color-texto-suave: var(--color-menu-texto);
+  --color-texto-tenue: var(--color-menu-grupo);
+  --color-fondo-logo: var(--color-menu);
+
+  position: sticky;
+  top: 0;
+  z-index: var(--capa-cabecera);
+  color: var(--color-texto);
+  background: var(--color-menu);
+  border-bottom: 1px solid var(--color-menu-borde);
+}
+
+.cabeceraInterior {
+  display: flex;
+  align-items: center;
+  gap: var(--espacio-3);
+  width: min(var(--ancho-contenido), 100%);
+  margin: 0 auto;
+  padding: var(--espacio-3) var(--espacio-4);
+}
+
+.barberia {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+  line-height: var(--interlineado-ajustado);
+}
+
+.barberiaEtiqueta {
+  color: var(--color-texto-tenue);
+  font-size: var(--texto-xs);
+}
+
+.barberiaNombre {
+  overflow: hidden;
+  color: var(--color-texto);
+  font-family: var(--fuente-titulos);
+  font-size: var(--texto-lg);
+  font-weight: var(--peso-titulo);
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.barberiaNombre:hover {
+  color: var(--color-texto);
+  text-decoration: underline;
+  text-decoration-color: var(--color-acento);
+}
+
+.cabeceraAcciones {
+  display: flex;
+  align-items: center;
+  gap: var(--espacio-1);
+}
+
+/* En el celular el conmutador de tema vive en "Mi cuenta" (Apariencia): así cabe el nombre de la barbería. */
+.tema {
+  display: none;
+}
+
+/* El conmutador de tema y el menú de cuenta sobre azul noche. */
+.cabeceraAcciones :global(.boton--secundario) {
+  background: transparent;
+  border-color: var(--color-menu-texto);
+  color: var(--color-menu-texto-fuerte);
+}
+
+.cabeceraAcciones :global(.boton--secundario:hover) {
+  background: var(--color-menu-hover);
+}
+
+.disparador {
+  gap: var(--espacio-2);
+  padding: 0 var(--espacio-1);
+  color: var(--color-menu-texto-fuerte);
+}
+
+.disparador:hover:not(:disabled),
+.disparador[data-state='open'] {
+  background: var(--color-menu-hover);
+  color: var(--color-menu-texto-fuerte);
+}
+
+.avatar {
+  display: inline-grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background: var(--color-acento);
+  color: var(--color-acento-texto);
+  font-size: var(--texto-xs);
+  font-weight: var(--peso-titulo);
+}
+
+.disparadorNombre {
+  display: none;
+  max-width: 10rem;
+  overflow: hidden;
+  font-size: var(--texto-sm);
+  font-weight: var(--peso-fuerte);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.resumen {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  padding: var(--espacio-3);
+  max-width: 17rem;
+}
+
+.resumenNombre {
+  font-weight: var(--peso-fuerte);
+}
+
+.resumenCorreo {
+  font-size: var(--texto-xs);
+  color: var(--color-texto-suave);
+  overflow-wrap: anywhere;
+}
+
+/* ---------- Navegación: barra inferior en el celular ---------- */
+
+.navegacion {
+  position: fixed;
+  inset: auto 0 0;
+  z-index: var(--capa-navegacion);
+  padding-bottom: env(safe-area-inset-bottom);
+  background: var(--color-superficie);
+  border-top: 1px solid var(--color-borde);
+  box-shadow: var(--sombra-lg);
+}
+
+.pestanas {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pestana {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--espacio-1);
+  min-height: var(--alto-barra-inferior);
+  padding: var(--espacio-2) var(--espacio-1);
+  color: var(--color-texto-suave);
+  font-size: var(--texto-xs);
+  font-weight: var(--peso-medio);
+  text-align: center;
+  text-decoration: none;
+}
+
+.pestana:hover {
+  color: var(--color-texto);
+}
+
+.pestana[data-activa] {
+  color: var(--color-enlace);
+  font-weight: var(--peso-fuerte);
+}
+
+/* Marca de la pestaña activa (además del color y del peso: no depende solo del color). */
+.pestana[data-activa]::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 25%;
+  right: 25%;
+  height: 3px;
+  border-radius: 0 0 var(--radio-pildora) var(--radio-pildora);
+  background: var(--color-acento);
+}
+
+.pestana:focus-visible {
+  outline: none;
+  box-shadow: inset var(--anillo-foco);
+}
+
+/* ---------- Contenido ---------- */
+
+.contenido {
+  flex: 1;
+  width: min(var(--ancho-contenido), 100%);
+  margin: 0 auto;
+  padding: var(--espacio-6) var(--espacio-4) calc(var(--alto-barra-inferior) + var(--espacio-8));
+  outline: none;
+}
+
+/* ---------- Escritorio: pestañas bajo el encabezado ---------- */
+
+@media (min-width: 48rem) {
+  .disparadorNombre {
+    display: inline;
+  }
+
+  .tema {
+    display: inline-flex;
+  }
+
+  .navegacion {
+    position: sticky;
+    inset: auto;
+    top: var(--alto-cabecera-cliente, 4.25rem);
+    z-index: var(--capa-cabecera);
+    padding: 0;
+    box-shadow: none;
+    border-top: 0;
+    border-bottom: 1px solid var(--color-borde);
+  }
+
+  .pestanas {
+    display: flex;
+    gap: var(--espacio-2);
+    width: min(var(--ancho-contenido), 100%);
+    margin: 0 auto;
+    padding: 0 var(--espacio-4);
+  }
+
+  .pestana {
+    flex-direction: row;
+    gap: var(--espacio-2);
+    min-height: 3.25rem;
+    padding: 0 var(--espacio-4);
+    font-size: var(--texto-sm);
+  }
+
+  .pestana[data-activa]::before {
+    top: auto;
+    bottom: 0;
+    left: var(--espacio-3);
+    right: var(--espacio-3);
+    border-radius: var(--radio-pildora) var(--radio-pildora) 0 0;
+  }
+
+  .contenido {
+    padding: var(--espacio-8) var(--espacio-4) var(--espacio-16);
+  }
+}

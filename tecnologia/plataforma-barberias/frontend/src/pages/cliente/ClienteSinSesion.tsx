@@ -8,7 +8,8 @@ import panel from '../panel/Panel.module.css';
 import estilos from './MisCitas.module.css';
 
 /** Pantallas del cliente que, sin sesión, muestran esta explicación en vez de llevar a /ingresar (010, FR-028). */
-export type PantallaCliente = 'mis-citas' | 'asistente' | 'mis-avisos' | 'mis-datos' | 'adelanto';
+export type PantallaCliente =
+  'mis-citas' | 'asistente' | 'mis-avisos' | 'mis-datos' | 'adelanto' | 'mi-cuenta';
 
 interface Textos {
   /** El mismo título que la pantalla con sesión. */
@@ -29,7 +30,7 @@ const TEXTOS: Record<PantallaCliente, Textos> = {
     motivo: 'Para ver tus citas',
     otraBarberia: '¿Tus citas son de otra barbería? Abre el enlace de esa barbería e ingresa desde allí.',
     dondeSeUsa: 'Tus citas se ven desde la página de tu barbería. Para llegar:',
-    ultimoPaso: 'Ya dentro, pulsa «Mis citas».',
+    ultimoPaso: 'Ya dentro, llegas a «Mis citas».',
   },
   asistente: {
     titulo: 'Asistente',
@@ -37,14 +38,14 @@ const TEXTOS: Record<PantallaCliente, Textos> = {
     otraBarberia:
       '¿Quieres preguntar sobre otra barbería? Abre el enlace de esa barbería e ingresa desde allí.',
     dondeSeUsa: 'El asistente se usa desde la página de tu barbería. Para llegar:',
-    ultimoPaso: 'Ya dentro, pulsa «Mis citas» y luego «Preguntar al asistente».',
+    ultimoPaso: 'Ya dentro, toca «Asistente» en el menú de tu panel.',
   },
   'mis-avisos': {
     titulo: 'Cómo recibo mis avisos',
     motivo: 'Para ver y elegir cómo recibes tus avisos',
     otraBarberia: '¿Tus avisos son de otra barbería? Abre el enlace de esa barbería e ingresa desde allí.',
     dondeSeUsa: 'Tus avisos se eligen desde la página de tu barbería. Para llegar:',
-    ultimoPaso: 'Ya dentro, pulsa «Mis citas» y luego «Cómo recibo mis avisos».',
+    ultimoPaso: 'Ya dentro, toca «Mi cuenta» y luego «Cómo recibo mis avisos».',
   },
   'mis-datos': {
     titulo: 'Mis datos',
@@ -52,14 +53,21 @@ const TEXTOS: Record<PantallaCliente, Textos> = {
     otraBarberia:
       '¿Tus datos están en otra barbería? Cada barbería atiende las solicitudes de sus clientes: abre el enlace de esa barbería e ingresa desde allí.',
     dondeSeUsa: 'Tus solicitudes sobre tus datos se hacen desde la página de tu barbería. Para llegar:',
-    ultimoPaso: 'Ya dentro, pulsa «Mis citas» y luego «Mis datos».',
+    ultimoPaso: 'Ya dentro, toca «Mi cuenta» y luego «Mis datos».',
   },
   adelanto: {
     titulo: 'Pagar adelanto',
     motivo: 'Para pagar el adelanto de tu cita',
     otraBarberia: '¿Tu cita es de otra barbería? Abre el enlace de esa barbería e ingresa desde allí.',
     dondeSeUsa: 'El adelanto de tu cita se paga desde la página de tu barbería. Para llegar:',
-    ultimoPaso: 'Ya dentro, pulsa «Mis citas» y, en tu cita, «Pagar adelanto».',
+    ultimoPaso: 'Ya dentro, en «Mis citas», toca «Pagar adelanto» en tu cita.',
+  },
+  'mi-cuenta': {
+    titulo: 'Mi cuenta',
+    motivo: 'Para ver tu cuenta, tus datos y cómo recibes tus avisos',
+    otraBarberia: '¿Tu cuenta es de otra barbería? Abre el enlace de esa barbería e ingresa desde allí.',
+    dondeSeUsa: 'Tu cuenta se abre desde la página de tu barbería. Para llegar:',
+    ultimoPaso: 'Ya dentro, toca «Mi cuenta» en el menú de tu panel.',
   },
 };
 
@@ -107,7 +115,9 @@ export default function ClienteSinSesion({ pantalla, desde }: { pantalla: Pantal
               Abre el enlace de tu barbería. Te lo comparte la barbería, por ejemplo por WhatsApp o en su
               local.
             </li>
-            <li>En esa página, pulsa «Ingresar», arriba, y usa el correo y la contraseña de tu cuenta.</li>
+            <li>
+              En esa página, pulsa «Ingresar para reservar» y usa el correo y la contraseña de tu cuenta.
+            </li>
             <li>{textos.ultimoPaso}</li>
           </ol>
           <p className={panel.aviso}>

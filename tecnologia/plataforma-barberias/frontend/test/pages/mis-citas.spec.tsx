@@ -84,7 +84,8 @@ function renderizar() {
   );
 }
 
-const filaDe = async (texto: string) => (await screen.findByText(texto)).closest('li') as HTMLElement;
+// Cada cita es una tarjeta (article): la próxima, destacada, y las del historial.
+const filaDe = async (texto: string) => (await screen.findByText(texto)).closest('article') as HTMLElement;
 
 afterEach(() => tokenEnMemoria.limpiar());
 
@@ -106,7 +107,7 @@ describe('Mis citas (/mis-citas)', () => {
       ),
     );
     renderizar();
-    expect(await screen.findByRole('heading', { level: 1, name: /mis citas/i })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Hola, Luis' })).toBeInTheDocument();
     expect(screen.getAllByText(/barbería huamanga/i).length).toBeGreaterThan(0);
     expect(await filaDe('Corte clásico')).toHaveTextContent(/confirmada/i);
     const cancelada = await filaDe('Arreglo de barba');
@@ -169,8 +170,12 @@ describe('Mis citas (/mis-citas)', () => {
       ),
     );
     renderizar();
-    expect(await screen.findByText(/aún no tienes citas/i)).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /reservar una cita/i })).toHaveAttribute('href', `/b/${SLUG}`);
+    expect(await screen.findByText(/aún no tienes citas\. reserva tu primera cita/i)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /reservar una cita/i })).toHaveAttribute(
+      'href',
+      `/b/${SLUG}/reservar`,
+    );
+    expect(screen.queryByRole('heading', { name: /tu próxima cita/i })).not.toBeInTheDocument();
   });
 
   it('pagina el historial: "Anteriores" pide la página siguiente', async () => {
@@ -194,6 +199,150 @@ describe('Mis citas (/mis-citas)', () => {
     expect(await screen.findByText('Servicio de la página 2')).toBeInTheDocument();
     expect(paginas).toEqual(['1', '2']);
     expect(screen.getByRole('button', { name: /anteriores/i })).toBeDisabled();
+  });
+});
+
+// Rediseño del panel del cliente (2026-11-24): saludo, la próxima cita destacada y las acciones según el estado.
+describe('Mis citas · panel del cliente', () => {
+  const adelantoPorPagar = {
+    citaId: 'p',
+    estado: 'POR_PAGAR',
+    montoCentimos: 1000,
+    precioCentimos: 3500,
+    saldoCentimos: 2500,
+    codigo: 'K7Q2MP',
+    horaLimite: enLima(new Date(Date.now() + 2 * HORA_MS)),
+    limiteRevision: enLima(new Date(Date.now() + 3 * HORA_MS)),
+    pago: null,
+    devueltoEn: null,
+  };
+
+  it('destaca la próxima cita (la activa futura más cercana), aparte del historial', async () => {
+    conSesionYCatalogo();
+    servidor.use(
+      http.get('/api/v1/clientes/yo/citas', () =>
+        HttpResponse.json({
+          total: 3,
+          pagina: 1,
+          tamano: 10,
+          elementos: [
+            cita('lejana', {
+              servicio: 'Corte y barba',
+              inicio: enLima(new Date(Date.now() + 96 * HORA_MS)),
+              fin: enLima(new Date(Date.now() + 97 * HORA_MS)),
+            }),
+            cita('cercana', { servicio: 'Corte clásico' }),
+            cita('hecha', {
+              servicio: 'Arreglo de barba',
+              inicio: pasado,
+              fin: pasado,
+              estado: 'COMPLETADA',
+            }),
+          ],
+        }),
+      ),
+    );
+    renderizar();
+    const proxima = await screen.findByRole('region', { name: /tu próxima cita/i });
+    expect(within(proxima).getByText('Corte clásico')).toBeInTheDocument();
+    expect(within(proxima).getByText('Confirmada')).toBeInTheDocument();
+    const historial = screen.getByRole('region', { name: /historial/i });
+    expect(within(historial).getByText('Corte y barba')).toBeInTheDocument();
+    expect(within(historial).getByText('Arreglo de barba')).toBeInTheDocument();
+    expect(within(historial).queryByText('Corte clásico')).not.toBeInTheDocument();
+  });
+
+  it('sin citas próximas lo dice y ofrece reservar; el historial sigue a la vista', async () => {
+    conSesionYCatalogo();
+    servidor.use(
+      http.get('/api/v1/clientes/yo/citas', () =>
+        HttpResponse.json({
+          total: 1,
+          pagina: 1,
+          tamano: 10,
+          elementos: [cita('hecha', { inicio: pasado, fin: pasado, estado: 'COMPLETADA' })],
+        }),
+      ),
+    );
+    renderizar();
+    const proxima = await screen.findByRole('region', { name: /tu próxima cita/i });
+    expect(proxima).toHaveTextContent(/no tienes citas próximas/i);
+    expect(within(proxima).getByRole('link', { name: /reservar una cita/i })).toHaveAttribute(
+      'href',
+      `/b/${SLUG}/reservar`,
+    );
+    expect(
+      within(screen.getByRole('region', { name: /historial/i })).getByText('Completada'),
+    ).toBeInTheDocument();
+  });
+
+  it('las acciones dependen del estado: confirmada, pendiente de adelanto y ya pasada', async () => {
+    conSesionYCatalogo();
+    servidor.use(
+      http.get('/api/v1/clientes/yo/citas', () =>
+        HttpResponse.json({
+          total: 3,
+          pagina: 1,
+          tamano: 10,
+          elementos: [
+            cita('confirmada', { servicio: 'Corte clásico' }),
+            {
+              ...cita('pendiente', {
+                servicio: 'Corte y barba',
+                estado: 'PENDIENTE',
+                inicio: enLima(new Date(Date.now() + 72 * HORA_MS)),
+                fin: enLima(new Date(Date.now() + 73 * HORA_MS)),
+              }),
+              adelanto: adelantoPorPagar,
+            },
+            cita('pasada', {
+              servicio: 'Arreglo de barba',
+              inicio: pasado,
+              fin: pasado,
+              estado: 'NO_ASISTIO',
+            }),
+          ],
+        }),
+      ),
+    );
+    renderizar();
+    const confirmada = await filaDe('Corte clásico');
+    expect(within(confirmada).getByRole('button', { name: 'Reprogramar' })).toBeInTheDocument();
+    expect(within(confirmada).getByRole('button', { name: 'Cancelar' })).toBeInTheDocument();
+    expect(within(confirmada).queryByRole('link', { name: /pagar adelanto/i })).not.toBeInTheDocument();
+
+    const pendiente = await filaDe('Corte y barba');
+    expect(within(pendiente).getByText('Pendiente')).toBeInTheDocument();
+    expect(within(pendiente).getByText('Adelanto por pagar')).toBeInTheDocument();
+    expect(within(pendiente).getByRole('link', { name: /pagar adelanto/i })).toHaveAttribute(
+      'href',
+      '/mis-citas/pendiente/adelanto',
+    );
+    expect(within(pendiente).getByRole('button', { name: 'Cancelar' })).toBeInTheDocument();
+    expect(within(pendiente).queryByRole('button', { name: 'Reprogramar' })).not.toBeInTheDocument();
+
+    const pasada = await filaDe('Arreglo de barba');
+    expect(within(pasada).getByText('No asistió')).toBeInTheDocument();
+    expect(within(pasada).queryByRole('button')).not.toBeInTheDocument();
+    expect(within(pasada).queryByRole('link')).not.toBeInTheDocument();
+  });
+
+  it('está dentro del panel: pestañas Reservar, Mis citas (actual), Asistente y Mi cuenta', async () => {
+    conSesionYCatalogo();
+    servidor.use(
+      http.get('/api/v1/clientes/yo/citas', () =>
+        HttpResponse.json({ total: 0, pagina: 1, tamano: 10, elementos: [] }),
+      ),
+    );
+    renderizar();
+    const menu = await screen.findByRole('navigation', { name: /panel del cliente/i });
+    expect(within(menu).getByRole('link', { name: /reservar/i })).toHaveAttribute(
+      'href',
+      `/b/${SLUG}/reservar`,
+    );
+    expect(within(menu).getByRole('link', { name: /mis citas/i })).toHaveAttribute('aria-current', 'page');
+    expect(within(menu).getByRole('link', { name: /asistente/i })).toHaveAttribute('href', '/asistente');
+    expect(within(menu).getByRole('link', { name: /mi cuenta/i })).toHaveAttribute('href', '/mi-cuenta');
   });
 });
 

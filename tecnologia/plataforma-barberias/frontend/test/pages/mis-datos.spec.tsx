@@ -194,7 +194,7 @@ describe('Mis datos del cliente (/mis-datos)', () => {
     expect(lista).toHaveTextContent(/se conserva la auditoría/i);
   });
 
-  it('se llega desde Mis citas con el enlace "Mis datos"', async () => {
+  it('se llega desde Mis citas por la pestaña «Mi cuenta» y su opción "Mis datos"', async () => {
     servidor.use(
       sesion('CLIENTE'),
       http.get('/api/v1/publico/huamanga', () =>
@@ -217,7 +217,9 @@ describe('Mis datos del cliente (/mis-datos)', () => {
     );
     servidorDeSolicitudes();
     renderizar('/mis-citas');
-    await userEvent.setup().click(await screen.findByRole('link', { name: 'Mis datos' }));
+    const usuario = userEvent.setup();
+    await usuario.click(await screen.findByRole('link', { name: 'Mi cuenta' }));
+    await usuario.click(await screen.findByRole('link', { name: /^mis datos/i }));
     expect(await titulo()).toBeInTheDocument();
   });
 });

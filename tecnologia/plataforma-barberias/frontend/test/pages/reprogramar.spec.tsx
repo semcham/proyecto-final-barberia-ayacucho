@@ -123,7 +123,8 @@ function renderizar(ruta: string) {
   );
 }
 
-const filaDe = async (texto: string) => (await screen.findByText(texto)).closest('li') as HTMLElement;
+// En Mis citas cada cita es una tarjeta (article).
+const filaDe = async (texto: string) => (await screen.findByText(texto)).closest('article') as HTMLElement;
 
 async function abrirDesdeMisCitas() {
   renderizar('/mis-citas');

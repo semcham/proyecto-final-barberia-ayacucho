@@ -90,7 +90,7 @@ El propietario pregunta en lenguaje natural, por ejemplo, "¿cuántas citas tuve
 - **Pregunta vacía, demasiado larga o en otro idioma:** se rechaza la vacía o la que supera el largo máximo con un mensaje claro; en otro idioma, el asistente puede responder en español con los mismos datos.
 - **Período de reporte inválido** (fin antes del inicio o un rango mayor al permitido): se rechaza con un mensaje que dice qué corregir.
 - **Fechas relativas** ("mañana", "este sábado"): se interpretan en la zona horaria de la barbería, y la respuesta dice la fecha exacta que usó.
-- **Cliente sin sesión** (visitante del catálogo público): no puede usar el asistente; ve el catálogo y los horarios como hoy.
+- **Cliente sin sesión** (visitante del catálogo público): no puede usar el asistente; ve el catálogo y los horarios como hoy. _(Desde el 2026-11-24 la interfaz sin sesión muestra solo la presentación de la barbería: servicios y barberos; los horarios libres requieren sesión.)_
 
 ## Requirements _(mandatory)_
 
@@ -163,7 +163,7 @@ El propietario pregunta en lenguaje natural, por ejemplo, "¿cuántas citas tuve
 
 ## Assumptions
 
-- **Solo con sesión:** el asistente del cliente lo usa un cliente con sesión en esa barbería (HU22, criterio 4: la barbería es la de su token). Los visitantes sin sesión siguen viendo el catálogo y los horarios públicos como hoy.
+- **Solo con sesión:** el asistente del cliente lo usa un cliente con sesión en esa barbería (HU22, criterio 4: la barbería es la de su token). Los visitantes sin sesión siguen viendo el catálogo y los horarios públicos como hoy. _(Desde el 2026-11-24, sin sesión solo ven la presentación: servicios y barberos; los horarios libres requieren sesión.)_
 - **Reservar sigue siendo del flujo normal:** HU22 dice "para reservar más rápido" y "la reserva solo se confirma ejecutando el caso de uso"; aquí el asistente **ofrece** el flujo normal con los datos ya elegidos, y la reserva la confirma el cliente allí (FR-005, FR-018).
 - **Sin acciones sensibles en US3:** HU23 pide confirmación adicional para acciones sensibles; como el asistente del propietario solo lee, no hay acciones que confirmar en esta versión.
 - **Registro sin contenido:** HU23 pide que cada consulta quede registrada; se registran los metadatos (quién, cuándo, herramientas, resultado y consumo), no el texto, para cumplir "sin datos personales de terceros en los registros" (FR-010).

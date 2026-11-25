@@ -113,7 +113,7 @@ function renderizar(
 async function reservarYAbrirCancelacion() {
   renderizar(`/b/${SLUG}/reservar?${SELECCION}`);
   const usuario = userEvent.setup();
-  await usuario.click(await screen.findByRole('button', { name: /confirmar reserva/i }));
+  await usuario.click(await screen.findByRole('button', { name: /confirmar cita/i }));
   const hecha = await screen.findByRole('region', { name: /tu cita está confirmada/i });
   await usuario.click(within(hecha).getByRole('button', { name: /cancelar cita/i }));
   return { usuario, modal: await screen.findByRole('alertdialog') };

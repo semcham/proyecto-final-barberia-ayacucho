@@ -182,7 +182,10 @@ describe('Asistente del cliente (/asistente)', () => {
     const aviso = await screen.findByRole('alert');
     expect(aviso).toHaveTextContent('Llegaste al límite de preguntas de hoy.');
     expect(aviso).toHaveTextContent('15 de noviembre de 2026, 00:00');
-    expect(screen.getByRole('link', { name: 'Ir a reservar' })).toHaveAttribute('href', `/b/${SLUG}`);
+    expect(screen.getByRole('link', { name: 'Ir a reservar' })).toHaveAttribute(
+      'href',
+      `/b/${SLUG}/reservar`,
+    );
   });
 
   it('"no disponible" muestra la alternativa manual', async () => {
@@ -199,7 +202,10 @@ describe('Asistente del cliente (/asistente)', () => {
     renderizar();
     await preguntarEnPantalla('precios');
     expect(await screen.findByRole('alert')).toHaveTextContent('no está disponible');
-    expect(screen.getByRole('link', { name: 'Ir a reservar' })).toHaveAttribute('href', `/b/${SLUG}`);
+    expect(screen.getByRole('link', { name: 'Ir a reservar' })).toHaveAttribute(
+      'href',
+      `/b/${SLUG}/reservar`,
+    );
   });
 
   it('al recargar la página, la conversación empieza de nuevo (nada se guarda)', async () => {
