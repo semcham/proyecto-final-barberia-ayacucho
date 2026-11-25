@@ -124,4 +124,49 @@ describe('Contrato 011: servicios en lote', () => {
       .expect(400);
     expect(repetido.body.detalles).toEqual([{ fila: 1, campo: 'nombre', problema: 'ya_existe' }]);
   });
+
+  it('POST /barberos/lote/revision y /barberos/lote: 200, 201, 200 (reintento), 400, 403 y 422', async () => {
+    const revision = await prueba.agente
+      .post('/api/v1/barberos/lote/revision')
+      .set(con(propietario))
+      .send({ filas: [{ nombre: 'Carlos', servicioIds: [] }, { nombre: 'Carlos' }] })
+      .expect(200);
+    expect(erroresDeContrato011('/barberos/lote/revision', 'post', 200, revision.body)).toEqual([]);
+    expect(revision.body.advertencias.length).toBe(2);
+
+    const ruta = '/api/v1/barberos/lote';
+    const clave = randomUUID();
+    const filas = [{ nombre: 'Ana Pillaca' }];
+    const valida = (estado: number, cuerpo: unknown) =>
+      expect(erroresDeContrato011('/barberos/lote', 'post', estado, cuerpo)).toEqual([]);
+    valida(
+      201,
+      (await prueba.agente.post(ruta).set(con(propietario, clave)).send({ filas }).expect(201)).body,
+    );
+    valida(
+      200,
+      (await prueba.agente.post(ruta).set(con(propietario, clave)).send({ filas }).expect(200)).body,
+    );
+    const invalida = await prueba.agente
+      .post(ruta)
+      .set(con(propietario, randomUUID()))
+      .send({ filas: [{ nombre: 'C' }] })
+      .expect(400);
+    expect(invalida.body.codigo).toBe('CARGA_INVALIDA');
+    valida(400, invalida.body);
+    valida(
+      403,
+      (await prueba.agente.post(ruta).set(con(barbero, randomUUID())).send({ filas }).expect(403)).body,
+    );
+    valida(
+      422,
+      (
+        await prueba.agente
+          .post(ruta)
+          .set(con(propietario, clave))
+          .send({ filas: [{ nombre: 'Otro' }] })
+          .expect(422)
+      ).body,
+    );
+  });
 });

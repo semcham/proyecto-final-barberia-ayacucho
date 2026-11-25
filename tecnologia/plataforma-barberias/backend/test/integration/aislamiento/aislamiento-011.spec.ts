@@ -87,4 +87,29 @@ describe('Aislamiento 011: carga en lote', () => {
       .expect(200);
     expect(r.body.errores).toEqual([]);
   });
+
+  it('barberos: un servicio de B es "no_existe" para A, y los barberos se crean solo en A', async () => {
+    const deB = await sembrarServicio({
+      tenantId: b.tenantId,
+      nombre: 'Servicio de B',
+      precio: '10.00',
+      duracionMin: 30,
+    });
+    const revision = await prueba.agente
+      .post('/api/v1/barberos/lote/revision')
+      .set({ Authorization: `Bearer ${tokenA}` })
+      .send({ filas: [{ nombre: 'Carlos', servicioIds: [deB.servicioId] }] })
+      .expect(200);
+    expect(revision.body.errores).toEqual([{ fila: 1, campo: 'servicioIds', problema: 'no_existe' }]);
+
+    await prueba.agente
+      .post('/api/v1/barberos/lote')
+      .set({ Authorization: `Bearer ${tokenA}`, 'Idempotency-Key': randomUUID() })
+      .send({ filas: [{ nombre: 'Solo en A' }] })
+      .expect(201);
+    const { rows } = await poolDe('seed').query<{ tenant_id: string }>(
+      `SELECT tenant_id FROM barber WHERE display_name = 'Solo en A'`,
+    );
+    expect(rows.map((f) => f.tenant_id)).toEqual([a.tenantId]);
+  });
 });

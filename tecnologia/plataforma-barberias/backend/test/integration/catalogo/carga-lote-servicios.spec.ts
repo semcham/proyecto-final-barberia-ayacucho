@@ -201,4 +201,19 @@ describe('Servicios en lote', () => {
     expect(String(auditoria[0].resource)).toMatch(/^lote:[0-9a-f-]{36};cantidad=3$/);
     expect(String(auditoria[0].resource)).not.toMatch(/Corte|Barba/);
   });
+
+  // T046 · SC-004: 50 filas válidas se guardan (con su resumen) en menos de 3 s en el entorno local. Se imprime la
+  // medición para anotarla en el quickstart.
+  it('(SC-004) guarda 50 filas en menos de 3 s', async () => {
+    const b = await barberia();
+    const filas = Array.from({ length: 50 }, (_, i) =>
+      fila(`Servicio medido ${i + 1}`, { precio: `${10 + i}.50` }),
+    );
+    const inicio = performance.now();
+    const { body } = await b.cargar(filas).expect(201);
+    const ms = Math.round(performance.now() - inicio);
+    console.log(`SC-004: 50 servicios guardados en ${ms} ms`);
+    expect(body.creados).toBe(50);
+    expect(ms).toBeLessThan(3000);
+  });
 });

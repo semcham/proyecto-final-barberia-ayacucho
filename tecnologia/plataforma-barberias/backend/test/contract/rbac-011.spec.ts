@@ -4,10 +4,11 @@ import { filasDe, sembrarBarberia, sembrarUsuario } from '../helpers/fixtures';
 import { sesionCliente, tokenPara, tokenPlataformaPara } from '../helpers/sesiones';
 import { cerrarPools, poolDe } from '../helpers/test-db';
 
-// T017 de 011 · RBAC de la carga en lote (FR-018): solo el PROPIETARIO (GESTIONAR_SERVICIOS). El barbero y el cliente
+// T017 y T034 de 011 · RBAC de la carga en lote (FR-018): solo el PROPIETARIO (GESTIONAR_SERVICIOS y GESTIONAR_BARBEROS). El barbero y el cliente
 // reciben 403 auditado como ACCESO_DENEGADO_ROL; sin sesión o con el token de la plataforma, 401. Nada se crea.
 
 const RUTAS = ['/api/v1/servicios/lote/revision', '/api/v1/servicios/lote'];
+const RUTAS_BARBEROS = ['/api/v1/barberos/lote/revision', '/api/v1/barberos/lote'];
 const CUERPO = { filas: [{ nombre: 'Corte', duracionMinutos: 30, precio: '25' }] };
 
 describe('RBAC 011: servicios en lote', () => {
@@ -70,5 +71,32 @@ describe('RBAC 011: servicios en lote', () => {
   it.each(RUTAS)('%s: sin sesión o con el token de la plataforma → 401', async (ruta) => {
     await pedir(ruta, null).expect(401);
     await pedir(ruta, plataforma).expect(401);
+  });
+
+  describe('barberos en lote (GESTIONAR_BARBEROS)', () => {
+    const pedirBarberos = (ruta: string, token: string | null) =>
+      prueba.agente
+        .post(ruta)
+        .set({ ...(token ? { Authorization: `Bearer ${token}` } : {}), 'Idempotency-Key': randomUUID() })
+        .send({ filas: [{ nombre: `Barbero ${randomUUID().slice(0, 6)}` }] });
+
+    it.each(RUTAS_BARBEROS)('%s: el propietario puede', async (ruta) => {
+      expect([200, 201]).toContain((await pedirBarberos(ruta, tokens.PROPIETARIO)).status);
+    });
+
+    it.each(
+      RUTAS_BARBEROS.flatMap((ruta) => (['BARBERO', 'CLIENTE'] as const).map((rol) => [ruta, rol] as const)),
+    )('%s: %s → 403 auditado', async (ruta, rol) => {
+      expect((await pedirBarberos(ruta, tokens[rol]).expect(403)).body.codigo).toBe('ACCESO_DENEGADO');
+      const denegadas = (await filasDe('audit_log', tenantId)).filter(
+        (f) => f.action === 'ACCESO_DENEGADO_ROL' && f.resource === 'operacion:GESTIONAR_BARBEROS',
+      );
+      expect(denegadas.length).toBeGreaterThan(0);
+    });
+
+    it.each(RUTAS_BARBEROS)('%s: sin sesión o con el token de la plataforma → 401', async (ruta) => {
+      await pedirBarberos(ruta, null).expect(401);
+      await pedirBarberos(ruta, plataforma).expect(401);
+    });
   });
 });
