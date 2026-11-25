@@ -1,0 +1,233 @@
+openapi: 3.1.0
+info:
+  title: Carga masiva de servicios y barberos (011)
+  version: 0.1.0
+  description: >
+    Rutas nuevas de M02 (catálogo). Todas con sesión de PROPIETARIO (GESTIONAR_SERVICIOS o GESTIONAR_BARBEROS);
+    el tenant sale del token, nunca de la ruta ni del cuerpo. Errores con el formato común
+    { codigo, mensaje, detalles } de specs/002-catalogo-citas-cliente/contracts/openapi.yaml.
+servers:
+  - url: /api/v1
+security:
+  - bearer: []
+paths:
+  /servicios/lote/revision:
+    post:
+      summary: Revisa una carga de servicios sin guardar nada (vista previa)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CargaServicios' }
+      responses:
+        '200':
+          description: Resultado de la revisión (con o sin errores)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Revision' }
+        '400': { $ref: '#/components/responses/Validacion' }
+        '403': { $ref: '#/components/responses/Prohibido' }
+  /servicios/lote:
+    post:
+      summary: Crea todos los servicios de la carga o ninguno
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CargaServicios' }
+      responses:
+        '201':
+          description: Carga guardada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ResumenCarga' }
+        '200':
+          description: Reintento con la misma Idempotency-Key; devuelve el mismo resumen y no crea nada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ResumenCarga' }
+        '400': { $ref: '#/components/responses/CargaInvalida' }
+        '403': { $ref: '#/components/responses/Prohibido' }
+        '409':
+          description: NOMBRE_DUPLICADO — otra carga o creación usó un nombre entre la revisión y el guardado; no se creó nada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422': { $ref: '#/components/responses/IdempotenciaConflicto' }
+  /barberos/lote/revision:
+    post:
+      summary: Revisa una carga de barberos sin guardar nada (vista previa, con el cupo del plan)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CargaBarberos' }
+      responses:
+        '200':
+          description: Resultado de la revisión
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Revision'
+                  - type: object
+                    required: [cupo]
+                    properties:
+                      cupo: { $ref: '#/components/schemas/Cupo' }
+        '400': { $ref: '#/components/responses/Validacion' }
+        '403': { $ref: '#/components/responses/Prohibido' }
+  /barberos/lote:
+    post:
+      summary: Crea todos los barberos de la carga (activos, sin usuario vinculado) o ninguno
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CargaBarberos' }
+      responses:
+        '201':
+          description: Carga guardada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ResumenCarga' }
+        '200':
+          description: Reintento con la misma Idempotency-Key
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ResumenCarga' }
+        '400': { $ref: '#/components/responses/CargaInvalida' }
+        '403':
+          description: >
+            ACCESO_DENEGADO (rol), o SUSCRIPCION_NO_PERMITE: catálogo de solo lectura por la suscripción, o
+            detalles [{ motivo: LIMITE_BARBEROS, maximo, activos, solicitados }] si la carga supera el cupo.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422': { $ref: '#/components/responses/IdempotenciaConflicto' }
+components:
+  securitySchemes:
+    bearer: { type: http, scheme: bearer, bearerFormat: JWT }
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema: { type: string, format: uuid }
+  schemas:
+    FilaServicio:
+      type: object
+      required: [nombre, duracionMinutos, precio]
+      properties:
+        nombre: { type: string, maxLength: 200 }
+        duracionMinutos: { type: integer }
+        precio: { type: string, description: 'Soles con punto decimal: "25", "25.5" o "25.50". Vacío = error "falta" en la revisión' }
+        descripcion: { type: [string, 'null'], maxLength: 1000 }
+    FilaBarbero:
+      type: object
+      required: [nombre]
+      properties:
+        nombre: { type: string, maxLength: 200 }
+        servicioIds:
+          type: array
+          items: { type: string, format: uuid }
+          uniqueItems: true
+          default: []
+    CargaServicios:
+      type: object
+      required: [filas]
+      properties:
+        filas:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items: { $ref: '#/components/schemas/FilaServicio' }
+    CargaBarberos:
+      type: object
+      required: [filas]
+      properties:
+        filas:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items: { $ref: '#/components/schemas/FilaBarbero' }
+    ProblemaDeFila:
+      type: object
+      required: [fila, campo, problema]
+      properties:
+        fila: { type: [integer, 'null'], minimum: 1, description: 'null si el problema es de la carga entera' }
+        campo: { type: string, examples: [nombre, duracionMinutos, precio, descripcion, servicioIds, filas] }
+        problema:
+          type: string
+          enum:
+            [longitud, rango, multiplo_de_5, falta, formato, repetido_en_carga, ya_existe, no_existe, inactivo, supera_cupo, vacia]
+    Revision:
+      type: object
+      required: [filas, errores, advertencias]
+      properties:
+        filas: { type: integer }
+        errores: { type: array, items: { $ref: '#/components/schemas/ProblemaDeFila' } }
+        advertencias:
+          type: array
+          description: Solo en barberos (nombre repetido); nunca impiden guardar
+          items: { $ref: '#/components/schemas/ProblemaDeFila' }
+    Cupo:
+      type: object
+      required: [maximo, activos, disponibles]
+      properties:
+        maximo: { type: integer }
+        activos: { type: integer }
+        disponibles: { type: integer }
+    ResumenCarga:
+      type: object
+      required: [tipo, creados, ids]
+      properties:
+        tipo: { type: string, enum: [SERVICIOS, BARBEROS] }
+        creados: { type: integer, minimum: 1, maximum: 50 }
+        ids: { type: array, items: { type: string, format: uuid } }
+    Error:
+      type: object
+      required: [codigo, mensaje, detalles]
+      properties:
+        codigo: { type: string }
+        mensaje: { type: string }
+        detalles: { type: array, items: { type: object } }
+    ErrorCargaInvalida:
+      type: object
+      required: [codigo, mensaje, detalles]
+      properties:
+        codigo: { const: CARGA_INVALIDA }
+        mensaje: { type: string }
+        detalles:
+          type: array
+          minItems: 1
+          items: { $ref: '#/components/schemas/ProblemaDeFila' }
+  responses:
+    Validacion:
+      description: VALIDACION — el cuerpo no tiene la forma esperada (por ejemplo, 0 o más de 50 filas, o sin Idempotency-Key)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Prohibido:
+      description: ACCESO_DENEGADO (rol sin permiso) o SUSCRIPCION_NO_PERMITE (catálogo de solo lectura)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    CargaInvalida:
+      description: >
+        CARGA_INVALIDA — hay errores en las filas; detalles = ProblemaDeFila[]; no se creó nada. También VALIDACION si el
+        cuerpo no tiene la forma esperada.
+      content:
+        application/json:
+          schema:
+            anyOf:
+              - { $ref: '#/components/schemas/ErrorCargaInvalida' }
+              - { $ref: '#/components/schemas/Error' }
+    IdempotenciaConflicto:
+      description: IDEMPOTENCIA_CONFLICTO — la clave ya se usó con otra carga
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
