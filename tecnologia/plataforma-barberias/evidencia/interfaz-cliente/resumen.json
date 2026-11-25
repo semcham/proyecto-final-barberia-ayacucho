@@ -1,0 +1,86 @@
+[
+  {
+    "nombre": "presentacion-claro-360",
+    "axe": [],
+    "desborde": 0,
+    "errores": [],
+    "sinManejar": []
+  },
+  {
+    "nombre": "presentacion-claro-1440",
+    "axe": [],
+    "desborde": 0,
+    "errores": [],
+    "sinManejar": []
+  },
+  {
+    "nombre": "presentacion-oscuro-360",
+    "axe": [],
+    "desborde": 0,
+    "errores": [],
+    "sinManejar": []
+  },
+  {
+    "nombre": "presentacion-oscuro-1440",
+    "axe": [],
+    "desborde": 0,
+    "errores": [],
+    "sinManejar": []
+  },
+  {
+    "nombre": "presentacion-sin-servicios-claro-360",
+    "axe": [],
+    "desborde": 0,
+    "errores": [],
+    "sinManejar": []
+  },
+  {
+    "nombre": "presentacion-sin-servicios-claro-1440",
+    "axe": [],
+    "desborde": 0,
+    "errores": [],
+    "sinManejar": []
+  },
+  {
+    "nombre": "presentacion-sin-servicios-oscuro-360",
+    "axe": [],
+    "desborde": 0,
+    "errores": [],
+    "sinManejar": []
+  },
+  {
+    "nombre": "presentacion-sin-servicios-oscuro-1440",
+    "axe": [],
+    "desborde": 0,
+    "errores": [],
+    "sinManejar": []
+  },
+  {
+    "nombre": "presentacion-con-sesion-claro-360",
+    "axe": [],
+    "desborde": 0,
+    "errores": [],
+    "sinManejar": []
+  },
+  {
+    "nombre": "presentacion-con-sesion-claro-1440",
+    "axe": [],
+    "desborde": 0,
+    "errores": [],
+    "sinManejar": []
+  },
+  {
+    "nombre": "presentacion-con-sesion-oscuro-360",
+    "axe": [],
+    "desborde": 0,
+    "errores": [],
+    "sinManejar": []
+  },
+  {
+    "nombre": "presentacion-con-sesion-oscuro-1440",
+    "axe": [],
+    "desborde": 0,
+    "errores": [],
+    "sinManejar": []
+  }
+]
