@@ -43,6 +43,53 @@ export const cargarServicios = (filas: FilaServicioEnvio[], clave: string) =>
     encabezados: { 'Idempotency-Key': clave },
   });
 
+export interface FilaBarberoEnvio {
+  nombre: string;
+  servicioIds: string[];
+}
+
+export interface CupoDeBarberos {
+  maximo: number;
+  activos: number;
+  disponibles: number;
+}
+
+export type RevisionDeBarberos = RevisionDeCarga & { cupo: CupoDeBarberos };
+
+export const revisarBarberos = (filas: FilaBarberoEnvio[]) =>
+  llamarApi<RevisionDeBarberos>('/barberos/lote/revision', { metodo: 'POST', cuerpo: { filas } });
+
+export const cargarBarberos = (filas: FilaBarberoEnvio[], clave: string) =>
+  llamarApi<ResumenCarga>('/barberos/lote', {
+    metodo: 'POST',
+    cuerpo: { filas },
+    encabezados: { 'Idempotency-Key': clave },
+  });
+
+/** Datos del cupo de un 403 SUSCRIPCION_NO_PERMITE por LIMITE_BARBEROS al guardar, o null si el error es otro. */
+export function cupoSuperado(
+  error: unknown,
+): { maximo: number; activos?: number; solicitados?: number } | null {
+  if (!(error instanceof ApiError) || error.codigo !== 'SUSCRIPCION_NO_PERMITE') return null;
+  const d = error.detalles.find((x) => x.motivo === 'LIMITE_BARBEROS');
+  if (!d || typeof d.maximo !== 'number') return null;
+  return {
+    maximo: d.maximo,
+    activos: typeof d.activos === 'number' ? d.activos : undefined,
+    solicitados: typeof d.solicitados === 'number' ? d.solicitados : undefined,
+  };
+}
+
+/** "Tu plan permite M barberos activos y ya tienes A. Quita X filas o cambia de plan." */
+export function textoSuperaCupo(maximo: number, activos: number, filas: number): string {
+  const quitar = Math.max(1, activos + filas - maximo);
+  const cambio =
+    activos >= maximo
+      ? 'Desactiva a alguno o cambia de plan.'
+      : `Quita ${quitar === 1 ? '1 fila' : `${quitar} filas`} o cambia de plan.`;
+  return `Tu plan permite ${maximo} barberos activos y ya tienes ${activos}. ${cambio}`;
+}
+
 /** Los errores por fila de un 400 CARGA_INVALIDA, o null si el error es otro. */
 export function erroresDeCarga(error: unknown): ProblemaDeFila[] | null {
   if (!(error instanceof ApiError) || error.codigo !== 'CARGA_INVALIDA') return null;
@@ -75,6 +122,12 @@ export function textoCortoDelProblema(
       return tipo === 'SERVICIOS'
         ? 'Ya tienes un servicio con este nombre.'
         : 'Ya hay un barbero con este nombre.';
+    case 'nombre:repetido_en_carga':
+      return tipo === 'SERVICIOS' ? 'Este nombre ya está en otra fila.' : 'Otra fila tiene el mismo nombre.';
+    case 'servicioIds:inactivo':
+      return 'Un servicio elegido está desactivado.';
+    case 'servicioIds:no_existe':
+      return 'Un servicio elegido ya no existe.';
     default:
       return textoDelProblema(p, tipo);
   }
@@ -109,6 +162,8 @@ export function textoDelProblema(p: ProblemaDeFila, tipo: 'SERVICIOS' | 'BARBERO
       return 'Uno de los servicios elegidos ya no existe.';
     case 'filas:vacia':
       return 'Escribe al menos una fila.';
+    case 'filas:supera_cupo':
+      return 'La carga supera los barberos activos que permite tu plan.';
     default:
       return 'Revisa este dato.';
   }

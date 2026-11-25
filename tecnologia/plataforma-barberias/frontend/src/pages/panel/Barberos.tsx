@@ -2,6 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { Link } from 'react-router-dom';
 import { z } from 'zod';
 import { clavesConsulta } from '../../api/claves';
 import { ApiError, llamarApi } from '../../api/client';
@@ -9,7 +10,17 @@ import type { components as c001 } from '../../api/schema';
 import type { components } from '../../api/schema-002';
 import { EncabezadoPagina } from '../../components/app/EncabezadoPagina';
 import { type CitaAfectada, citasEnConflicto, ModalConflictos } from '../../components/app/ModalConflictos';
-import { Alerta, Boton, Campo, EstadoVacio, EtiquetaEstado, Tarjeta, useAvisos } from '../../components/ui';
+import { Icono } from '../../components/Icono';
+import {
+  Alerta,
+  Boton,
+  Campo,
+  clasesBoton,
+  EstadoVacio,
+  EtiquetaEstado,
+  Tarjeta,
+  useAvisos,
+} from '../../components/ui';
 import { CargandoLista } from './Cargando';
 import { mensajeDeError, useZonaBarberia } from './datos-barberia';
 import estilos from './Panel.module.css';
@@ -149,6 +160,13 @@ export default function Barberos() {
         migas={[{ etiqueta: 'Inicio', a: '/app' }, { etiqueta: 'Barberos' }]}
         titulo="Barberos"
         descripcion="Quién atiende y qué servicios ofrece. Su nombre visible aparece en tu catálogo."
+        acciones={
+          // 011 (US2): cargar varios barberos a la vez.
+          <Link to="/app/barberos/agregar-varios" className={clasesBoton({ variante: 'secundario' })}>
+            <Icono nombre="usuarios" tamano={18} />
+            Agregar varios
+          </Link>
+        }
       />
       <div className={estilos.distribucion}>
         <Tarjeta titulo={titulo} icono="usuario">

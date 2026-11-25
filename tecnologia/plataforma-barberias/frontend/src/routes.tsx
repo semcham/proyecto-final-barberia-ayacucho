@@ -26,6 +26,8 @@ const Barberia = lazy(() => import('./pages/panel/Barberia'));
 const Servicios = lazy(() => import('./pages/panel/Servicios'));
 // 011 (US1): servicios en lote.
 const CargaServicios = lazy(() => import('./pages/panel/CargaServicios'));
+// 011 (US2): barberos en lote.
+const CargaBarberos = lazy(() => import('./pages/panel/CargaBarberos'));
 const Barberos = lazy(() => import('./pages/panel/Barberos'));
 const Disponibilidad = lazy(() => import('./pages/panel/Disponibilidad'));
 const Agenda = lazy(() => import('./pages/panel/Agenda'));
@@ -277,6 +279,14 @@ export function RutasApp() {
               element={
                 <RutaProtegida roles={['PROPIETARIO']}>
                   <CargaServicios />
+                </RutaProtegida>
+              }
+            />
+            <Route
+              path="barberos/agregar-varios"
+              element={
+                <RutaProtegida roles={['PROPIETARIO']}>
+                  <CargaBarberos />
                 </RutaProtegida>
               }
             />

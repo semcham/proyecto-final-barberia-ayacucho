@@ -25,7 +25,7 @@ export interface ColumnaCarga<F> {
   renderizar?: (
     fila: F,
     indice: number,
-    ids: { id: string; descrito?: string; invalido: boolean },
+    ids: { id: string; idEtiqueta: string; descrito?: string; invalido: boolean },
   ) => ReactNode;
 }
 
@@ -97,12 +97,20 @@ export function TablaCarga<F extends { clave: string }>({
                 const descrito = delCampo.length > 0 ? `${id}-marca` : undefined;
                 return (
                   <div key={c.campo} className={estilos.celda} data-campo={c.campo}>
-                    <label htmlFor={id} className={estilos.etiqueta}>
-                      {c.etiqueta}
-                      <span className="sr-only">, fila {indice + 1}</span>
-                    </label>
                     {c.renderizar ? (
-                      c.renderizar(fila, indice, { id, descrito, invalido })
+                      // Un grupo (casillas): su nombre lo da este texto por aria-labelledby, no un <label for>.
+                      <span id={`${id}-etiqueta`} className={estilos.etiqueta}>
+                        {c.etiqueta}
+                        <span className="sr-only">, fila {indice + 1}</span>
+                      </span>
+                    ) : (
+                      <label htmlFor={id} className={estilos.etiqueta}>
+                        {c.etiqueta}
+                        <span className="sr-only">, fila {indice + 1}</span>
+                      </label>
+                    )}
+                    {c.renderizar ? (
+                      c.renderizar(fila, indice, { id, idEtiqueta: `${id}-etiqueta`, descrito, invalido })
                     ) : (
                       <div className={estilos.control}>
                         {c.prefijo && (

@@ -1,0 +1,135 @@
+/* 011 · Lo propio de "Agregar varios barberos" (lo común está en CargaServicios.module.css y TablaCarga). */
+
+.cupo,
+.avisoServicios {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--espacio-2);
+  margin: 0;
+  padding: var(--espacio-3) var(--espacio-4);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio-lg);
+  background: var(--color-superficie);
+  color: var(--color-texto);
+  font-size: var(--texto-sm);
+}
+
+.cupo > svg,
+.avisoServicios > svg {
+  flex-shrink: 0;
+  margin-top: 0.0625rem;
+  color: var(--color-enlace);
+}
+
+.cupo[data-lleno] {
+  border-color: var(--color-aviso-borde);
+  background: var(--color-aviso-fondo);
+}
+
+.cupo[data-lleno] > svg {
+  color: var(--color-aviso);
+}
+
+.avisoServicios {
+  border-color: var(--color-aviso-borde);
+  background: var(--color-aviso-fondo);
+}
+
+.avisoServicios > svg {
+  color: var(--color-aviso);
+}
+
+.enlace {
+  color: var(--color-enlace);
+  font-weight: var(--peso-fuerte);
+}
+
+.enlace:hover {
+  color: var(--color-enlace-hover);
+}
+
+/* Servicios de una fila: opciones como píldoras con su casilla real (se marca con clic, espacio o tabulador). */
+.servicios {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--espacio-2);
+  min-height: var(--alto-control);
+  align-items: center;
+  border-radius: var(--radio);
+}
+
+.servicios[data-invalido] {
+  padding: var(--espacio-1);
+  box-shadow: 0 0 0 1px var(--color-error);
+}
+
+.opcion {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--espacio-2);
+  min-height: 2.25rem;
+  padding: 0 var(--espacio-3);
+  border: 1px solid var(--color-borde-control);
+  border-radius: var(--radio-pildora);
+  background: var(--color-superficie);
+  color: var(--color-texto);
+  font-size: var(--texto-sm);
+  cursor: pointer;
+  transition:
+    border-color var(--transicion),
+    background-color var(--transicion);
+}
+
+.opcion:hover {
+  border-color: var(--color-acento-borde);
+}
+
+.opcion[data-marcado] {
+  border-color: var(--color-acento-borde);
+  background: var(--color-acento-suave);
+  font-weight: var(--peso-fuerte);
+}
+
+.opcion input {
+  width: 1rem;
+  height: 1rem;
+  margin: 0;
+  accent-color: var(--color-acento-activo);
+}
+
+.opcion:focus-within {
+  box-shadow: var(--anillo-foco);
+}
+
+.todos {
+  min-height: 2.25rem;
+  padding: 0 var(--espacio-2);
+  border: 0;
+  background: none;
+  color: var(--color-enlace);
+  font: inherit;
+  font-size: var(--texto-sm);
+  font-weight: var(--peso-fuerte);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.todos:hover {
+  color: var(--color-enlace-hover);
+}
+
+.todos:focus-visible {
+  outline: none;
+  border-radius: var(--radio-sm);
+  box-shadow: var(--anillo-foco);
+}
+
+.sinServicios {
+  display: flex;
+  align-items: center;
+  min-height: var(--alto-control);
+  margin: 0;
+  color: var(--color-texto-suave);
+  font-size: var(--texto-sm);
+}

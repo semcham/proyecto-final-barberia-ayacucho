@@ -88,6 +88,16 @@
   background: var(--color-error-fondo);
 }
 
+/* Listo para guardar, pero con avisos (barberos con nombre repetido). */
+.resumen[data-tono='aviso'] {
+  border-color: var(--color-aviso-borde);
+  background: var(--color-aviso-fondo);
+}
+
+.resumen[data-tono='aviso'] .resumenTitulo > svg {
+  color: var(--color-exito);
+}
+
 .resumen[data-tono='exito'] {
   border-color: var(--color-exito-borde);
   background: var(--color-exito-fondo);

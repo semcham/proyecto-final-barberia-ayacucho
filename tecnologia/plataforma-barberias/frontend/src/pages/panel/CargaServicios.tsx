@@ -10,13 +10,13 @@ import {
   type RevisionDeCarga,
   revisarServicios,
   textoCortoDelProblema,
-  textoDelProblema,
 } from '../../api/carga-lote';
 import { clavesConsulta } from '../../api/claves';
 import { ApiError } from '../../api/client';
 import { EncabezadoPagina } from '../../components/app/EncabezadoPagina';
 import { Icono } from '../../components/Icono';
 import { Alerta, Boton, ModalConfirmacion, useAvisos } from '../../components/ui';
+import { ResumenRevision } from './carga/ResumenRevision';
 import { type ColumnaCarga, idDeCampo, type MarcaDeCampo, TablaCarga } from './carga/TablaCarga';
 import { duracionDeCelda, precioDeCelda, serviciosDePegado } from './carga/pegado-de-hoja';
 import { SERVICIOS_TIPICOS } from './carga/servicios-tipicos';
@@ -192,8 +192,6 @@ export default function CargaServicios() {
     return mapa;
   }, [revision]);
 
-  const filasConError = new Set(revision?.errores.filter((p) => p.fila !== null).map((p) => p.fila)).size;
-  const deLaCarga = revision?.errores.filter((p) => p.fila === null) ?? [];
   const listo = revision !== null && revision.errores.length === 0;
 
   const agregarFila = () => {
@@ -351,54 +349,15 @@ export default function CargaServicios() {
         )}
 
         {revision && (
-          <div
-            ref={resumen}
-            tabIndex={-1}
+          <ResumenRevision
             id={idResumen}
-            className={estilos.resumen}
-            data-tono={listo ? 'exito' : 'error'}
-            role={listo ? 'status' : 'alert'}
-          >
-            {listo ? (
-              <p className={estilos.resumenTitulo}>
-                <Icono nombre="check" tamano={18} />
-                Todo listo: se{' '}
-                {revision.filas === 1 ? 'creará 1 servicio' : `crearán ${revision.filas} servicios`}. Pulsa
-                «Guardar».
-              </p>
-            ) : (
-              <>
-                <p className={estilos.resumenTitulo}>
-                  <Icono nombre="alerta" tamano={18} />
-                  {filasConError > 0
-                    ? `Hay ${filasConError === 1 ? '1 fila' : `${filasConError} filas`} con errores. Corrígelas y vuelve a revisar.`
-                    : 'Revisa la carga.'}
-                </p>
-                {deLaCarga.map((p) => (
-                  <p key={p.problema} className={estilos.resumenTexto}>
-                    {textoDelProblema(p)}
-                  </p>
-                ))}
-                <ul className={estilos.resumenLista}>
-                  {revision.errores
-                    .filter((p) => p.fila !== null)
-                    .slice(0, 8)
-                    .map((p) => (
-                      <li key={`${p.fila}-${p.campo}-${p.problema}`}>
-                        <button type="button" className={estilos.enlace} onClick={() => irAlCampo(p)}>
-                          Fila {p.fila} ·{' '}
-                          {ETIQUETA_DE_COLUMNA[CAMPO_DE_COLUMNA[p.campo] ?? p.campo] ?? p.campo}:
-                        </button>{' '}
-                        {textoDelProblema(p)}
-                      </li>
-                    ))}
-                </ul>
-                {revision.errores.filter((p) => p.fila !== null).length > 8 && (
-                  <p className={estilos.resumenTexto}>Y más: revisa las filas marcadas en rojo.</p>
-                )}
-              </>
-            )}
-          </div>
+            ref={resumen}
+            revision={revision}
+            tipo="SERVICIOS"
+            sustantivo={{ uno: 'servicio', varios: 'servicios' }}
+            etiquetaDeCampo={(campo) => ETIQUETA_DE_COLUMNA[CAMPO_DE_COLUMNA[campo] ?? campo] ?? campo}
+            alIrA={irAlCampo}
+          />
         )}
 
         <div onPaste={alPegarEnTabla}>
