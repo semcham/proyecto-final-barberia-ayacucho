@@ -20,6 +20,7 @@ Decisión base: [ADR-010](../01-analisis-de-sistema/07-decisiones-arquitectonica
 | Configurar datos, enlace, antelación y horario de atención | —   | —                       | — (ve)         | ✓                    | —   |
 | Gestionar usuarios y roles de la barbería                  | —   | —                       | —              | ✓                    | —   |
 | Gestionar servicios y barberos                             | —   | —                       | — (ve)         | ✓                    | —   |
+| Cargar servicios y barberos en lote (011)                  | —   | —                       | —              | ✓                    | —   |
 | Definir disponibilidad y bloqueos                          | —   | —                       | ✓\*            | ✓                    | —   |
 | Ver catálogo público y horarios libres por el enlace       | ✓   | ✓                       | ✓              | ✓                    | —   |
 | Consultar horarios libres con sesión                       | —   | ✓                       | —              | ✓                    | —   |

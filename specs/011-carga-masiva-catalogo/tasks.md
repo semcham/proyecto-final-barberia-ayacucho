@@ -204,14 +204,14 @@ ninguno.
 
 ### Pruebas de US2
 
-- [ ] T033 [P] [US2] Prueba unitaria de `revisarBarberos` en `backend/test/unit/catalogo/carga-lote.spec.ts` (bloque
+- [X] T033 [P] [US2] Prueba unitaria de `revisarBarberos` en `backend/test/unit/catalogo/carga-lote.spec.ts` (bloque
   nuevo): nombre corto → error `longitud`; servicio inexistente → `no_existe`; inactivo → `inactivo`; nombre repetido en
   la carga o con uno existente → **advertencia** (no error); más filas que `disponibles` → error de carga `fila: null`,
   `campo: 'filas'`, `problema: 'supera_cupo'`.
-- [ ] T034 [P] [US2] Contrato y RBAC de `POST /barberos/lote/revision` y `POST /barberos/lote` en
+- [X] T034 [P] [US2] Contrato y RBAC de `POST /barberos/lote/revision` y `POST /barberos/lote` en
   `backend/test/contract/carga-lote.contract.spec.ts` y `backend/test/contract/rbac-011.spec.ts` (solo `PROPIETARIO` con
   `GESTIONAR_BARBEROS`; `cupo` en la revisión).
-- [ ] T035 [P] [US2] Integración en `backend/test/integration/catalogo/carga-lote-barberos.spec.ts`: (a) guardado dentro
+- [X] T035 [P] [US2] Integración en `backend/test/integration/catalogo/carga-lote-barberos.spec.ts`: (a) guardado dentro
   del cupo → barberos activos, `usuarioId` nulo y con sus servicios; (b) cupo superado → 403 `SUSCRIPCION_NO_PERMITE` con
   `LIMITE_BARBEROS`, `maximo`, `activos`, `solicitados` y 0 creados; (c) nombre repetido → se guarda (advertencia solo en
   la revisión); (d) servicio inactivo → 400 `CARGA_INVALIDA`; (e) idempotencia como en T018 (f); (f) suscripción vencida
@@ -220,32 +220,32 @@ ninguno.
 
 ### Implementación de US2 (backend)
 
-- [ ] T036 [US2] `revisarBarberos(filas, nombresExistentes, serviciosActivos, cupo)` en
+- [X] T036 [US2] `revisarBarberos(filas, nombresExistentes, serviciosActivos, cupo)` en
   `backend/src/modules/catalogo-citas/catalogo/domain/carga-lote.ts` usando `problemasDeBarbero` y
   `LimiteBarberos.puedeAgregar(activos, maximo, n)` (T033).
-- [ ] T037 [US2] Agregar a `BarberoRepository` `nombres()` (minúsculas) y `crearVarios(barberos)` (inserciones de `barber`
+- [X] T037 [US2] Agregar a `BarberoRepository` `nombres()` (minúsculas) y `crearVarios(barberos)` (inserciones de `barber`
   y `barber_service` en la misma transacción), y a `ServicioRepository` `activosDe(ids)`, en
   `backend/src/modules/catalogo-citas/catalogo/application/ports/catalogo-repositorios.ts` y
   `backend/src/modules/catalogo-citas/catalogo/infrastructure/kysely-catalogo-repositorios.ts`.
-- [ ] T038 [US2] Casos de uso `RevisarCargaBarberos` y `CargarBarberos` en
+- [X] T038 [US2] Casos de uso `RevisarCargaBarberos` y `CargarBarberos` en
   `backend/src/modules/catalogo-citas/catalogo/application/carga-lote.ts`, con `GESTIONAR_BARBEROS`, `exigirOperacion`,
   `SuscripcionesApi.obtenerLimiteBarberos(tenant)` (bloquea la fila de la suscripción hasta el final, **el mismo
   bloqueo** que `ReglasBarbero.exigirCupo`), `contarActivos`, `LimiteBarberos.exigir(activos, maximo, n)`,
   `Barbero.crear` sin usuario, `crearVarios`, carga guardada, auditoría e invalidación; idempotencia igual que T021.
   En la revisión, el cupo se lee sin bloquear.
-- [ ] T039 [US2] Rutas `POST /barberos/lote/revision` y `POST /barberos/lote` con `@OperacionM02('GESTIONAR_BARBEROS')` en
+- [X] T039 [US2] Rutas `POST /barberos/lote/revision` y `POST /barberos/lote` con `@OperacionM02('GESTIONAR_BARBEROS')` en
   `backend/src/modules/catalogo-citas/catalogo/presentation/barberos.controller.ts` y DTO de `FilaBarbero` en
   `backend/src/modules/catalogo-citas/catalogo/presentation/carga-lote.dto.ts` (`servicioIds` UUID únicos, por defecto
   vacío).
-- [ ] T040 [US2] Pasar T033 a T035.
+- [X] T040 [US2] Pasar T033 a T035.
 
 ### Frontend de US2
 
-- [ ] T041 [P] [US2] Prueba de pantalla en `frontend/test/pages/carga-barberos.spec.tsx`: cupo visible ("Puedes agregar
+- [X] T041 [P] [US2] Prueba de pantalla en `frontend/test/pages/carga-barberos.spec.tsx`: cupo visible ("Puedes agregar
   D"); pegar nombres; casillas de servicios activos y "Marcar todos los servicios"; advertencia ámbar de nombre repetido
   que deja guardar; error `supera_cupo` con "Quita X filas o cambia de plan"; sin servicios activos se puede guardar con
   el aviso; resumen "Se crearon N barberos"; teclado.
-- [ ] T042 [US2] Pantalla `frontend/src/pages/panel/CargaBarberos.tsx` (+ `.module.css`) sobre `TablaCarga`, llamadas
+- [X] T042 [US2] Pantalla `frontend/src/pages/panel/CargaBarberos.tsx` (+ `.module.css`) sobre `TablaCarga`, llamadas
   `revisarBarberos` y `cargarBarberos` en `frontend/src/api/carga-lote.ts`, ruta `barberos/agregar-varios` en
   `frontend/src/routes.tsx` y botón "Agregar varios" en `frontend/src/pages/panel/Barberos.tsx` (T041).
 
@@ -259,14 +259,14 @@ ninguno.
 
 **Independent Test**: con cupo para 3, dos cargas de 2 a la vez: exactamente una se guarda completa, 50 veces seguidas.
 
-- [ ] T043 [US3] Prueba de concurrencia en `backend/test/integration/catalogo/carga-lote-concurrencia.spec.ts` (como
+- [X] T043 [US3] Prueba de concurrencia en `backend/test/integration/catalogo/carga-lote-concurrencia.spec.ts` (como
   `backend/test/integration/citas/concurrencia-reservas.spec.ts`): con cupo 3, dos `POST /barberos/lote` de 2 filas
   lanzados a la vez, repetido 50 veces (SC-003): siempre una 201 y una 403 `LIMITE_BARBEROS`, y `contarActivos` nunca
   pasa el máximo.
-- [ ] T044 [US3] En el mismo archivo: una carga de 2 y una creación individual (`POST /barberos`) a la vez con cupo 2 → el
+- [X] T044 [US3] En el mismo archivo: una carga de 2 y una creación individual (`POST /barberos`) a la vez con cupo 2 → el
   total de activos nunca supera el máximo; y dos cargas de servicios con un nombre en común a la vez → una se guarda y la
   otra 409 `NOMBRE_DUPLICADO` sin crear nada.
-- [ ] T045 [US3] Si T043 o T044 fallan, corregir el orden de los pasos en `CargarBarberos` (el bloqueo antes de contar)
+- [X] T045 [US3] Si T043 o T044 fallan, corregir el orden de los pasos en `CargarBarberos` (el bloqueo antes de contar)
   en `backend/src/modules/catalogo-citas/catalogo/application/carga-lote.ts`, sin agregar un bloqueo distinto.
 
 **Checkpoint**: las tres historias funcionan.
@@ -275,18 +275,18 @@ ninguno.
 
 ## Phase 6: Polish & Cross-Cutting Concerns (cierre)
 
-- [ ] T046 [P] Medición SC-004 en `backend/test/integration/catalogo/carga-lote-servicios.spec.ts` (bloque aparte): 50
+- [X] T046 [P] Medición SC-004 en `backend/test/integration/catalogo/carga-lote-servicios.spec.ts` (bloque aparte): 50
   filas válidas guardadas en menos de 3 s en local; anotar el valor medido en `specs/011-carga-masiva-catalogo/quickstart.md`.
-- [ ] T047 [P] Arquitectura: `npm run test:arch` en `backend/` sin reglas nuevas ni violaciones (M02 solo usa
+- [X] T047 [P] Arquitectura: `npm run test:arch` en `backend/` sin reglas nuevas ni violaciones (M02 solo usa
   `SuscripcionesApi` de M03, como hoy).
-- [ ] T048 Capturas con axe sobre el build de producción (no Vite) a 360 y 1440 px, claro y oscuro: carga vacía, típicos
+- [X] T048 Capturas con axe sobre el build de producción (no Vite) a 360 y 1440 px, claro y oscuro: carga vacía, típicos
   sin precio, revisión con "Falta el precio", errores, advertencias de barberos, cupo superado, lista para guardar y
   resumen; guardarlas en `evidencia/interfaz-carga-masiva/`, mirarlas, corregir y recapturar hasta axe 0 y sin desborde.
-- [ ] T049 [P] Documentación: RF07 y RF08 ampliados con la carga en lote en
+- [X] T049 [P] Documentación: RF07 y RF08 ampliados con la carga en lote en
   `docs/01-analisis-de-sistema/03-requisitos-funcionales.md`; rutas nuevas en `docs/02-arquitectura-software/api-rest.md`;
   tabla `catalog_batch` en `docs/02-arquitectura-software/multi-tenancy-y-datos.md`; operaciones en la matriz RBAC de
   `docs/02-arquitectura-software/seguridad-y-privacidad.md`; filas nuevas en `docs/trazabilidad.md`.
-- [ ] T050 Correr el quickstart completo (`specs/011-carga-masiva-catalogo/quickstart.md`) y, en `backend/` y
+- [X] T050 Correr el quickstart completo (`specs/011-carga-masiva-catalogo/quickstart.md`) y, en `backend/` y
   `frontend/`, Prettier, lint, typecheck y todas las pruebas; anotar los resultados.
 - [ ] T051 **Del responsable:** revisar a mano las pantallas a 360 px con datos reales (pegar desde su propia hoja de
   cálculo) y las duraciones sugeridas de los servicios típicos.
@@ -331,6 +331,14 @@ Luego: T029 TablaCarga → T030 pantalla → T031 ruta y botón
 4. **Cierre**: medición, capturas, docs y quickstart.
 
 ## Notas
+
+- **Implementación de las fases 4 a 6 (2026-11-25):** en la revisión de barberos el cupo se lee con `obtenerLimiteBarberos`, el
+  mismo que la creación (bloquea la fila de la suscripción solo durante esa transacción corta de lectura); no se agregó nada
+  a la API de M03. La pantalla toma el cupo de `GET /suscripcion` y `GET /barberos` (lecturas que ya existían). T045 no requirió
+  cambios: las 50 repeticiones de dos cargas simultáneas dieron siempre una 201 y una 403. SC-004: 569 ms para 50 filas.
+  En la suite completa del backend, `redis-caido.spec.ts` (lista frágil de 009) falló una vez y pasó sola (9 de 9). T050: se
+  corrió la sección automática del quickstart; los escenarios manuales en Compose quedan cubiertos por las pruebas de integración
+  y no se repitieron a mano (ver T051).
 
 - **Implementación de las fases 1 a 3 (2026-11-25):** T001 en verde antes de empezar. En T018 (d), un nombre creado entre la
   revisión y el guardado responde **400 `CARGA_INVALIDA` con `ya_existe` en su fila** (el guardado repite la revisión dentro

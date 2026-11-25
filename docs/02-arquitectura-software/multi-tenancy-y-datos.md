@@ -642,6 +642,16 @@ Detalle completo en el [modelo de datos de 010](../../specs/010-acceso-verificad
 
 PR09: `rls` (`account_link` sin filas de otra barbería), `permisos-010`, `funciones-definer` y `recuperacion-limites` (un enlace emitido en A no toca datos de B), en verde.
 
+### 3.7 Tabla de la funcionalidad 011 (M02, carga en lote del catálogo)
+
+Detalle en el [modelo de datos de 011](../../specs/011-carga-masiva-catalogo/data-model.md) (migración `0037`).
+
+| Tabla | Tenant y RLS | Restricciones clave |
+| --- | --- | --- |
+| `catalog_batch` | Sí, `rlsPorTenant()` | Una fila por carga **guardada** de servicios o barberos, solo para que un reintento con la misma `Idempotency-Key` devuelva el mismo resumen. Índice único `(tenant_id, author_user_id, idempotency_key)`; clave foránea a `membership (tenant_id, user_id)`. Guarda la huella SHA-256 de las filas y los ids creados, **nunca los nombres**. La aplicación solo `SELECT` e `INSERT`; ningún otro rol tiene permisos |
+
+El cupo de barberos de una carga usa el mismo bloqueo de la fila de la suscripción que la creación individual (R13 de 002). PR09: `rls`, `carga-lote-tabla` (permisos exactos) y `aislamiento-011`; concurrencia: `carga-lote-concurrencia` (en verde).
+
 ## 4. Claves, restricciones e índices
 
 | Tabla                        | Clave primaria            | Claves foráneas                                                      | Restricciones                                                                                                                                                                                                                                                                 | Índices (propuestos)                                                  |

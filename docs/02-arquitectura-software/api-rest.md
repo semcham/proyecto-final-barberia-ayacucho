@@ -63,6 +63,8 @@ Roles: **ADM** administrador de la plataforma · **PRO** propietario · **BAR** 
 | `GET/PUT /barberia/horario`                                | Horario de atención semanal (M02)                                           | RF03 | PRO (BAR lectura)     |
 | `GET/POST /servicios`, `PATCH /servicios/{id}`             | Gestionar servicios (se desactivan, no se eliminan)                         | RF07 | PRO (BAR lectura)     |
 | `GET/POST /barberos`, `PATCH /barberos/{id}`               | Gestionar barberos, servicios asignados y vínculo con un usuario            | RF08 | PRO (BAR lectura)     |
+| `POST /servicios/lote/revision`, `POST /servicios/lote`     | 011: revisar sin guardar y crear hasta 50 servicios, todo o nada (`Idempotency-Key` obligatoria al guardar; `400 CARGA_INVALIDA` con errores por fila) | RF07 | PRO |
+| `POST /barberos/lote/revision`, `POST /barberos/lote`       | 011: revisar (con el cupo del plan y avisos de nombre repetido) y crear hasta 50 barberos sin usuario, todo o nada; `403 SUSCRIPCION_NO_PERMITE` (`LIMITE_BARBEROS`) si el lote no cabe | RF08 | PRO |
 | `GET/PUT /barberos/{id}/disponibilidad`                    | Disponibilidad semanal                                                      | RF09 | PRO, BAR (la suya)    |
 | `GET/POST /barberos/{id}/bloqueos`, `DELETE …/{bloqueoId}` | Bloqueos (con confirmación si chocan con citas)                             | RF09 | PRO, BAR (los suyos)  |
 | `GET /horarios?servicio=&fecha=&barbero=`                  | Horarios libres con sesión (mismo cálculo que la vía pública)               | RF11 | CLI, PRO              |

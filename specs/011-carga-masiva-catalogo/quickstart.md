@@ -20,6 +20,9 @@ npm run lint && npx tsc -b --noEmit && npx vitest run
 
 Esperado: todo en verde; las pruebas actuales de `servicios.spec.ts` y `barberos.spec.ts` siguen pasando sin cambios.
 
+**Medición SC-004 (2026-11-25, T046):** 50 servicios válidos guardados en **569 ms** (una corrida, Testcontainers en el equipo
+de desarrollo; meta: menos de 3 s). La prueba `(SC-004)` de `carga-lote-servicios.spec.ts` imprime el valor en cada corrida.
+
 ## 2. Escenarios a mano (Compose de verificación con la semilla)
 
 1. **Servicios pegados (US1)**: como propietario de la barbería de ejemplo, Servicios → "Agregar varios". Copiar de una
