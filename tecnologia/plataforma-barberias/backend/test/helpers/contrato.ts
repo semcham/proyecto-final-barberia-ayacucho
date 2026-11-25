@@ -107,6 +107,19 @@ const CONTRATOS = {
     'contracts',
     'openapi.yaml',
   ),
+  // 011 (T016): carga en lote de servicios y barberos.
+  '011': join(
+    __dirname,
+    '..',
+    '..',
+    '..',
+    '..',
+    '..',
+    'specs',
+    '011-carga-masiva-catalogo',
+    'contracts',
+    'openapi.yaml',
+  ),
 } as const;
 
 type Contrato = keyof typeof CONTRATOS;
@@ -306,4 +319,14 @@ export function erroresDeContrato008(
   cuerpo: unknown,
 ): string[] {
   return erroresDeContrato(ruta, metodo, estado, cuerpo, '008');
+}
+
+/** Igual que `erroresDeContrato`, contra el contrato de la funcionalidad 011 (carga en lote del catálogo). */
+export function erroresDeContrato011(
+  ruta: string,
+  metodo: string,
+  estado: number,
+  cuerpo: unknown,
+): string[] {
+  return erroresDeContrato(ruta, metodo, estado, cuerpo, '011');
 }

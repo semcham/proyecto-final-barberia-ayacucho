@@ -140,4 +140,31 @@ describe('LimiteBarberos', () => {
     expect(() => LimiteBarberos.exigir(4, 5)).not.toThrow();
     expect(() => LimiteBarberos.exigir(5, 5)).toThrow(LimiteBarberosAlcanzado);
   });
+
+  // 011 (T004; research R04): la carga en lote pide el cupo para varios a la vez; con uno solo, como siempre.
+  it('con "nuevos", el lote entero debe caber: activos + nuevos <= máximo', () => {
+    expect(LimiteBarberos.puedeAgregar(2, 5, 3)).toBe(true);
+    expect(LimiteBarberos.puedeAgregar(3, 5, 3)).toBe(false);
+    expect(LimiteBarberos.puedeAgregar(4, 5, 1)).toBe(LimiteBarberos.puedeAgregar(4, 5));
+    expect(() => LimiteBarberos.exigir(2, 5, 3)).not.toThrow();
+  });
+
+  it('al superar el cupo, el error dice el máximo, los activos y cuántos se pidieron', () => {
+    let error: unknown;
+    try {
+      LimiteBarberos.exigir(3, 5, 4);
+    } catch (e) {
+      error = e;
+    }
+    expect(error).toBeInstanceOf(LimiteBarberosAlcanzado);
+    expect((error as LimiteBarberosAlcanzado).detalles).toEqual([
+      { motivo: 'LIMITE_BARBEROS', maximo: 5, activos: 3, solicitados: 4 },
+    ]);
+  });
+
+  it('la creación individual conserva su detalle de siempre', () => {
+    expect(() => LimiteBarberos.exigir(5, 5)).toThrow(
+      expect.objectContaining({ detalles: [{ motivo: 'LIMITE_BARBEROS', maximo: 5 }] }),
+    );
+  });
 });

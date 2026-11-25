@@ -149,6 +149,13 @@ describe('PR09 · RLS en la base de datos', () => {
          VALUES ($1, $2, $3, 'VERIFICAR_CORREO', now(), now() + interval '24 hours')`,
         [uuidv7(), barberia.tenantId, barberia.propietarioId],
       );
+      // 011 (T005): una carga en lote guardada por barbería (catalog_batch).
+      await seed.query(
+        `INSERT INTO catalog_batch
+           (id, tenant_id, author_user_id, idempotency_key, kind, rows_digest, created_count, created_ids)
+         VALUES ($1, $2, $3, $4, 'SERVICIOS', $5, 1, ARRAY[$6]::uuid[])`,
+        [uuidv7(), barberia.tenantId, barberia.propietarioId, uuidv7(), 'a'.repeat(64), uuidv7()],
+      );
       // 004 (T009): una fila en cada tabla nueva con barbería.
       await sembrarFilas004({
         tenantId,
@@ -308,6 +315,21 @@ describe('PR09 · RLS en la base de datos', () => {
 
   // T004 de 007 · Principio III: las solicitudes sobre datos personales son datos de la barbería, con tenant_id,
   // RLS activada y forzada y la política tenant_isolation.
+  // T005 de 011: catalog_batch (cargas en lote del catálogo) tiene tenant_id, RLS forzada y la política de siempre.
+  describe('tablas de 011', () => {
+    it('catalog_batch tiene tenant_id, RLS activada y forzada y la política tenant_isolation', async () => {
+      expect(tablasConTenant).toContain('catalog_batch');
+      expect(tablasConRls).toContain('catalog_batch');
+      const { rows } = await poolDe('seed').query(
+        `SELECT qual AS usando, with_check AS comprobando FROM pg_policies
+          WHERE schemaname = 'public' AND policyname = 'tenant_isolation' AND tablename = 'catalog_batch'`,
+      );
+      expect(rows).toHaveLength(1);
+      expect(rows[0].usando).toContain("current_setting('app.tenant_id'");
+      expect(rows[0].comprobando).toContain("current_setting('app.tenant_id'");
+    });
+  });
+
   describe('tablas de 007', () => {
     it('data_subject_request tiene tenant_id y RLS activada y forzada', () => {
       expect(TABLAS_007_CON_BARBERIA.filter((tabla) => !tablasConTenant.includes(tabla))).toEqual([]);
