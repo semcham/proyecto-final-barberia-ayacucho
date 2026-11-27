@@ -27,7 +27,7 @@ Cinco módulos de negocio y un núcleo compartido. Se agrupó por **cohesión fu
 
 El sistema es un monolito modular y cada módulo se organiza en cuatro capas con dependencias hacia el interior.
 
-![Vista general: monolito modular y capas](../../img/monolito-capas-estilo.png)
+![Vista general: monolito modular y capas](../../img/monolito-capas-estilo.svg)
 
 _Figura 1. Vista general de la arquitectura: monolito modular con cuatro capas._
 
