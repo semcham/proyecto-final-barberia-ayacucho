@@ -4,7 +4,7 @@
 
 > En C4, **contenedor** es una aplicación o almacén de datos ejecutable por separado (no necesariamente Docker). El backend es **un solo contenedor** (monolito modular); sus módulos se muestran en el nivel 3 como componentes.
 
-**Zoom del nivel 1.** Se mantienen las relaciones del nivel 1: las personas usan la plataforma (ahora, mediante la interfaz web); la plataforma (ahora, el backend) se relaciona con la pasarela de pagos y, en el futuro, con IA, correo y WhatsApp.
+**Zoom del nivel 1.** Se mantienen las relaciones del nivel 1: las personas usan la plataforma (ahora, mediante la interfaz web); la plataforma (ahora, el backend) se relaciona con la pasarela de pagos y con IA, correo y WhatsApp (hoy con proveedores simulados: IA falsa, Mailpit y simulador de WhatsApp).
 
 ![C4 Nivel 2: contenedores](../../img/c4-nivel2-contenedores.png)
 
@@ -23,14 +23,14 @@ flowchart TB
         RD[("Redis 7.4<br/>caché y límites")]
     end
     PAY["Pasarela de pagos<br/>hoy: simulada"]
-    EXT["IA, correo y WhatsApp"]
+    EXT["IA, correo y WhatsApp<br/>hoy: proveedor de IA falso,<br/>Mailpit y simulador de WhatsApp"]
     USR -->|"usa [HTTPS]"| WEB
     WEB -->|"API REST /api/v1 [JSON]"| API
     API -->|"SQL"| PG
     API -.->|"caché opcional"| RD
     API -->|"sesión de pago"| PAY
     PAY -->|"notificación firmada"| API
-    API -.->|"opcional"| EXT
+    API -->|"consultas y avisos"| EXT
 
     classDef persona fill:#ffffff,stroke:#424242,color:#212121
     classDef implementado fill:#e8eef7,stroke:#3b5b8c,color:#1f2d4a
@@ -40,8 +40,7 @@ flowchart TB
     class USR persona
     class WEB,API implementado
     class PG,RD datos
-    class PAY externo
-    class EXT planificado
+    class PAY,EXT externo
 ```
 
 </details>
@@ -56,18 +55,18 @@ Evidencia: `frontend/` (React 19, Vite 6), `backend/` (NestJS 11), `docker-compo
 | -------------------------- | ------------------------------------------------------------------------------------------ | -------------------------------------------------------------------- | ---------------- | --------------------------- | ---------------------------------------------------------------------------------------------------------------- |
 | Interfaz web               | Presentación para los cuatro roles y el administrador; consume la API; sin reglas críticas | React 19, Vite 6 y TypeScript; sistema de diseño propio con Radix UI | RC01, RC03, AC06 | ADR-002, 014, 016, 017, 018 | Implementado (001, 002 y 003): registro, ingreso, panel, catálogo público, reservas, suscripción y `/plataforma` |
 | Backend monolítico modular | Casos de uso, reglas, seguridad e integraciones; módulos con 4 capas; sin estado           | TypeScript con NestJS 11                                             | Todos los RF     | ADR-001, 002, 011           | Implementado: M01, M02, M03, M04 (005), M05 (004) y M06 (parcial)                                                |
-| PostgreSQL                 | Fuente de verdad: datos de negocio, restricciones de exclusión, RLS, auditoría             | PostgreSQL 16                                                        | RC04, RF12       | ADR-003, 004, 009, 015      | Implementado: 39 tablas (migraciones 0001 a 0027; las 7 de 004 desde la 0021)                                   |
+| PostgreSQL                 | Fuente de verdad: datos de negocio, restricciones de exclusión, RLS, auditoría             | PostgreSQL 16                                                        | RC04, RF12       | ADR-003, 004, 009, 015      | Implementado: 39 tablas (migraciones 0001 a 0027; las 7 de 004 desde la 0021)                                    |
 | Redis                      | Caché del catálogo público y contadores del límite por IP                                  | Redis 7.4, sin persistencia                                          | AC05, DA03       | ADR-005, 029                | Implementado (006)                                                                                               |
 | Pasarela simulada          | Hace de proveedor de pagos en local (fuera del monolito; nunca en producción)              | Node 22, `node:http`                                                 | RF23–RF26        | ADR-022                     | Implementado (003)                                                                                               |
 
 ## Relaciones con sistemas externos (protocolos)
 
-| Relación                                       | Protocolo                                                                                           | Observación                                                                |
-| ---------------------------------------------- | --------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| Backend ↔ Proveedor de pagos                   | HTTP en local con el simulador (HTTPS con el proveedor real); notificación firmada hacia el backend | La notificación no lleva token de usuario sino la firma HMAC del proveedor |
-| Backend → Proveedor de IA (005: OpenRouter solo en desarrollo; el falso no sale del proceso; producción _planificada_) | HTTPS (`fetch` con tiempo límite) | Solo la pregunta, el contexto, la fecha, la zona y las intenciones del rol; sin catálogo, datos de clientes ni secretos |
-| Backend → Servicio de correo (004)             | SMTP (`nodemailer`); en desarrollo, Mailpit                                                         | Correo es el canal base y de respaldo                                      |
-| Backend → Servicio de WhatsApp (004, simulado) | HTTP contra el simulador `whatsapp-simulado`; el proveedor real (HTTPS) está planificado             | Solo con consentimiento del cliente                                        |
+| Relación                                                                                                               | Protocolo                                                                                           | Observación                                                                                                             |
+| ---------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Backend ↔ Proveedor de pagos                                                                                           | HTTP en local con el simulador (HTTPS con el proveedor real); notificación firmada hacia el backend | La notificación no lleva token de usuario sino la firma HMAC del proveedor                                              |
+| Backend → Proveedor de IA (005: OpenRouter solo en desarrollo; el falso no sale del proceso; producción _planificada_) | HTTPS (`fetch` con tiempo límite)                                                                   | Solo la pregunta, el contexto, la fecha, la zona y las intenciones del rol; sin catálogo, datos de clientes ni secretos |
+| Backend → Servicio de correo (004)                                                                                     | SMTP (`nodemailer`); en desarrollo, Mailpit                                                         | Correo es el canal base y de respaldo                                                                                   |
+| Backend → Servicio de WhatsApp (004, simulado)                                                                         | HTTP contra el simulador `whatsapp-simulado`; el proveedor real (HTTPS) está planificado            | Solo con consentimiento del cliente                                                                                     |
 
 ## Notas
 
